@@ -3,6 +3,11 @@ name = "proto"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 
+[workspace]
+members = [
+  "proto-derive",
+]
+
 [dependencies]
 byteorder = "1"
 

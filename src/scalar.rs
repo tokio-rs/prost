@@ -123,7 +123,7 @@ pub fn read_uint64<R>(r: &mut R) -> Result<u64> where R: Read {
     for i in 0..10 {
         r.read_exact(buf)?;
         let b = buf[0];
-        acc = acc | (((b & 0x7F) as u64) << (i * 7));
+        acc |= ((b & 0x7F) as u64) << (i * 7);
         if b <= 0x7F {
             return Ok(acc);
         }
