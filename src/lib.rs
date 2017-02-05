@@ -7,8 +7,6 @@ extern crate quickcheck;
 mod message;
 
 #[doc(hidden)]
-pub mod scalar;
-#[doc(hidden)]
-pub mod encodable;
+pub mod field;
 
 pub use message::Message;
