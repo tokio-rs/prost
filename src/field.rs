@@ -28,6 +28,9 @@ pub enum WireType {
     ThirtyTwoBit = 5
 }
 
+pub const MIN_TAG: u32 = 1;
+pub const MAX_TAG: u32 = (1 << 29) - 1;
+
 impl WireType {
     // TODO: impl TryFrom<u8> when stable.
     pub fn try_from(val: u32) -> Result<WireType> {
@@ -48,6 +51,14 @@ pub trait Field {
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write;
     fn wire_type() -> WireType;
     fn wire_len(&self) -> usize;
+
+    fn write_with_tag_to<W>(&self, tag: u32, w: &mut W) -> Result<()> where W: Write {
+        debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+
+        let key = (tag << 3) | <Self as Field>::wire_type() as u32;
+        Field::write_to(&key, w)?;
+        Field::write_to(self, w)
+    }
 }
 
 /// A fixed-width little-endian encoded integer field type.
@@ -55,17 +66,33 @@ pub trait FixedField {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read;
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write;
     fn wire_type() -> WireType;
-    fn wire_len() -> usize;
+    fn wire_len(&self) -> usize;
+
+    fn write_with_tag_to<W>(&self, tag: u32, w: &mut W) -> Result<()> where W: Write {
+        debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+
+        let key = (tag << 3) | <Self as FixedField>::wire_type() as u32;
+        Field::write_to(&key, w)?;
+        FixedField::write_to(self, w)
+    }
 }
 
 /// A variable-width, ZigZag-encoded, signed integer field type.
-pub trait SignedField {
+pub trait SignedField : Field {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read;
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write;
     fn wire_type() -> WireType {
         WireType::Varint
     }
     fn wire_len(&self) -> usize;
+
+    fn write_with_tag_to<W>(&self, tag: u32, w: &mut W) -> Result<()> where W: Write {
+        debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+
+        let key = (tag << 3) | <Self as SignedField>::wire_type() as u32;
+        Field::write_to(&key, w)?;
+        SignedField::write_to(self, w)
+    }
 }
 
 macro_rules! field {
@@ -112,46 +139,46 @@ impl Field for bool {
 // int32
 impl Field for i32 {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        let mut value = 0;
-        <u32 as Field>::merge_from(&mut value, r)?;
+        let mut value: u32 = 0;
+        Field::merge_from(&mut value, r)?;
         *self = value as _;
         Ok(())
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <u32 as Field>::write_to(&(*self as _), w)
+        Field::write_to(&(*self as u32), w)
     }
     fn wire_type() -> WireType {
         WireType::Varint
     }
     fn wire_len(&self) -> usize {
-        <u32 as Field>::wire_len(&(*self as _))
+        Field::wire_len(&(*self as u32))
     }
 }
 
 // int64
 impl Field for i64 {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        let mut value = 0;
-        <u64 as Field>::merge_from(&mut value, r)?;
+        let mut value: u64 = 0;
+        Field::merge_from(&mut value, r)?;
         *self = value as _;
         Ok(())
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <u64 as Field>::write_to(&(*self as _), w)
+        Field::write_to(&(*self as u64), w)
     }
     fn wire_type() -> WireType {
         WireType::Varint
     }
     fn wire_len(&self) -> usize {
-        <u64 as Field>::wire_len(&(*self as _))
+        Field::wire_len(&(*self as u64))
     }
 }
 
 // uint32
 impl Field for u32 {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        let mut value = 0;
-        <u64 as Field>::merge_from(&mut value, r)?;
+        let mut value: u64 = 0;
+        Field::merge_from(&mut value, r)?;
         if value > u32::MAX as u64 {
             Err(Error::new(ErrorKind::InvalidData, "uint32 overflow"))
         } else {
@@ -160,13 +187,13 @@ impl Field for u32 {
         }
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <u64 as Field>::write_to(&(*self as _), w)
+        Field::write_to(&(*self as u64), w)
     }
     fn wire_type() -> WireType {
         WireType::Varint
     }
     fn wire_len(&self) -> usize {
-        unimplemented!()
+        Field::wire_len(&(*self as u64))
     }
 }
 
@@ -201,7 +228,16 @@ impl Field for u64 {
         WireType::Varint
     }
     fn wire_len(&self) -> usize {
-        unimplemented!()
+        if *self < 1 <<  7 { return 1; }
+        if *self < 1 << 14 { return 2; }
+        if *self < 1 << 21 { return 3; }
+        if *self < 1 << 28 { return 4; }
+        if *self < 1 << 35 { return 5; }
+        if *self < 1 << 42 { return 6; }
+        if *self < 1 << 49 { return 7; }
+        if *self < 1 << 56 { return 8; }
+        if *self < 1 << 63 { return 9; }
+        10
     }
 }
 
@@ -242,30 +278,30 @@ impl Field for f64 {
 // sint32
 impl SignedField for i32 {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        <i32 as Field>::merge_from(self, r)?;
+        Field::merge_from(self, r)?;
         *self = (*self >> 1) ^ (-(*self & 1));
         Ok(())
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <i32 as Field>::write_to(&((*self << 1) ^ (*self >> 31)), w)
+        Field::write_to(&((*self << 1) ^ (*self >> 31)), w)
     }
     fn wire_len(&self) -> usize {
-        unimplemented!()
+        Field::wire_len(&((*self << 1) ^ (*self >> 31)))
     }
 }
 
 // sint64
 impl SignedField for i64 {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        <i64 as Field>::merge_from(self, r)?;
+        Field::merge_from(self, r)?;
         *self = (*self >> 1) ^ (-(*self & 1));
         Ok(())
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <i64 as Field>::write_to(&((*self << 1) ^ (*self >> 63)), w)
+        Field::write_to(&((*self << 1) ^ (*self >> 63)), w)
     }
     fn wire_len(&self) -> usize {
-        unimplemented!()
+        Field::wire_len(&((*self << 1) ^ (*self >> 63)))
     }
 }
 
@@ -281,7 +317,7 @@ impl FixedField for u32 {
     fn wire_type() -> WireType {
         WireType::ThirtyTwoBit
     }
-    fn wire_len() -> usize {
+    fn wire_len(&self) -> usize {
         4
     }
 }
@@ -298,7 +334,7 @@ impl FixedField for u64 {
     fn wire_type() -> WireType {
         WireType::SixtyFourBit
     }
-    fn wire_len() -> usize {
+    fn wire_len(&self) -> usize {
         8
     }
 }
@@ -315,7 +351,7 @@ impl FixedField for i32 {
     fn wire_type() -> WireType {
         WireType::ThirtyTwoBit
     }
-    fn wire_len() -> usize {
+    fn wire_len(&self) -> usize {
         4
     }
 }
@@ -332,7 +368,7 @@ impl FixedField for i64 {
     fn wire_type() -> WireType {
         WireType::SixtyFourBit
     }
-    fn wire_len() -> usize {
+    fn wire_len(&self) -> usize {
         8
     }
 }
@@ -340,8 +376,8 @@ impl FixedField for i64 {
 // bytes
 impl Field for Vec<u8> {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        let mut len = 0;
-        <u64 as Field>::merge_from(&mut len, r)?;
+        let mut len: u64 = 0;
+        Field::merge_from(&mut len, r)?;
 
         if len > usize::MAX as u64 {
             return Err(Error::new(ErrorKind::InvalidData, "length overflows usize"));
@@ -361,22 +397,22 @@ impl Field for Vec<u8> {
         }
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <u64 as Field>::write_to(&(self.len() as _), w)?;
+        Field::write_to(&(self.len() as u64), w)?;
         w.write_all(self)
     }
     fn wire_type() -> WireType {
         WireType::LengthDelimited
     }
     fn wire_len(&self) -> usize {
-        <u64 as Field>::wire_len(&(self.len() as _)) + self.len()
+        Field::wire_len(&(self.len() as u64)) + self.len()
     }
 }
 
 // string
 impl Field for String {
     fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-        let mut len = 0;
-        <u64 as Field>::merge_from(&mut len, r)?;
+        let mut len: u64 = 0;
+        Field::merge_from(&mut len, r)?;
 
         if len > usize::MAX as u64 {
             return Err(Error::new(ErrorKind::InvalidData, "length overflows usize"));
@@ -396,14 +432,14 @@ impl Field for String {
         }
     }
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-        <u64 as Field>::write_to(&(self.len() as _), w)?;
+        Field::write_to(&(self.len() as u64), w)?;
         w.write_all(self.as_bytes())
     }
     fn wire_type() -> WireType {
         WireType::LengthDelimited
     }
     fn wire_len(&self) -> usize {
-        <u64 as Field>::wire_len(&(self.len() as _)) + self.len()
+        Field::wire_len(&(self.len() as u64)) + self.len()
     }
 }
 
@@ -424,12 +460,30 @@ mod tests {
         ($check_fn:ident, $field_type:ident) => {
             fn $check_fn<T>(value: T) -> TestResult where T: Debug + Default + PartialEq + $field_type {
                 let mut buf = Vec::new();
-                if let Err(error) = value.write_to(&mut buf) {
+                if let Err(error) = <T as $field_type>::write_to(&value, &mut buf) {
                     return TestResult::error(format!("write_to failed: {:?}", error));
                 };
 
+                let expected_len = <T as $field_type>::wire_len(&value);
+                if expected_len != buf.len() {
+                    return TestResult::error(format!("wire_len wrong; expected: {}, actual: {}",
+                                                     expected_len, buf.len()));
+                }
+
+                match <T as $field_type>::wire_type() {
+                    WireType::SixtyFourBit if buf.len() != 8 => {
+                        return TestResult::error(format!("64bit wire type illegal wire_len: {}",
+                                                         buf.len()));
+                    },
+                    WireType::ThirtyTwoBit if buf.len() != 4 => {
+                        return TestResult::error(format!("64bit wire type illegal wire_len: {}",
+                                                         buf.len()));
+                    },
+                    _ => (),
+                }
+
                 let mut roundtrip_value = T::default();
-                if let Err(error) = roundtrip_value.merge_from(&mut Cursor::new(buf)) {
+                if let Err(error) = $field_type::merge_from(&mut roundtrip_value, &mut Cursor::new(buf)) {
                     return TestResult::error(format!("merge_from failed: {:?}", error));
                 };
 
@@ -498,12 +552,12 @@ mod tests {
     fn varint() {
         fn check(value: u64, encoded: &[u8]) {
             let mut buf = Vec::new();
-            <u64 as Field>::write_to(&value, &mut buf).expect("encoding failed");
+            Field::write_to(&value, &mut buf).expect("encoding failed");
 
             assert_eq!(buf, encoded);
 
-            let mut roundtrip_value = 0;
-            <u64 as Field>::merge_from(&mut roundtrip_value, &mut Cursor::new(buf)).expect("decoding failed");
+            let mut roundtrip_value: u64 = 0;
+            Field::merge_from(&mut roundtrip_value, &mut Cursor::new(buf)).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 

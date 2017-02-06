@@ -5,13 +5,14 @@ extern crate proc_macro;
 extern crate proto;
 extern crate syn;
 
-
 #[macro_use]
 extern crate quote;
 
 use std::mem;
 
 use proc_macro::TokenStream;
+
+use proto::field::{MAX_TAG, MIN_TAG};
 
 enum Field {
     Included {
@@ -97,10 +98,10 @@ impl From<syn::Field> for Field {
                     panic!("ignored proto field must not have a tag attribute");
                 }
 
-                if tag < 1 {
-                    panic!("proto tag must not be zero");
-                } else if tag > (1 << 29) - 1 {
-                    panic!("proto tag must be below 2^29 - 1");
+                if tag < MIN_TAG {
+                    panic!("proto tag must be greater than or equal to {}", MIN_TAG);
+                } else if tag > MAX_TAG {
+                    panic!("proto tag must be less than or equal to {}", MAX_TAG);
                 }
 
                 Field::Included {
