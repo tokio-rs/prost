@@ -8,119 +8,74 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
-use std::mem;
-
 use proc_macro::TokenStream;
 
 use proto::field::{MAX_TAG, MIN_TAG};
 
-enum Field {
-    Included {
-        field: syn::Field,
-        tag: u32,
-        fixed: bool,
-        packed: bool,
-        signed: bool,
-    },
-    Ignored {
-        field: syn::Field,
-    },
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum FieldKind {
+    Field,
+    FixedField,
+    SignedField,
 }
 
-impl Field {
-    fn field(&self) -> &syn::Field {
-        match *self {
-            Field::Included { ref field, .. } => field,
-            Field::Ignored { ref field, .. } => field,
+/// Inspects a field of a Message struct, and returns the tag and field kind,
+/// or `None` if the field is ignored.
+fn field_kind(field: &syn::Field) -> Option<(u32, FieldKind)> {
+    // Get the metadata items belonging to 'proto' list attributes (e.g. #[proto(foo, bar="baz")]).
+    let proto_items = field.attrs.iter().flat_map(|attr| {
+        match attr.value {
+            syn::MetaItem::List(ref ident, ref items) if ident == "proto" => items.into_iter(),
+            _ => [].into_iter(),
+        }
+    });
+
+    let mut tag = None;
+    let mut fixed = false;
+    let mut signed = false;
+    let mut ignore = false;
+
+    for item in proto_items {
+        match *item {
+            // Handle `#[proto(tag = 1)] or #[proto(tag = "1")]`.
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Int(value, _))) if name == "tag" => tag = Some(value),
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Str(ref value, _))) if name == "tag" => {
+                match value.parse() {
+                    Ok(value) => tag = Some(value),
+                    Err(..) => panic!("tag attribute value must be an integer"),
+                }
+            }
+
+            // Handle `#[proto(fixed)]` and `#[proto(fixed = false)].
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed" => fixed = true,
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed" => fixed = value,
+
+            // Handle `#[proto(signed)]` and `#[proto(signed = false)]`.
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed" => signed = true,
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed" => signed = value,
+
+            // Handle `#[proto(ignore)]` and `#[proto(ignore = false)]`.
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
+
+            syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute item `{}`", meta_item.name()),
+            syn::NestedMetaItem::Literal(_) => panic!("unexpected literal in serde field attribute"),
         }
     }
 
-    fn ignored(&self) -> bool {
-        match *self {
-            Field::Included { .. } => false,
-            Field::Ignored { .. } => true,
-        }
-    }
-}
-
-impl From<syn::Field> for Field {
-    fn from(mut field: syn::Field) -> Field {
-        let mut proto_items = Vec::new();
-
-        for attr in mem::replace(&mut field.attrs, Vec::new()) {
-            match attr.value {
-                syn::MetaItem::List(ref ident, ref items) if ident == "proto" => proto_items.extend(items.iter().cloned()),
-                _ => field.attrs.push(attr),
-            }
-        }
-
-        let mut tag = None;
-        let mut fixed = false;
-        let mut packed = false;
-        let mut signed = false;
-        let mut ignore = false;
-
-        for meta_item in proto_items {
-            match meta_item {
-                // Handle `#[proto(tag = 1)] or #[proto(tag = "1")]`.
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Int(value, _))) if name == "tag" => tag = Some(value),
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Str(ref value, _))) if name == "tag" => {
-                    match value.parse() {
-                        Ok(value) => tag = Some(value),
-                        Err(..) => panic!("tag attribute value must be an integer"),
-                    }
-                }
-
-                // Handle `#[proto(fixed)]` and `#[proto(fixed = false)].
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed" => fixed = true,
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed" => fixed = value,
-
-                // Handle `#[proto(packed)]` and `#[proto(packed = false)].
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "packed" => packed = true,
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "packed" => packed = value,
-
-                // Handle `#[proto(signed)]` and `#[proto(signed = false)]`.
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed" => signed = true,
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed" => signed = value,
-
-                // Handle `#[proto(ignore)]` and `#[proto(ignore = false)]`.
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
-
-                syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute `{}`", meta_item.name()),
-                syn::NestedMetaItem::Literal(_) => panic!("unexpected literal in serde field attribute"),
-            }
-        }
-
-        match tag {
-            Some(tag) => {
-                if ignore {
-                    panic!("ignored proto field must not have a tag attribute");
-                }
-
-                if tag < MIN_TAG {
-                    panic!("proto tag must be greater than or equal to {}", MIN_TAG);
-                } else if tag > MAX_TAG {
-                    panic!("proto tag must be less than or equal to {}", MAX_TAG);
-                }
-
-                Field::Included {
-                    field: field,
-                    tag: tag as u32,
-                    fixed: fixed,
-                    packed: packed,
-                    signed: signed,
-                }
-            },
-            None => {
-                if !ignore {
-                    panic!("proto field must have a tag attribute");
-                }
-                Field::Ignored {
-                    field: field,
-                }
-            }
-        }
+    match (tag, fixed, signed, ignore) {
+        (Some(_), _, _, true)           => panic!("ignored proto field must not have a tag attribute"),
+        (None, _, _, false)             => panic!("proto field must have a tag attribute"),
+        (None, true, _, true)           => panic!("ignored proto field must not be fixed"),
+        (None, _, true, true)           => panic!("ignored proto field must not be signed"),
+        (Some(_), true, true, false)    => panic!("proto field must not be fixed and signed"),
+        (None, false, false, true)      => None,
+        (Some(tag), _, _, false) if tag > MAX_TAG as u64 => panic!("proto tag must be less than or equal to {}", MAX_TAG),
+        (Some(tag), _, _, false) if tag < MIN_TAG as u64 => panic!("proto tag must be greater than or equal to {}", MIN_TAG),
+        (Some(tag), false, false, false) => Some((tag as u32, FieldKind::Field)),
+        (Some(tag), true, false, false)  => Some((tag as u32, FieldKind::FixedField)),
+        (Some(tag), false, true, false)  => Some((tag as u32, FieldKind::SignedField)),
     }
 }
 
@@ -142,7 +97,11 @@ pub fn message(input: TokenStream) -> TokenStream {
         syn::Body::Enum(..) => panic!("Message can not be derived for an enum"),
     };
 
-    let fields = fields.into_iter().map(Field::from).collect::<Vec<_>>();
+    //let fields = fields.iter().map(field_kind).zip(fields).filter_map(|(kind, field)| match kind {
+        //Some((tag, kind)) => Some()
+    //})
+        
+        //.collect::<Vec<_>>();
 
     let dummy_const = syn::Ident::new(format!("_IMPL_SERIALIZE_FOR_{}", ident));
 
