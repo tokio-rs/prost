@@ -22,12 +22,14 @@ enum FieldKind {
 struct Field {
     field: syn::Field,
     kind: FieldKind,
+    default: Option<syn::Lit>,
     tag: u32,
 }
 
 impl Field {
     fn extract(field: syn::Field) -> Option<Field> {
         let mut tag = None;
+        let mut default = None;
         let mut fixed = false;
         let mut signed = false;
         let mut ignore = false;
@@ -65,6 +67,9 @@ impl Field {
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
 
+                    // Handle `#[proto(default = "")]`
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) if name == "default" => default = Some(value.clone()),
+
                     syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute item `{}`", meta_item.name()),
                     syn::NestedMetaItem::Literal(_) => panic!("unexpected literal in serde field attribute"),
                 }
@@ -88,6 +93,7 @@ impl Field {
         Some(Field {
             field: field,
             kind: kind,
+            default: default,
             tag: tag,
         })
     }
@@ -117,68 +123,63 @@ pub fn message(input: TokenStream) -> TokenStream {
     let wire_len = wire_len(&fields);
     let write_to = write_to(&fields);
     let merge_from = merge_from(&fields);
+    let default = default(&fields);
 
     let expanded = quote! {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
         const #dummy_const: () = {
             extern crate proto;
-            use std::any::Any;
-            use std::any::TypeId;
-            use std::io::Read;
-            use std::io::Result;
-            use std::io::Write;
+            use std::any::{Any, TypeId};
+            use std::io::{
+                Error,
+                ErrorKind,
+                Read,
+                Result,
+                Write,
+            };
+            use proto::Field;
+
+            #[automatically_derived]
+            impl Default for #ident {
+                fn default() -> #ident {
+                    unimplemented!()
+                }
+            }
+
 
             #[automatically_derived]
             impl proto::Message for #ident {
 
-                fn write_to<W>(&self, w: &mut W) -> Result<()>
-                where W: Write {
-                    #write_to
+                fn write_to(&self, w: &mut Write) -> Result<()> {
+                    self.write_to(w)
                 }
 
-                fn merge_from<R>(&mut self, r: &mut R) -> Result<()>
-                where R: Read {
-                    #merge_from
+                fn merge_from(&mut self, r: &mut Read) -> Result<()> {
+                    self.merge_from(r)
                 }
 
-                fn write_to_dynamic(&self, w: &mut Write) -> Result<()> {
-                    Message::write_to(self, w)
+                fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
+                    //let len = Message::wire_len(self) as u64;
+                    //len.write_to(w)?;
+                    //self.write_to(w)
+                    unimplemented!()
                 }
 
-                fn merge_from_dynamic(&mut self, r: &mut Read) -> Result<()> {
-                    Message::merge_from(self, r)
-                }
-
-                fn write_length_delimited_to<W>(&self, w: &mut W) -> Result<()>
-                where W: Write {
-                    let len = Message::wire_len(self) as u64;
-                    len.write_to(w)?;
-                    self.write_to(r)
-                }
-
-                fn merge_length_delimited_from<R>(&mut self, r: &mut R) -> Result<()>
-                where R: Read {
-                    let mut len = 0u64;
-                    len.merge_from(r)?;
-                    let mut take = r.take(len);
-                    match self.merge_from(&mut take) {
-                        Ok(_) if take.limit() == 0 => return Ok(()),
-                        Ok(_) => return Err(Error::new(ErrorKind::UnexpectedEof,
-                                                       "unable to read whole message")),
-                        Err(error) => return Err(error),
-                    }
-                }
-
-                fn write_length_delimited_to_dynamic(&self, w: &mut Write) -> Result<()> {
-                    self.write_length_delimited_to(w)
-                }
-
-                fn merge_length_delimited_from_dynamic(&mut self, r: &mut Read) -> Result<()> {
-                    self.merge_length_delimited_from(r)
+                fn merge_length_delimited_from(&mut self, r: &mut Read) -> Result<()> {
+                    unimplemented!()
+                    //let mut len = 0u64;
+                    //len.merge_from(r)?;
+                    //let mut take = r.take(len);
+                    //match self.merge_from(&mut take) {
+                        //Ok(_) if take.limit() == 0 => return Ok(()),
+                        //Ok(_) => return Err(Error::new(ErrorKind::UnexpectedEof,
+                                                       //"unable to read whole message")),
+                        //Err(error) => return Err(error),
+                    //}
                 }
 
                 fn wire_len(&self) -> usize {
-                    #wire_len
+                    unimplemented!()
                 }
 
                 fn type_id(&self) -> TypeId {
@@ -219,6 +220,11 @@ fn wire_len(fields: &[Field]) -> quote::Tokens {
         let field_expr = quote!(&self.#ident);
     })
     .fold(quote!(0), |sum, expr| quote!(#sum + #expr))
+}
+
+fn default(fields: &[Field]) -> quote::Tokens {
+    quote! {
+    }
 }
 
 #[proc_macro_derive(Enumeration)]
