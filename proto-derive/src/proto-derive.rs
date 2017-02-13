@@ -1,8 +1,8 @@
 // The `quote!` macro requires deep recursion.
-#![recursion_limit = "192"]
+#![recursion_limit = "1024"]
 
 extern crate proc_macro;
-extern crate proto;
+//extern crate proto;
 extern crate syn;
 
 #[macro_use]
@@ -10,8 +10,9 @@ extern crate quote;
 
 use proc_macro::TokenStream;
 
-use proto::field::{MAX_TAG, MIN_TAG};
+//use proto::field::{MAX_TAG, MIN_TAG};
 
+#[derive(Debug)]
 enum FieldKind {
     Field,
     FixedField,
@@ -43,7 +44,7 @@ impl Field {
 
             for item in proto_items {
                 match *item {
-                    // Handle `#[proto(tag = 1)] or #[proto(tag = "1")]`.
+                    // Handle `#[proto(tag = 1)] and #[proto(tag = "1")]`.
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Int(value, _))) if name == "tag" => tag = Some(value),
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Str(ref value, _))) if name == "tag" => {
                         match value.parse() {
@@ -77,8 +78,8 @@ impl Field {
             (None, _, true, true)           => panic!("ignored proto field must not be signed"),
             (Some(_), true, true, false)    => panic!("proto field must not be fixed and signed"),
             (None, false, false, true)      => return None,
-            (Some(tag), _, _, false) if tag > MAX_TAG as u64 => panic!("proto tag must be less than or equal to {}", MAX_TAG),
-            (Some(tag), _, _, false) if tag < MIN_TAG as u64 => panic!("proto tag must be greater than or equal to {}", MIN_TAG),
+            (Some(tag), _, _, false) if tag >= (1 << 29) as u64 => panic!("proto tag must be less than 2^29"),
+            (Some(tag), _, _, false) if tag < 1 as u64 => panic!("proto tag must be greater than 1"),
             (Some(tag), false, false, false) => (tag as u32, FieldKind::Field),
             (Some(tag), true, false, false)  => (tag as u32, FieldKind::FixedField),
             (Some(tag), false, true, false)  => (tag as u32, FieldKind::SignedField),
@@ -110,9 +111,12 @@ pub fn message(input: TokenStream) -> TokenStream {
         syn::Body::Enum(..) => panic!("Message can not be derived for an enum"),
     };
 
-    let fields = fields.into_iter().filter_map(Field::extract);
+    let fields = fields.into_iter().filter_map(Field::extract).collect::<Vec<_>>();
 
     let dummy_const = syn::Ident::new(format!("_IMPL_SERIALIZE_FOR_{}", ident));
+    let wire_len = wire_len(&fields);
+    let write_to = write_to(&fields);
+    let merge_from = merge_from(&fields);
 
     let expanded = quote! {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
@@ -125,38 +129,56 @@ pub fn message(input: TokenStream) -> TokenStream {
             use std::io::Write;
 
             #[automatically_derived]
-            impl proto::Field for Option<#ident> {
-                fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
-
-                }
-                fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
-                }
-                fn wire_type() -> proto::WireType {
-                    proto::WireType::LengthDelimited;
-                }
-                fn wire_len(&self) -> usize {
-                }
-
-            }
-
-            #[automatically_derived]
             impl proto::Message for #ident {
 
-                fn write_to(&self, w: &mut Write) -> Result<()> {
-                    unimplemented!()
+                fn write_to<W>(&self, w: &mut W) -> Result<()>
+                where W: Write {
+                    #write_to
                 }
 
-                fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
-                    unimplemented!()
+                fn merge_from<R>(&mut self, r: &mut R) -> Result<()>
+                where R: Read {
+                    #merge_from
                 }
 
-
-                fn merge_from(&mut self, r: &mut Read) -> Result<()> {
-                    unimplemented!()
+                fn write_to_dynamic(&self, w: &mut Write) -> Result<()> {
+                    Message::write_to(self, w)
                 }
 
-                fn merge_delimited_from(&mut self, r: &mut Read) -> Result<()> {
-                    unimplemented!()
+                fn merge_from_dynamic(&mut self, r: &mut Read) -> Result<()> {
+                    Message::merge_from(self, r)
+                }
+
+                fn write_length_delimited_to<W>(&self, w: &mut W) -> Result<()>
+                where W: Write {
+                    let len = Message::wire_len(self) as u64;
+                    len.write_to(w)?;
+                    self.write_to(r)
+                }
+
+                fn merge_length_delimited_from<R>(&mut self, r: &mut R) -> Result<()>
+                where R: Read {
+                    let mut len = 0u64;
+                    len.merge_from(r)?;
+                    let mut take = r.take(len);
+                    match self.merge_from(&mut take) {
+                        Ok(_) if take.limit() == 0 => return Ok(()),
+                        Ok(_) => return Err(Error::new(ErrorKind::UnexpectedEof,
+                                                       "unable to read whole message")),
+                        Err(error) => return Err(error),
+                    }
+                }
+
+                fn write_length_delimited_to_dynamic(&self, w: &mut Write) -> Result<()> {
+                    self.write_length_delimited_to(w)
+                }
+
+                fn merge_length_delimited_from_dynamic(&mut self, r: &mut Read) -> Result<()> {
+                    self.merge_length_delimited_from(r)
+                }
+
+                fn wire_len(&self) -> usize {
+                    #wire_len
                 }
 
                 fn type_id(&self) -> TypeId {
@@ -174,12 +196,29 @@ pub fn message(input: TokenStream) -> TokenStream {
                 fn into_any(self: Box<Self>) -> Box<Any> {
                     self
                 }
-
             }
         };
     };
 
     expanded.parse().unwrap()
+}
+
+fn write_to(fields: &[Field]) -> quote::Tokens {
+    quote! {
+    }
+}
+
+fn merge_from(fields: &[Field]) -> quote::Tokens {
+    quote! {
+    }
+}
+
+fn wire_len(fields: &[Field]) -> quote::Tokens {
+    fields.iter().map(|field| {
+        let ident = field.field.ident.as_ref().expect("struct has unnamed field");
+        let field_expr = quote!(&self.#ident);
+    })
+    .fold(quote!(0), |sum, expr| quote!(#sum + #expr))
 }
 
 #[proc_macro_derive(Enumeration)]

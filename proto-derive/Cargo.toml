@@ -8,6 +8,5 @@ workspace = ".."
 proc_macro = true
 
 [dependencies]
-proto = { path = ".." }
 quote = "0.3"
 syn = { version = "0.11", features = ["aster", "visit"] }

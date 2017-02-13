@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate proto_derive;
 
+/*
 extern crate proto;
 
 use proto::Message;
@@ -10,3 +11,9 @@ struct Foo {
     #[proto(tag = "42")]
     bar: f32,
 }
+
+#[test]
+fn foo() {
+
+}
+*/

@@ -19,6 +19,8 @@ use byteorder::{
     WriteBytesExt,
 };
 
+use Message;
+
 #[derive(Debug)]
 #[repr(u8)]
 pub enum WireType {
@@ -45,20 +47,20 @@ impl WireType {
     }
 }
 
-/// A valid field type in a Protobuf message.
+/// A field type in a Protobuf message.
 pub trait Field {
-    fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read;
     fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write;
+    fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read;
     fn wire_type() -> WireType;
     fn wire_len(&self) -> usize;
 
-    fn write_with_tag_to<W>(&self, tag: u32, w: &mut W) -> Result<()> where W: Write {
-        debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+    //fn write_with_tag_to<W>(&self, tag: u32, w: &mut W) -> Result<()> where W: Write {
+        //debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
 
-        let key = (tag << 3) | <Self as Field>::wire_type() as u32;
-        Field::write_to(&key, w)?;
-        Field::write_to(self, w)
-    }
+        //let key = (tag << 3) | <Self as Field>::wire_type() as u32;
+        //Field::write_to(&key, w)?;
+        //Field::write_to(self, w)
+    //}
 }
 
 /// A fixed-width little-endian encoded integer field type.
@@ -441,6 +443,39 @@ impl Field for String {
     fn wire_len(&self) -> usize {
         Field::wire_len(&(self.len() as u64)) + self.len()
     }
+}
+
+// message
+impl <M> Field for Option<M> where M: Message + Default {
+    fn merge_from<R>(&mut self, r: &mut R) -> Result<()> where R: Read {
+        if self.is_none() {
+            *self = Some(M::default());
+        }
+        <M as Message>::merge_from(self.as_mut().unwrap(), r)
+    }
+    fn write_to<W>(&self, w: &mut W) -> Result<()> where W: Write {
+        unimplemented!()
+    }
+    fn wire_type() -> WireType {
+        WireType::LengthDelimited
+    }
+    fn wire_len(&self) -> usize {
+        match *self {
+            Some(ref m) => Message::wire_len(m),
+            None => 0,
+        }
+    }
+    //fn write_with_tag_to<W>(&self, tag: u32, w: &mut W) -> Result<()> where W: Write {
+        //debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+
+        //if let Some(ref m) = *self {
+            //let key = (tag << 3) | WireType::LengthDelimited as u32;
+            //Field::write_to(&key, w)?;
+            //let len = Message::wire_len(self) as u64;
+            //Field::write_to(&len, w)?;
+            //Message::write_to(m, w)?;
+        //}
+    //}
 }
 
 #[cfg(test)]

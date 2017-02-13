@@ -6,10 +6,12 @@ authors = ["Dan Burkert <dan@danburkert.com>"]
 [workspace]
 members = [
   "proto-derive",
+  "proto-plugin",
 ]
 
 [dependencies]
 byteorder = "1"
+proto-derive = { path = "proto-derive" }
 
 [dev-dependencies]
 quickcheck = "0.4"
