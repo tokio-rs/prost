@@ -10,8 +10,6 @@ extern crate quote;
 
 use proc_macro::TokenStream;
 
-//use proto::field::{MAX_TAG, MIN_TAG};
-
 #[derive(Debug)]
 enum FieldKind {
     Field,

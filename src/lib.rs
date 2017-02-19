@@ -7,7 +7,6 @@ extern crate quickcheck;
 #[macro_use]
 extern crate proto_derive;
 
-
 mod message;
 
 #[doc(hidden)]
