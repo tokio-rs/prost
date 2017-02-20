@@ -48,8 +48,8 @@ impl WireType {
 }
 
 #[inline]
-pub fn read_key_from(r: &mut Read) -> Result<(WireType, u32)> {
-    let key = u32::read_from(r)?;
+pub fn read_key_from(r: &mut Read, limit: &mut usize) -> Result<(WireType, u32)> {
+    let key = u32::read_from(r, limit)?;
     let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key >> 3;
     Ok((wire_type, tag))
@@ -78,6 +78,17 @@ fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
     Ok(())
 }
 
+#[inline]
+fn check_limit(needed: usize, limit: &mut usize) -> Result<()> {
+    if needed < *limit {
+        Err(Error::new(ErrorKind::InvalidData,
+                       "read limit exceeded"))
+    } else {
+        *limit -= needed;
+        Ok(())
+    }
+}
+
 /// A field type in a Protobuf message.
 pub trait Field {
 
@@ -85,7 +96,7 @@ pub trait Field {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()>;
 
     /// Reads the field, and merges it into self.
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()>;
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()>;
 
     /// Returns the wire length of the field, including the provided tag.
     fn wire_len(&self, tag: u32) -> usize;
@@ -97,7 +108,7 @@ pub trait FixedField {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()>;
 
     /// Reads the fixed-size field, and merges it into self.
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()>;
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()>;
 
     /// Returns the wire length of the fixed-size field, including the provided tag.
     fn wire_len(&self, tag: u32) -> usize;
@@ -109,7 +120,7 @@ pub trait SignedField {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()>;
 
     /// Reads the signed field, and merges it into self.
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()>;
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()>;
 
     /// Returns the wire length of the signed field, including the provided tag.
     fn wire_len(&self, tag: u32) -> usize;
@@ -122,7 +133,7 @@ pub trait ScalarField: Sized {
     fn write_to(&self, w: &mut Write) -> Result<()>;
 
     /// Reads an instance of the field.
-    fn read_from(r: &mut Read) -> Result<Self>;
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<Self>;
 
     /// Returns the wire type of the field.
     fn wire_type() -> WireType;
@@ -141,9 +152,9 @@ macro_rules! scalar_field {
                 ScalarField::write_to(self, w)
             }
 
-            fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+            fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
                 check_wire_type(<Self as ScalarField>::wire_type(), wire_type)?;
-                *self = ScalarField::read_from(r)?;
+                *self = ScalarField::read_from(r, limit)?;
                 Ok(())
             }
 
@@ -161,7 +172,8 @@ impl ScalarField for bool {
         let buf = if *self { [1u8] } else { [0u8] };
         w.write_all(&buf)
     }
-    fn read_from(r: &mut Read) -> Result<bool> {
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<bool> {
+        check_limit(1, limit)?;
         let buf = &mut [0u8];
         r.read_exact(buf)?;
         match buf[0] {
@@ -184,8 +196,8 @@ impl ScalarField for i32 {
     fn write_to(&self, w: &mut Write) -> Result<()> {
         ScalarField::write_to(&(*self as u32), w)
     }
-    fn read_from(r: &mut Read) -> Result<i32> {
-        u32::read_from(r).map(|value| value as _)
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<i32> {
+        u32::read_from(r, limit).map(|value| value as _)
     }
     fn wire_type() -> WireType {
         WireType::Varint
@@ -201,8 +213,8 @@ impl ScalarField for i64 {
     fn write_to(&self, w: &mut Write) -> Result<()> {
         ScalarField::write_to(&(*self as u64), w)
     }
-    fn read_from(r: &mut Read) -> Result<i64> {
-        u64::read_from(r).map(|value| value as _)
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<i64> {
+        u64::read_from(r, limit).map(|value| value as _)
     }
     fn wire_type() -> WireType {
         WireType::Varint
@@ -218,8 +230,8 @@ impl ScalarField for u32 {
     fn write_to(&self, w: &mut Write) -> Result<()> {
         ScalarField::write_to(&(*self as u64), w)
     }
-    fn read_from(r: &mut Read) -> Result<u32> {
-        u64::read_from(r).and_then(|value| {
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<u32> {
+        u64::read_from(r, limit).and_then(|value| {
             if value > u32::MAX as u64 {
                 Err(Error::new(ErrorKind::InvalidData, "uint32 overflow"))
             } else {
@@ -250,18 +262,23 @@ impl ScalarField for u64 {
         buf[i] = value as u8;
         w.write_all(&buf[..i+1])
     }
-    fn read_from(r: &mut Read) -> Result<u64> {
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<u64> {
         let mut value = 0;
         let buf = &mut [0u8; 1];
-        for i in 0..10 {
+        for i in 0..min(10, *limit) {
             r.read_exact(buf)?;
             let b = buf[0];
             value |= ((b & 0x7F) as u64) << (i * 7);
             if b <= 0x7F {
+                *limit -= i + 1;
                 return Ok(value);
             }
         }
-        Err(Error::new(ErrorKind::InvalidData, "uint64 overflow"))
+        if *limit < 9 {
+            Err(Error::new(ErrorKind::InvalidData, "read limit exceeded"))
+        } else {
+            Err(Error::new(ErrorKind::InvalidData, "varint overflow"))
+        }
     }
     fn wire_type() -> WireType {
         WireType::Varint
@@ -286,7 +303,8 @@ impl ScalarField for f32 {
     fn write_to(&self, w: &mut Write) -> Result<()> {
         w.write_f32::<LittleEndian>(*self)
     }
-    fn read_from(r: &mut Read) -> Result<f32> {
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<f32> {
+        check_limit(4, limit)?;
         r.read_f32::<LittleEndian>()
     }
     fn wire_type() -> WireType {
@@ -303,7 +321,8 @@ impl ScalarField for f64 {
     fn write_to(&self, w: &mut Write) -> Result<()> {
         w.write_f64::<LittleEndian>(*self)
     }
-    fn read_from(r: &mut Read) -> Result<f64> {
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<f64> {
+        check_limit(8, limit)?;
         r.read_f64::<LittleEndian>()
     }
     fn wire_type() -> WireType {
@@ -319,8 +338,8 @@ impl SignedField for i32 {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         Field::write_to(&((*self << 1) ^ (*self >> 31)), tag, w)
     }
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
-        Field::merge_from(self, wire_type, r)?;
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        Field::merge_from(self, wire_type, r, limit)?;
         *self = (*self >> 1) ^ (-(*self & 1));
         Ok(())
     }
@@ -334,8 +353,8 @@ impl SignedField for i64 {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         Field::write_to(&((*self << 1) ^ (*self >> 63)), tag, w)
     }
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
-        Field::merge_from(self, wire_type, r)?;
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        Field::merge_from(self, wire_type, r, limit)?;
         *self = (*self >> 1) ^ (-(*self & 1));
         Ok(())
     }
@@ -350,8 +369,9 @@ impl FixedField for u32 {
         write_key_to(tag, WireType::ThirtyTwoBit, w)?;
         w.write_u32::<LittleEndian>(*self)
     }
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         check_wire_type(wire_type, WireType::ThirtyTwoBit)?;
+        check_limit(4, limit)?;
         *self = r.read_u32::<LittleEndian>()?;
         Ok(())
     }
@@ -366,8 +386,9 @@ impl FixedField for u64 {
         write_key_to(tag, WireType::SixtyFourBit, w)?;
         w.write_u64::<LittleEndian>(*self)
     }
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         check_wire_type(wire_type, WireType::SixtyFourBit)?;
+        check_limit(8, limit)?;
         *self = r.read_u64::<LittleEndian>()?;
         Ok(())
     }
@@ -382,8 +403,9 @@ impl FixedField for i32 {
         write_key_to(tag, WireType::ThirtyTwoBit, w)?;
         w.write_i32::<LittleEndian>(*self)
     }
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         check_wire_type(wire_type, WireType::ThirtyTwoBit)?;
+        check_limit(4, limit)?;
         *self = r.read_i32::<LittleEndian>()?;
         Ok(())
     }
@@ -398,8 +420,9 @@ impl FixedField for i64 {
         write_key_to(tag, WireType::SixtyFourBit, w)?;
         w.write_i64::<LittleEndian>(*self)
     }
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         check_wire_type(wire_type, WireType::SixtyFourBit)?;
+        check_limit(8, limit)?;
         *self = r.read_i64::<LittleEndian>()?;
         Ok(())
     }
@@ -415,15 +438,15 @@ impl ScalarField for Vec<u8> {
         ScalarField::write_to(&(self.len() as u64), w)?;
         w.write_all(self)
     }
-    fn read_from(r: &mut Read) -> Result<Vec<u8>> {
-        let len = u64::read_from(r)?;
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<Vec<u8>> {
+        let len = u64::read_from(r, limit)?;
         if len > usize::MAX as u64 {
-            return Err(Error::new(ErrorKind::InvalidData, "length overflows usize"));
+            return Err(Error::new(ErrorKind::InvalidData, "bytes length overflows usize"));
         }
         let len = len as usize;
+        check_limit(len, limit)?;
 
-        // Cap at 4KiB to avoid over-allocating when the length field is bogus.
-        let mut value = Vec::with_capacity(min(4096, len));
+        let mut value = Vec::with_capacity(len);
         let read_len = r.take(len as u64).read_to_end(&mut value)?;
 
         if read_len == len {
@@ -447,8 +470,8 @@ impl ScalarField for String {
         ScalarField::write_to(&(self.len() as u64), w)?;
         w.write_all(self.as_bytes())
     }
-    fn read_from(r: &mut Read) -> Result<String> {
-        String::from_utf8(Vec::<u8>::read_from(r)?).map_err(|_| {
+    fn read_from(r: &mut Read, limit: &mut usize) -> Result<String> {
+        String::from_utf8(Vec::<u8>::read_from(r, limit)?).map_err(|_| {
             Error::new(ErrorKind::InvalidData, "string does not contain valid UTF-8")
         })
     }
@@ -470,11 +493,20 @@ impl <M> Field for Option<M> where M: Message + Default {
         Ok(())
     }
 
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         if self.is_none() {
             *self = Some(M::default());
         }
+
+        let len = u64::read_from(r, limit)?;
+        if len > usize::MAX as u64 {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "message length overflows usize"));
+        }
+        check_limit(len as usize, limit)?;
+
+
         Message::merge_length_delimited_from(self.as_mut().unwrap(), r)
     }
 
@@ -524,20 +556,25 @@ impl <T> Field for Vec<T> where T: ScalarField {
         Ok(())
     }
 
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read) -> Result<()> {
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         if wire_type == WireType::LengthDelimited && (T::wire_type() == WireType::Varint ||
                                                       T::wire_type() == WireType::SixtyFourBit ||
                                                       T::wire_type() == WireType::ThirtyTwoBit) {
             // Packed encoding.
-            let len = u64::read_from(r)?;
-            let mut take = r.take(len);
-            while take.limit() > 0 {
-                self.push(T::read_from(&mut take)?);
+            let len = u64::read_from(r, limit)?;
+            if len > usize::MAX as u64 {
+                return Err(Error::new(ErrorKind::InvalidInput,
+                                      "packed length overflows usize"));
+            }
+            check_limit(len as usize, limit)?;
+            let mut remaining = len as usize;
+            while remaining > 0 {
+                self.push(T::read_from(r, &mut remaining)?);
             }
         } else {
             // Normal encoding.
             check_wire_type(T::wire_type(), wire_type)?;
-            self.push(ScalarField::read_from(r)?);
+            self.push(ScalarField::read_from(r, limit)?);
         }
         Ok(())
     }
@@ -590,9 +627,9 @@ mod tests {
                                                      expected_len, buf.len()));
                 }
 
-                let encoded_len = buf.len();
+                let mut encoded_len = buf.len();
                 let mut cursor = Cursor::new(buf);
-                let (wire_type, decoded_tag) = match read_key_from(&mut cursor) {
+                let (wire_type, decoded_tag) = match read_key_from(&mut cursor, &mut encoded_len) {
                     Ok(key) => key,
                     Err(error) => return TestResult::error(format!("failed to read key: {:?}",
                                                                    error)),
@@ -605,14 +642,14 @@ mod tests {
                 }
 
                 match wire_type {
-                    WireType::SixtyFourBit if encoded_len != key_len(tag) + 8 => {
+                    WireType::SixtyFourBit if encoded_len != 8 => {
                         return TestResult::error(
                             format!("64bit wire type illegal wire_len: {}, tag: {}",
                                     encoded_len, tag));
                     },
-                    WireType::ThirtyTwoBit if encoded_len != key_len(tag) + 4 => {
+                    WireType::ThirtyTwoBit if encoded_len != 4 => {
                         return TestResult::error(
-                            format!("64bit wire type illegal wire_len: {}, tag: {}",
+                            format!("32bit wire type illegal wire_len: {}, tag: {}",
                                     encoded_len, tag));
                     },
                     _ => (),
@@ -621,9 +658,15 @@ mod tests {
                 let mut roundtrip_value = T::default();
                 if let Err(error) = $field_type::merge_from(&mut roundtrip_value,
                                                             wire_type,
-                                                            &mut cursor) {
+                                                            &mut cursor,
+                                                            &mut encoded_len) {
                     return TestResult::error(format!("merge_from failed: {:?}", error));
                 };
+
+                if encoded_len != 0 {
+                    return TestResult::error(format!("expected read limit to be 0: {}",
+                                                     encoded_len));
+                }
 
                 if value == roundtrip_value {
                     TestResult::passed()
@@ -694,8 +737,10 @@ mod tests {
 
             assert_eq!(buf, encoded);
 
-            let roundtrip_value = u64::read_from(&mut Cursor::new(buf)).expect("decoding failed");
+            let mut limit = encoded.len();
+            let roundtrip_value = u64::read_from(&mut Cursor::new(buf), &mut limit).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
+            assert_eq!(limit, 0);
         }
 
         check(0, &[0b0000_0000]);
