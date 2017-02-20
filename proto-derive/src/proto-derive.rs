@@ -144,22 +144,10 @@ pub fn message(input: TokenStream) -> TokenStream {
                 }
             }
 
-
             #[automatically_derived]
             impl proto::Message for #ident {
 
-                fn write_to(&self, w: &mut Write) -> Result<()> {
-                    self.write_to(w)
-                }
-
-                fn merge_from(&mut self, r: &mut Read) -> Result<()> {
-                    self.merge_from(r)
-                }
-
                 fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
-                    //let len = Message::wire_len(self) as u64;
-                    //len.write_to(w)?;
-                    //self.write_to(w)
                     unimplemented!()
                 }
 

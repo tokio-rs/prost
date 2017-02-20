@@ -465,9 +465,7 @@ impl <M> Field for Option<M> where M: Message + Default {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         if let Some(ref m) = *self {
             write_key_to(tag, WireType::LengthDelimited, w)?;
-            let len = m.wire_len() as u64;
-            ScalarField::write_to(&len, w)?;
-            Message::write_to(m, w)?;
+            m.write_length_delimited_to(w)?;
         }
         Ok(())
     }
@@ -477,7 +475,7 @@ impl <M> Field for Option<M> where M: Message + Default {
         if self.is_none() {
             *self = Some(M::default());
         }
-        Message::merge_from(self.as_mut().unwrap(), r)
+        Message::merge_length_delimited_from(self.as_mut().unwrap(), r)
     }
 
     fn wire_len(&self, tag: u32) -> usize {

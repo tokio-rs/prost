@@ -9,12 +9,6 @@ use std::io::{
 /// A protobuf message.
 pub trait Message: Any + Debug + Send + Sync {
 
-    /// Write the message to the provided `Write`.
-    fn write_to(&self, w: &mut Write) -> Result<()>;
-
-    /// Merge a length-delimited message into `self`.
-    fn merge_from(&mut self, r: &mut Read) -> Result<()>;
-
     /// Encode the message and its length and write them to the provided `Write`.
     fn write_length_delimited_to(&self, w: &mut Write) -> Result<()>;
 
