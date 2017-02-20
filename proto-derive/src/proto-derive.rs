@@ -135,37 +135,21 @@ pub fn message(input: TokenStream) -> TokenStream {
                 Result,
                 Write,
             };
-            use proto::Field;
-
-            #[automatically_derived]
-            impl Default for #ident {
-                fn default() -> #ident {
-                    unimplemented!()
-                }
-            }
+            use proto::field::Field;
 
             #[automatically_derived]
             impl proto::Message for #ident {
 
-                fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
+                fn write_to(&self, w: &mut Write) -> Result<()> {
                     unimplemented!()
                 }
 
-                fn merge_length_delimited_from(&mut self, r: &mut Read) -> Result<()> {
+                fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()> {
                     unimplemented!()
-                    //let mut len = 0u64;
-                    //len.merge_from(r)?;
-                    //let mut take = r.take(len);
-                    //match self.merge_from(&mut take) {
-                        //Ok(_) if take.limit() == 0 => return Ok(()),
-                        //Ok(_) => return Err(Error::new(ErrorKind::UnexpectedEof,
-                                                       //"unable to read whole message")),
-                        //Err(error) => return Err(error),
-                    //}
                 }
 
                 fn wire_len(&self) -> usize {
-                    unimplemented!()
+                    #wire_len
                 }
 
                 fn type_id(&self) -> TypeId {
@@ -203,7 +187,8 @@ fn merge_from(fields: &[Field]) -> quote::Tokens {
 fn wire_len(fields: &[Field]) -> quote::Tokens {
     fields.iter().map(|field| {
         let ident = field.field.ident.as_ref().expect("struct has unnamed field");
-        let field_expr = quote!(&self.#ident);
+        let tag = field.tag;
+        quote!(&self.#ident.wire_len(#tag))
     })
     .fold(quote!(0), |sum, expr| quote!(#sum + #expr))
 }

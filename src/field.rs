@@ -19,6 +19,7 @@ use byteorder::{
     WriteBytesExt,
 };
 
+use check_limit;
 use Message;
 
 #[derive(Debug, PartialEq)]
@@ -76,17 +77,6 @@ fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
                                       actual, expected)));
     }
     Ok(())
-}
-
-#[inline]
-fn check_limit(needed: usize, limit: &mut usize) -> Result<()> {
-    if needed < *limit {
-        Err(Error::new(ErrorKind::InvalidData,
-                       "read limit exceeded"))
-    } else {
-        *limit -= needed;
-        Ok(())
-    }
 }
 
 /// A field type in a Protobuf message.
@@ -441,7 +431,7 @@ impl ScalarField for Vec<u8> {
     fn read_from(r: &mut Read, limit: &mut usize) -> Result<Vec<u8>> {
         let len = u64::read_from(r, limit)?;
         if len > usize::MAX as u64 {
-            return Err(Error::new(ErrorKind::InvalidData, "bytes length overflows usize"));
+            return Err(Error::new(ErrorKind::InvalidData, "length overflows usize"));
         }
         let len = len as usize;
         check_limit(len, limit)?;
@@ -452,7 +442,7 @@ impl ScalarField for Vec<u8> {
         if read_len == len {
             Ok(value)
         } else {
-            Err(Error::new(ErrorKind::UnexpectedEof, "unable to read entire binary field"))
+            Err(Error::new(ErrorKind::UnexpectedEof, "unable to read entire field"))
         }
     }
     fn wire_type() -> WireType {
@@ -498,16 +488,7 @@ impl <M> Field for Option<M> where M: Message + Default {
         if self.is_none() {
             *self = Some(M::default());
         }
-
-        let len = u64::read_from(r, limit)?;
-        if len > usize::MAX as u64 {
-            return Err(Error::new(ErrorKind::InvalidInput,
-                                  "message length overflows usize"));
-        }
-        check_limit(len as usize, limit)?;
-
-
-        Message::merge_length_delimited_from(self.as_mut().unwrap(), r)
+        self.as_mut().unwrap().merge_length_delimited_from(r, limit)
     }
 
     fn wire_len(&self, tag: u32) -> usize {
@@ -593,6 +574,20 @@ impl <T> Field for Vec<T> where T: ScalarField {
                 key_len * self.len() + len
             },
         }
+    }
+}
+
+impl <M> Field for Vec<M> where M: Message {
+    fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn wire_len(&self, tag: u32) -> usize {
+        unimplemented!()
     }
 }
 
