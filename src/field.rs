@@ -48,6 +48,30 @@ impl WireType {
     }
 }
 
+pub fn skip_field(wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+    match wire_type {
+        WireType::Varint => {
+            u64::read_from(r, limit)?;
+        },
+        WireType::SixtyFourBit => {
+            let mut value: u64 = 0;
+            FixedField::merge_from(&mut value, wire_type, r, limit)?;
+        },
+        WireType::ThirtyTwoBit => {
+            let mut value: u32 = 0;
+            FixedField::merge_from(&mut value, wire_type, r, limit)?;
+        },
+        WireType::ThirtyTwoBit => {
+            let mut value: u32 = 0;
+            FixedField::merge_from(&mut value, wire_type, r, limit)?;
+        },
+        WireType::LengthDelimited => {
+            <Vec<u8> as ScalarField>::read_from(r, limit)?;
+        },
+    };
+    Ok(())
+}
+
 #[inline]
 pub fn read_key_from(r: &mut Read, limit: &mut usize) -> Result<(WireType, u32)> {
     let key = u32::read_from(r, limit)?;
@@ -70,7 +94,7 @@ fn key_len(tag: u32) -> usize {
 }
 
 #[inline]
-fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
+pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
     if expected != actual {
         return Err(Error::new(ErrorKind::InvalidData,
                               format!("illegal wire type: {:?} (expected {:?})",
@@ -150,6 +174,81 @@ macro_rules! scalar_field {
 
             fn wire_len(&self, tag: u32) -> usize {
                 key_len(tag) + ScalarField::wire_len(self)
+            }
+        }
+
+        impl Field for Vec<$ty> {
+            fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
+                match <$ty as ScalarField>::wire_type() {
+                    WireType::Varint => {
+                        write_key_to(tag, WireType::LengthDelimited, w)?;
+                        let len: usize = self.iter().map(ScalarField::wire_len).sum();
+                        ScalarField::write_to(&(len as u64), w)?;
+                        for value in self {
+                            ScalarField::write_to(value, w)?;
+                        }
+                    },
+                    WireType::SixtyFourBit => {
+                        write_key_to(tag, WireType::LengthDelimited, w)?;
+                        let len = 8 * self.len() as u64;
+                        ScalarField::write_to(&len, w)?;
+                        for value in self {
+                            ScalarField::write_to(value, w)?;
+                        }
+                    },
+                    WireType::ThirtyTwoBit => {
+                        write_key_to(tag, WireType::LengthDelimited, w)?;
+                        let len = 4 * self.len() as u64;
+                        ScalarField::write_to(&len, w)?;
+                        for value in self {
+                            ScalarField::write_to(value, w)?;
+                        }
+                    },
+                    WireType::LengthDelimited => for value in self {
+                        write_key_to(tag, WireType::LengthDelimited, w)?;
+                        ScalarField::write_to(value, w)?;
+                    },
+                }
+                Ok(())
+            }
+
+            fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+                if wire_type == WireType::LengthDelimited && (<$ty as ScalarField>::wire_type() == WireType::Varint ||
+                                                              <$ty as ScalarField>::wire_type() == WireType::SixtyFourBit ||
+                                                              <$ty as ScalarField>::wire_type() == WireType::ThirtyTwoBit) {
+                    // Packed encoding.
+                    let len = u64::read_from(r, limit)?;
+                    if len > usize::MAX as u64 {
+                        return Err(Error::new(ErrorKind::InvalidInput,
+                                              "packed length overflows usize"));
+                    }
+                    check_limit(len as usize, limit)?;
+                    let mut remaining = len as usize;
+                    while remaining > 0 {
+                        self.push(ScalarField::read_from(r, &mut remaining)?);
+                    }
+                } else {
+                    // Normal encoding.
+                    check_wire_type(<$ty as ScalarField>::wire_type(), wire_type)?;
+                    self.push(ScalarField::read_from(r, limit)?);
+                }
+                Ok(())
+            }
+
+            fn wire_len(&self, tag: u32) -> usize {
+                let key_len = key_len(tag);
+                match <$ty as ScalarField>::wire_type() {
+                    WireType::Varint => {
+                        let len: usize = self.iter().map(ScalarField::wire_len).sum();
+                        len + key_len
+                    }
+                    WireType::SixtyFourBit => key_len + 8 * self.len(),
+                    WireType::ThirtyTwoBit => key_len + 4 * self.len(),
+                    WireType::LengthDelimited => {
+                        let len: usize = self.iter().map(ScalarField::wire_len).sum();
+                        key_len * self.len() + len
+                    },
+                }
             }
         }
     }
@@ -502,92 +601,26 @@ impl <M> Field for Option<M> where M: Message + Default {
     }
 }
 
-impl <T> Field for Vec<T> where T: ScalarField {
+impl <M> Field for Vec<M> where M: Message + Default {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-        match T::wire_type() {
-            WireType::Varint => {
-                write_key_to(tag, WireType::LengthDelimited, w)?;
-                let len: usize = self.iter().map(ScalarField::wire_len).sum();
-                ScalarField::write_to(&(len as u64), w)?;
-                for value in self {
-                    value.write_to(w)?;
-                }
-            },
-            WireType::SixtyFourBit => {
-                write_key_to(tag, WireType::LengthDelimited, w)?;
-                let len = 8 * self.len() as u64;
-                ScalarField::write_to(&len, w)?;
-                for value in self {
-                    value.write_to(w)?;
-                }
-            },
-            WireType::ThirtyTwoBit => {
-                write_key_to(tag, WireType::LengthDelimited, w)?;
-                let len = 4 * self.len() as u64;
-                ScalarField::write_to(&len, w)?;
-                for value in self {
-                    value.write_to(w)?;
-                }
-            },
-            WireType::LengthDelimited => for value in self {
-                write_key_to(tag, T::wire_type(), w)?;
-                ScalarField::write_to(value, w)?;
-            },
+        for message in self {
+            write_key_to(tag, WireType::LengthDelimited, w)?;
+            message.write_length_delimited_to(w)?;
         }
         Ok(())
     }
 
     fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        if wire_type == WireType::LengthDelimited && (T::wire_type() == WireType::Varint ||
-                                                      T::wire_type() == WireType::SixtyFourBit ||
-                                                      T::wire_type() == WireType::ThirtyTwoBit) {
-            // Packed encoding.
-            let len = u64::read_from(r, limit)?;
-            if len > usize::MAX as u64 {
-                return Err(Error::new(ErrorKind::InvalidInput,
-                                      "packed length overflows usize"));
-            }
-            check_limit(len as usize, limit)?;
-            let mut remaining = len as usize;
-            while remaining > 0 {
-                self.push(T::read_from(r, &mut remaining)?);
-            }
-        } else {
-            // Normal encoding.
-            check_wire_type(T::wire_type(), wire_type)?;
-            self.push(ScalarField::read_from(r, limit)?);
-        }
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut m = M::default();
+        m.merge_length_delimited_from(r, limit)?;
+        self.push(m);
         Ok(())
     }
 
     fn wire_len(&self, tag: u32) -> usize {
-        let key_len = key_len(tag);
-        match T::wire_type() {
-            WireType::Varint => {
-                let len: usize = self.iter().map(ScalarField::wire_len).sum();
-                len + key_len
-            }
-            WireType::SixtyFourBit => key_len + 8 * self.len(),
-            WireType::ThirtyTwoBit => key_len + 4 * self.len(),
-            WireType::LengthDelimited => {
-                let len: usize = self.iter().map(ScalarField::wire_len).sum();
-                key_len * self.len() + len
-            },
-        }
-    }
-}
-
-impl <M> Field for Vec<M> where M: Message {
-    fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-        unimplemented!()
-    }
-
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        unimplemented!()
-    }
-
-    fn wire_len(&self, tag: u32) -> usize {
-        unimplemented!()
+        let len: usize = self.iter().map(Message::wire_len).sum();
+        key_len(tag) * self.len() + len
     }
 }
 

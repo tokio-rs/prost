@@ -10,6 +10,13 @@ extern crate quote;
 
 use proc_macro::TokenStream;
 
+use quote::Tokens;
+
+fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
+    sum.append(rest.as_str());
+    sum
+}
+
 #[derive(Debug)]
 enum FieldKind {
     Field,
@@ -18,7 +25,7 @@ enum FieldKind {
 }
 
 struct Field {
-    field: syn::Field,
+    ident: syn::Ident,
     kind: FieldKind,
     default: Option<syn::Lit>,
     tag: u32,
@@ -32,15 +39,17 @@ impl Field {
         let mut signed = false;
         let mut ignore = false;
 
+        let attrs = field.attrs;
+        let ident = field.ident.expect("Message struct has unnamed field");
+
         {
             // Get the metadata items belonging to 'proto' list attributes (e.g. #[proto(foo, bar="baz")]).
-            let proto_items = field.attrs.iter().flat_map(|attr| {
+            let proto_items = attrs.iter().flat_map(|attr| {
                 match attr.value {
                     syn::MetaItem::List(ref ident, ref items) if ident == "proto" => items.into_iter(),
                     _ => [].into_iter(),
                 }
             });
-
 
             for item in proto_items {
                 match *item {
@@ -89,7 +98,7 @@ impl Field {
         };
 
         Some(Field {
-            field: field,
+            ident: ident,
             kind: kind,
             default: default,
             tag: tag,
@@ -117,7 +126,7 @@ pub fn message(input: TokenStream) -> TokenStream {
 
     let fields = fields.into_iter().filter_map(Field::extract).collect::<Vec<_>>();
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_SERIALIZE_FOR_{}", ident));
+    let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
     let wire_len = wire_len(&fields);
     let write_to = write_to(&fields);
     let merge_from = merge_from(&fields);
@@ -129,23 +138,34 @@ pub fn message(input: TokenStream) -> TokenStream {
             extern crate proto;
             use std::any::{Any, TypeId};
             use std::io::{
-                Error,
-                ErrorKind,
                 Read,
                 Result,
                 Write,
             };
-            use proto::field::Field;
+            use proto::field::{
+                Field,
+                read_key_from,
+                skip_field,
+            };
 
             #[automatically_derived]
             impl proto::Message for #ident {
 
                 fn write_to(&self, w: &mut Write) -> Result<()> {
-                    unimplemented!()
+                    #write_to
+                    Ok(())
                 }
 
                 fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()> {
-                    unimplemented!()
+                    let mut limit = len;
+                    while limit > 0 {
+                        let (wire_type, tag) = read_key_from(r, &mut limit)?;
+                        match tag {
+                            #merge_from
+                            _ => skip_field(wire_type, r, &mut limit)?,
+                        }
+                    }
+                    Ok(())
                 }
 
                 fn wire_len(&self) -> usize {
@@ -168,50 +188,191 @@ pub fn message(input: TokenStream) -> TokenStream {
                     self
                 }
             }
+
+            #[automatically_derived]
+            impl Default for #ident {
+                fn default() -> #ident {
+                    #ident {
+                        #default
+                    }
+                }
+            }
         };
     };
 
     expanded.parse().unwrap()
 }
 
-fn write_to(fields: &[Field]) -> quote::Tokens {
-    quote! {
-    }
-}
-
-fn merge_from(fields: &[Field]) -> quote::Tokens {
-    quote! {
-    }
-}
-
-fn wire_len(fields: &[Field]) -> quote::Tokens {
+fn write_to(fields: &[Field]) -> Tokens {
     fields.iter().map(|field| {
-        let ident = field.field.ident.as_ref().expect("struct has unnamed field");
+        let ident = &field.ident;
         let tag = field.tag;
-        quote!(&self.#ident.wire_len(#tag))
+        quote!(Field::write_to(&self.#ident, #tag, w)?;)
+    }).fold(Tokens::new(), concat_tokens)
+}
+
+fn merge_from(fields: &[Field]) -> Tokens {
+    fields.iter().map(|field| {
+        let ident = &field.ident;
+        let tag = field.tag;
+        quote!(#tag => Field::merge_from(&mut self.#ident, wire_type, r, &mut limit)?,)
+    }).fold(Tokens::new(), concat_tokens)
+}
+
+fn wire_len(fields: &[Field]) -> Tokens {
+    fields.iter().map(|field| {
+        let ident = &field.ident;
+        let tag = field.tag;
+        quote!(Field::wire_len(&self.#ident, #tag))
     })
-    .fold(quote!(0), |sum, expr| quote!(#sum + #expr))
+    .fold(quote!(0), |mut sum, expr| {
+        sum.append("+");
+        sum.append(expr.as_str());
+        sum
+    })
 }
 
-fn default(fields: &[Field]) -> quote::Tokens {
-    quote! {
-    }
+fn default(fields: &[Field]) -> Tokens {
+    fields.iter().map(|field| {
+        let ident = &field.ident;
+        match field.default {
+            Some(ref default) => quote!(#ident: #default.parse().unwrap(),),
+            None => quote!(#ident: Default::default(),),
+        }
+    })
+    .fold(Tokens::new(), concat_tokens)
 }
 
-#[proc_macro_derive(Enumeration)]
+#[proc_macro_derive(Enumeration, attributes(proto))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
-    let source = input.to_string();
-    let ast = syn::parse_derive_input(&source).expect("unable to parse enumeration token stream");
+    let syn::DeriveInput { ident, generics, attrs, body, .. } =
+        syn::parse_derive_input(&input.to_string()).expect("unable to parse message type");
 
-    // Build the output
-    //let expanded = expand_num_fields(&ast);
+    if !generics.lifetimes.is_empty() ||
+       !generics.ty_params.is_empty() ||
+       !generics.where_clause.predicates.is_empty() {
+        panic!("Enumeration may not be derived for generic type");
+    }
 
-    // Return the generated impl as a TokenStream
-    //expanded.parse().unwrap()
-    unimplemented!()
+    let variants = match body {
+        syn::Body::Struct(..) => panic!("Enumeration can not be derived for a struct"),
+        syn::Body::Enum(variants) => variants,
+    };
+
+    let variants = variants.into_iter().map(|syn::Variant { ident: variant, data, discriminant, .. }| {
+        if let syn::VariantData::Unit = data {
+            if let Some(discriminant) = discriminant {
+                (variant, discriminant)
+            } else {
+                panic!("Enumeration variants must have a discriminant value: {}::{}", ident, variant);
+            }
+        } else {
+            panic!("Enumeration variants may not have fields: {}::{}", ident, variant);
+        }
+    }).collect::<Vec<_>>();
+
+    if variants.is_empty() {
+        panic!("Enumeration must have at least one variant: {}", ident);
+    }
+
+    let repr = attrs.into_iter()
+                    .filter_map(|mut attr: syn::Attribute| match attr.value {
+                        syn::MetaItem::List(ref attr, ref mut repr) if attr == "repr" => repr.pop(),
+                        _ => None,
+                    })
+                    .last()
+                    .map_or_else(|| quote!(i32), |repr| quote!(#repr));
+
+    let default = variants[0].0.clone();
+
+    let dummy_const = syn::Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
+    let is_valid = variants.iter()
+                           .map(|&(_, ref value)| quote!(#value => true,))
+                           .fold(Tokens::new(), concat_tokens);
+    let from = variants.iter()
+                       .map(|&(ref variant, ref value)| quote!(#value => #ident::#variant,))
+                       .fold(Tokens::new(), concat_tokens);
+    let from_str = variants.iter()
+                           .map(|&(ref variant, _)| quote!(stringify!(#variant) => Ok(#ident::#variant),))
+                           .fold(Tokens::new(), concat_tokens);
+
+    let expanded = quote! {
+        #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+        const #dummy_const: () = {
+            extern crate proto;
+            use std::io::{
+                Read,
+                Result,
+                Write,
+            };
+            use std::result;
+            use std::str::FromStr;
+
+            use proto::field::{
+                Field,
+                WireType,
+            };
+
+            impl #ident {
+                fn is_valid(value: #repr) -> bool {
+                    match value {
+                        #is_valid
+                        _ => false,
+                    }
+                }
+            }
+
+            #[automatically_derived]
+            impl proto::field::Field for #ident {
+                fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
+                    Field::write_to(&(*self as i32), tag, w)
+                }
+
+                fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+                    let mut value: i32 = 0;
+                    Field::merge_from(&mut value, wire_type, r, limit)?;
+                    *self = #ident::from(value as #repr);
+                    Ok(())
+                }
+
+                fn wire_len(&self, tag: u32) -> usize {
+                    Field::wire_len(&(*self as i32), tag)
+                }
+            }
+
+            #[automatically_derived]
+            impl Default for #ident {
+                fn default() -> #ident {
+                    #ident::#default
+                }
+            }
+
+            impl From<#repr> for #ident {
+                fn from(value: #repr) -> #ident {
+                    match value {
+                        #from
+                        _ => #ident::#default,
+                    }
+                }
+            }
+
+            #[automatically_derived]
+            impl FromStr for #ident {
+                type Err = String;
+                fn from_str(s: &str) -> result::Result<#ident, String> {
+                    match s {
+                        #from_str
+                        _ => Err(format!(concat!("unknown ", stringify!(#ident), " variant: {}"), s)),
+                    }
+                }
+            }
+        };
+    };
+
+    expanded.parse().unwrap()
 }
 
-#[proc_macro_derive(Oneof)]
+#[proc_macro_derive(Oneof, attributes(proto))]
 pub fn oneof(input: TokenStream) -> TokenStream {
     let source = input.to_string();
     let ast = syn::parse_derive_input(&source).expect("unable to parse oneof token stream");

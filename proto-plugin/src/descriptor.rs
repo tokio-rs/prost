@@ -2,8 +2,6 @@
 //! [plugin.proto v3.2.0](https://github.com/google/protobuf/blob/v3.2.0/src/google/protobuf/descriptor.proto)
 //! to Rust.
 
-use proto::Message;
-
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
 #[derive(Debug, Message)]
@@ -44,14 +42,14 @@ struct FileDescriptorProto {
     extension: Vec<FieldDescriptorProto>,
 
     #[proto(tag="8")]
-    options: FileOptions,
+    options: Option<FileOptions>,
 
     /// This field contains optional information about the original source code.
     /// You may safely remove this entire field without harming runtime
     /// functionality of the descriptors -- the information is needed only by
     /// development tools.
     #[proto(tag="9")]
-    source_code_info: SourceCodeInfo,
+    source_code_info: Option<SourceCodeInfo>,
 
     /// The syntax of the proto file.
     /// The supported values are "proto2" and "proto3".
@@ -60,8 +58,6 @@ struct FileDescriptorProto {
 }
 
 pub mod descriptor_proto {
-    use proto::Message;
-
     #[derive(Debug, Message)]
     pub struct ExtensionRange {
         #[proto(tag="1")]
@@ -107,7 +103,7 @@ struct DescriptorProto {
     oneof_decl: Vec<OneofDescriptorProto>,
 
     #[proto(tag="7")]
-    options: MessageOptions,
+    options: Option<MessageOptions>,
 
     #[proto(tag="9")]
     reserved_range: Vec<descriptor_proto::ReservedRange>,
@@ -118,10 +114,8 @@ struct DescriptorProto {
 }
 
 pub mod field_descriptor_proto {
-    use proto::Message;
-
     #[repr(u8)]
-    #[derive(Debug)]
+    #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
@@ -159,7 +153,7 @@ pub mod field_descriptor_proto {
     }
 
     #[repr(u8)]
-    #[derive(Debug)]
+    #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum Label {
         /// 0 is reserved for errors
         LABEL_OPTIONAL      = 1,
@@ -217,7 +211,7 @@ struct FieldDescriptorProto {
     json_name: String,
 
     #[proto(tag="8")]
-    options: FieldOptions,
+    options: Option<FieldOptions>,
 }
 
 /// Describes a oneof.
@@ -226,7 +220,7 @@ struct OneofDescriptorProto {
     #[proto(tag="1")]
     name: String,
     #[proto(tag="2")]
-    options: OneofOptions,
+    options: Option<OneofOptions>,
 }
 
 /// Describes an enum type.
@@ -239,7 +233,7 @@ struct EnumDescriptorProto {
     value: Vec<EnumValueDescriptorProto>,
 
     #[proto(tag="3")]
-    options: EnumOptions,
+    options: Option<EnumOptions>,
 }
 
 /// Describes a value within an enum.
@@ -247,11 +241,12 @@ struct EnumDescriptorProto {
 struct EnumValueDescriptorProto {
     #[proto(tag="1")]
     name: String,
+
     #[proto(tag="2")]
     number: i32,
 
     #[proto(tag="3")]
-    options: EnumValueOptions,
+    options: Option<EnumValueOptions>,
 }
 
 /// Describes a service.
@@ -263,7 +258,7 @@ struct ServiceDescriptorProto {
     method: Vec<MethodDescriptorProto>,
 
     #[proto(tag="3")]
-    options: ServiceOptions,
+    options: Option<ServiceOptions>,
 }
 
 /// Describes a method of a service.
@@ -280,7 +275,7 @@ struct MethodDescriptorProto {
     output_type: String,
 
     #[proto(tag="4")]
-    options: MethodOptions,
+    options: Option<MethodOptions>,
 
     /// Identifies if client streams multiple client messages
     #[proto(tag="5", default="false")]
@@ -323,11 +318,9 @@ struct MethodDescriptorProto {
 //   to automatically assign option numbers.
 
 pub mod file_options {
-    use proto::Message;
-
     /// Generated classes can be optimized for speed or code size.
     #[repr(u8)]
-    #[derive(Debug)]
+    #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization, etc.
         SPEED = 1,
@@ -503,10 +496,8 @@ struct MessageOptions {
 }
 
 pub mod field_options {
-    use proto::Message;
-
     #[repr(u8)]
-    #[derive(Debug)]
+    #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum CType {
         /// Default mode.
         STRING = 0,
@@ -517,7 +508,7 @@ pub mod field_options {
     }
 
     #[repr(u8)]
-    #[derive(Debug)]
+    #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum JSType {
         /// Use the default type.
         JS_NORMAL = 0,
@@ -617,65 +608,63 @@ struct OneofOptions {
 #[derive(Debug, Message)]
 struct EnumOptions {
 
-  /// Set this option to true to allow mapping different tag names to the same
-  /// value.
-#[proto(tag="2")]
-allow_alias: bool,
+    /// Set this option to true to allow mapping different tag names to the same
+    /// value.
+    #[proto(tag="2")]
+    allow_alias: bool,
 
-  /// Is this enum deprecated?
-  /// Depending on the target platform, this can emit Deprecated annotations
-  /// for the enum, or it will be completely ignored; in the very least, this
-  /// is a formalization for deprecating enums.
-#[proto(tag="3", default="false")]
-deprecated: bool,
+    /// Is this enum deprecated?
+    /// Depending on the target platform, this can emit Deprecated annotations
+    /// for the enum, or it will be completely ignored; in the very least, this
+    /// is a formalization for deprecating enums.
+    #[proto(tag="3", default="false")]
+    deprecated: bool,
 
-  /// The parser stores options it doesn't recognize here. See above.
-#[proto(tag="999")]
-uninterpreted_option: Vec<UninterpretedOption>,
+    /// The parser stores options it doesn't recognize here. See above.
+    #[proto(tag="999")]
+    uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Message)]
 struct EnumValueOptions {
-  /// Is this enum value deprecated?
-  /// Depending on the target platform, this can emit Deprecated annotations
-  /// for the enum value, or it will be completely ignored; in the very least,
-  /// this is a formalization for deprecating enum values.
-#[proto(tag="1", default="false")]
-deprecated: bool,
+    /// Is this enum value deprecated?
+    /// Depending on the target platform, this can emit Deprecated annotations
+    /// for the enum value, or it will be completely ignored; in the very least,
+    /// this is a formalization for deprecating enum values.
+    #[proto(tag="1", default="false")]
+    deprecated: bool,
 
-  /// The parser stores options it doesn't recognize here. See above.
-#[proto(tag="999")]
-uninterpreted_option: Vec<UninterpretedOption>,
+    /// The parser stores options it doesn't recognize here. See above.
+    #[proto(tag="999")]
+    uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Message)]
 struct ServiceOptions {
 
-  /// Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
-  ///   framework.  We apologize for hoarding these numbers to ourselves, but
-  ///   we were already using them long before we decided to release Protocol
-  ///   Buffers.
+    /// Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
+    ///   framework.  We apologize for hoarding these numbers to ourselves, but
+    ///   we were already using them long before we decided to release Protocol
+    ///   Buffers.
 
-  /// Is this service deprecated?
-  /// Depending on the target platform, this can emit Deprecated annotations
-  /// for the service, or it will be completely ignored; in the very least,
-  /// this is a formalization for deprecating services.
-#[proto(tag="33", default="false")]
-deprecated: bool,
+    /// Is this service deprecated?
+    /// Depending on the target platform, this can emit Deprecated annotations
+    /// for the service, or it will be completely ignored; in the very least,
+    /// this is a formalization for deprecating services.
+    #[proto(tag="33", default="false")]
+    deprecated: bool,
 
-  /// The parser stores options it doesn't recognize here. See above.
-#[proto(tag="999")]
-uninterpreted_option: Vec<UninterpretedOption>,
+    /// The parser stores options it doesn't recognize here. See above.
+    #[proto(tag="999")]
+    uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 pub mod method_options {
-    use proto::Message;
-
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
     #[repr(u8)]
-    #[derive(Debug)]
+    #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum IdempotencyLevel {
         IDEMPOTENCY_UNKNOWN = 0,
         /// implies idempotent
@@ -688,7 +677,7 @@ pub mod method_options {
 #[derive(Debug, Message)]
 struct MethodOptions {
 
-    /// Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
+    /// Note: Field numbers 1 through 32 are reserved for Google's internal RPC
     ///   framework.  We apologize for hoarding these numbers to ourselves, but
     ///   we were already using them long before we decided to release Protocol
     ///   Buffers.
@@ -709,8 +698,6 @@ struct MethodOptions {
 }
 
 pub mod uninterpreted_option {
-    use proto::Message;
-
     #[derive(Debug, Message)]
     pub struct NamePart {
         #[proto(tag="1")]
@@ -756,8 +743,6 @@ struct UninterpretedOption {
 // Optional source code info
 
 pub mod source_code_info {
-    use proto::Message;
-
     #[derive(Debug, Message)]
     pub struct Location {
         /// Identifies which part of the FileDescriptorProto was defined at this
@@ -902,8 +887,6 @@ struct SourceCodeInfo {
 }
 
 pub mod generated_code_info {
-    use proto::Message;
-
     #[derive(Debug, Message)]
     pub struct Annotation {
         /// Identifies the element in the original source .proto file. This field
