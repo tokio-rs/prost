@@ -61,10 +61,6 @@ pub fn skip_field(wire_type: WireType, r: &mut Read, limit: &mut usize) -> Resul
             let mut value: u32 = 0;
             FixedField::merge_from(&mut value, wire_type, r, limit)?;
         },
-        WireType::ThirtyTwoBit => {
-            let mut value: u32 = 0;
-            FixedField::merge_from(&mut value, wire_type, r, limit)?;
-        },
         WireType::LengthDelimited => {
             <Vec<u8> as ScalarField>::read_from(r, limit)?;
         },

@@ -24,6 +24,16 @@ enum FieldKind {
     SignedField,
 }
 
+impl FieldKind {
+    fn trait_token(&self) -> Tokens {
+        match *self {
+            FieldKind::Field => quote!(Field),
+            FieldKind::FixedField => quote!(FixedField),
+            FieldKind::SignedField => quote!(SignedField),
+        }
+    }
+}
+
 struct Field {
     ident: syn::Ident,
     kind: FieldKind,
@@ -128,8 +138,35 @@ pub fn message(input: TokenStream) -> TokenStream {
 
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
     let wire_len = wire_len(&fields);
-    let write_to = write_to(&fields);
-    let merge_from = merge_from(&fields);
+
+    let write_to = fields.iter().map(|field| {
+        let kind = field.kind.trait_token();
+        let tag = field.tag;
+        let field = &field.ident;
+        quote! {
+            #kind::write_to(&self.#field, #tag, w)
+                  .map_err(|error| {
+                      Error::new(error.kind(),
+                                 format!(concat!("failed to write field ", stringify!(#ident),
+                                                 ".", stringify!(#field), ": {}"),
+                                         error))
+                  })?;
+        }
+    }).fold(Tokens::new(), concat_tokens);
+
+    let merge_from = fields.iter().map(|field| {
+        let tag = field.tag;
+        let kind = field.kind.trait_token();
+        let field = &field.ident;
+        quote!{ #tag => #kind::merge_from(&mut self.#field, wire_type, r, &mut limit)
+                              .map_err(|error| {
+                                  Error::new(error.kind(),
+                                             format!(concat!("failed to read field ", stringify!(#ident),
+                                                             ".", stringify!(#field), ": {}"),
+                                                     error))
+                              })?, }
+    }).fold(Tokens::new(), concat_tokens);
+
     let default = default(&fields);
 
     let expanded = quote! {
@@ -138,6 +175,8 @@ pub fn message(input: TokenStream) -> TokenStream {
             extern crate proto;
             use std::any::{Any, TypeId};
             use std::io::{
+                Error,
+                ErrorKind,
                 Read,
                 Result,
                 Write,
@@ -150,7 +189,6 @@ pub fn message(input: TokenStream) -> TokenStream {
 
             #[automatically_derived]
             impl proto::Message for #ident {
-
                 fn write_to(&self, w: &mut Write) -> Result<()> {
                     #write_to
                     Ok(())
@@ -203,27 +241,12 @@ pub fn message(input: TokenStream) -> TokenStream {
     expanded.parse().unwrap()
 }
 
-fn write_to(fields: &[Field]) -> Tokens {
-    fields.iter().map(|field| {
-        let ident = &field.ident;
-        let tag = field.tag;
-        quote!(Field::write_to(&self.#ident, #tag, w)?;)
-    }).fold(Tokens::new(), concat_tokens)
-}
-
-fn merge_from(fields: &[Field]) -> Tokens {
-    fields.iter().map(|field| {
-        let ident = &field.ident;
-        let tag = field.tag;
-        quote!(#tag => Field::merge_from(&mut self.#ident, wire_type, r, &mut limit)?,)
-    }).fold(Tokens::new(), concat_tokens)
-}
-
 fn wire_len(fields: &[Field]) -> Tokens {
     fields.iter().map(|field| {
+        let kind = field.kind.trait_token();
         let ident = &field.ident;
         let tag = field.tag;
-        quote!(Field::wire_len(&self.#ident, #tag))
+        quote!(#kind::wire_len(&self.#ident, #tag))
     })
     .fold(quote!(0), |mut sum, expr| {
         sum.append("+");

@@ -22,7 +22,7 @@ use std::io::{
 
 #[inline]
 fn check_limit(needed: usize, limit: &mut usize) -> Result<()> {
-    if needed < *limit {
+    if needed > *limit {
         Err(Error::new(ErrorKind::InvalidData,
                        "read limit exceeded"))
     } else {

@@ -1,69 +1,69 @@
 //! Translation of
-//! [plugin.proto v3.2.0](https://github.com/google/protobuf/blob/v3.2.0/src/google/protobuf/descriptor.proto)
+//! [descriptor.proto v3.2.0](https://github.com/google/protobuf/blob/v3.2.0/src/google/protobuf/descriptor.proto)
 //! to Rust.
 
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
 #[derive(Debug, Message)]
-struct FileDescriptorSet {
+pub struct FileDescriptorSet {
     #[proto(tag="1")]
-    file: Vec<FileDescriptorProto>,
+    pub file: Vec<FileDescriptorProto>,
 }
 
 /// Describes a complete .proto file.
 #[derive(Debug, Message)]
-struct FileDescriptorProto {
+pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
     /// e.g. "foo", "foo.bar", etc.
     #[proto(tag="2")]
-    package: String,
+    pub package: String,
 
     /// Names of files imported by this file.
     #[proto(tag="3")]
-    dependency: Vec<String>,
+    pub dependency: Vec<String>,
     /// Indexes of the public imported files in the dependency list above.
     #[proto(tag="10")]
-    public_dependency: Vec<i32>,
+    pub public_dependency: Vec<i32>,
     /// Indexes of the weak imported files in the dependency list.
     /// For Google-internal migration only. Do not use.
     #[proto(tag="11")]
-    weak_dependency: Vec<i32>,
+    pub weak_dependency: Vec<i32>,
 
     /// All top-level definitions in this file.
     #[proto(tag="4")]
-    message_type: Vec<DescriptorProto>,
+    pub message_type: Vec<DescriptorProto>,
     #[proto(tag="5")]
-    enum_type: Vec<EnumDescriptorProto>,
+    pub enum_type: Vec<EnumDescriptorProto>,
     #[proto(tag="6")]
-    service: Vec<ServiceDescriptorProto>,
+    pub service: Vec<ServiceDescriptorProto>,
     #[proto(tag="7")]
-    extension: Vec<FieldDescriptorProto>,
+    pub extension: Vec<FieldDescriptorProto>,
 
     #[proto(tag="8")]
-    options: Option<FileOptions>,
+    pub options: Option<FileOptions>,
 
     /// This field contains optional information about the original source code.
     /// You may safely remove this entire field without harming runtime
     /// functionality of the descriptors -- the information is needed only by
     /// development tools.
     #[proto(tag="9")]
-    source_code_info: Option<SourceCodeInfo>,
+    pub source_code_info: Option<SourceCodeInfo>,
 
     /// The syntax of the proto file.
     /// The supported values are "proto2" and "proto3".
     #[proto(tag="12")]
-    syntax: String,
+    pub syntax: String,
 }
 
 pub mod descriptor_proto {
     #[derive(Debug, Message)]
     pub struct ExtensionRange {
         #[proto(tag="1")]
-        start: i32,
+        pub start: i32,
         #[proto(tag="2")]
-        end: i32,
+        pub end: i32,
     }
 
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
@@ -73,49 +73,49 @@ pub mod descriptor_proto {
     pub struct ReservedRange {
         /// Inclusive.
         #[proto(tag="1")]
-        start: i32,
+        pub start: i32,
         /// Exclusive.
         #[proto(tag="2")]
-        end: i32,
+        pub end: i32,
     }
 }
 
 /// Describes a message type.
 #[derive(Debug, Message)]
-struct DescriptorProto {
+pub struct DescriptorProto {
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
 
     #[proto(tag="2")]
-    field: Vec<FieldDescriptorProto>,
+    pub fields: Vec<FieldDescriptorProto>,
     #[proto(tag="6")]
-    extension: Vec<FieldDescriptorProto>,
+    pub extension: Vec<FieldDescriptorProto>,
 
     #[proto(tag="3")]
-    nested_type: Vec<DescriptorProto>,
+    pub nested_type: Vec<DescriptorProto>,
     #[proto(tag="4")]
-    enum_type: Vec<EnumDescriptorProto>,
+    pub enum_type: Vec<EnumDescriptorProto>,
 
     #[proto(tag="5")]
-    extension_range: Vec<descriptor_proto::ExtensionRange>,
+    pub extension_range: Vec<descriptor_proto::ExtensionRange>,
 
     #[proto(tag="8")]
-    oneof_decl: Vec<OneofDescriptorProto>,
+    pub oneof_decl: Vec<OneofDescriptorProto>,
 
     #[proto(tag="7")]
-    options: Option<MessageOptions>,
+    pub options: Option<MessageOptions>,
 
     #[proto(tag="9")]
-    reserved_range: Vec<descriptor_proto::ReservedRange>,
+    pub reserved_range: Vec<descriptor_proto::ReservedRange>,
     /// Reserved field names, which may not be used by fields in the same message.
     /// A given name may only be reserved once.
     #[proto(tag="10")]
-    reserved_name: Vec<String>,
+    pub reserved_name: Vec<String>,
 }
 
 pub mod field_descriptor_proto {
     #[repr(u8)]
-    #[derive(Clone, Copy, Debug, Enumeration)]
+    #[derive(Clone, Copy, Debug, Enumeration, PartialEq)]
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
@@ -153,7 +153,7 @@ pub mod field_descriptor_proto {
     }
 
     #[repr(u8)]
-    #[derive(Clone, Copy, Debug, Enumeration)]
+    #[derive(Clone, Copy, Debug, Enumeration, PartialEq)]
     pub enum Label {
         /// 0 is reserved for errors
         LABEL_OPTIONAL      = 1,
@@ -164,18 +164,18 @@ pub mod field_descriptor_proto {
 
 /// Describes a field within a message.
 #[derive(Debug, Message)]
-struct FieldDescriptorProto {
+pub struct FieldDescriptorProto {
 #[proto(tag="1")]
-    name: String,
+    pub name: String,
     #[proto(tag="3")]
-    number: i32,
+    pub number: i32,
     #[proto(tag="4")]
-    label: field_descriptor_proto::Label,
+    pub label: field_descriptor_proto::Label,
 
     /// If type_name is set, this need not be set.  If both this and type_name
     /// are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
     #[proto(tag="5")]
-    _type: field_descriptor_proto::Type,
+    pub field_type: field_descriptor_proto::Type,
 
     /// For message and enum types, this is the name of the type.  If the name
     /// starts with a '.', it is fully-qualified.  Otherwise, C++-like scoping
@@ -183,12 +183,12 @@ struct FieldDescriptorProto {
     /// message are searched, then within the parent, on up to the root
     /// namespace).
     #[proto(tag="6")]
-    type_name: String,
+    pub type_name: String,
 
     /// For extensions, this is the name of the type being extended.  It is
     /// resolved in the same manner as type_name.
     #[proto(tag="2")]
-    extendee: String,
+    pub extendee: String,
 
     /// For numeric types, contains the original text representation of the value.
     /// For booleans, "true" or "false".
@@ -196,93 +196,93 @@ struct FieldDescriptorProto {
     /// For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
     /// TODO(kenton):  Base-64 encode?
     #[proto(tag="7")]
-    default_value: String,
+    pub default_value: String,
 
     /// If set, gives the index of a oneof in the containing type's oneof_decl
     /// list.  This field is a member of that oneof.
     #[proto(tag="9")]
-    oneof_index: i32,
+    pub oneof_index: i32,
 
     /// JSON name of this field. The value is set by protocol compiler. If the
     /// user has set a "json_name" option on this field, that option's value
     /// will be used. Otherwise, it's deduced from the field's name by converting
     /// it to camelCase.
     #[proto(tag="10")]
-    json_name: String,
+    pub json_name: String,
 
     #[proto(tag="8")]
-    options: Option<FieldOptions>,
+    pub options: Option<FieldOptions>,
 }
 
 /// Describes a oneof.
 #[derive(Debug, Message)]
-struct OneofDescriptorProto {
+pub struct OneofDescriptorProto {
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
     #[proto(tag="2")]
-    options: Option<OneofOptions>,
+    pub options: Option<OneofOptions>,
 }
 
 /// Describes an enum type.
 #[derive(Debug, Message)]
-struct EnumDescriptorProto {
+pub struct EnumDescriptorProto {
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
 
     #[proto(tag="2")]
-    value: Vec<EnumValueDescriptorProto>,
+    pub value: Vec<EnumValueDescriptorProto>,
 
     #[proto(tag="3")]
-    options: Option<EnumOptions>,
+    pub options: Option<EnumOptions>,
 }
 
 /// Describes a value within an enum.
 #[derive(Debug, Message)]
-struct EnumValueDescriptorProto {
+pub struct EnumValueDescriptorProto {
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
 
     #[proto(tag="2")]
-    number: i32,
+    pub number: i32,
 
     #[proto(tag="3")]
-    options: Option<EnumValueOptions>,
+    pub options: Option<EnumValueOptions>,
 }
 
 /// Describes a service.
 #[derive(Debug, Message)]
-struct ServiceDescriptorProto {
+pub struct ServiceDescriptorProto {
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
     #[proto(tag="2")]
-    method: Vec<MethodDescriptorProto>,
+    pub method: Vec<MethodDescriptorProto>,
 
     #[proto(tag="3")]
-    options: Option<ServiceOptions>,
+    pub options: Option<ServiceOptions>,
 }
 
 /// Describes a method of a service.
 #[derive(Debug, Message)]
-struct MethodDescriptorProto {
+pub struct MethodDescriptorProto {
     #[proto(tag="1")]
-    name: String,
+    pub name: String,
 
     /// Input and output type names.  These are resolved in the same way as
     /// FieldDescriptorProto.type_name, but must refer to a message type.
     #[proto(tag="2")]
-    input_type: String,
+    pub input_type: String,
     #[proto(tag="3")]
-    output_type: String,
+    pub output_type: String,
 
     #[proto(tag="4")]
-    options: Option<MethodOptions>,
+    pub options: Option<MethodOptions>,
 
     /// Identifies if client streams multiple client messages
     #[proto(tag="5", default="false")]
-    client_streaming: bool,
+    pub client_streaming: bool,
     /// Identifies if server streams multiple server messages
     #[proto(tag="6", default="false")]
-    server_streaming: bool,
+    pub server_streaming: bool,
 }
 
 // ===================================================================
@@ -332,14 +332,14 @@ pub mod file_options {
 }
 
 #[derive(Debug, Message)]
-struct FileOptions {
+pub struct FileOptions {
 
     /// Sets the Java package where classes generated from this .proto will be
     /// placed.  By default, the proto package is used, but this is often
     /// inappropriate because proto packages do not normally start with backwards
     /// domain names.
     #[proto(tag="1")]
-    java_package: String,
+    pub java_package: String,
 
     /// If set, all the classes from the .proto file are wrapped in a single
     /// outer class with the given name.  This applies to both Proto1
@@ -347,7 +347,7 @@ struct FileOptions {
     /// a .proto always translates to a single class, but you may want to
     /// explicitly choose the class name).
     #[proto(tag="8")]
-    java_outer_classname: String,
+    pub java_outer_classname: String,
 
     /// If set true, then the Java code generator will generate a separate .java
     /// file for each top-level message, enum, and service defined in the .proto
@@ -356,12 +356,12 @@ struct FileOptions {
     /// generated to contain the file's getDescriptor() method as well as any
     /// top-level extensions defined in the file.
     #[proto(tag="10", default="false")]
-    java_multiple_files: bool,
+    pub java_multiple_files: bool,
 
     /// This option does nothing.
     #[proto(tag="20")]
     #[deprecated]
-    java_generate_equals_and_hash: bool,
+    pub java_generate_equals_and_hash: bool,
 
     /// If set true, then the Java2 code generator will generate code that
     /// throws an exception whenever an attempt is made to assign a non-UTF-8
@@ -370,7 +370,7 @@ struct FileOptions {
     /// However, an extension field still accepts non-UTF-8 byte sequences.
     /// This option has no effect on when used with the lite runtime.
     #[proto(tag="27", default="SPEED")]
-    optimize_for: file_options::OptimizeMode,
+    pub optimize_for: file_options::OptimizeMode,
 
     /// Sets the Go package where structs generated from this .proto will be
     /// placed. If omitted, the Go package will be derived from the following:
@@ -378,7 +378,7 @@ struct FileOptions {
     ///   - Otherwise, the package statement in the .proto file, if present.
     ///   - Otherwise, the basename of the .proto file, without extension.
     #[proto(tag="11")]
-    go_package: String,
+    pub go_package: String,
 
     /// Should generic services be generated in each language?  "Generic" services
     /// are not specific to any particular RPC system.  They are generated by the
@@ -391,47 +391,47 @@ struct FileOptions {
     /// these default to false.  Old code which depends on generic services should
     /// explicitly set them to true.
     #[proto(tag="16", default="false")]
-    cc_generic_services: bool,
+    pub cc_generic_services: bool,
     #[proto(tag="17", default="false")]
-    java_generic_services: bool,
+    pub java_generic_services: bool,
     #[proto(tag="18", default="false")]
-    py_generic_services: bool,
+    pub py_generic_services: bool,
 
     /// Is this file deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for everything in the file, or it will be completely ignored; in the very
     /// least, this is a formalization for deprecating files.
     #[proto(tag="23", default="false")]
-    deprecated: bool,
+    pub deprecated: bool,
 
     /// Enables the use of arenas for the proto messages in this file. This applies
     /// only to generated classes for C++.
     #[proto(tag="31", default="false")]
-    cc_enable_arenas: bool,
+    pub cc_enable_arenas: bool,
 
     /// Sets the objective c class prefix which is prepended to all objective c
     /// generated classes from this .proto. There is no default.
     #[proto(tag="36")]
-    objc_class_prefix: String,
+    pub objc_class_prefix: String,
 
     /// Namespace for generated classes; defaults to the package.
     #[proto(tag="37")]
-    csharp_namespace: String,
+    pub csharp_namespace: String,
 
     /// By default Swift generators will take the proto package and CamelCase it
     /// replacing '.' with underscore and use that to prefix the types/symbols
     /// defined. When this options is provided, they will use this value instead
     /// to prefix the types/symbols defined.
     #[proto(tag="39")]
-    swift_prefix: String,
+    pub swift_prefix: String,
 
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Message)]
-struct MessageOptions {
+pub struct MessageOptions {
     /// Set true to use the old proto1 MessageSet wire format for extensions.
     /// This is provided for backwards-compatibility with the MessageSet wire
     /// format.  You should not use this for any other reason:  It's less
@@ -451,20 +451,20 @@ struct MessageOptions {
     /// Because this is an option, the above two restrictions are not enforced by
     /// the protocol compiler.
     #[proto(tag="1", default="false")]
-    message_set_wire_format: bool,
+    pub message_set_wire_format: bool,
 
     /// Disables the generation of the standard "descriptor()" accessor, which can
     /// conflict with a field of the same name.  This is meant to make migration
     /// from proto1 easier; new code should avoid fields named "descriptor".
     #[proto(tag="2", default="false")]
-    no_standard_descriptor_accessor: bool,
+    pub no_standard_descriptor_accessor: bool,
 
     /// Is this message deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the message, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating messages.
     #[proto(tag="3", default="false")]
-    deprecated: bool,
+    pub deprecated: bool,
 
     /// Whether the message is an automatically generated map entry type for the
     /// maps field.
@@ -488,11 +488,11 @@ struct MessageOptions {
     /// instead. The option should only be implicitly set by the proto compiler
     /// parser.
     #[proto(tag="7")]
-    map_entry: bool,
+    pub map_entry: bool,
 
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 pub mod field_options {
@@ -522,7 +522,7 @@ pub mod field_options {
 }
 
 #[derive(Debug, Message)]
-struct FieldOptions {
+pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
     /// representation of the field than it normally would.  See the specific
     /// options below.  This option is not yet implemented in the open source
@@ -599,48 +599,48 @@ struct FieldOptions {
 }
 
 #[derive(Debug, Message)]
-struct OneofOptions {
+pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
 #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Message)]
-struct EnumOptions {
+pub struct EnumOptions {
 
     /// Set this option to true to allow mapping different tag names to the same
     /// value.
     #[proto(tag="2")]
-    allow_alias: bool,
+    pub allow_alias: bool,
 
     /// Is this enum deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the enum, or it will be completely ignored; in the very least, this
     /// is a formalization for deprecating enums.
     #[proto(tag="3", default="false")]
-    deprecated: bool,
+    pub deprecated: bool,
 
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Message)]
-struct EnumValueOptions {
+pub struct EnumValueOptions {
     /// Is this enum value deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the enum value, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating enum values.
     #[proto(tag="1", default="false")]
-    deprecated: bool,
+    pub deprecated: bool,
 
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Message)]
-struct ServiceOptions {
+pub struct ServiceOptions {
 
     /// Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     ///   framework.  We apologize for hoarding these numbers to ourselves, but
@@ -652,11 +652,11 @@ struct ServiceOptions {
     /// for the service, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating services.
     #[proto(tag="33", default="false")]
-    deprecated: bool,
+    pub deprecated: bool,
 
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 pub mod method_options {
@@ -675,7 +675,7 @@ pub mod method_options {
 }
 
 #[derive(Debug, Message)]
-struct MethodOptions {
+pub struct MethodOptions {
 
     /// Note: Field numbers 1 through 32 are reserved for Google's internal RPC
     ///   framework.  We apologize for hoarding these numbers to ourselves, but
@@ -687,14 +687,14 @@ struct MethodOptions {
     /// for the method, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating methods.
     #[proto(tag="33", default="false")]
-    deprecated: bool,
+    pub deprecated: bool,
 
     #[proto(tag="34", default="IDEMPOTENCY_UNKNOWN")]
-    idempotency_level: method_options::IdempotencyLevel,
+    pub idempotency_level: method_options::IdempotencyLevel,
 
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
-    uninterpreted_option: Vec<UninterpretedOption>,
+    pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 
 pub mod uninterpreted_option {
@@ -714,29 +714,29 @@ pub mod uninterpreted_option {
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
 #[derive(Debug, Message)]
-struct UninterpretedOption {
+pub struct UninterpretedOption {
     /// The name of the uninterpreted option.  Each string represents a segment in
     /// a dot-separated name.  is_extension is true iff a segment represents an
     /// extension (denoted with parentheses in options specs in .proto files).
     /// E.g.,{ ["foo", false], ["bar.baz", true], ["qux", false] } represents
     /// "foo.(bar.baz).qux".
     #[proto(tag="2")]
-    name: Vec<uninterpreted_option::NamePart>,
+    pub name: Vec<uninterpreted_option::NamePart>,
 
     /// The value of the uninterpreted option, in whatever type the tokenizer
     /// identified it as during parsing. Exactly one of these should be set.
     #[proto(tag="3")]
-    identifier_value: String,
+    pub identifier_value: String,
     #[proto(tag="4")]
-    positive_int_value: u64,
+    pub positive_int_value: u64,
     #[proto(tag="5")]
-    negative_int_value: i64,
+    pub negative_int_value: i64,
     #[proto(tag="6")]
-    double_value: f64,
+    pub double_value: f64,
     #[proto(tag="7")]
-    string_value: Vec<u8>,
+    pub string_value: Vec<u8>,
     #[proto(tag="8")]
-    aggregate_value: String,
+    pub aggregate_value: String,
 }
 
 // ===================================================================
@@ -838,7 +838,7 @@ pub mod source_code_info {
 /// Encapsulates information about the original source file from which a
 /// FileDescriptorProto was generated.
 #[derive(Debug, Message)]
-struct SourceCodeInfo {
+pub struct SourceCodeInfo {
     /// A Location identifies a piece of source code in a .proto file which
     /// corresponds to a particular definition.  This information is intended
     /// to be useful to IDEs, code indexers, documentation generators, and similar
@@ -883,7 +883,7 @@ struct SourceCodeInfo {
     ///   ignore those that it doesn't understand, as more types of locations could
     ///   be recorded in the future.
     #[proto(tag="1")]
-    location: Vec<source_code_info::Location>,
+    pub location: Vec<source_code_info::Location>,
 }
 
 pub mod generated_code_info {
@@ -915,9 +915,9 @@ pub mod generated_code_info {
 /// file. A GeneratedCodeInfo message is associated with only one generated
 /// source file, but may contain references to different source .proto files.
 #[derive(Debug, Message)]
-struct GeneratedCodeInfo {
+pub struct GeneratedCodeInfo {
     /// An Annotation connects some span of text in generated code to an element
     /// of its generating .proto file.
     #[proto(tag="1")]
-    annotation: Vec<generated_code_info::Annotation>,
+    pub annotation: Vec<generated_code_info::Annotation>,
 }
