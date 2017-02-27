@@ -507,7 +507,6 @@ pub mod field_options {
         STRING_PIECE = 2,
     }
 
-    #[repr(u8)]
     #[derive(Clone, Copy, Debug, Enumeration)]
     pub enum JSType {
         /// Use the default type.
@@ -769,7 +768,7 @@ pub mod source_code_info {
         /// this path refers to the whole field declaration (from the beginning
         /// of the label to the terminating semicolon).
         #[proto(tag="1")]
-        path: Vec<i32>,
+        pub path: Vec<i32>,
 
         /// Always has exactly three or four elements: start line, start column,
         /// end line (optional, otherwise assumed same as start line), end column.
@@ -777,7 +776,7 @@ pub mod source_code_info {
         /// and column numbers are zero-based -- typically you will want to add
         /// 1 to each before displaying to a user.
         #[proto(tag="2")]
-        span: Vec<i32>,
+        pub span: Vec<i32>,
 
         /// If this SourceCodeInfo represents a complete declaration, these are any
         /// comments appearing before and after the declaration which appear to be
@@ -827,11 +826,11 @@ pub mod source_code_info {
         ///
         ///   // ignored detached comments.
         #[proto(tag="3")]
-        leading_comments: String,
+        pub leading_comments: String,
         #[proto(tag="4")]
-        trailing_comments: String,
+        pub trailing_comments: String,
         #[proto(tag="6")]
-        leading_detached_comments: Vec<String>,
+        pub leading_detached_comments: Vec<String>,
     }
 }
 

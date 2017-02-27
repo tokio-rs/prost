@@ -346,7 +346,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl proto::field::Field for #ident {
+            impl Field for #ident {
                 fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
                     Field::write_to(&(*self as i32), tag, w)
                 }
