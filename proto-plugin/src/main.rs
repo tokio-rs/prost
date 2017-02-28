@@ -81,9 +81,6 @@ impl CodeGenerator {
         };
 
         debug!("file: {:?}, package: {:?}", file.name, file.package);
-        if !file.package.is_empty() {
-            code_gen.push_mod(&file.package);
-        }
 
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
@@ -100,10 +97,6 @@ impl CodeGenerator {
             code_gen.path.pop();
         }
         code_gen.path.pop();
-
-        if !file.package.is_empty() {
-            code_gen.pop_mod();
-        }
 
         code_gen.buf
     }
@@ -137,7 +130,7 @@ impl CodeGenerator {
         self.push_indent();
         self.buf.push_str("#[derive(Debug, Message)]\n");
         self.push_indent();
-        self.buf.push_str("struct ");
+        self.buf.push_str("pub struct ");
         self.buf.push_str(&message.name);
         self.buf.push_str(" {\n");
 
@@ -166,6 +159,7 @@ impl CodeGenerator {
                     field.field_type == TYPE_FIXED64 ||
                     field.field_type == TYPE_SFIXED32 ||
                     field.field_type == TYPE_SFIXED64;
+        let message = field.field_type == TYPE_MESSAGE;
 
         let ty = match field.field_type {
             TYPE_FLOAT => Cow::Borrowed("f32"),
@@ -183,8 +177,9 @@ impl CodeGenerator {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[proto(tag=");
+        self.buf.push_str("#[proto(tag=\"");
         self.buf.push_str(&field.number.to_string());
+        self.buf.push_str("\"");
         if signed {
             self.buf.push_str(", signed");
         } else if fixed {
@@ -196,8 +191,9 @@ impl CodeGenerator {
         self.buf.push_str(&field.name);
         self.buf.push_str(": ");
         if repeated { self.buf.push_str("Vec<"); }
+        else if message { self.buf.push_str("Option<"); }
         self.buf.push_str(&ty);
-        if repeated { self.buf.push_str(">"); }
+        if repeated || message { self.buf.push_str(">"); }
         self.buf.push_str(",\n");
     }
 
@@ -245,7 +241,7 @@ impl CodeGenerator {
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Copy, Debug, Enumeration)]\n");
         self.push_indent();
-        self.buf.push_str("enum ");
+        self.buf.push_str("pub enum ");
         self.buf.push_str(&desc.name);
         self.buf.push_str(" {\n");
 
