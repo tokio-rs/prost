@@ -9,6 +9,10 @@ extern crate proto;
 
 use std::ascii::AsciiExt;
 use std::borrow::Cow;
+use std::collections::{
+    hash_map,
+    HashMap,
+};
 use std::io::{
     Cursor,
     Read,
@@ -38,17 +42,25 @@ fn main() {
 
     trace!("{:#?}", request);
 
+    let mut files: HashMap<String, String> = HashMap::new();
+
     for file in request.proto_file {
-        let mut resp = plugin::code_generator_response::File::default();
-
-        match file.name.rfind('.') {
-            Some(idx) => resp.name.push_str(&file.name[..idx]),
-            None => resp.name.push_str(&file.name),
+        let mut name = file.package.split('.').join("/");
+        name.push_str(".rs");
+        let content = CodeGenerator::generate(file);
+        match files.entry(name) {
+            hash_map::Entry::Occupied(mut entry) => entry.get_mut().push_str(&content),
+            hash_map::Entry::Vacant(mut entry) => {
+                entry.insert(content);
+            },
         }
-        resp.name.push_str(".rs");
+    }
 
-        resp.content = CodeGenerator::generate(file);
-        response.file.push(resp);
+    for (name, content) in files {
+        let mut file = plugin::code_generator_response::File::default();
+        file.name = name;
+        file.content = content;
+        response.file.push(file);
     }
 
     let out = io::stdout();
@@ -102,6 +114,28 @@ impl CodeGenerator {
     }
 
     fn append_message(&mut self, message: descriptor::DescriptorProto) {
+        debug!("  message: {:?}", message.name);
+
+        self.append_doc();
+        self.push_indent();
+        self.buf.push_str("#[derive(Debug, Message)]\n");
+        self.push_indent();
+        self.buf.push_str("pub struct ");
+        self.buf.push_str(&message.name);
+        self.buf.push_str(" {\n");
+
+        self.depth += 1;
+        self.path.push(2);
+        for (idx, field) in message.fields.into_iter().enumerate() {
+            self.path.push(idx as i32);
+            self.append_field(field);
+            self.path.pop();
+        }
+        self.path.pop();
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+
         if !message.nested_type.is_empty() || !message.enum_type.is_empty() {
             self.push_mod(&camel_to_snake(&message.name));
             self.path.push(3);
@@ -122,30 +156,6 @@ impl CodeGenerator {
 
             self.pop_mod();
         }
-
-        debug!("  message: {:?}", message.name);
-
-        self.append_doc();
-
-        self.push_indent();
-        self.buf.push_str("#[derive(Debug, Message)]\n");
-        self.push_indent();
-        self.buf.push_str("pub struct ");
-        self.buf.push_str(&message.name);
-        self.buf.push_str(" {\n");
-
-        self.depth += 1;
-        self.path.push(2);
-        for (idx, field) in message.fields.into_iter().enumerate() {
-            self.path.push(idx as i32);
-            self.append_field(field);
-            self.path.pop();
-        }
-        self.path.pop();
-        self.depth -= 1;
-
-        self.push_indent();
-        self.buf.push_str("}\n");
     }
 
     fn append_field(&mut self, field: descriptor::FieldDescriptorProto) {
