@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package widget.factory;
+
+import "root.proto";
+import "gizmo.proto";
+import "gizmo_factory.proto";
+import "widget.proto";
+
+message WigdetFactory {
+  message Inner {
+  }
+
+  Inner inner = 1;
+
+  Root root = 2;
+  Root.Inner root_inner = 3;
+
+  Widget widget = 4;
+  Widget.Inner widget_inner = 5;
+
+  gizmo.Gizmo gizmo = 6;
+  gizmo.Gizmo.Inner gizmo_inner = 7;
+
+  gizmo.factory.GizmoFactory gizmo_factory = 8;
+  gizmo.factory.GizmoFactory.Inner gizmo_factory_inner = 9;
+}

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package gizmo.factory;
+
+import "root.proto";
+import "gizmo.proto";
+
+message GizmoFactory {
+  message Inner {
+  }
+}

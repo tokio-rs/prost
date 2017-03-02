@@ -42,13 +42,12 @@ fn main() {
 
     trace!("{:#?}", request);
 
-    let mut files: HashMap<String, String> = HashMap::new();
+    let mut modules: HashMap<Vec<String>, String> = HashMap::new();
 
     for file in request.proto_file {
-        let mut name = file.package.split('.').join("/");
-        name.push_str(".rs");
+        let mut module = file.package.split('.').map(ToString::to_string).collect::<Vec<_>>();
         let content = CodeGenerator::generate(file);
-        match files.entry(name) {
+        match modules.entry(module) {
             hash_map::Entry::Occupied(mut entry) => entry.get_mut().push_str(&content),
             hash_map::Entry::Vacant(mut entry) => {
                 entry.insert(content);
@@ -56,9 +55,10 @@ fn main() {
         }
     }
 
-    for (name, content) in files {
+    for (module, content) in modules {
         let mut file = plugin::code_generator_response::File::default();
-        file.name = name;
+        file.name = module.join("/");
+        file.name.push_str(".rs");
         file.content = content;
         response.file.push(file);
     }
@@ -68,6 +68,7 @@ fn main() {
 }
 
 struct CodeGenerator {
+    package: String,
     source_info: descriptor::SourceCodeInfo,
     depth: u8,
     path: Vec<i32>,
@@ -86,13 +87,14 @@ impl CodeGenerator {
 
 
         let mut code_gen = CodeGenerator {
+            package: file.package,
             source_info: source_info,
             depth: 0,
             path: Vec::new(),
             buf: String::new(),
         };
 
-        debug!("file: {:?}, package: {:?}", file.name, file.package);
+        debug!("file: {:?}, package: {:?}", file.name, code_gen.package);
 
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
@@ -287,7 +289,7 @@ impl CodeGenerator {
 
     fn push_mod(&mut self, module: &str) {
         self.push_indent();
-        self.buf.push_str("mod ");
+        self.buf.push_str("pub mod ");
         self.buf.push_str(module);
         self.buf.push_str(" {\n");
         self.depth += 1;
@@ -297,6 +299,34 @@ impl CodeGenerator {
         self.depth -= 1;
         self.push_indent();
         self.buf.push_str("}\n");
+    }
+
+    /// package: .a.b
+    ///
+    /// pb_ident: .a.b.C -> C
+    /// pb_ident: .a.b.c.D -> c::D
+    /// pb_ident: .a.B -> super::B
+    /// pb_ident: .A -> super::A
+    fn rust_type(&self, pb_ident: &str) -> String {
+        /*
+        assert_eq!(".", pb_ident[0..1]);
+        let pb_ident = &pb_ident[1..];
+
+        let package_len = self.package.len();
+        if pb_ident[..package_len] == self.package &&
+           (package_len == 0 || pb_ident[package_len..package_len+1] == ".") {
+            pb_ident = &pb_ident[package_len+1..];
+
+
+        } else {
+
+        }
+
+        if pb_ident[1..
+        let idx = pb_ident.rfind('.').expect(&format!("malformed Protobuf identifier: {}", pb_ident));
+        &pb_ident[idx + 1..]
+        */
+        unimplemented!()
     }
 }
 
@@ -320,6 +350,7 @@ fn rust_module(pb_ident: &str) -> Option<String> {
         Some(pb_ident[1..ridx].split('.').map(camel_to_snake).join("::"))
     }
 }
+
 
 fn rust_type(pb_ident: &str) -> &str {
     let idx = pb_ident.rfind('.').expect(&format!("malformed Protobuf identifier: {}", pb_ident));

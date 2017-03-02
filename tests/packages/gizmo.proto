@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package gizmo;
+
+import "root.proto";
+
+message Gizmo {
+  message Inner {
+  }
+}
