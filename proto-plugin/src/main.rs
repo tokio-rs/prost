@@ -12,7 +12,9 @@ use std::borrow::Cow;
 use std::collections::{
     hash_map,
     HashMap,
+    HashSet,
 };
+use std::path::PathBuf;
 use std::io::{
     Cursor,
     Read,
@@ -42,41 +44,80 @@ fn main() {
 
     trace!("{:#?}", request);
 
-    let mut modules: HashMap<Vec<String>, String> = HashMap::new();
-
-    for file in request.proto_file {
-        let mut module = file.package.split('.').map(ToString::to_string).collect::<Vec<_>>();
-        let content = CodeGenerator::generate(file);
-        match modules.entry(module) {
-            hash_map::Entry::Occupied(mut entry) => entry.get_mut().push_str(&content),
-            hash_map::Entry::Vacant(mut entry) => {
-                entry.insert(content);
-            },
-        }
+    #[derive(Default)]
+    struct Module {
+        children: Vec<String>,
+        files: Vec<descriptor::FileDescriptorProto>,
     }
 
-    for (module, content) in modules {
-        let mut file = plugin::code_generator_response::File::default();
-        file.name = module.join("/");
-        file.name.push_str(".rs");
-        file.content = content;
-        response.file.push(file);
+    // Map from module path to module.
+    let mut modules: HashMap<Vec<String>, Module> = HashMap::new();
+
+    // Step 1: For each .proto file, add it to the module map,
+    // as well as an entry for each parent package.
+    for file in request.proto_file {
+        let path = file.package
+                       .split('.')
+                       .filter(|s| !s.is_empty())
+                       .map(camel_to_snake)
+                       .collect::<Vec<_>>();
+
+        for i in 0..path.len() {
+            modules.entry(path[..i].to_owned())
+                    .or_insert_with(Default::default)
+                    .children
+                    .push(path[i].clone());
+        }
+
+        modules.entry(path)
+               .or_insert_with(Default::default)
+               .files.push(file);
+    }
+
+    // Step 2: Create each module.
+    for (path, mut module) in modules {
+        let mut path = path.into_iter().collect::<PathBuf>();
+        module.children.sort();
+        module.children.dedup();
+
+        if !module.children.is_empty() {
+            path.push("mod");
+        }
+        path.set_extension("rs");
+
+        let mut content = String::new();
+
+        for child in module.children {
+            content.push_str("pub mod ");
+            content.push_str(&child);
+            content.push_str(";\n");
+        }
+
+        for file in module.files {
+            CodeGenerator::generate(file, &mut content);
+        }
+
+        response.file.push(plugin::code_generator_response::File {
+            name: path.to_string_lossy().into_owned(),
+            content: content,
+            ..Default::default()
+        });
     }
 
     let out = io::stdout();
     response.write_to(&mut out.lock()).unwrap();
 }
 
-struct CodeGenerator {
+struct CodeGenerator<'a> {
     package: String,
     source_info: descriptor::SourceCodeInfo,
     depth: u8,
     path: Vec<i32>,
-    buf: String,
+    buf: &'a mut String,
 }
 
-impl CodeGenerator {
-    fn generate(file: descriptor::FileDescriptorProto) -> String {
+impl <'a> CodeGenerator<'a> {
+    fn generate(file: descriptor::FileDescriptorProto, buf: &mut String) {
 
         let mut source_info = file.source_code_info.expect("no source code info in request");
         source_info.location.retain(|location| {
@@ -85,13 +126,12 @@ impl CodeGenerator {
         });
         source_info.location.sort_by_key(|location| location.path.clone());
 
-
         let mut code_gen = CodeGenerator {
             package: file.package,
             source_info: source_info,
             depth: 0,
             path: Vec::new(),
-            buf: String::new(),
+            buf: buf,
         };
 
         debug!("file: {:?}, package: {:?}", file.name, code_gen.package);
@@ -111,8 +151,6 @@ impl CodeGenerator {
             code_gen.path.pop();
         }
         code_gen.path.pop();
-
-        code_gen.buf
     }
 
     fn append_message(&mut self, message: descriptor::DescriptorProto) {
@@ -183,7 +221,7 @@ impl CodeGenerator {
             TYPE_BOOL => Cow::Borrowed("bool"),
             TYPE_STRING => Cow::Borrowed("String"),
             TYPE_BYTES => Cow::Borrowed("Vec<u8>"),
-            TYPE_GROUP | TYPE_MESSAGE | TYPE_ENUM => Cow::Owned(rust_ident(&field.type_name)),
+            TYPE_GROUP | TYPE_MESSAGE | TYPE_ENUM => Cow::Owned(self.resolve_ident(&field.type_name)),
         };
         debug!("    field: {:?}, type: {:?}", field.name, ty);
 
@@ -301,60 +339,28 @@ impl CodeGenerator {
         self.buf.push_str("}\n");
     }
 
-    /// package: .a.b
-    ///
-    /// pb_ident: .a.b.C -> C
-    /// pb_ident: .a.b.c.D -> c::D
-    /// pb_ident: .a.B -> super::B
-    /// pb_ident: .A -> super::A
-    fn rust_type(&self, pb_ident: &str) -> String {
-        /*
-        assert_eq!(".", pb_ident[0..1]);
-        let pb_ident = &pb_ident[1..];
+    fn resolve_ident(&self, pb_ident: &str) -> String {
+        // protoc should always give fully qualified identifiers.
+        assert_eq!(".", &pb_ident[..1]);
 
-        let package_len = self.package.len();
-        if pb_ident[..package_len] == self.package &&
-           (package_len == 0 || pb_ident[package_len..package_len+1] == ".") {
-            pb_ident = &pb_ident[package_len+1..];
+        let mut local_path = self.package.split('.').peekable();
 
+        let mut ident_path = pb_ident[1..].split('.');
+        let ident_type = ident_path.next_back().unwrap();
+        let mut ident_path = ident_path.peekable();
 
-        } else {
-
+        // Skip path elements in common.
+        while local_path.peek().is_some() &&
+              local_path.peek() == ident_path.peek() {
+            local_path.next();
+            ident_path.next();
         }
 
-        if pb_ident[1..
-        let idx = pb_ident.rfind('.').expect(&format!("malformed Protobuf identifier: {}", pb_ident));
-        &pb_ident[idx + 1..]
-        */
-        unimplemented!()
+        local_path.map(|_| "super".to_string())
+                  .chain(ident_path.map(camel_to_snake))
+                  .chain(Some(ident_type.to_string()).into_iter())
+                  .join("::")
     }
-}
-
-/// Converts a Protobuf identifier (e.g. `.Foo.Bar`) to Rust (e.g. `foo::Bar`).
-fn rust_ident(pb_ident: &str) -> String {
-    let mut ident = rust_module(pb_ident).map(|mut module| {
-        module.push_str("::");
-        module
-    }).unwrap_or_default();
-    ident.push_str(rust_type(pb_ident));
-    ident
-}
-
-/// Returns the Rust module from a Protobuf identifier.
-fn rust_module(pb_ident: &str) -> Option<String> {
-    let ridx = pb_ident.rfind('.').expect(&format!("malformed Protobuf identifier: {}", pb_ident));
-
-    if ridx == 0 {
-        None
-    } else {
-        Some(pb_ident[1..ridx].split('.').map(camel_to_snake).join("::"))
-    }
-}
-
-
-fn rust_type(pb_ident: &str) -> &str {
-    let idx = pb_ident.rfind('.').expect(&format!("malformed Protobuf identifier: {}", pb_ident));
-    &pb_ident[idx + 1..]
 }
 
 fn camel_to_snake(camel: &str) -> String {
