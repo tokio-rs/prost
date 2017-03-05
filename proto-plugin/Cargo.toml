@@ -9,3 +9,6 @@ itertools = "0.5"
 log = "0.3"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
+
+[dev-dependencies]
+proto = { path = ".." }
