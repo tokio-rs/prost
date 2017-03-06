@@ -172,7 +172,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Debug, Message)]\n");
+        self.buf.push_str("#[derive(Debug, PartialEq, Message)]\n");
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&message.name);
@@ -303,7 +303,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Copy, Debug, Enumeration)]\n");
+        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&desc.name);

@@ -1,13 +1,13 @@
 pub mod compiler;
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct FileDescriptorSet {
     #[proto(tag="1")]
     pub file: Vec<FileDescriptorProto>,
 }
 /// Describes a complete .proto file.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
     #[proto(tag="1")]
@@ -48,7 +48,7 @@ pub struct FileDescriptorProto {
     pub syntax: String,
 }
 /// Describes a message type.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct DescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -74,7 +74,7 @@ pub struct DescriptorProto {
     pub reserved_name: Vec<String>,
 }
 pub mod descriptor_proto {
-    #[derive(Debug, Message, PartialEq)]
+    #[derive(Debug, PartialEq, Message)]
     pub struct ExtensionRange {
         #[proto(tag="1")]
         pub start: i32,
@@ -84,7 +84,7 @@ pub mod descriptor_proto {
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
     /// fields or extension ranges in the same message. Reserved ranges may
     /// not overlap.
-    #[derive(Debug, Message, PartialEq)]
+    #[derive(Debug, PartialEq, Message)]
     pub struct ReservedRange {
         /// Inclusive.
         #[proto(tag="1")]
@@ -95,7 +95,7 @@ pub mod descriptor_proto {
     }
 }
 /// Describes a field within a message.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct FieldDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -139,7 +139,7 @@ pub struct FieldDescriptorProto {
     pub options: Option<FieldOptions>,
 }
 pub mod field_descriptor_proto {
-    #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
@@ -174,7 +174,7 @@ pub mod field_descriptor_proto {
         /// Uses ZigZag encoding.
         TypeSint64 = 18,
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum Label {
         /// 0 is reserved for errors
         LabelOptional = 1,
@@ -183,7 +183,7 @@ pub mod field_descriptor_proto {
     }
 }
 /// Describes a oneof.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct OneofDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -191,7 +191,7 @@ pub struct OneofDescriptorProto {
     pub options: Option<OneofOptions>,
 }
 /// Describes an enum type.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct EnumDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -201,7 +201,7 @@ pub struct EnumDescriptorProto {
     pub options: Option<EnumOptions>,
 }
 /// Describes a value within an enum.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct EnumValueDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -211,7 +211,7 @@ pub struct EnumValueDescriptorProto {
     pub options: Option<EnumValueOptions>,
 }
 /// Describes a service.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct ServiceDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -221,7 +221,7 @@ pub struct ServiceDescriptorProto {
     pub options: Option<ServiceOptions>,
 }
 /// Describes a method of a service.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct MethodDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -272,7 +272,7 @@ pub struct MethodDescriptorProto {
 //   If this turns out to be popular, a web service will be set up
 //   to automatically assign option numbers.
 
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct FileOptions {
     /// Sets the Java package where classes generated from this .proto will be
     /// placed.  By default, the proto package is used, but this is often
@@ -360,7 +360,7 @@ pub struct FileOptions {
 }
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
-    #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
         Speed = 1,
@@ -371,7 +371,7 @@ pub mod file_options {
         LiteRuntime = 3,
     }
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct MessageOptions {
     /// Set true to use the old proto1 MessageSet wire format for extensions.
     /// This is provided for backwards-compatibility with the MessageSet wire
@@ -431,7 +431,7 @@ pub struct MessageOptions {
     #[proto(tag="999")]
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
     /// representation of the field than it normally would.  See the specific
@@ -501,14 +501,14 @@ pub struct FieldOptions {
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
 pub mod field_options {
-    #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum CType {
         /// Default mode.
         String = 0,
         Cord = 1,
         StringPiece = 2,
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum JSType {
         /// Use the default type.
         JsNormal = 0,
@@ -518,13 +518,13 @@ pub mod field_options {
         JsNumber = 2,
     }
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct EnumOptions {
     /// Set this option to true to allow mapping different tag names to the same
     /// value.
@@ -540,7 +540,7 @@ pub struct EnumOptions {
     #[proto(tag="999")]
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct EnumValueOptions {
     /// Is this enum value deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
@@ -552,7 +552,7 @@ pub struct EnumValueOptions {
     #[proto(tag="999")]
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct ServiceOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     //   framework.  We apologize for hoarding these numbers to ourselves, but
@@ -569,7 +569,7 @@ pub struct ServiceOptions {
     #[proto(tag="999")]
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct MethodOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     //   framework.  We apologize for hoarding these numbers to ourselves, but
@@ -592,7 +592,7 @@ pub mod method_options {
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
-    #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum IdempotencyLevel {
         IdempotencyUnknown = 0,
         /// implies idempotent
@@ -607,7 +607,7 @@ pub mod method_options {
 /// options protos in descriptor objects (e.g. returned by Descriptor::options(),
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct UninterpretedOption {
     #[proto(tag="2")]
     pub name: Vec<uninterpreted_option::NamePart>,
@@ -632,7 +632,7 @@ pub mod uninterpreted_option {
     /// extension (denoted with parentheses in options specs in .proto files).
     /// E.g.,{ ["foo", false], ["bar.baz", true], ["qux", false] } represents
     /// "foo.(bar.baz).qux".
-    #[derive(Debug, Message, PartialEq)]
+    #[derive(Debug, PartialEq, Message)]
     pub struct NamePart {
         #[proto(tag="1")]
         pub name_part: String,
@@ -645,7 +645,7 @@ pub mod uninterpreted_option {
 
 /// Encapsulates information about the original source file from which a
 /// FileDescriptorProto was generated.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct SourceCodeInfo {
     /// A Location identifies a piece of source code in a .proto file which
     /// corresponds to a particular definition.  This information is intended
@@ -694,7 +694,7 @@ pub struct SourceCodeInfo {
     pub location: Vec<source_code_info::Location>,
 }
 pub mod source_code_info {
-    #[derive(Debug, Message, PartialEq)]
+    #[derive(Debug, PartialEq, Message)]
     pub struct Location {
         /// Identifies which part of the FileDescriptorProto was defined at this
         /// location.
@@ -786,7 +786,7 @@ pub mod source_code_info {
 /// Describes the relationship between generated code and its original source
 /// file. A GeneratedCodeInfo message is associated with only one generated
 /// source file, but may contain references to different source .proto files.
-#[derive(Debug, Message, PartialEq)]
+#[derive(Debug, PartialEq, Message)]
 pub struct GeneratedCodeInfo {
     /// An Annotation connects some span of text in generated code to an element
     /// of its generating .proto file.
@@ -794,7 +794,7 @@ pub struct GeneratedCodeInfo {
     pub annotation: Vec<generated_code_info::Annotation>,
 }
 pub mod generated_code_info {
-    #[derive(Debug, Message, PartialEq)]
+    #[derive(Debug, PartialEq, Message)]
     pub struct Annotation {
         /// Identifies the element in the original source .proto file. This field
         /// is formatted the same as SourceCodeInfo.Location.path.
