@@ -1,9 +1,3 @@
-//! Translation of
-//! [plugin.proto v3.2.0](https://raw.githubusercontent.com/google/protobuf/v3.2.0/src/google/protobuf/compiler/plugin.proto)
-//! to Rust.
-
-use descriptor;
-
 /// The version number of protocol compiler.
 #[derive(Debug, Message)]
 pub struct Version {
@@ -18,7 +12,6 @@ pub struct Version {
     #[proto(tag="4")]
     pub suffix: String,
 }
-
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[derive(Debug, Message)]
 pub struct CodeGeneratorRequest {
@@ -27,11 +20,9 @@ pub struct CodeGeneratorRequest {
     /// descriptor will be included in proto_file, below.
     #[proto(tag="1")]
     pub file_to_generate: Vec<String>,
-
     /// The generator parameter passed on the command-line.
     #[proto(tag="2")]
     pub parameter: String,
-
     /// FileDescriptorProtos for all files in files_to_generate and everything
     /// they import.  The files will appear in topological order, so each file
     /// appears before any file that imports it.
@@ -44,13 +35,27 @@ pub struct CodeGeneratorRequest {
     /// is not similarly optimized on protoc's end -- it will store all fields in
     /// memory at once before sending them to the plugin.
     #[proto(tag="15")]
-    pub proto_file: Vec<descriptor::FileDescriptorProto>,
-
+    pub proto_file: Vec<super::FileDescriptorProto>,
     /// The version number of protocol compiler.
     #[proto(tag="3")]
     pub compiler_version: Option<Version>,
 }
-
+/// The plugin writes an encoded CodeGeneratorResponse to stdout.
+#[derive(Debug, Message)]
+pub struct CodeGeneratorResponse {
+    /// Error message.  If non-empty, code generation failed.  The plugin process
+    /// should exit with status code zero even if it reports an error in this way.
+    ///
+    /// This should be used to indicate errors in .proto files which prevent the
+    /// code generator from generating correct code.  Errors which indicate a
+    /// problem in protoc itself -- such as the input CodeGeneratorRequest being
+    /// unparseable -- should be reported by writing a message to stderr and
+    /// exiting with a non-zero status code.
+    #[proto(tag="1")]
+    pub error: String,
+    #[proto(tag="15")]
+    pub file: Vec<code_generator_response::File>,
+}
 pub mod code_generator_response {
     /// Represents a single generated file.
     #[derive(Debug, Message)]
@@ -68,7 +73,6 @@ pub mod code_generator_response {
         /// CodeGeneratorResponse before writing files to disk.
         #[proto(tag="1")]
         pub name: String,
-
         /// If non-empty, indicates that the named file should already exist, and the
         /// content here is to be inserted into that file at a defined insertion
         /// point.  This feature allows a code generator to extend the output
@@ -108,27 +112,8 @@ pub mod code_generator_response {
         /// If |insertion_point| is present, |name| must also be present.
         #[proto(tag="2")]
         pub insertion_point: String,
-
         /// The file contents.
         #[proto(tag="15")]
         pub content: String,
     }
-}
-
-/// The plugin writes an encoded CodeGeneratorResponse to stdout.
-#[derive(Debug, Message)]
-pub struct CodeGeneratorResponse {
-    /// Error message.  If non-empty, code generation failed.  The plugin process
-    /// should exit with status code zero even if it reports an error in this way.
-    ///
-    /// This should be used to indicate errors in .proto files which prevent the
-    /// code generator from generating correct code.  Errors which indicate a
-    /// problem in protoc itself -- such as the input CodeGeneratorRequest being
-    /// unparseable -- should be reported by writing a message to stderr and
-    /// exiting with a non-zero status code.
-    #[proto(tag="1")]
-    pub error: String,
-
-    #[proto(tag="15")]
-    pub file: Vec<code_generator_response::File>,
 }

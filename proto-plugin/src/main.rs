@@ -27,8 +27,22 @@ use std::mem;
 use itertools::Itertools;
 use proto::Message;
 
-mod descriptor;
-mod plugin;
+mod google;
+use google::protobuf::{
+    DescriptorProto,
+    EnumDescriptorProto,
+    EnumValueDescriptorProto,
+    FieldDescriptorProto,
+    FileDescriptorProto,
+    SourceCodeInfo,
+    field_descriptor_proto,
+
+};
+use google::protobuf::compiler::{
+    CodeGeneratorRequest,
+    CodeGeneratorResponse,
+    code_generator_response,
+};
 
 fn main() {
     env_logger::init().unwrap();
@@ -37,17 +51,17 @@ fn main() {
 
     assert_ne!(bytes.len(), 0);
 
-    let mut request = plugin::CodeGeneratorRequest::default();
+    let mut request = CodeGeneratorRequest::default();
     Message::merge_from(&mut request, bytes.len(), &mut Cursor::new(&mut bytes)).unwrap();
 
-    let mut response = plugin::CodeGeneratorResponse::default();
+    let mut response = CodeGeneratorResponse::default();
 
     trace!("{:#?}", request);
 
     #[derive(Default)]
     struct Module {
         children: Vec<String>,
-        files: Vec<descriptor::FileDescriptorProto>,
+        files: Vec<FileDescriptorProto>,
     }
 
     // Map from module path to module.
@@ -97,7 +111,7 @@ fn main() {
             CodeGenerator::generate(file, &mut content);
         }
 
-        response.file.push(plugin::code_generator_response::File {
+        response.file.push(code_generator_response::File {
             name: path.to_string_lossy().into_owned(),
             content: content,
             ..Default::default()
@@ -110,14 +124,14 @@ fn main() {
 
 struct CodeGenerator<'a> {
     package: String,
-    source_info: descriptor::SourceCodeInfo,
+    source_info: SourceCodeInfo,
     depth: u8,
     path: Vec<i32>,
     buf: &'a mut String,
 }
 
 impl <'a> CodeGenerator<'a> {
-    fn generate(file: descriptor::FileDescriptorProto, buf: &mut String) {
+    fn generate(file: FileDescriptorProto, buf: &mut String) {
 
         let mut source_info = file.source_code_info.expect("no source code info in request");
         source_info.location.retain(|location| {
@@ -153,7 +167,7 @@ impl <'a> CodeGenerator<'a> {
         code_gen.path.pop();
     }
 
-    fn append_message(&mut self, message: descriptor::DescriptorProto) {
+    fn append_message(&mut self, message: DescriptorProto) {
         debug!("  message: {:?}", message.name);
 
         self.append_doc();
@@ -166,7 +180,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (idx, field) in message.fields.into_iter().enumerate() {
+        for (idx, field) in message.field.into_iter().enumerate() {
             self.path.push(idx as i32);
             self.append_field(field);
             self.path.pop();
@@ -198,30 +212,30 @@ impl <'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_field(&mut self, field: descriptor::FieldDescriptorProto) {
-        use descriptor::field_descriptor_proto::Type::*;
-        use descriptor::field_descriptor_proto::Label::*;
+    fn append_field(&mut self, field: FieldDescriptorProto) {
+        use field_descriptor_proto::Type::*;
+        use field_descriptor_proto::Label::*;
 
-        let repeated = field.label == LABEL_REPEATED;
-        let signed = field.field_type == TYPE_SINT32 ||
-                     field.field_type == TYPE_SINT64;
-        let fixed = field.field_type == TYPE_FIXED32 ||
-                    field.field_type == TYPE_FIXED64 ||
-                    field.field_type == TYPE_SFIXED32 ||
-                    field.field_type == TYPE_SFIXED64;
-        let message = field.field_type == TYPE_MESSAGE;
+        let repeated = field.label == LabelRepeated;
+        let signed = field.field_type == TypeSint32 ||
+                     field.field_type == TypeSint64;
+        let fixed = field.field_type == TypeFixed32 ||
+                    field.field_type == TypeFixed64 ||
+                    field.field_type == TypeSfixed32 ||
+                    field.field_type == TypeSfixed64;
+        let message = field.field_type == TypeMessage;
 
         let ty = match field.field_type {
-            TYPE_FLOAT => Cow::Borrowed("f32"),
-            TYPE_DOUBLE => Cow::Borrowed("f64"),
-            TYPE_UINT32 | TYPE_FIXED32 => Cow::Borrowed("u32"),
-            TYPE_UINT64 | TYPE_FIXED64 => Cow::Borrowed("u64"),
-            TYPE_INT32 | TYPE_SFIXED32 | TYPE_SINT32 => Cow::Borrowed("i32"),
-            TYPE_INT64 | TYPE_SFIXED64 | TYPE_SINT64 => Cow::Borrowed("i64"),
-            TYPE_BOOL => Cow::Borrowed("bool"),
-            TYPE_STRING => Cow::Borrowed("String"),
-            TYPE_BYTES => Cow::Borrowed("Vec<u8>"),
-            TYPE_GROUP | TYPE_MESSAGE | TYPE_ENUM => Cow::Owned(self.resolve_ident(&field.type_name)),
+            TypeFloat => Cow::Borrowed("f32"),
+            TypeDouble => Cow::Borrowed("f64"),
+            TypeUint32 | TypeFixed32 => Cow::Borrowed("u32"),
+            TypeUint64 | TypeFixed64 => Cow::Borrowed("u64"),
+            TypeInt32 | TypeSfixed32 | TypeSint32 => Cow::Borrowed("i32"),
+            TypeInt64 | TypeSfixed64 | TypeSint64 => Cow::Borrowed("i64"),
+            TypeBool => Cow::Borrowed("bool"),
+            TypeString => Cow::Borrowed("String"),
+            TypeBytes => Cow::Borrowed("Vec<u8>"),
+            TypeGroup | TypeMessage | TypeEnum => Cow::Owned(self.resolve_ident(&field.type_name)),
         };
         debug!("    field: {:?}, type: {:?}", field.name, ty);
 
@@ -259,7 +273,7 @@ impl <'a> CodeGenerator<'a> {
                 for _ in 0..self.depth {
                     self.buf.push_str("    ");
                 }
-                self.buf.push_str("//!");
+                self.buf.push_str("//");
                 self.buf.push_str(line);
                 self.buf.push_str("\n");
             }
@@ -284,7 +298,7 @@ impl <'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_enum(&mut self, desc: descriptor::EnumDescriptorProto) {
+    fn append_enum(&mut self, desc: EnumDescriptorProto) {
         debug!("  enum: {:?}", desc.name);
 
         self.append_doc();
@@ -310,7 +324,7 @@ impl <'a> CodeGenerator<'a> {
 
     }
 
-    fn append_enum_value(&mut self, value: descriptor::EnumValueDescriptorProto) {
+    fn append_enum_value(&mut self, value: EnumValueDescriptorProto) {
         self.append_doc();
         self.push_indent();
         self.buf.push_str(&snake_to_upper_camel(&value.name));
