@@ -9,6 +9,9 @@ mod message;
 #[doc(hidden)]
 pub mod field;
 
+#[doc(hidden)]
+pub mod field_ng;
+
 pub use message::Message;
 
 use std::io::{

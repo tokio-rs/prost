@@ -8,10 +8,7 @@ extern crate itertools;
 extern crate proto;
 
 use std::borrow::Cow;
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::io::{
     Cursor,
@@ -165,6 +162,7 @@ impl <'a> CodeGenerator<'a> {
     fn append_message(&mut self, message: DescriptorProto) {
         debug!("  message: {:?}", message.name);
 
+        /*
         let mut map_types = HashMap::new();
 
         message.nested_type.retain(|nested_type| {
@@ -177,6 +175,7 @@ impl <'a> CodeGenerator<'a> {
             }
             true
         });
+        */
 
         self.append_doc();
         self.push_indent();
@@ -386,6 +385,7 @@ impl <'a> CodeGenerator<'a> {
     }
 }
 
+/*
 fn field_type(field: &FieldDescriptorProto) {
     use field_descriptor_proto::Type::*;
     use field_descriptor_proto::Label::*;
@@ -434,6 +434,7 @@ fn field_type(field: &FieldDescriptorProto) {
     if repeated || message { self.buf.push_str(">"); }
     self.buf.push_str(",\n");
 }
+*/
 
 
 fn camel_to_snake(camel: &str) -> String {
