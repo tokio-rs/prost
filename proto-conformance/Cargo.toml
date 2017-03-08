@@ -1,0 +1,6 @@
+[package]
+name = "proto-conformance"
+version = "0.1.0"
+authors = ["Dan Burkert <danburkert@apache.org>"]
+
+[dependencies]

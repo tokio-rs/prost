@@ -152,8 +152,7 @@ pub trait ScalarField: Sized {
     fn wire_len(&self) -> usize;
 }
 
-// This would be better as a blanket impl Field for ScalarField, but that run afoul of coherence
-// issues.
+// This would be better as a blanket impl Field for ScalarField, but that is not coherent.
 macro_rules! scalar_field {
     ($ty:ty) => {
         impl Field for $ty {
@@ -568,7 +567,8 @@ impl ScalarField for String {
     }
 }
 
-// message
+
+// Message
 impl <M> Field for Option<M> where M: Message + Default {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         if let Some(ref m) = *self {
@@ -597,6 +597,36 @@ impl <M> Field for Option<M> where M: Message + Default {
     }
 }
 
+// Boxed Message
+impl <M> Field for Box<Option<M>> where M: Message + Default {
+    fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
+        if let Some(ref m) = **self {
+            write_key_to(tag, WireType::LengthDelimited, w)?;
+            m.write_length_delimited_to(w)?;
+        }
+        Ok(())
+    }
+
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        if self.is_none() {
+            *self = Box::new(Some(M::default()));
+        }
+        self.as_mut().as_mut().unwrap().merge_length_delimited_from(r, limit)
+    }
+
+    fn wire_len(&self, tag: u32) -> usize {
+        match **self {
+            Some(ref m) => {
+                let len = Message::wire_len(m);
+                key_len(tag) + ScalarField::wire_len(&(len as u64)) + len
+            },
+            None => 0,
+        }
+    }
+}
+
+// Repeated Message
 impl <M> Field for Vec<M> where M: Message + Default {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         for message in self {

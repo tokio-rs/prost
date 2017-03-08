@@ -7,10 +7,8 @@ extern crate env_logger;
 extern crate itertools;
 extern crate proto;
 
-use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::collections::{
-    hash_map,
     HashMap,
     HashSet,
 };
@@ -18,11 +16,8 @@ use std::path::PathBuf;
 use std::io::{
     Cursor,
     Read,
-    Result,
-    Write,
     self,
 };
-use std::mem;
 
 use itertools::Itertools;
 use proto::Message;
@@ -170,6 +165,19 @@ impl <'a> CodeGenerator<'a> {
     fn append_message(&mut self, message: DescriptorProto) {
         debug!("  message: {:?}", message.name);
 
+        let mut map_types = HashMap::new();
+
+        message.nested_type.retain(|nested_type| {
+            if let Some(options) = nested_type.options {
+                if options.map_entry {
+                    let key_type = nested_type.
+                    map_types.insert(nested_type.name.clone(), (options.key, options.value));
+                    return false;
+                }
+            }
+            true
+        });
+
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Debug, PartialEq, Message)]\n");
@@ -266,6 +274,7 @@ impl <'a> CodeGenerator<'a> {
                       .location
                       .binary_search_by_key(&&self.path[..], |location| &location.path[..])
                       .unwrap();
+
         let location = &self.source_info.location[idx];
 
         for comment in &location.leading_detached_comments {
@@ -376,6 +385,56 @@ impl <'a> CodeGenerator<'a> {
                   .join("::")
     }
 }
+
+fn field_type(field: &FieldDescriptorProto) {
+    use field_descriptor_proto::Type::*;
+    use field_descriptor_proto::Label::*;
+
+    let repeated = field.label == LabelRepeated;
+    let signed = field.field_type == TypeSint32 ||
+                    field.field_type == TypeSint64;
+    let fixed = field.field_type == TypeFixed32 ||
+                field.field_type == TypeFixed64 ||
+                field.field_type == TypeSfixed32 ||
+                field.field_type == TypeSfixed64;
+    let message = field.field_type == TypeMessage;
+
+    let ty = match field.field_type {
+        TypeFloat => Cow::Borrowed("f32"),
+        TypeDouble => Cow::Borrowed("f64"),
+        TypeUint32 | TypeFixed32 => Cow::Borrowed("u32"),
+        TypeUint64 | TypeFixed64 => Cow::Borrowed("u64"),
+        TypeInt32 | TypeSfixed32 | TypeSint32 => Cow::Borrowed("i32"),
+        TypeInt64 | TypeSfixed64 | TypeSint64 => Cow::Borrowed("i64"),
+        TypeBool => Cow::Borrowed("bool"),
+        TypeString => Cow::Borrowed("String"),
+        TypeBytes => Cow::Borrowed("Vec<u8>"),
+        TypeGroup | TypeMessage | TypeEnum => Cow::Owned(self.resolve_ident(&field.type_name)),
+    };
+    debug!("    field: {:?}, type: {:?}", field.name, ty);
+
+    self.append_doc();
+    self.push_indent();
+    self.buf.push_str("#[proto(tag=\"");
+    self.buf.push_str(&field.number.to_string());
+    self.buf.push_str("\"");
+    if signed {
+        self.buf.push_str(", signed");
+    } else if fixed {
+        self.buf.push_str(", fixed");
+    }
+    self.buf.push_str(")]\n");
+    self.push_indent();
+    self.buf.push_str("pub ");
+    self.buf.push_str(&field.name);
+    self.buf.push_str(": ");
+    if repeated { self.buf.push_str("Vec<"); }
+    else if message { self.buf.push_str("Option<"); }
+    self.buf.push_str(&ty);
+    if repeated || message { self.buf.push_str(">"); }
+    self.buf.push_str(",\n");
+}
+
 
 fn camel_to_snake(camel: &str) -> String {
     // protoc does not allow non-ascii identifiers.

@@ -4,9 +4,6 @@ extern crate byteorder;
 #[macro_use]
 extern crate quickcheck;
 
-#[macro_use]
-extern crate proto_derive;
-
 mod message;
 
 #[doc(hidden)]
@@ -23,8 +20,7 @@ use std::io::{
 #[inline]
 fn check_limit(needed: usize, limit: &mut usize) -> Result<()> {
     if needed > *limit {
-        Err(Error::new(ErrorKind::InvalidData,
-                       "read limit exceeded"))
+        Err(Error::new(ErrorKind::InvalidData, "read limit exceeded"))
     } else {
         *limit -= needed;
         Ok(())

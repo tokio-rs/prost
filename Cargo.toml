@@ -7,11 +7,11 @@ authors = ["Dan Burkert <dan@danburkert.com>"]
 members = [
   "proto-derive",
   "proto-plugin",
+  "proto-conformance",
 ]
 
 [dependencies]
 byteorder = "1"
-proto-derive = { path = "proto-derive" }
 
 [dev-dependencies]
 quickcheck = "0.4"

@@ -170,13 +170,18 @@ pub fn message(input: TokenStream) -> TokenStream {
     let default = default(&fields);
 
     let expanded = quote! {
-        #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+        #[allow(
+            non_upper_case_globals,
+            unused_attributes,
+            unused_imports,
+            unused_qualifications,
+            unused_variables
+        )]
         const #dummy_const: () = {
             extern crate proto;
             use std::any::{Any, TypeId};
             use std::io::{
                 Error,
-                ErrorKind,
                 Read,
                 Result,
                 Write,
