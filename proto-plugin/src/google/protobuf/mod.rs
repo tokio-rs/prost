@@ -95,7 +95,7 @@ pub mod descriptor_proto {
     }
 }
 /// Describes a field within a message.
-#[derive(Debug, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Message)]
 pub struct FieldDescriptorProto {
     #[proto(tag="1")]
     pub name: String,
@@ -431,7 +431,7 @@ pub struct MessageOptions {
     #[proto(tag="999")]
     pub uninterpreted_option: Vec<UninterpretedOption>,
 }
-#[derive(Debug, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Message)]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
     /// representation of the field than it normally would.  See the specific
@@ -607,7 +607,7 @@ pub mod method_options {
 /// options protos in descriptor objects (e.g. returned by Descriptor::options(),
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
-#[derive(Debug, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Message)]
 pub struct UninterpretedOption {
     #[proto(tag="2")]
     pub name: Vec<uninterpreted_option::NamePart>,
@@ -632,7 +632,7 @@ pub mod uninterpreted_option {
     /// extension (denoted with parentheses in options specs in .proto files).
     /// E.g.,{ ["foo", false], ["bar.baz", true], ["qux", false] } represents
     /// "foo.(bar.baz).qux".
-    #[derive(Debug, PartialEq, Message)]
+    #[derive(Clone, Debug, PartialEq, Message)]
     pub struct NamePart {
         #[proto(tag="1")]
         pub name_part: String,

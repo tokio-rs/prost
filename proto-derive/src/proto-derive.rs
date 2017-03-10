@@ -442,8 +442,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Oneof, attributes(proto))]
 pub fn oneof(input: TokenStream) -> TokenStream {
-    let source = input.to_string();
-    let ast = syn::parse_derive_input(&source).expect("unable to parse oneof token stream");
+    //let source = input.to_string();
+    //let ast = syn::parse_derive_input(&source).expect("unable to parse oneof token stream");
 
 
 
