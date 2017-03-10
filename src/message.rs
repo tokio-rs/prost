@@ -31,7 +31,7 @@ pub trait Message: Any + Debug + Send + Sync {
     /// Merge a length-delimited message into `self`, the total length may be at most 'limit'
     /// bytes.
     fn merge_length_delimited_from(&mut self, r: &mut Read, limit: &mut usize) -> Result<()> {
-        let len = u64::read_from(r, limit)?;
+        let len = <u64 as ScalarField>::read_from(r, limit)?;
         if len > usize::MAX as u64 {
             return Err(Error::new(ErrorKind::InvalidInput,
                                   "message length overflows usize"));

@@ -17,26 +17,9 @@ fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
     sum
 }
 
-#[derive(Debug)]
-enum FieldKind {
-    Field,
-    FixedField,
-    SignedField,
-}
-
-impl FieldKind {
-    fn trait_token(&self) -> Tokens {
-        match *self {
-            FieldKind::Field => quote!(Field),
-            FieldKind::FixedField => quote!(FixedField),
-            FieldKind::SignedField => quote!(SignedField),
-        }
-    }
-}
-
 struct Field {
     ident: syn::Ident,
-    kind: FieldKind,
+    kind: quote::Tokens,
     default: Option<syn::Lit>,
     tag: u32,
 }
@@ -48,6 +31,11 @@ impl Field {
         let mut fixed = false;
         let mut signed = false;
         let mut ignore = false;
+
+        let mut fixed_key = false;
+        let mut signed_key = false;
+        let mut fixed_value = false;
+        let mut signed_value = false;
 
         let attrs = field.attrs;
         let ident = field.ident.expect("Message struct has unnamed field");
@@ -80,6 +68,22 @@ impl Field {
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed" => signed = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed" => signed = value,
 
+                    // Handle `#[proto(fixed_key)]` and `#[proto(fixed_key = false)].
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed_key" => fixed_key = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed_key" => fixed_key = value,
+
+                    // Handle `#[proto(signed_key)]` and `#[proto(signed_key = false)]`.
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed_key" => signed_key = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed_key" => signed_key = value,
+
+                    // Handle `#[proto(fixed_value)]` and `#[proto(fixed_value = false)].
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed_value" => fixed_value = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed_value" => fixed_key = value,
+
+                    // Handle `#[proto(signed_value)]` and `#[proto(signed_value = false)]`.
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed_value" => signed_value = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed_value" => signed_value = value,
+
                     // Handle `#[proto(ignore)]` and `#[proto(ignore = false)]`.
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
@@ -93,18 +97,48 @@ impl Field {
             }
         }
 
-        let (tag, kind) = match (tag, fixed, signed, ignore) {
-            (Some(_), _, _, true)           => panic!("ignored proto field must not have a tag attribute"),
-            (None, _, _, false)             => panic!("proto field must have a tag attribute"),
-            (None, true, _, true)           => panic!("ignored proto field must not be fixed"),
-            (None, _, true, true)           => panic!("ignored proto field must not be signed"),
-            (Some(_), true, true, false)    => panic!("proto field must not be fixed and signed"),
-            (None, false, false, true)      => return None,
-            (Some(tag), _, _, false) if tag >= (1 << 29) as u64 => panic!("proto tag must be less than 2^29"),
-            (Some(tag), _, _, false) if tag < 1 as u64 => panic!("proto tag must be greater than 1"),
-            (Some(tag), false, false, false) => (tag as u32, FieldKind::Field),
-            (Some(tag), true, false, false)  => (tag as u32, FieldKind::FixedField),
-            (Some(tag), false, true, false)  => (tag as u32, FieldKind::SignedField),
+        let (tag, kind) = match (tag, fixed, signed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
+            (None, false, false, false, false, false, false, true) => return None,
+
+            (Some(tag), _, _, _, _, _, _, _) if tag >= (1 << 29) as u64 => panic!("proto tag must be less than 2^29"),
+            (Some(tag), _, _, _, _, _, _, _) if tag < 1 as u64          => panic!("proto tag must be greater than 1"),
+
+            (Some(_), _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
+            (None, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
+
+            (Some(tag), false, false, false, false, false, false, _) => (tag as u32, quote!(field::Default)),
+            (Some(tag), true, false, false, false, false, false, _)  => (tag as u32, quote!(field::Fixed)),
+            (Some(tag), false, true, false, false, false, false, _)  => (tag as u32, quote!(field::Signed)),
+
+            (Some(tag), false, false, true, false, false, false, _) => (tag as u32, quote!((field::Fixed, field::Default))),
+            (Some(tag), false, false, false, true, false, false, _) => (tag as u32, quote!((field::Signed, field::Default))),
+            (Some(tag), false, false, false, false, true, false, _) => (tag as u32, quote!((field::Default, field::Fixed))),
+            (Some(tag), false, false, false, false, false, true, _) => (tag as u32, quote!((field::Default, field::Signed))),
+
+            (Some(tag), false, false, true, false, true, false, _) => (tag as u32, quote!((field::Fixed, field::Fixed))),
+            (Some(tag), false, false, true, false, false, true, _) => (tag as u32, quote!((field::Fixed, field::Signed))),
+            (Some(tag), false, false, false, true, true, false, _) => (tag as u32, quote!((field::Signed, field::Fixed))),
+            (Some(tag), false, false, false, true, false, true, _) => (tag as u32, quote!((field::Signed, field::Signed))),
+
+            (None, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
+            (None, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
+            (None, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
+            (None, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
+            (None, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
+            (None, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
+
+
+            (_, true, true, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
+            (_, true, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
+            (_, true, _, _, true, _, _, _) => panic!("proto field must not be fixed and signed_key"),
+            (_, true, _, _, _, true, _, _) => panic!("proto field must not be fixed and fixed_value"),
+            (_, true, _, _, _, _, true, _) => panic!("proto field must not be fixed and signed_value"),
+            (_, _, true, true, _, _, _, _) => panic!("proto field must not be signed and fixed_key"),
+            (_, _, true, _, true, _, _, _) => panic!("proto field must not be signed and signed_key"),
+            (_, _, true, _, _, true, _, _) => panic!("proto field must not be signed and fixed_value"),
+            (_, _, true, _, _, _, true, _) => panic!("proto field must not be signed and signed_value"),
+            (_, _, _, true, true, _, _, _) => panic!("proto field must not be fixed_key and signed_key"),
+            (_, _, _, _, _, true, true, _) => panic!("proto field must not be fixed_value and signed_value"),
         };
 
         Some(Field {
@@ -136,29 +170,37 @@ pub fn message(input: TokenStream) -> TokenStream {
 
     let fields = fields.into_iter().filter_map(Field::extract).collect::<Vec<_>>();
 
+    let mut tags = fields.iter().map(|field| field.tag).collect::<Vec<_>>();
+    tags.sort();
+    tags.dedup();
+    if tags.len() != fields.len() {
+        panic!("Message '{}' has fields with duplicate tags", ident);
+    }
+
+
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
     let wire_len = wire_len(&fields);
 
     let write_to = fields.iter().map(|field| {
-        let kind = field.kind.trait_token();
+        let kind = &field.kind;
         let tag = field.tag;
         let field = &field.ident;
         quote! {
-            #kind::write_to(&self.#field, #tag, w)
-                  .map_err(|error| {
-                      Error::new(error.kind(),
-                                 format!(concat!("failed to write field ", stringify!(#ident),
-                                                 ".", stringify!(#field), ": {}"),
-                                         error))
-                  })?;
+            Field::<#kind>::write_to(&self.#field, #tag, w)
+                           .map_err(|error| {
+                               Error::new(error.kind(),
+                                           format!(concat!("failed to write field ", stringify!(#ident),
+                                                           ".", stringify!(#field), ": {}"),
+                                                   error))
+                           })?;
         }
     }).fold(Tokens::new(), concat_tokens);
 
     let merge_from = fields.iter().map(|field| {
         let tag = field.tag;
-        let kind = field.kind.trait_token();
+        let kind = &field.kind;
         let field = &field.ident;
-        quote!{ #tag => #kind::merge_from(&mut self.#field, wire_type, r, &mut limit)
+        quote!{ #tag => Field::<#kind>::merge_from(&mut self.#field, wire_type, r, &mut limit)
                               .map_err(|error| {
                                   Error::new(error.kind(),
                                              format!(concat!("failed to read field ", stringify!(#ident),
@@ -186,11 +228,7 @@ pub fn message(input: TokenStream) -> TokenStream {
                 Result,
                 Write,
             };
-            use proto::field::{
-                Field,
-                read_key_from,
-                skip_field,
-            };
+            use proto::field::{self, Field};
 
             #[automatically_derived]
             impl proto::Message for #ident {
@@ -202,10 +240,10 @@ pub fn message(input: TokenStream) -> TokenStream {
                 fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()> {
                     let mut limit = len;
                     while limit > 0 {
-                        let (wire_type, tag) = read_key_from(r, &mut limit)?;
+                        let (wire_type, tag) = field::read_key_from(r, &mut limit)?;
                         match tag {
                             #merge_from
-                            _ => skip_field(wire_type, r, &mut limit)?,
+                            _ => field::skip_field(wire_type, r, &mut limit)?,
                         }
                     }
                     Ok(())
@@ -248,10 +286,10 @@ pub fn message(input: TokenStream) -> TokenStream {
 
 fn wire_len(fields: &[Field]) -> Tokens {
     fields.iter().map(|field| {
-        let kind = field.kind.trait_token();
+        let kind = &field.kind;
         let ident = &field.ident;
         let tag = field.tag;
-        quote!(#kind::wire_len(&self.#ident, #tag))
+        quote!(Field::<#kind>::wire_len(&self.#ident, #tag))
     })
     .fold(quote!(0), |mut sum, expr| {
         sum.append("+");
@@ -338,6 +376,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
             use proto::field::{
                 Field,
+                self,
                 WireType,
             };
 
@@ -353,18 +392,18 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             #[automatically_derived]
             impl Field for #ident {
                 fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-                    Field::write_to(&(*self as i32), tag, w)
+                    Field::<field::Default>::write_to(&(*self as i32), tag, w)
                 }
 
                 fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
                     let mut value: i32 = 0;
-                    Field::merge_from(&mut value, wire_type, r, limit)?;
+                    Field::<field::Default>::merge_from(&mut value, wire_type, r, limit)?;
                     *self = #ident::from(value as #repr);
                     Ok(())
                 }
 
                 fn wire_len(&self, tag: u32) -> usize {
-                    Field::wire_len(&(*self as i32), tag)
+                    Field::<field::Default>::wire_len(&(*self as i32), tag)
                 }
             }
 
@@ -375,6 +414,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
             }
 
+            #[automatically_derived]
             impl From<#repr> for #ident {
                 fn from(value: #repr) -> #ident {
                     match value {
@@ -404,6 +444,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 pub fn oneof(input: TokenStream) -> TokenStream {
     let source = input.to_string();
     let ast = syn::parse_derive_input(&source).expect("unable to parse oneof token stream");
+
+
 
     // Build the output
     //let expanded = expand_num_fields(&ast);

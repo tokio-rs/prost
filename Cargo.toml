@@ -15,3 +15,4 @@ byteorder = "1"
 
 [dev-dependencies]
 quickcheck = "0.4"
+proto-derive = { path = "proto-derive" }
