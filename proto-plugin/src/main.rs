@@ -159,12 +159,15 @@ impl <'a> CodeGenerator<'a> {
         code_gen.path.pop();
     }
 
-    fn append_message(&mut self, mut message: DescriptorProto) {
+    fn append_message(&mut self, message: DescriptorProto) {
         debug!("  message: {:?}", message.name);
 
-        let mut map_types = HashMap::new();
+        debug!("message: {:#?}", message);
 
-        message.nested_type.retain(|nested_type| {
+        // Build up a map of all the map fields in the message. Instead of
+        // emitting a nested Entry type, we emit the field as a HashMap.
+        let mut map_types = HashMap::new();
+        for nested_type in &message.nested_type {
             if let Some(ref options) = nested_type.options {
                 if options.map_entry {
                     let key = nested_type.field[0].clone();
@@ -172,12 +175,11 @@ impl <'a> CodeGenerator<'a> {
                     assert_eq!(&key.name, "key");
                     assert_eq!(&value.name, "value");
 
-                    map_types.insert(nested_type.name.clone(), (key, value));
-                    return false;
+                    let name = format!(".{}.{}.{}", self.package, &message.name, nested_type.name);
+                    map_types.insert(name, (key, value));
                 }
             }
-            true
-        });
+        }
 
         self.append_doc();
         self.push_indent();
@@ -189,9 +191,13 @@ impl <'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (idx, field) in message.field.into_iter().enumerate() {
+        for (idx, field) in message.field.iter().enumerate() {
+            if field.label == field_descriptor_proto::Label::LabelOptional {
+                continue;
+            }
+
             self.path.push(idx as i32);
-            match map_types.get(&field.name) {
+            match map_types.get(&field.type_name) {
                 Some(&(ref key, ref value)) => self.append_map_field(field, key, value),
                 None => self.append_field(field),
             }
@@ -202,20 +208,23 @@ impl <'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str("}\n");
 
-        if !message.nested_type.is_empty() || !message.enum_type.is_empty() {
-            self.push_mod(&camel_to_snake(&message.name));
+        if !message.enum_type.is_empty() ||
+           message.nested_type.iter().map(is_not_map_entry).count() > 0 {
+            self.push_mod(&message.name);
             self.path.push(3);
-            for (idx, inner) in message.nested_type.into_iter().enumerate() {
-                self.path.push(idx as i32);
-                self.append_message(inner);
-                self.path.pop();
+            for (idx, nested_type) in message.nested_type.into_iter().enumerate() {
+                if is_not_map_entry(&nested_type) {
+                    self.path.push(idx as i32);
+                    self.append_message(nested_type);
+                    self.path.pop();
+                }
             }
             self.path.pop();
 
             self.path.push(4);
-            for (idx, inner) in message.enum_type.into_iter().enumerate() {
+            for (idx, nested_enum) in message.enum_type.into_iter().enumerate() {
                 self.path.push(idx as i32);
-                self.append_enum(inner);
+                self.append_enum(nested_enum);
                 self.path.pop();
             }
             self.path.pop();
@@ -224,31 +233,15 @@ impl <'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_field(&mut self, field: FieldDescriptorProto) {
+    fn append_field(&mut self, field: &FieldDescriptorProto) {
         use field_descriptor_proto::Type::*;
         use field_descriptor_proto::Label::*;
 
         let repeated = field.label == LabelRepeated;
-        let signed = field.field_type == TypeSint32 ||
-                     field.field_type == TypeSint64;
-        let fixed = field.field_type == TypeFixed32 ||
-                    field.field_type == TypeFixed64 ||
-                    field.field_type == TypeSfixed32 ||
-                    field.field_type == TypeSfixed64;
         let message = field.field_type == TypeMessage;
+        let type_modifier = field_type_modifier(field.field_type);
+        let ty = self.resolve_type(&field);
 
-        let ty = match field.field_type {
-            TypeFloat => Cow::Borrowed("f32"),
-            TypeDouble => Cow::Borrowed("f64"),
-            TypeUint32 | TypeFixed32 => Cow::Borrowed("u32"),
-            TypeUint64 | TypeFixed64 => Cow::Borrowed("u64"),
-            TypeInt32 | TypeSfixed32 | TypeSint32 => Cow::Borrowed("i32"),
-            TypeInt64 | TypeSfixed64 | TypeSint64 => Cow::Borrowed("i64"),
-            TypeBool => Cow::Borrowed("bool"),
-            TypeString => Cow::Borrowed("String"),
-            TypeBytes => Cow::Borrowed("Vec<u8>"),
-            TypeGroup | TypeMessage | TypeEnum => Cow::Owned(self.resolve_ident(&field.type_name)),
-        };
         debug!("    field: {:?}, type: {:?}", field.name, ty);
 
         self.append_doc();
@@ -256,10 +249,9 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("#[proto(tag=\"");
         self.buf.push_str(&field.number.to_string());
         self.buf.push_str("\"");
-        if signed {
-            self.buf.push_str(", signed");
-        } else if fixed {
-            self.buf.push_str(", fixed");
+        if let Some(modifier) = type_modifier {
+            self.buf.push_str(", ");
+            self.buf.push_str(modifier);
         }
         self.buf.push_str(")]\n");
         self.push_indent();
@@ -274,7 +266,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_map_field(&mut self,
-                        field: FieldDescriptorProto,
+                        field: &FieldDescriptorProto,
                         key: &FieldDescriptorProto,
                         value: &FieldDescriptorProto) {
         let key_type_modifier = field_type_modifier(key.field_type);
@@ -392,13 +384,21 @@ impl <'a> CodeGenerator<'a> {
     fn push_mod(&mut self, module: &str) {
         self.push_indent();
         self.buf.push_str("pub mod ");
-        self.buf.push_str(module);
+        self.buf.push_str(&camel_to_snake(module));
         self.buf.push_str(" {\n");
+
+        self.package.push_str(".");
+        self.package.push_str(module);
+
         self.depth += 1;
     }
 
     fn pop_mod(&mut self) {
         self.depth -= 1;
+
+        let idx = self.package.rfind('.').unwrap();
+        self.package.truncate(idx);
+
         self.push_indent();
         self.buf.push_str("}\n");
     }
@@ -441,6 +441,10 @@ impl <'a> CodeGenerator<'a> {
                   .chain(Some(ident_type.to_string()).into_iter())
                   .join("::")
     }
+}
+
+fn is_not_map_entry(message: &DescriptorProto) -> bool {
+    message.options.as_ref().map(|options| !options.map_entry).unwrap_or(true)
 }
 
 fn field_type_modifier(field_type: field_descriptor_proto::Type) -> Option<&'static str> {
