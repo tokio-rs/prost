@@ -127,7 +127,7 @@ pub struct FieldDescriptorProto {
     pub default_value: String,
     /// If set, gives the index of a oneof in the containing type's oneof_decl
     /// list.  This field is a member of that oneof.
-    #[proto(tag="9")]
+    #[proto(tag="9", default="-1")]
     pub oneof_index: i32,
     /// JSON name of this field. The value is set by protocol compiler. If the
     /// user has set a "json_name" option on this field, that option's value

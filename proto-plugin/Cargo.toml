@@ -7,8 +7,6 @@ authors = ["Dan Burkert <danburkert@apache.org>"]
 env_logger = "0.4"
 itertools = "0.5"
 log = "0.3"
+multimap = "0.3"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
-
-[dev-dependencies]
-proto = { path = ".." }
