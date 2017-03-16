@@ -334,23 +334,17 @@ impl <'a> CodeGenerator<'a> {
                           oneof: &OneofDescriptorProto,
                           fields: &[(FieldDescriptorProto, usize)]) {
         self.append_doc();
-
         self.push_indent();
-        self.buf.push_str("#[proto(tags(\"");
-        self.buf.push_str(&fields.iter().map(|&(ref field, _)| field.number).join("\", \""));
-        self.buf.push_str("\")]\n");
-
+        self.buf.push_str(&format!("#[proto({})]\n",
+                                   fields.iter()
+                                         .format_with(", ", |&(ref field, _), f| {
+                                             f(&format_args!("tag=\"{}\"", field.number))
+                                         })));
         self.push_indent();
-        self.buf.push_str("pub ");
-        let name = &oneof.name;
-        self.buf.push_str(name);
-        self.buf.push_str(": ");
-
-        self.buf.push_str(&camel_to_snake(message_name));
-        self.buf.push_str("::");
-        self.buf.push_str(&snake_to_upper_camel(&name));
-
-        self.buf.push_str(",\n");
+        self.buf.push_str(&format!("{}: {}::{},\n",
+                                   oneof.name,
+                                   camel_to_snake(message_name),
+                                   snake_to_upper_camel(&oneof.name)));
     }
 
     fn append_oneof(&mut self,
@@ -390,7 +384,6 @@ impl <'a> CodeGenerator<'a> {
             self.buf.push_str(")]\n");
 
             self.push_indent();
-            self.buf.push_str("pub ");
             let name = snake_to_upper_camel(&field.name);
             self.buf.push_str(&name);
             self.buf.push_str("(");

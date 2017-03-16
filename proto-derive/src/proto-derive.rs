@@ -1,15 +1,15 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "1024"]
 
+extern crate itertools;
 extern crate proc_macro;
-//extern crate proto;
 extern crate syn;
 
 #[macro_use]
 extern crate quote;
 
+use itertools::Itertools;
 use proc_macro::TokenStream;
-
 use quote::Tokens;
 
 fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
@@ -21,12 +21,12 @@ struct Field {
     ident: syn::Ident,
     kind: quote::Tokens,
     default: Option<syn::Lit>,
-    tag: u32,
+    tags: Vec<u32>,
 }
 
 impl Field {
     fn extract(field: syn::Field) -> Option<Field> {
-        let mut tag = None;
+        let mut tags = Vec::new();
         let mut default = None;
         let mut fixed = false;
         let mut signed = false;
@@ -51,14 +51,14 @@ impl Field {
 
             for item in proto_items {
                 match *item {
-                    // Handle `#[proto(tag = 1)] and #[proto(tag = "1")]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Int(value, _))) if name == "tag" => tag = Some(value),
+                    // Handle `#[proto(tag = 1)]` and `#[proto(tag = "1")]`.
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Int(value, _))) if name == "tag" => tags.push(value),
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Str(ref value, _))) if name == "tag" => {
                         match value.parse() {
-                            Ok(value) => tag = Some(value),
+                            Ok(value) => tags.push(value),
                             Err(..) => panic!("tag attribute value must be an integer"),
                         }
-                    }
+                    },
 
                     // Handle `#[proto(fixed)]` and `#[proto(fixed = false)].
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed" => fixed = true,
@@ -91,42 +91,47 @@ impl Field {
                     // Handle `#[proto(default = "")]`
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) if name == "default" => default = Some(value.clone()),
 
-                    syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute item `{}`", meta_item.name()),
-                    syn::NestedMetaItem::Literal(_) => panic!("unexpected literal in serde field attribute"),
+                    syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute item: {:?}", meta_item),
+                    syn::NestedMetaItem::Literal(ref literal) => panic!("unexpected literal in proto field attribute: `{:?}`", literal),
                 }
             }
         }
 
-        let (tag, kind) = match (tag, fixed, signed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
-            (None, false, false, false, false, false, false, true) => return None,
+        if !tags.iter().all(|&tag| tag > 0) {
+            panic!("proto tag must be greater than 0");
+        }
+        if !tags.iter().all(|&tag| tag < (1 << 29)) {
+            panic!("proto tag must be less than 2^29");
+        }
 
-            (Some(tag), _, _, _, _, _, _, _) if tag >= (1 << 29) as u64 => panic!("proto tag must be less than 2^29"),
-            (Some(tag), _, _, _, _, _, _, _) if tag < 1 as u64          => panic!("proto tag must be greater than 1"),
+        let tags = tags.into_iter().map(|tag| tag as u32).collect::<Vec<_>>();
 
-            (Some(_), _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
-            (None, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
+        let kind = match (!tags.is_empty(), fixed, signed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
+            (false, false, false, false, false, false, false, true) => return None,
 
-            (Some(tag), false, false, false, false, false, false, _) => (tag as u32, quote!(field::Default)),
-            (Some(tag), true, false, false, false, false, false, _)  => (tag as u32, quote!(field::Fixed)),
-            (Some(tag), false, true, false, false, false, false, _)  => (tag as u32, quote!(field::Signed)),
+            (true, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
+            (false, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
 
-            (Some(tag), false, false, true, false, false, false, _) => (tag as u32, quote!((field::Fixed, field::Default))),
-            (Some(tag), false, false, false, true, false, false, _) => (tag as u32, quote!((field::Signed, field::Default))),
-            (Some(tag), false, false, false, false, true, false, _) => (tag as u32, quote!((field::Default, field::Fixed))),
-            (Some(tag), false, false, false, false, false, true, _) => (tag as u32, quote!((field::Default, field::Signed))),
+            (true, false, false, false, false, false, false, _) => quote!(field::Default),
+            (true, true, false, false, false, false, false, _)  => quote!(field::Fixed),
+            (true, false, true, false, false, false, false, _)  => quote!(field::Signed),
 
-            (Some(tag), false, false, true, false, true, false, _) => (tag as u32, quote!((field::Fixed, field::Fixed))),
-            (Some(tag), false, false, true, false, false, true, _) => (tag as u32, quote!((field::Fixed, field::Signed))),
-            (Some(tag), false, false, false, true, true, false, _) => (tag as u32, quote!((field::Signed, field::Fixed))),
-            (Some(tag), false, false, false, true, false, true, _) => (tag as u32, quote!((field::Signed, field::Signed))),
+            (true, false, false, true, false, false, false, _) => quote!((field::Fixed, field::Default)),
+            (true, false, false, false, true, false, false, _) => quote!((field::Signed, field::Default)),
+            (true, false, false, false, false, true, false, _) => quote!((field::Default, field::Fixed)),
+            (true, false, false, false, false, false, true, _) => quote!((field::Default, field::Signed)),
 
-            (None, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
-            (None, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
-            (None, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
-            (None, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
-            (None, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
-            (None, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
+            (true, false, false, true, false, true, false, _) => quote!((field::Fixed, field::Fixed)),
+            (true, false, false, true, false, false, true, _) => quote!((field::Fixed, field::Signed)),
+            (true, false, false, false, true, true, false, _) => quote!((field::Signed, field::Fixed)),
+            (true, false, false, false, true, false, true, _) => quote!((field::Signed, field::Signed)),
 
+            (false, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
+            (false, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
+            (false, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
+            (false, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
+            (false, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
+            (false, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
 
             (_, true, true, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
             (_, true, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
@@ -145,7 +150,7 @@ impl Field {
             ident: ident,
             kind: kind,
             default: default,
-            tag: tag,
+            tags: tags,
         })
     }
 }
@@ -170,20 +175,20 @@ pub fn message(input: TokenStream) -> TokenStream {
 
     let fields = fields.into_iter().filter_map(Field::extract).collect::<Vec<_>>();
 
-    let mut tags = fields.iter().map(|field| field.tag).collect::<Vec<_>>();
+    let mut tags = fields.iter().flat_map(|field| &field.tags).collect::<Vec<_>>();
+    let num_tags = tags.len();
     tags.sort();
     tags.dedup();
-    if tags.len() != fields.len() {
+    if tags.len() != num_tags {
         panic!("Message '{}' has fields with duplicate tags", ident);
     }
-
 
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
     let wire_len = wire_len(&fields);
 
     let write_to = fields.iter().map(|field| {
         let kind = &field.kind;
-        let tag = field.tag;
+        let tag = field.tags[0];
         let field = &field.ident;
         quote! {
             Field::<#kind>::write_to(&self.#field, #tag, w)
@@ -197,16 +202,16 @@ pub fn message(input: TokenStream) -> TokenStream {
     }).fold(Tokens::new(), concat_tokens);
 
     let merge_from = fields.iter().map(|field| {
-        let tag = field.tag;
+        let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let kind = &field.kind;
         let field = &field.ident;
-        quote!{ #tag => Field::<#kind>::merge_from(&mut self.#field, wire_type, r, &mut limit)
-                              .map_err(|error| {
-                                  Error::new(error.kind(),
-                                             format!(concat!("failed to read field ", stringify!(#ident),
-                                                             ".", stringify!(#field), ": {}"),
-                                                     error))
-                              })?, }
+        quote!{ #tags => Field::<#kind>::merge_from(&mut self.#field, tag, wire_type, r, &mut limit)
+                               .map_err(|error| {
+                                   Error::new(error.kind(),
+                                              format!(concat!("failed to read field ", stringify!(#ident),
+                                                              ".", stringify!(#field), ": {}"),
+                                                      error))
+                               })?, }
     }).fold(Tokens::new(), concat_tokens);
 
     let default = default(&fields);
@@ -228,7 +233,7 @@ pub fn message(input: TokenStream) -> TokenStream {
                 Result,
                 Write,
             };
-            use proto::field::{self, Field};
+            use proto::field::{self, Field, WireType};
 
             #[automatically_derived]
             impl proto::Message for #ident {
@@ -288,7 +293,7 @@ fn wire_len(fields: &[Field]) -> Tokens {
     fields.iter().map(|field| {
         let kind = &field.kind;
         let ident = &field.ident;
-        let tag = field.tag;
+        let tag = field.tags[0];
         quote!(Field::<#kind>::wire_len(&self.#ident, #tag))
     })
     .fold(quote!(0), |mut sum, expr| {
@@ -376,8 +381,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
             use proto::field::{
                 Field,
-                self,
                 WireType,
+                self,
             };
 
             impl #ident {
@@ -395,9 +400,9 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                     Field::<field::Default>::write_to(&(*self as i32), tag, w)
                 }
 
-                fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+                fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
                     let mut value: i32 = 0;
-                    Field::<field::Default>::merge_from(&mut value, wire_type, r, limit)?;
+                    Field::<field::Default>::merge_from(&mut value, tag, wire_type, r, limit)?;
                     *self = #ident::from(value as #repr);
                     Ok(())
                 }
@@ -442,15 +447,120 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Oneof, attributes(proto))]
 pub fn oneof(input: TokenStream) -> TokenStream {
-    //let source = input.to_string();
-    //let ast = syn::parse_derive_input(&source).expect("unable to parse oneof token stream");
+    let syn::DeriveInput { ident, generics, body, .. } =
+        syn::parse_derive_input(&input.to_string()).expect("unable to parse message type");
 
+    if !generics.lifetimes.is_empty() ||
+       !generics.ty_params.is_empty() ||
+       !generics.where_clause.predicates.is_empty() {
+        panic!("Oneof may not be derived for generic type");
+    }
 
+    let variants = match body {
+        syn::Body::Enum(variants) => variants,
+        syn::Body::Struct(..) => panic!("Oneof can not be derived for a struct"),
+    };
 
-    // Build the output
-    //let expanded = expand_num_fields(&ast);
+    // Map the variants into 'fields'.
+    let fields = variants.into_iter().map(|variant| {
+        let ident = variant.ident;
+        let attrs = variant.attrs;
+        if let syn::VariantData::Tuple(mut fields) = variant.data {
+            if fields.len() != 1 {
+                panic!("Oneof enum must contain only tuple variants with a single field");
+            }
+            let field = fields.pop().unwrap();
+            Field::extract(syn::Field {
+                ident: Some(ident),
+                vis: field.vis,
+                attrs: attrs,
+                ty: field.ty,
+            }).expect("Oneof fields may not be ignored")
+        } else {
+            panic!("Oneof enum must contain only tuple variants with a single field");
+        }
+    }).collect::<Vec<_>>();
 
-    // Return the generated impl as a TokenStream
-    //expanded.parse().unwrap()
-    unimplemented!()
+    let mut tags = fields.iter().flat_map(|field| &field.tags).collect::<Vec<_>>();
+    let num_tags = tags.len();
+    tags.sort();
+    tags.dedup();
+    if tags.len() != num_tags {
+        panic!("Message '{}' has fields with duplicate tags", ident);
+    }
+
+    let dummy_const = syn::Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
+    let wire_len = wire_len(&fields);
+
+    let write_to = fields.iter().map(|field| {
+        let kind = &field.kind;
+        let tag = field.tags[0];
+        let field = &field.ident;
+        quote! {
+            Field::<#kind>::write_to(&self.#field, #tag, w)
+                           .map_err(|error| {
+                               Error::new(error.kind(),
+                                           format!(concat!("failed to write field ", stringify!(#ident),
+                                                           ".", stringify!(#field), ": {}"),
+                                                   error))
+                           })?;
+        }
+    }).fold(Tokens::new(), concat_tokens);
+
+    let merge_from = fields.iter().map(|field| {
+        let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
+        let kind = &field.kind;
+        let field = &field.ident;
+        quote!{ #tags => Field::<#kind>::merge_from(&mut self.#field, tag, wire_type, r, &mut limit)
+                               .map_err(|error| {
+                                   Error::new(error.kind(),
+                                              format!(concat!("failed to read field ", stringify!(#ident),
+                                                              ".", stringify!(#field), ": {}"),
+                                                      error))
+                               })?, }
+    }).fold(Tokens::new(), concat_tokens);
+
+    let default = default(&fields);
+
+    let expanded = quote! {
+        #[allow(
+            non_upper_case_globals,
+            unused_attributes,
+            unused_imports,
+            unused_qualifications,
+            unused_variables
+        )]
+        const #dummy_const: () = {
+            extern crate proto;
+            use std::any::{Any, TypeId};
+            use std::io::{
+                Error,
+                Read,
+                Result,
+                Write,
+            };
+            use proto::field::{self, Field, WireType};
+
+            #[automatically_derived]
+            impl proto::field::Field for #ident {
+                fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
+                    unimplemented!()
+                }
+
+                fn merge_from(&mut self,
+                              tag: u32,
+                              wire_type: WireType,
+                              r: &mut Read,
+                              limit: &mut usize) -> Result<()> {
+                    unimplemented!()
+                }
+
+                fn wire_len(&self, tag: u32) -> usize {
+                    unimplemented!()
+                }
+            }
+        };
+    };
+
+    expanded.parse().unwrap()
 }
