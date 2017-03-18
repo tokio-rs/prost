@@ -164,6 +164,7 @@ macro_rules! scalar_field {
             }
         }
 
+        /*
         impl Field<$e> for Vec<$ty> {
             fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
                 match <$ty as ScalarField<$e>>::wire_type() {
@@ -244,6 +245,7 @@ macro_rules! scalar_field {
                 }
             }
         }
+        */
     }
 }
 
@@ -624,42 +626,16 @@ impl <M> Field for M where M: Message + default::Default {
     }
 }
 
-// Boxed Message
-impl <M> Field for Box<Option<M>> where M: Message + default::Default {
+impl <F, E> Field<E> for Vec<F> where F: Field<E> {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-        Field::write_to(&**self, tag, w)
+        unimplemented!()
     }
 
-    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Box<Option<M>>> {
-        Field::read_from(tag, wire_type, r, limit).map(Box::new)
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Vec<F>> {
+        unimplemented!()
     }
-
     fn wire_len(&self, tag: u32) -> usize {
-        Field::wire_len(&**self, tag)
-    }
-}
-
-// Repeated Message
-impl <M> Field for Vec<M> where M: Message + default::Default {
-    fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-        for message in self {
-            <M as Field>::write_to(message, tag, w)?;
-        }
-        Ok(())
-    }
-
-    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Vec<M>> {
-        <M as Field>::read_from(tag, wire_type, r, limit).map(|m| vec![m])
-    }
-
-    fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        self.push(Field::read_from(tag, wire_type, r, limit)?);
-        Ok(())
-    }
-
-    fn wire_len(&self, tag: u32) -> usize {
-        let len: usize = self.iter().map(Message::wire_len).sum();
-        key_len(tag) * self.len() + len
+        unimplemented!()
     }
 }
 

@@ -177,6 +177,7 @@ pub struct TestRecursiveMessage {
     #[proto(tag="2")]
     pub i: i32,
 }
+
 /// Test that mutual recursion works.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestMutualRecursionA {
@@ -190,6 +191,7 @@ pub struct TestMutualRecursionB {
     #[proto(tag="2")]
     pub optional_int32: i32,
 }
+
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestEnumAllowAlias {
     #[proto(tag="1")]

@@ -52,6 +52,46 @@ pub trait Message: Any + Debug + Send + Sync {
     fn into_any(self: Box<Self>) -> Box<Any>;
 }
 
+impl <M> Message for Box<M> where M: Any + Debug + Send + Sync + Message {
+    #[inline]
+    fn write_to(&self, w: &mut Write) -> Result<()> {
+        (**self).write_to(w)
+    }
+    #[inline]
+    fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()> {
+        (**self).merge_from(len, r)
+    }
+    #[inline]
+    fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
+        (**self).write_length_delimited_to(w)
+    }
+    #[inline]
+    fn merge_length_delimited_from(&mut self, r: &mut Read, limit: &mut usize) -> Result<()> {
+        (**self).merge_length_delimited_from(r, limit)
+    }
+    #[inline]
+    fn wire_len(&self) -> usize {
+        (**self).wire_len()
+    }
+    #[inline]
+    fn type_id(&self) -> TypeId {
+        (**self).type_id()
+    }
+    #[inline]
+    fn as_any(&self) -> &Any {
+        &**self
+    }
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut Any {
+        &mut **self
+    }
+
+    #[inline]
+    fn into_any(self: Box<Self>) -> Box<Any> {
+        *self
+    }
+}
+
 /// Test that the `Message` trait is object-safe.
 #[allow(unused)]
 fn test_message_is_object_safe(message: &Message) {}
