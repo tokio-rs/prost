@@ -400,11 +400,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                     Field::<field::Default>::write_to(&(*self as i32), tag, w)
                 }
 
-                fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-                    let mut value: i32 = 0;
-                    Field::<field::Default>::merge_from(&mut value, tag, wire_type, r, limit)?;
-                    *self = #ident::from(value as #repr);
-                    Ok(())
+                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<#ident> {
+                    <i32 as Field<field::Default>>::read_from(tag, wire_type, r, limit).map(From::from)
                 }
 
                 fn wire_len(&self, tag: u32) -> usize {
@@ -481,46 +478,41 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         }
     }).collect::<Vec<_>>();
 
-    let mut tags = fields.iter().flat_map(|field| &field.tags).collect::<Vec<_>>();
-    let num_tags = tags.len();
+    let mut tags = fields.iter().flat_map(|field| {
+        if field.tags.len() > 1 {
+            panic!("proto oneof variants may only have a single tag: {}.{}",
+                   ident, field.ident);
+        }
+        &field.tags
+    }).collect::<Vec<_>>();
     tags.sort();
     tags.dedup();
-    if tags.len() != num_tags {
-        panic!("Message '{}' has fields with duplicate tags", ident);
+    if tags.len() != fields.len() {
+        panic!("proto oneof variants may not have duplicate tags: {}", ident);
     }
 
     let dummy_const = syn::Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
-    let wire_len = wire_len(&fields);
 
     let write_to = fields.iter().map(|field| {
         let kind = &field.kind;
+        let name = &field.ident;
         let tag = field.tags[0];
-        let field = &field.ident;
-        quote! {
-            Field::<#kind>::write_to(&self.#field, #tag, w)
-                           .map_err(|error| {
-                               Error::new(error.kind(),
-                                           format!(concat!("failed to write field ", stringify!(#ident),
-                                                           ".", stringify!(#field), ": {}"),
-                                                   error))
-                           })?;
-        }
+        quote! { #ident::#name(ref value) => Field::<#kind>::write_to(value, #tag, w), }
     }).fold(Tokens::new(), concat_tokens);
 
-    let merge_from = fields.iter().map(|field| {
-        let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
+    let read_from = fields.iter().map(|field| {
         let kind = &field.kind;
-        let field = &field.ident;
-        quote!{ #tags => Field::<#kind>::merge_from(&mut self.#field, tag, wire_type, r, &mut limit)
-                               .map_err(|error| {
-                                   Error::new(error.kind(),
-                                              format!(concat!("failed to read field ", stringify!(#ident),
-                                                              ".", stringify!(#field), ": {}"),
-                                                      error))
-                               })?, }
+        let name = &field.ident;
+        let tag = field.tags[0];
+        quote! { #tag => Field::<#kind>::read_from(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
     }).fold(Tokens::new(), concat_tokens);
 
-    let default = default(&fields);
+    let wire_len = fields.iter().map(|field| {
+        let kind = &field.kind;
+        let name = &field.ident;
+        let tag = field.tags[0];
+        quote! { #ident::#name(ref value) => Field::<#kind>::wire_len(value, #tag), }
+    }).fold(Tokens::new(), concat_tokens);
 
     let expanded = quote! {
         #[allow(
@@ -543,20 +535,25 @@ pub fn oneof(input: TokenStream) -> TokenStream {
 
             #[automatically_derived]
             impl proto::field::Field for #ident {
-                fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-                    unimplemented!()
+                fn write_to(&self, _tag: u32, w: &mut Write) -> Result<()> {
+                    match *self {
+                        #write_to
+                    }
                 }
 
-                fn merge_from(&mut self,
-                              tag: u32,
-                              wire_type: WireType,
-                              r: &mut Read,
-                              limit: &mut usize) -> Result<()> {
-                    unimplemented!()
+                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<#ident> {
+                    match tag {
+                        #read_from
+                        // TODO: test coverage of this case
+                        _ => panic!("proto oneof tag misconfiguration: missing variant of {} with tag: {}",
+                                    stringify!(#ident), tag),
+                    }
                 }
 
                 fn wire_len(&self, tag: u32) -> usize {
-                    unimplemented!()
+                    match *self {
+                        #wire_len
+                    }
                 }
             }
         };

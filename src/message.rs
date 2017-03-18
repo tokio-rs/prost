@@ -10,7 +10,7 @@ use std::io::{
 use std::usize;
 
 use check_limit;
-use field::{ScalarField, WireType};
+use field::ScalarField;
 
 /// A protobuf message.
 pub trait Message: Any + Debug + Send + Sync {
@@ -55,14 +55,3 @@ pub trait Message: Any + Debug + Send + Sync {
 /// Test that the `Message` trait is object-safe.
 #[allow(unused)]
 fn test_message_is_object_safe(message: &Message) {}
-
-pub trait Oneof: Debug + Send + Sync {
-    /// Write the message to the provided `Write`.
-    fn write_with_key_to(&self, w: &mut Write) -> Result<()>;
-
-    /// Merge a message of known-size `len` into `self`.
-    fn read_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Self> where Self: Sized;
-
-    /// The encoded length of the oneof, including the key.
-    fn wire_len_with_key(&self) -> usize;
-}

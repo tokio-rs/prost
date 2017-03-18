@@ -25,7 +25,7 @@ use byteorder::{
 use check_limit;
 use Message;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum WireType {
     Varint = 0,
@@ -109,13 +109,20 @@ pub struct Signed;
 pub struct Fixed;
 
 /// A field type in a Protobuf message.
-pub trait Field<E=Default> {
+pub trait Field<E=Default> : Sized {
 
     /// Writes the field with the provided tag.
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()>;
 
-    /// Reads the field, and merges it into self.
-    fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()>;
+    /// Reads an instance of this field with the given tag and wire type.
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Self>;
+
+    /// Reads the field, and merges it into self. The default implementation is appropriate for
+    /// field types which are overwritten when merged (e.g. scalar fields).
+    fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        *self = Self::read_from(tag, wire_type, r, limit)?;
+        Ok(())
+    }
 
     /// Returns the wire length of the field, including the provided tag.
     fn wire_len(&self, tag: u32) -> usize;
@@ -147,10 +154,9 @@ macro_rules! scalar_field {
                 ScalarField::<$e>::write_to(self, w)
             }
 
-            fn merge_from(&mut self, _tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+            fn read_from(_tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<$ty> {
                 check_wire_type(<Self as ScalarField<$e>>::wire_type(), wire_type)?;
-                *self = ScalarField::<$e>::read_from(r, limit)?;
-                Ok(())
+                ScalarField::<$e>::read_from(r, limit)
             }
 
             fn wire_len(&self, tag: u32) -> usize {
@@ -191,6 +197,12 @@ macro_rules! scalar_field {
                     },
                 }
                 Ok(())
+            }
+
+            fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Vec<$ty>> {
+                let mut values = Vec::new();
+                Field::<$e>::merge_from(&mut values, tag, wire_type, r, limit)?;
+                Ok(values)
             }
 
             fn merge_from(&mut self, _tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
@@ -551,7 +563,7 @@ impl ScalarField for String {
         w.write_all(self.as_bytes())
     }
     fn read_from(r: &mut Read, limit: &mut usize) -> Result<String> {
-        String::from_utf8(Vec::<u8>::read_from(r, limit)?).map_err(|_| {
+        String::from_utf8(<Vec<u8> as ScalarField>::read_from(r, limit)?).map_err(|_| {
             Error::new(ErrorKind::InvalidData, "string does not contain valid UTF-8")
         })
     }
@@ -563,33 +575,58 @@ impl ScalarField for String {
     }
 }
 
-
-// Message
-impl <M> Field for Option<M> where M: Message + default::Default {
+// Optional field
+impl <F> Field for Option<F> where F: Field {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-        if let Some(ref m) = *self {
-            write_key_to(tag, WireType::LengthDelimited, w)?;
-            m.write_length_delimited_to(w)?;
+        if let Some(ref f) = *self {
+            f.write_to(tag, w)?;
         }
         Ok(())
     }
 
-    fn merge_from(&mut self, _tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Option<F>> {
+        F::read_from(tag, wire_type, r, limit).map(|f| Some(f))
+    }
+
+    fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         if self.is_none() {
-            *self = Some(M::default());
+            *self = Some(F::read_from(tag, wire_type, r, limit)?);
+            Ok(())
+        } else {
+            self.as_mut().unwrap().merge_from(tag, wire_type, r, limit)
         }
-        self.as_mut().unwrap().merge_length_delimited_from(r, limit)
     }
 
     fn wire_len(&self, tag: u32) -> usize {
         match *self {
-            Some(ref m) => {
-                let len = Message::wire_len(m);
-                key_len(tag) + <u64 as ScalarField>::wire_len(&(len as u64)) + len
-            },
+            Some(ref f) => f.wire_len(tag),
             None => 0,
         }
+    }
+}
+
+// Message
+impl <M> Field for M where M: Message + default::Default {
+    fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
+        write_key_to(tag, WireType::LengthDelimited, w)?;
+        Message::write_length_delimited_to(self, w)
+    }
+
+    fn read_from(_tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<M> {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut m = M::default();
+        Message::merge_length_delimited_from(&mut m, r, limit)?;
+        Ok(m)
+    }
+
+    fn merge_from(&mut self, _tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        self.merge_length_delimited_from(r, limit)
+    }
+
+    fn wire_len(&self, tag: u32) -> usize {
+        let len = Message::wire_len(self);
+        key_len(tag) + <u64 as ScalarField>::wire_len(&(len as u64)) + len
     }
 }
 
@@ -599,8 +636,8 @@ impl <M> Field for Box<Option<M>> where M: Message + default::Default {
         Field::write_to(&**self, tag, w)
     }
 
-    fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        Field::merge_from(&mut **self, tag, wire_type, r, limit)
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Box<Option<M>>> {
+        Field::read_from(tag, wire_type, r, limit).map(Box::new)
     }
 
     fn wire_len(&self, tag: u32) -> usize {
@@ -612,17 +649,17 @@ impl <M> Field for Box<Option<M>> where M: Message + default::Default {
 impl <M> Field for Vec<M> where M: Message + default::Default {
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         for message in self {
-            write_key_to(tag, WireType::LengthDelimited, w)?;
-            message.write_length_delimited_to(w)?;
+            <M as Field>::write_to(message, tag, w)?;
         }
         Ok(())
     }
 
-    fn merge_from(&mut self, _tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let mut m = M::default();
-        m.merge_length_delimited_from(r, limit)?;
-        self.push(m);
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Vec<M>> {
+        <M as Field>::read_from(tag, wire_type, r, limit).map(|m| vec![m])
+    }
+
+    fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        self.push(Field::read_from(tag, wire_type, r, limit)?);
         Ok(())
     }
 
@@ -659,6 +696,12 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
         Ok(())
     }
 
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<HashMap<K, V>> {
+        let mut m = HashMap::new();
+        m.merge_from(tag, wire_type, r, limit)?;
+        Ok(m)
+    }
+
     fn merge_from(&mut self, _tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = <u64 as ScalarField>::read_from(r, limit)?;
@@ -675,16 +718,8 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
         while limit > 0 {
             let (wire_type, tag) = read_key_from(r, &mut limit)?;
             match tag {
-                1 => {
-                    let mut k = K::default();
-                    <K as Field<EK>>::merge_from(&mut k, tag, wire_type, r, &mut limit)?;
-                    key = Some(k);
-                },
-                2 => {
-                    let mut v = V::default();
-                    <V as Field<EV>>::merge_from(&mut v, tag, wire_type, r, &mut limit)?;
-                    value = Some(v);
-                },
+                1 => key = Some(<K as Field<EK>>::read_from(tag, wire_type, r, &mut limit)?),
+                2 => value = Some(<V as Field<EV>>::read_from(tag, wire_type, r, &mut limit)?),
                 _ => return Err(Error::new(ErrorKind::InvalidData,
                                            format!("map entry contains unexpected field; tag: {:?}, wire type: {:?}",
                                                    tag, wire_type))),
@@ -719,6 +754,10 @@ where K: default::Default + Eq + Hash + Key + Field<Default>,
 
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         <HashMap<K, V> as Field<(Default, Default)>>::write_to(self, tag, w)
+    }
+
+    fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<HashMap<K, V>> {
+        <HashMap<K, V> as Field<(Default, Default)>>::read_from(tag, wire_type, r, limit)
     }
 
     fn merge_from(&mut self, tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {

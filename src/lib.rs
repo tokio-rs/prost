@@ -11,9 +11,6 @@ pub mod field;
 
 pub use message::Message;
 
-#[doc(hidden)]
-pub use message::Oneof;
-
 use std::io::{
     Error,
     ErrorKind,

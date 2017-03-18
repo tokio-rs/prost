@@ -341,7 +341,7 @@ impl <'a> CodeGenerator<'a> {
                                              f(&format_args!("tag=\"{}\"", field.number))
                                          })));
         self.push_indent();
-        self.buf.push_str(&format!("{}: {}::{},\n",
+        self.buf.push_str(&format!("{}: Option<{}::{}>,\n",
                                    oneof.name,
                                    camel_to_snake(message_name),
                                    snake_to_upper_camel(&oneof.name)));

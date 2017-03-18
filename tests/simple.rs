@@ -32,9 +32,9 @@ pub struct M {
     pub test_map: ::std::collections::HashMap<i32, i32>,
     /// test oneof 1 doc
     #[proto(tag="9", tag="6")]
-    test_oneof_1: m::TestOneof1,
+    test_oneof_1: Option<m::TestOneof1>,
     #[proto(tag="7", tag="8", tag="5")]
-    test_oneof_2: m::TestOneof2,
+    test_oneof_2: Option<m::TestOneof2>,
 }
 pub mod m {
     #[derive(Clone, Debug, PartialEq, Message)]
