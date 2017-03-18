@@ -78,7 +78,7 @@ pub fn read_key_from(r: &mut Read, limit: &mut usize) -> Result<(WireType, u32)>
 }
 
 #[inline]
-fn write_key_to(tag: u32, wire_type: WireType, w: &mut Write) -> Result<()> {
+pub fn write_key_to(tag: u32, wire_type: WireType, w: &mut Write) -> Result<()> {
     debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
     let key = (tag << 3) | wire_type as u32;
     <u32 as ScalarField>::write_to(&key, w)
@@ -279,7 +279,7 @@ impl ScalarField for i32 {
         ScalarField::<Default>::write_to(&(*self as u32), w)
     }
     fn read_from(r: &mut Read, limit: &mut usize) -> Result<i32> {
-        <u32 as ScalarField>::read_from(r, limit).map(|value| value as _)
+        <u64 as ScalarField>::read_from(r, limit).map(|value| value as _)
     }
     fn wire_type() -> WireType {
         WireType::Varint
@@ -313,13 +313,7 @@ impl ScalarField for u32 {
         <u64 as ScalarField>::write_to(&(*self as u64), w)
     }
     fn read_from(r: &mut Read, limit: &mut usize) -> Result<u32> {
-        <u64 as ScalarField>::read_from(r, limit).and_then(|value| {
-            if value > u32::MAX as u64 {
-                Err(Error::new(ErrorKind::InvalidData, "uint32 overflow"))
-            } else {
-                Ok(value as _)
-            }
-        })
+        <u64 as ScalarField>::read_from(r, limit).map(|value| value as _)
     }
     fn wire_type() -> WireType {
         WireType::Varint

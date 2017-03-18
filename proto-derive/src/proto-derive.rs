@@ -230,19 +230,18 @@ pub fn message(input: TokenStream) -> TokenStream {
             use std::io::{
                 Error,
                 Read,
-                Result,
                 Write,
             };
             use proto::field::{self, Field, WireType};
 
             #[automatically_derived]
             impl proto::Message for #ident {
-                fn write_to(&self, w: &mut Write) -> Result<()> {
+                fn write_to(&self, w: &mut Write) -> ::std::io::Result<()> {
                     #write_to
                     Ok(())
                 }
 
-                fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()> {
+                fn merge_from(&mut self, len: usize, r: &mut Read) -> ::std::io::Result<()> {
                     let mut limit = len;
                     while limit > 0 {
                         let (wire_type, tag) = field::read_key_from(r, &mut limit)?;
@@ -352,7 +351,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                         _ => None,
                     })
                     .last()
-                    .map_or_else(|| quote!(i32), |repr| quote!(#repr));
+                    .map_or_else(|| quote!(i64), |repr| quote!(#repr));
 
     let default = variants[0].0.clone();
 
@@ -373,10 +372,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             extern crate proto;
             use std::io::{
                 Read,
-                Result,
                 Write,
             };
-            use std::result;
             use std::str::FromStr;
 
             use proto::field::{
@@ -396,18 +393,46 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
             #[automatically_derived]
             impl Field for #ident {
-                fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
-                    Field::<field::Default>::write_to(&(*self as i32), tag, w)
+                fn write_to(&self, tag: u32, w: &mut Write) -> ::std::io::Result<()> {
+                    Field::<field::Default>::write_to(&(*self as i64), tag, w)
                 }
 
-                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<#ident> {
-                    <i32 as Field<field::Default>>::read_from(tag, wire_type, r, limit).map(From::from)
+                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> ::std::io::Result<#ident> {
+                    <i64 as Field<field::Default>>::read_from(tag, wire_type, r, limit).map(From::from)
                 }
 
                 fn wire_len(&self, tag: u32) -> usize {
-                    Field::<field::Default>::wire_len(&(*self as i32), tag)
+                    Field::<field::Default>::wire_len(&(*self as i64), tag)
                 }
             }
+
+            /*
+            #[automatically_derived]
+            impl Field for ::std::vec::Vec<#ident> {
+                fn write_to(&self, tag: u32, w: &mut Write) -> ::std::io::Result<()> {
+                    unimplemented!()
+                        /*
+                    if self.is_empty() { return Ok(()) }
+
+
+                    ::proto::field::write_key_to(tag, WireType::LengthDelimited, w)?;
+                    let len: usize = self.iter().map(|variant| ::proto::field::ScalarField::wire_len(&(variant as i64))).sum();
+                    <u64 as ::proto::field::ScalarField>::write_to(&(len as u64), w)?;
+                    for &variant in self {
+                        ::proto::field::ScalarField::<i64>::write_to(&(variant as i64), w)?;
+                    }
+                    */
+                }
+
+                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> ::std::io::Result<#ident> {
+                    unimplemented!()
+                }
+
+                fn wire_len(&self, tag: u32) -> usize {
+                    unimplemented!()
+                }
+            }
+            */
 
             #[automatically_derived]
             impl Default for #ident {
@@ -429,7 +454,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             #[automatically_derived]
             impl FromStr for #ident {
                 type Err = String;
-                fn from_str(s: &str) -> result::Result<#ident, String> {
+                fn from_str(s: &str) -> ::std::result::Result<#ident, String> {
                     match s {
                         #from_str
                         _ => Err(format!(concat!("unknown ", stringify!(#ident), " variant: {}"), s)),
@@ -528,20 +553,19 @@ pub fn oneof(input: TokenStream) -> TokenStream {
             use std::io::{
                 Error,
                 Read,
-                Result,
                 Write,
             };
             use proto::field::{self, Field, WireType};
 
             #[automatically_derived]
             impl proto::field::Field for #ident {
-                fn write_to(&self, _tag: u32, w: &mut Write) -> Result<()> {
+                fn write_to(&self, _tag: u32, w: &mut Write) -> ::std::io::Result<()> {
                     match *self {
                         #write_to
                     }
                 }
 
-                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<#ident> {
+                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> ::std::io::Result<#ident> {
                     match tag {
                         #read_from
                         // TODO: test coverage of this case

@@ -165,8 +165,6 @@ impl <'a> CodeGenerator<'a> {
     fn append_message(&mut self, message: DescriptorProto) {
         debug!("  message: {:?}", message.name);
 
-        debug!("message: {:#?}", message);
-
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
         // that comments can be retrieved.
