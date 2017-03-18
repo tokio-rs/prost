@@ -406,34 +406,6 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
             }
 
-            /*
-            #[automatically_derived]
-            impl Field for ::std::vec::Vec<#ident> {
-                fn write_to(&self, tag: u32, w: &mut Write) -> ::std::io::Result<()> {
-                    unimplemented!()
-                        /*
-                    if self.is_empty() { return Ok(()) }
-
-
-                    ::proto::field::write_key_to(tag, WireType::LengthDelimited, w)?;
-                    let len: usize = self.iter().map(|variant| ::proto::field::ScalarField::wire_len(&(variant as i64))).sum();
-                    <u64 as ::proto::field::ScalarField>::write_to(&(len as u64), w)?;
-                    for &variant in self {
-                        ::proto::field::ScalarField::<i64>::write_to(&(variant as i64), w)?;
-                    }
-                    */
-                }
-
-                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> ::std::io::Result<#ident> {
-                    unimplemented!()
-                }
-
-                fn wire_len(&self, tag: u32) -> usize {
-                    unimplemented!()
-                }
-            }
-            */
-
             #[automatically_derived]
             impl Default for #ident {
                 fn default() -> #ident {

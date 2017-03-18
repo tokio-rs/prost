@@ -39,14 +39,14 @@ pub const MAX_TAG: u32 = (1 << 29) - 1;
 
 impl WireType {
     // TODO: impl TryFrom<u8> when stable.
-    pub fn try_from(val: u32) -> Result<WireType> {
+    pub fn try_from(val: u8) -> Result<WireType> {
         match val {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
             5 => Ok(WireType::ThirtyTwoBit),
             _ => Err(Error::new(ErrorKind::InvalidData,
-                                format!("illegal wire type value {}", val))),
+                                format!("unknoqn wire type value {}", val))),
         }
     }
 }
@@ -72,7 +72,7 @@ pub fn skip_field(wire_type: WireType, r: &mut Read, limit: &mut usize) -> Resul
 #[inline]
 pub fn read_key_from(r: &mut Read, limit: &mut usize) -> Result<(WireType, u32)> {
     let key = <u32 as ScalarField>::read_from(r, limit)?;
-    let wire_type = WireType::try_from(key & 0x07)?;
+    let wire_type = WireType::try_from(key as u8 & 0x07)?;
     let tag = key >> 3;
     Ok((wire_type, tag))
 }
@@ -114,7 +114,14 @@ pub trait Field<E=Default> : Sized {
     /// Writes the field with the provided tag.
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()>;
 
+    // fn write_raw_to(&self, w: &mut Write) - Result<()>;
+    // fn wire_type() -> WriteType;
+
     /// Reads an instance of this field with the given tag and wire type.
+    ///
+    /// Tag is provided so that oneof fields can determine which variant to read.
+    /// WireType is provided so that repeated scalar fields can determine whether the
+    /// field is packed or unpacked.
     fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<Self>;
 
     /// Reads the field, and merges it into self. The default implementation is appropriate for
