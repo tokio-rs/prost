@@ -2,15 +2,18 @@
 
 extern crate proto;
 extern crate test;
-
-use proto::encodable::encode_varint;
+extern crate bytes;
 
 use test::Bencher;
+
+use bytes::BytesMut;
+
+use proto::encodable::encode_varint;
 
 /// Benchmark encoding 100 varints of mixed width (average 5.5 bytes).
 #[bench]
 fn encode_varint_mixed(b: &mut Bencher) {
-    let mut buf = Vec::with_capacity(4096);
+    let mut buf = BytesMut::with_capacity(4096);
     b.iter(|| {
         buf.clear();
         for width in 0..10 {
@@ -28,7 +31,7 @@ fn encode_varint_mixed(b: &mut Bencher) {
 /// Benchmark encoding 100 small (1 byte) varints.
 #[bench]
 fn encode_varint_small(b: &mut Bencher) {
-    let mut buf = Vec::with_capacity(4096);
+    let mut buf = BytesMut::with_capacity(4096);
     b.iter(|| {
         buf.clear();
         for value in 0..100 {
@@ -43,7 +46,7 @@ fn encode_varint_small(b: &mut Bencher) {
 /// Benchmark encoding 100 medium (4 byte) varints.
 #[bench]
 fn encode_varint_medium(b: &mut Bencher) {
-    let mut buf = Vec::with_capacity(4096);
+    let mut buf = BytesMut::with_capacity(4096);
     b.iter(|| {
         buf.clear();
         let start = 1 << 28;
@@ -59,7 +62,7 @@ fn encode_varint_medium(b: &mut Bencher) {
 /// Benchmark encoding 100 large (10 byte) varints.
 #[bench]
 fn encode_varint_large(b: &mut Bencher) {
-    let mut buf = Vec::with_capacity(4096);
+    let mut buf = BytesMut::with_capacity(4096);
     b.iter(|| {
         buf.clear();
         let start = 1 << 63;

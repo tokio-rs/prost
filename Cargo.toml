@@ -12,6 +12,7 @@ members = [
 
 [dependencies]
 byteorder = "1"
+#bytes = { path = "../bytes" }
 bytes = "0.4"
 
 [dev-dependencies]
