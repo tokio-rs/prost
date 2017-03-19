@@ -1,6 +1,6 @@
 [package]
 name = "proto"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 
 [workspace]
@@ -12,6 +12,7 @@ members = [
 
 [dependencies]
 byteorder = "1"
+bytes = "0.4"
 
 [dev-dependencies]
 quickcheck = "0.4"

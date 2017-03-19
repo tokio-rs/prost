@@ -1,4 +1,5 @@
 extern crate byteorder;
+extern crate bytes;
 
 #[cfg(test)]
 #[macro_use]
@@ -8,6 +9,8 @@ mod message;
 
 #[doc(hidden)]
 pub mod field;
+
+pub mod encodable;
 
 pub use message::Message;
 
