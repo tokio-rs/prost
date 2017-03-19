@@ -10,8 +10,6 @@ mod message;
 #[doc(hidden)]
 pub mod field;
 
-pub mod encodable;
-
 pub use message::Message;
 
 use std::io::{

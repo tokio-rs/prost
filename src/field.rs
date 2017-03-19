@@ -21,9 +21,85 @@ use byteorder::{
     ReadBytesExt,
     WriteBytesExt,
 };
+use bytes::{
+    Buf,
+    BufMut,
+};
 
 use check_limit;
 use Message;
+
+/// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
+/// The buffer must have enough remaining space (maximum 10 bytes).
+#[inline]
+pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
+    let mut i = 0;
+    'outer: loop {
+        // bytes_mut is unsafe because it may return an uninitialized slice.
+        // This use is safe because the slice is only written to, not read from.
+        for byte in unsafe { buf.bytes_mut() } {
+            i += 1;
+            if value < 0x80 {
+                *byte = value as u8;
+                break 'outer;
+            } else {
+                *byte = ((value & 0x7F) | 0x80) as u8;
+                value >>= 7;
+            }
+        }
+        assert!(buf.has_remaining_mut());
+    }
+    // advance_mut is unsafe because it could cause uninitialized memory to be
+    // advanced over. This use is safe since each byte which is advanced over
+    // has been written to in the previous loop.
+    unsafe { buf.advance_mut(i); }
+}
+
+/// Decodes a LEB128-encoded variable length integer from the buffer.
+#[inline]
+pub fn decode_varint<B>(buf: &mut B) -> Result<u64> where B: Buf {
+    let mut value = 0;
+    let mut i = 0;
+    'outer: loop {
+        let bytes = buf.bytes();
+        let len = bytes.len();
+
+        for &byte in &bytes[..min(len, 10 - i)] {
+            value |= ((byte & 0x7F) as u64) << (i * 7);
+            i += 1;
+            if byte <= 0x7F {
+                break 'outer;
+            }
+        }
+
+        if i == 10 {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "failed to decode varint: integer overflow"));
+        }
+        if !buf.has_remaining() {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "failed to decode varint: buffer underflow"));
+        }
+    }
+    buf.advance(i);
+    return Ok(value);
+}
+
+/// Returns the width of the value if it were encoded into LEB128 variable length format.
+/// The returned value will be between 1 and 10, inclusive.
+#[inline]
+pub fn varint_width(value: u64) -> usize {
+    if value < 1 <<  7 { 1 } else
+    if value < 1 << 14 { 2 } else
+    if value < 1 << 21 { 3 } else
+    if value < 1 << 28 { 4 } else
+    if value < 1 << 35 { 5 } else
+    if value < 1 << 42 { 6 } else
+    if value < 1 << 49 { 7 } else
+    if value < 1 << 56 { 8 } else
+    if value < 1 << 63 { 9 }
+    else { 10 }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
@@ -68,6 +144,7 @@ pub fn skip_field(wire_type: WireType, r: &mut Read, limit: &mut usize) -> Resul
     };
     Ok(())
 }
+
 
 #[inline]
 pub fn read_key_from(r: &mut Read, limit: &mut usize) -> Result<(WireType, u32)> {
@@ -749,12 +826,14 @@ where K: default::Default + Eq + Hash + Key + Field<Default>,
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-
     use std::fmt::Debug;
     use std::io::Cursor;
 
+    use bytes::{Bytes, IntoBuf};
+
     use quickcheck::TestResult;
+
+    use super::*;
 
     // Creates a checker function for each field trait. Necessary to create as a macro as opposed
     // to taking the field trait as a parameter, because Field, SignedField, and FixedField don't
@@ -876,14 +955,13 @@ mod tests {
     fn varint() {
         fn check(value: u64, encoded: &[u8]) {
             let mut buf = Vec::new();
-            <u64 as ScalarField>::write_to(&value, &mut buf).expect("encoding failed");
+
+            encode_varint(value, &mut buf);
 
             assert_eq!(buf, encoded);
 
-            let mut limit = encoded.len();
-            let roundtrip_value = <u64 as ScalarField>::read_from(&mut Cursor::new(buf), &mut limit).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut Bytes::from(encoded).into_buf()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
-            assert_eq!(limit, 0);
         }
 
         check(0, &[0b0000_0000]);
