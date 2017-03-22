@@ -9,89 +9,85 @@ use std::io::{
 };
 use std::usize;
 
-use check_limit;
-use field::ScalarField;
+use bytes::{
+    Buf,
+    BufMut
+};
 
-/// A protobuf message.
+use field::{
+    decode_varint,
+    encode_varint,
+    varint_len,
+};
+
+/// A Protocol Buffers message.
 pub trait Message: Any + Debug + Send + Sync {
 
-    /// Write the message to the provided `Write`.
-    fn write_to(&self, w: &mut Write) -> Result<()>;
+    /// Encodes the message, and writes it to the buffer. An error will be
+    /// returned if the buffer does not have sufficient capacity.
+    fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut;
 
-    /// Merge a message of known-size `len` into `self`.
-    fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()>;
-
-    /// Encode the message and its length and write them to the provided `Write`.
-    fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
-        let len = self.wire_len() as u64;
-        <u64 as ScalarField>::write_to(&len, w)?;
-        self.write_to(w)
-    }
-
-    /// Merge a length-delimited message into `self`, the total length may be at most 'limit'
-    /// bytes.
-    fn merge_length_delimited_from(&mut self, r: &mut Read, limit: &mut usize) -> Result<()> {
-        let len = <u64 as ScalarField>::read_from(r, limit)?;
-        if len > usize::MAX as u64 {
+    /// Encodes the message, and writes it with a length-delimiter prefix to
+    /// the buffer. An error will be returned if the buffer does not have
+    /// sufficient capacity.
+    fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
+        let len = self.encoded_len();
+        if len + varint_len(len as u64) < buf.remaining_mut() {
             return Err(Error::new(ErrorKind::InvalidInput,
-                                  "message length overflows usize"));
+                                  "failed to encode message: insufficient buffer capacity"));
         }
-        check_limit(len as usize, limit)?;
-        self.merge_from(len as usize, r)
+        encode_varint(len as u64, buf);
+        self.encode(buf)
     }
 
-    /// The encoded length of the message.
-    fn wire_len(&self) -> usize;
+    /// Decodes an instance of the message from the buffer.
+    /// The entire buffer will be consumed.
+    fn decode<B>(buf: &mut B) -> Result<Self> where B: Buf, Self: Default {
+        let mut message = Self::default();
+        Self::merge(&mut message, buf).map(|_| message)
+    }
 
-    fn type_id(&self) -> TypeId;
+    /// Decodes a length-delimited instance of the message from the buffer.
+    fn decode_length_delimited<B>(buf: &mut B) -> Result<Self> where B: Buf, Self: Default {
+        let len = decode_varint(buf)?;
 
-    fn as_any(&self) -> &Any;
+        if len > buf.remaining() as u64 {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "failed to decode message: buffer underflow"));
+        }
+        Self::decode(&mut buf.take(len as usize))
+    }
 
-    fn as_any_mut(&mut self) -> &mut Any;
+    /// Decodes an instance of the message from the buffer, and merges
+    /// it into `self`. The entire buffer will be consumed.
+    fn merge<B>(&mut self, buf: &mut B) -> Result<()> where B: Buf;
 
-    fn into_any(self: Box<Self>) -> Box<Any>;
+    /// Decodes a length-delimited instance of the message from the
+    /// buffer, and merges it into `self`.
+    fn merge_length_delimited<B>(&mut self, buf: &mut B) -> Result<()> where B: Buf {
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "failed to merge message: buffer underflow"));
+        }
+        self.merge(&mut buf.take(len as usize))
+    }
+
+    /// The encoded length of the message without a length delimiter.
+    fn encoded_len(&self) -> usize;
 }
 
-impl <M> Message for Box<M> where M: Any + Debug + Send + Sync + Message {
+impl <M> Message for Box<M> where M: Any + Debug + Send + Sync + Message + Sized {
     #[inline]
-    fn write_to(&self, w: &mut Write) -> Result<()> {
-        (**self).write_to(w)
+    fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
+        (**self).encode(buf)
     }
     #[inline]
-    fn merge_from(&mut self, len: usize, r: &mut Read) -> Result<()> {
-        (**self).merge_from(len, r)
+    fn merge<B>(&mut self, buf: &mut B) -> Result<()> where B: Buf {
+        (**self).merge(buf)
     }
     #[inline]
-    fn write_length_delimited_to(&self, w: &mut Write) -> Result<()> {
-        (**self).write_length_delimited_to(w)
-    }
-    #[inline]
-    fn merge_length_delimited_from(&mut self, r: &mut Read, limit: &mut usize) -> Result<()> {
-        (**self).merge_length_delimited_from(r, limit)
-    }
-    #[inline]
-    fn wire_len(&self) -> usize {
-        (**self).wire_len()
-    }
-    #[inline]
-    fn type_id(&self) -> TypeId {
-        (**self).type_id()
-    }
-    #[inline]
-    fn as_any(&self) -> &Any {
-        &**self
-    }
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut Any {
-        &mut **self
-    }
-
-    #[inline]
-    fn into_any(self: Box<Self>) -> Box<Any> {
-        *self
+    fn encoded_len(&self) -> usize {
+        (**self).encoded_len()
     }
 }
-
-/// Test that the `Message` trait is object-safe.
-#[allow(unused)]
-fn test_message_is_object_safe(message: &Message) {}
