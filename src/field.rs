@@ -200,7 +200,7 @@ pub enum Packed {}
 
 /// A field type in a Protobuf message.
 ///
-/// The `E` type parameter allows `Field` to be implemented multiple ways for a
+/// The `E` type parameter allows `Field` to be implemented multiple times for a
 /// single type, in order to provide multiple encoding and decoding options for
 /// a single Rust type. For instance, the Protobuf `fixed32` and `uint32` types
 /// both correspond to the Rust `u32` type, so `u32` has two impls of `Field`
@@ -258,8 +258,8 @@ pub trait Field<E=Default> : Sized {
     /// implementation is not overriden. Otherise, the implementation of
     /// `wire_type` may panic.
     ///
-    /// A self parameter is provided because oneof fields can have a different wire type
-    /// depending on the current variant.
+    /// A self parameter is provided because oneof fields can have a different
+    /// wire type depending on the current variant.
     fn wire_type(&self) -> WireType;
 }
 
@@ -724,28 +724,28 @@ impl <F, E> Field<E> for Option<F> where F: Field<E> {
         Ok(())
     }
     #[inline]
-    fn wire_len(&self) -> usize {
-        self.as_ref().map(|f| f.wire_len()).unwrap_or(0)
+    fn wire_len(&self, tag: u32) -> usize {
+        self.as_ref().map(|f| f.wire_len(tag)).unwrap_or(0)
     }
     #[inline]
     fn wire_type(&self) -> WireType {
-        // This doesn't need to be implemented, because the default
-        // encode_with_key impl is overriden.
+        // encode_with_key is overriden, so this will not be called.
         unimplemented!()
     }
 }
 
 // repeated
-//
-// All methods are overriden in case the underlying type has an overriden impl.
 impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
     #[inline]
-    fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+    fn encode<B>(&self, buf: &mut B) where B: BufMut {
+        // encode_with_key is overriden, so this will not be called.
         unimplemented!()
     }
     #[inline]
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
-        unimplemented!()
+    fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+        for value in self {
+            <F as Field<E>>::encode_with_key(value, tag, buf);
+        }
     }
     #[inline]
     fn decode<B>(tag: u32, _wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
@@ -763,19 +763,59 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
         unimplemented!()
     }
     #[inline]
-    fn wire_len(&self) -> usize {
-        unimplemented!()
+    fn wire_len(&self, tag: u32) -> usize {
+        let len: usize = self.iter().map(|f| <F as Field<E>>::wire_len(f, tag)).sum();
+        key_width(tag) * self.len() + varint_len(len as u64) + len
     }
     #[inline]
     fn wire_type(&self) -> WireType {
+        // encode_with_key is overriden, so this will not be called.
         unimplemented!()
     }
 }
 
 // packed repeated
-//
-// All methods are overriden in case the underlying type has an overriden impl.
 impl <F, E> Field<(Packed, E)> for Vec<F> where F: Field<E> {
+    #[inline]
+    fn encode<B>(&self, buf: &mut B) where B: BufMut {
+        let len: usize = self.iter().map(|f| <F as Field<E>>::wire_len(f)).sum();
+        encode_varint(len, buf);
+        for value in self {
+            <F as Field<E>>::encode(value, buf);
+        }
+    }
+
+    #[inline]
+    fn decode<B>(tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
+        let mut vec = Vec::new();
+        <Vec<F> as Field<(Packed, E)>>::merge(&mut vec, tag, wire_type, buf)?;
+        Ok(vec)
+    }
+    #[inline]
+    fn decode_repeated<B>(tag: u32,
+                          _wire_type: WireType,
+                          buf: &mut B)
+                          -> Result<Option<Self>> where B: Buf {
+        // Nested repeteated fields are not possible.
+        unimplemented!()
+    }
+    #[inline]
+    fn merge<B>(&mut self, tag: u32, _wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        unimplemented!()
+    }
+    #[inline]
+    fn wire_len(&self, tag: u32) -> usize {
+        let len: usize = self.iter().map(|f| <F as Field<E>>::wire_len(f)).sum();
+        key_width(tag) + varint_len(len as u64) + len
+    }
+    #[inline]
+    fn wire_type(&self) -> WireType {
+        WireType::LengthDelimited
+    }
+}
+
+// Message
+impl <M> Field for M where M: Message + default::Default {
     #[inline]
     fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         unimplemented!()
@@ -807,11 +847,7 @@ impl <F, E> Field<(Packed, E)> for Vec<F> where F: Field<E> {
     fn wire_type(&self) -> WireType {
         unimplemented!()
     }
-}
-
-/*
-// Message
-impl <M> Field for M where M: Message + default::Default {
+    /*
     fn write_to(&self, tag: u32, w: &mut Write) -> Result<()> {
         write_key_to(tag, WireType::LengthDelimited, w)?;
         Message::write_length_delimited_to(self, w)
@@ -833,8 +869,8 @@ impl <M> Field for M where M: Message + default::Default {
         let len = Message::wire_len(self);
         key_len(tag) + <u64 as ScalarField>::wire_len(&(len as u64)) + len
     }
+    */
 }
-*/
 
 /*
 // Trait for types which can be keys in a Protobuf map.
