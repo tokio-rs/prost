@@ -172,7 +172,7 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut
 /// Returns the width of an encoded Protobuf field key with the given tag.
 /// The returned width will be between 1 and 5 bytes (inclusive).
 #[inline]
-pub fn key_width(tag: u32) -> usize {
+pub fn key_len(tag: u32) -> usize {
     varint_len((tag << 3) as u64)
 }
 
@@ -250,7 +250,15 @@ pub trait Field<E=Default> : Sized {
     }
 
     /// Returns the length of the encoded field. The length of the key is not included.
-    fn wire_len(&self) -> usize;
+    fn encoded_len(&self) -> usize;
+
+    /// Returns the length of the encoded field with the key.
+    ///
+    /// Types which may write multiple keys (like unpacked repeated fields)
+    /// should overide this.
+    fn encoded_len_with_key(&self, tag: u32) -> usize {
+        key_len(tag) + self.encoded_len()
+    }
 
     /// Returns the wire type of the field.
     ///
@@ -279,8 +287,8 @@ macro_rules! scalar_field {
                 ScalarField::<$e>::read_from(r, limit)
             }
 
-            fn wire_len(&self, tag: u32) -> usize {
-                key_len(tag) + ScalarField::<$e>::wire_len(self)
+            fn encoded_len(&self, tag: u32) -> usize {
+                key_len(tag) + ScalarField::<$e>::encoded_len(self)
             }
         }
 
@@ -290,7 +298,7 @@ macro_rules! scalar_field {
                 match <$ty as ScalarField<$e>>::wire_type() {
                     WireType::Varint => {
                         write_key_to(tag, WireType::LengthDelimited, w)?;
-                        let len: usize = self.iter().map(ScalarField::<$e>::wire_len).sum();
+                        let len: usize = self.iter().map(ScalarField::<$e>::encoded_len).sum();
                         <u64 as ScalarField>::write_to(&(len as u64), w)?;
                         for value in self {
                             ScalarField::<$e>::write_to(value, w)?;
@@ -349,17 +357,17 @@ macro_rules! scalar_field {
                 Ok(())
             }
 
-            fn wire_len(&self, tag: u32) -> usize {
+            fn encoded_len(&self, tag: u32) -> usize {
                 let key_len = key_len(tag);
                 match <$ty as ScalarField<$e>>::wire_type() {
                     WireType::Varint => {
-                        let len: usize = self.iter().map(ScalarField::<$e>::wire_len).sum();
+                        let len: usize = self.iter().map(ScalarField::<$e>::encoded_len).sum();
                         len + key_len
                     }
                     WireType::SixtyFourBit => key_len + 8 * self.len(),
                     WireType::ThirtyTwoBit => key_len + 4 * self.len(),
                     WireType::LengthDelimited => {
-                        let len: usize = self.iter().map(ScalarField::<$e>::wire_len).sum();
+                        let len: usize = self.iter().map(ScalarField::<$e>::encoded_len).sum();
                         key_len * self.len() + len
                     },
                 }
@@ -390,7 +398,7 @@ impl Field for bool {
         }
     }
     #[inline]
-    fn wire_len(&self) -> usize { 1 }
+    fn encoded_len(&self) -> usize { 1 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -406,7 +414,7 @@ impl Field for i32 {
         decode_varint(buf).map(|value| value as _)
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(*self as u64) }
+    fn encoded_len(&self) -> usize { varint_len(*self as u64) }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -422,7 +430,7 @@ impl Field for i64 {
         decode_varint(buf).map(|value| value as _)
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(*self as u64) }
+    fn encoded_len(&self) -> usize { varint_len(*self as u64) }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -438,7 +446,7 @@ impl Field for u32 {
         decode_varint(buf).map(|value| value as _)
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(*self as u64) }
+    fn encoded_len(&self) -> usize { varint_len(*self as u64) }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -454,7 +462,7 @@ impl Field for u64 {
         decode_varint(buf)
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(*self) }
+    fn encoded_len(&self) -> usize { varint_len(*self) }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -474,7 +482,7 @@ impl Field for f32 {
         Ok(buf.get_f32::<LittleEndian>())
     }
     #[inline]
-    fn wire_len(&self) -> usize { 4 }
+    fn encoded_len(&self) -> usize { 4 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::ThirtyTwoBit }
 }
@@ -494,7 +502,7 @@ impl Field for f64 {
         Ok(buf.get_f64::<LittleEndian>())
     }
     #[inline]
-    fn wire_len(&self) -> usize { 8 }
+    fn encoded_len(&self) -> usize { 8 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::SixtyFourBit }
 }
@@ -513,7 +521,7 @@ impl Field<Signed> for i32 {
         })
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(((*self << 1) ^ (*self >> 31)) as u64) }
+    fn encoded_len(&self) -> usize { varint_len(((*self << 1) ^ (*self >> 31)) as u64) }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -532,7 +540,7 @@ impl Field<Signed> for i64 {
         })
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(((*self << 1) ^ (*self >> 63)) as u64) }
+    fn encoded_len(&self) -> usize { varint_len(((*self << 1) ^ (*self >> 63)) as u64) }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::Varint }
 }
@@ -552,7 +560,7 @@ impl Field<Fixed> for u32 {
         Ok(buf.get_u32::<LittleEndian>())
     }
     #[inline]
-    fn wire_len(&self) -> usize { 4 }
+    fn encoded_len(&self) -> usize { 4 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::ThirtyTwoBit }
 }
@@ -572,7 +580,7 @@ impl Field<Fixed> for u64 {
         Ok(buf.get_u64::<LittleEndian>())
     }
     #[inline]
-    fn wire_len(&self) -> usize { 8 }
+    fn encoded_len(&self) -> usize { 8 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::SixtyFourBit }
 }
@@ -592,7 +600,7 @@ impl Field<Fixed> for i32 {
         Ok(buf.get_i32::<LittleEndian>())
     }
     #[inline]
-    fn wire_len(&self) -> usize { 4 }
+    fn encoded_len(&self) -> usize { 4 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::ThirtyTwoBit }
 }
@@ -612,7 +620,7 @@ impl Field<Fixed> for i64 {
         Ok(buf.get_i64::<LittleEndian>())
     }
     #[inline]
-    fn wire_len(&self) -> usize { 8 }
+    fn encoded_len(&self) -> usize { 8 }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::SixtyFourBit }
 }
@@ -644,7 +652,7 @@ impl Field for Vec<u8> {
         Ok(())
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(self.len() as u64) + self.len() }
+    fn encoded_len(&self) -> usize { varint_len(self.len() as u64) + self.len() }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::LengthDelimited }
 }
@@ -683,7 +691,7 @@ impl Field for String {
         Ok(())
     }
     #[inline]
-    fn wire_len(&self) -> usize { varint_len(self.len() as u64) + self.len() }
+    fn encoded_len(&self) -> usize { varint_len(self.len() as u64) + self.len() }
     #[inline]
     fn wire_type(&self) -> WireType { WireType::LengthDelimited }
 }
@@ -724,8 +732,8 @@ impl <F, E> Field<E> for Option<F> where F: Field<E> {
         Ok(())
     }
     #[inline]
-    fn wire_len(&self, tag: u32) -> usize {
-        self.as_ref().map(|f| f.wire_len(tag)).unwrap_or(0)
+    fn encoded_len(&self) -> usize {
+        self.as_ref().map(<F as Field<E>>::encoded_len).unwrap_or(0)
     }
     #[inline]
     fn wire_type(&self) -> WireType {
@@ -748,7 +756,7 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
         }
     }
     #[inline]
-    fn decode<B>(tag: u32, _wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
+    fn decode<B>(tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
         unimplemented!()
     }
     #[inline]
@@ -759,13 +767,35 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
         unimplemented!()
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, _wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
-        unimplemented!()
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+
+        if wire_type == WireType::LengthDelimited && (<F as Field<E>>::wire_type() == WireType::Varint ||
+                                                      <F as Field<E>>::wire_type() == WireType::SixtyFourBit ||
+                                                      <F as Field<E>>::wire_type() == WireType::ThirtyTwoBit) {
+            // Packed encoding.
+            let len = <u64 as ScalarField>::read_from(r, limit)?;
+            if len > usize::MAX as u64 {
+                return Err(Error::new(ErrorKind::InvalidData,
+                                        "packed length overflows usize"));
+            }
+            check_limit(len as usize, limit)?;
+            let mut remaining = len as usize;
+            while remaining > 0 {
+                self.push(ScalarField::<$e>::read_from(r, &mut remaining)?);
+            }
+        } else {
+            // Normal encoding.
+            check_wire_type(<$ty as ScalarField<$e>>::wire_type(), wire_type)?;
+            self.push(ScalarField::<$e>::read_from(r, limit)?);
+        }
+        Ok(())
+
+
     }
     #[inline]
-    fn wire_len(&self, tag: u32) -> usize {
-        let len: usize = self.iter().map(|f| <F as Field<E>>::wire_len(f, tag)).sum();
-        key_width(tag) * self.len() + varint_len(len as u64) + len
+    fn encoded_len(&self) -> usize {
+        let len: usize = self.iter().map(<F as Field<E>>::encoded_len).sum();
+        varint_len(len as u64) + len
     }
     #[inline]
     fn wire_type(&self) -> WireType {
@@ -778,8 +808,8 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
 impl <F, E> Field<(Packed, E)> for Vec<F> where F: Field<E> {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
-        let len: usize = self.iter().map(|f| <F as Field<E>>::wire_len(f)).sum();
-        encode_varint(len, buf);
+        let len: usize = self.iter().map(<F as Field<E>>::encoded_len).sum();
+        encode_varint(len as u64, buf);
         for value in self {
             <F as Field<E>>::encode(value, buf);
         }
@@ -804,9 +834,9 @@ impl <F, E> Field<(Packed, E)> for Vec<F> where F: Field<E> {
         unimplemented!()
     }
     #[inline]
-    fn wire_len(&self, tag: u32) -> usize {
-        let len: usize = self.iter().map(|f| <F as Field<E>>::wire_len(f)).sum();
-        key_width(tag) + varint_len(len as u64) + len
+    fn encoded_len(&self) -> usize {
+        let len: usize = self.iter().map(<F as Field<E>>::encoded_len).sum();
+        varint_len(len as u64) + len
     }
     #[inline]
     fn wire_type(&self) -> WireType {
@@ -840,7 +870,7 @@ impl <M> Field for M where M: Message + default::Default {
         unimplemented!()
     }
     #[inline]
-    fn wire_len(&self) -> usize {
+    fn encoded_len(&self) -> usize {
         unimplemented!()
     }
     #[inline]
@@ -865,9 +895,9 @@ impl <M> Field for M where M: Message + default::Default {
         self.merge_length_delimited_from(r, limit)
     }
 
-    fn wire_len(&self, tag: u32) -> usize {
-        let len = Message::wire_len(self);
-        key_len(tag) + <u64 as ScalarField>::wire_len(&(len as u64)) + len
+    fn encoded_len(&self, tag: u32) -> usize {
+        let len = Message::encoded_len(self);
+        key_len(tag) + <u64 as ScalarField>::encoded_len(&(len as u64)) + len
     }
     */
 }
@@ -891,7 +921,7 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
         for (key, value) in self.iter() {
             write_key_to(tag, WireType::LengthDelimited, w)?;
 
-            let len = Field::<EK>::wire_len(key, 1) + Field::<EV>::wire_len(value, 2);
+            let len = Field::<EK>::encoded_len(key, 1) + Field::<EV>::encoded_len(value, 2);
             <u64 as ScalarField>::write_to(&(len as u64), w)?;
 
             Field::<EK>::write_to(key, 1, w)?;
@@ -945,9 +975,9 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
         Ok(())
     }
 
-    fn wire_len(&self, tag: u32) -> usize {
+    fn encoded_len(&self, tag: u32) -> usize {
         self.iter().fold(key_len(tag), |acc, (key, value)| {
-            acc + Field::<EK>::wire_len(key, 1) + Field::<EV>::wire_len(value, 2)
+            acc + Field::<EK>::encoded_len(key, 1) + Field::<EV>::encoded_len(value, 2)
         })
     }
 }
@@ -968,8 +998,8 @@ where K: default::Default + Eq + Hash + Key + Field<Default>,
         <HashMap<K, V> as Field<(Default, Default)>>::merge_from(self, tag, wire_type, r, limit)
     }
 
-    fn wire_len(&self, tag: u32) -> usize {
-        <HashMap<K, V> as Field<(Default, Default)>>::wire_len(self, tag)
+    fn encoded_len(&self, tag: u32) -> usize {
+        <HashMap<K, V> as Field<(Default, Default)>>::encoded_len(self, tag)
     }
 }
 */
@@ -999,9 +1029,9 @@ mod tests {
             return TestResult::error(format!("write_to failed: {:?}", error));
         };
 
-        let expected_len = <T as Field<E>>::wire_len(&value, tag);
+        let expected_len = <T as Field<E>>::encoded_len(&value, tag);
         if expected_len != buf.len() {
-            return TestResult::error(format!("wire_len wrong; expected: {}, actual: {}",
+            return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
                                                 expected_len, buf.len()));
         }
 
@@ -1022,12 +1052,12 @@ mod tests {
         match wire_type {
             WireType::SixtyFourBit if encoded_len != 8 => {
                 return TestResult::error(
-                    format!("64bit wire type illegal wire_len: {}, tag: {}",
+                    format!("64bit wire type illegal encoded_len: {}, tag: {}",
                             encoded_len, tag));
             },
             WireType::ThirtyTwoBit if encoded_len != 4 => {
                 return TestResult::error(
-                    format!("32bit wire type illegal wire_len: {}, tag: {}",
+                    format!("32bit wire type illegal encoded_len: {}, tag: {}",
                             encoded_len, tag));
             },
             _ => (),
