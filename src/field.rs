@@ -876,7 +876,12 @@ mod tests {
     use std::fmt::Debug;
     use std::io::Cursor;
 
-    use bytes::{Bytes, IntoBuf};
+    use bytes::{
+        Buf,
+        Bytes,
+        BytesMut,
+        IntoBuf,
+    };
 
     use quickcheck::TestResult;
 
@@ -890,23 +895,20 @@ mod tests {
             return TestResult::discard()
         }
 
-        let mut buf = Vec::new();
-        if let Err(error) = <T as Field<E>>::write_to(&value, tag, &mut buf) {
-            return TestResult::error(format!("write_to failed: {:?}", error));
-        };
+        let expected_len = value.encoded_len_with_key(tag);
 
-        let expected_len = <T as Field<E>>::encoded_len(&value, tag);
-        if expected_len != buf.len() {
+        let mut buf = BytesMut::with_capacity(expected_len);
+        value.encode_with_key(tag, &mut buf);
+        let mut buf = buf.freeze().into_buf();
+
+        if buf.has_remaining() {
             return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
-                                                expected_len, buf.len()));
+                                              expected_len, expected_len - buf.remaining()));
         }
 
-        let mut encoded_len = buf.len();
-        let mut cursor = Cursor::new(buf);
-        let (wire_type, decoded_tag) = match read_key_from(&mut cursor, &mut encoded_len) {
+        let (decoded_tag, wire_type) = match decode_key(&mut buf) {
             Ok(key) => key,
-            Err(error) => return TestResult::error(format!("failed to read key: {:?}",
-                                                            error)),
+            Err(error) => return TestResult::error(format!("{:?}", error)),
         };
 
         if tag != decoded_tag {
@@ -916,31 +918,26 @@ mod tests {
         }
 
         match wire_type {
-            WireType::SixtyFourBit if encoded_len != 8 => {
+            WireType::SixtyFourBit if buf.remaining() != 8 => {
                 return TestResult::error(
-                    format!("64bit wire type illegal encoded_len: {}, tag: {}",
-                            encoded_len, tag));
+                    format!("64bit wire type illegal remaining: {}, tag: {}",
+                            buf.remaining(), tag));
             },
-            WireType::ThirtyTwoBit if encoded_len != 4 => {
+            WireType::ThirtyTwoBit if buf.remaining() != 4 => {
                 return TestResult::error(
-                    format!("32bit wire type illegal encoded_len: {}, tag: {}",
-                            encoded_len, tag));
+                    format!("32bit wire type illegal remaining: {}, tag: {}",
+                            buf.remaining(), tag));
             },
             _ => (),
         }
 
-        let mut roundtrip_value = T::default();
-        if let Err(error) = <T as Field<E>>::merge(&mut roundtrip_value,
-                                                   tag,
-                                                   wire_type,
-                                                   &mut cursor,
-                                                   &mut encoded_len) {
-            return TestResult::error(format!("merge failed: {:?}", error));
+        let roundtrip_value = match T::decode(tag, wire_type, &mut buf) {
+            Ok(value) => value,
+            Err(error) => return TestResult::error(format!("{:?}", error)),
         };
 
-        if encoded_len != 0 {
-            return TestResult::error(format!("expected read limit to be 0: {}",
-                                                encoded_len));
+        if buf.has_remaining() {
+            return TestResult::error(format!("expected buffer to be empty: {}", buf.remaining()));
         }
 
         if value == roundtrip_value {
