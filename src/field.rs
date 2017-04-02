@@ -5,14 +5,7 @@
 
 use std::cmp::min;
 use std::default;
-use std::error;
-use std::io::{
-    Error,
-    ErrorKind,
-    Read,
-    Result,
-    Write,
-};
+use std::io::Result;
 use std::str;
 use std::u32;
 use std::usize;
@@ -26,13 +19,8 @@ use bytes::{
 };
 
 use Message;
-
-fn invalid_data<E>(error: E) -> Error where E: Into<Box<error::Error + Send + Sync>> {
-    Error::new(ErrorKind::InvalidData, error.into())
-}
-fn invalid_input<E>(error: E) -> Error where E: Into<Box<error::Error + Send + Sync>> {
-    Error::new(ErrorKind::InvalidInput, error.into())
-}
+use invalid_input;
+use invalid_data;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -198,7 +186,7 @@ pub enum Signed {}
 /// A type indicating that the integer field should use fixed-width encoding.
 pub enum Fixed {}
 /// A type indicating that a repeated field should use packed encoding.
-pub enum Packed {}
+pub enum PackedRepeated {}
 
 /// A field type in a Protobuf message.
 ///
@@ -532,7 +520,8 @@ impl Field for Vec<u8> {
         Ok(v)
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, _wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if (buf.remaining() as u64) < len {
             return Err(invalid_input("failed to decode bytes field: buffer underflow"));
@@ -563,10 +552,8 @@ impl Field for String {
         Ok(s)
     }
     #[inline]
-    fn merge<B>(&mut self,
-                     tag: u32,
-                     _wire_type: WireType,
-                     buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if (buf.remaining() as u64) < len {
             return Err(invalid_input("failed to decode string field: buffer underflow"));
@@ -638,7 +625,7 @@ impl <F, E> Field<E> for Option<F> where F: Field<E> {
 
 // repeated
 impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
+    fn encode<B>(&self, _buf: &mut B) where B: BufMut {
         // encode_with_key is overriden, so this will not be called.
         unimplemented!()
     }
@@ -695,20 +682,37 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
     }
 }
 
+/// Marker trait for types which can use packed encoding in repeated fields.
+pub trait Packed {}
+impl Packed for bool {}
+impl Packed for i32 {}
+impl Packed for i64 {}
+impl Packed for u32 {}
+impl Packed for u64 {}
+impl Packed for f32 {}
+impl Packed for f64 {}
+
 // packed repeated
-impl <F, E> Field<(Packed, E)> for Vec<F> where F: Field<E> {
+impl <F, E> Field<(PackedRepeated, E)> for Vec<F> where F: Field<E> + Packed {
+    fn encode<B>(&self, _buf: &mut B) where B: BufMut {
+        unimplemented!()
+    }
+
     #[inline]
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
+    fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+        if self.is_empty() { return; }
         let len: usize = self.iter().map(<F as Field<E>>::encoded_len).sum();
+        encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(len as u64, buf);
         for value in self {
             F::encode(value, buf);
         }
     }
+
     #[inline]
     fn decode<B>(tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
         let mut vec = Vec::new();
-        Field::<(Default, E)>::merge(&mut vec, tag, wire_type, buf)?;
+        <Vec<F> as Field<(Default, E)>>::merge(&mut vec, tag, wire_type, buf)?;
         Ok(vec)
     }
     #[inline]
@@ -721,7 +725,7 @@ impl <F, E> Field<(Packed, E)> for Vec<F> where F: Field<E> {
             0
         } else {
             let len: usize = self.iter().map(F::encoded_len).sum();
-            varint_len(len as u64) + len
+            key_len(tag) + varint_len(len as u64) + len
         }
     }
     fn encoded_len(&self) -> usize {
@@ -743,12 +747,12 @@ impl <M> Field for M where M: Message + default::Default {
         self.encode_length_delimited(buf).expect("failed to encode message: buffer underflow")
     }
     #[inline]
-    fn decode<B>(tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
+    fn decode<B>(_tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         <M as Message>::decode_length_delimited(buf)
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         <M as Message>::merge_length_delimited(self, buf)
     }
@@ -764,11 +768,11 @@ impl <M> Field for M where M: Message + default::Default {
 
 // Trait for types which can be keys in a Protobuf map.
 pub trait Key {}
+impl Key for bool {}
 impl Key for i32 {}
 impl Key for i64 {}
 impl Key for u32 {}
 impl Key for u64 {}
-impl Key for bool {}
 impl Key for String {}
 
 // Map
@@ -794,7 +798,8 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
         Ok(map)
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
             return Err(invalid_data("failed to decode map entry: buffer underflow"));
@@ -818,13 +823,14 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
     }
     #[inline]
     fn encoded_len_with_key(&self, tag: u32) -> usize {
+        let key_len = key_len(tag);
         self.iter().map(|(key, value)| {
             let len = key.encoded_len_with_key(1) + value.encoded_len_with_key(2);
-            varint_len(len as u64) + len
+            key_len + varint_len(len as u64) + len
         }).sum()
     }
 
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
+    fn encode<B>(&self, _buf: &mut B) where B: BufMut {
         unimplemented!()
     }
     fn encoded_len(&self) -> usize {
@@ -859,7 +865,7 @@ where K: default::Default + Eq + Hash + Key + Field<Default>,
         <HashMap<K, V> as Field<(Default, Default)>>::encoded_len_with_key(self, tag)
     }
 
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
+    fn encode<B>(&self, _buf: &mut B) where B: BufMut {
         unimplemented!()
     }
     fn encoded_len(&self) -> usize {
@@ -872,9 +878,7 @@ where K: default::Default + Eq + Hash + Key + Field<Default>,
 
 #[cfg(test)]
 mod tests {
-
     use std::fmt::Debug;
-    use std::io::Cursor;
 
     use bytes::{
         Buf,
@@ -882,7 +886,6 @@ mod tests {
         BytesMut,
         IntoBuf,
     };
-
     use quickcheck::TestResult;
 
     use super::*;
@@ -901,9 +904,14 @@ mod tests {
         value.encode_with_key(tag, &mut buf);
         let mut buf = buf.freeze().into_buf();
 
-        if buf.has_remaining() {
+        if buf.remaining() != expected_len {
             return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
-                                              expected_len, expected_len - buf.remaining()));
+                                              expected_len, buf.remaining()));
+        }
+
+        if !buf.has_remaining() {
+            // Short circuit for empty optional values or empty repeated values.
+            return TestResult::passed();
         }
 
         let (decoded_tag, wire_type) = match decode_key(&mut buf) {
@@ -992,6 +1000,92 @@ mod tests {
         }
         fn sfixed64(value: i64, tag: u32) -> TestResult {
             check_field::<_, Fixed>(value, tag)
+        }
+
+        fn optional_bool(value: Option<bool>, tag: u32) -> TestResult {
+            check_field(value, tag)
+        }
+        fn optional_double(value: Option<f64>, tag: u32) -> TestResult {
+            check_field(value, tag)
+        }
+        fn optional_float(value: Option<f32>, tag: u32) -> TestResult {
+            check_field(value, tag)
+        }
+        fn optional_int32(value: Option<i32>, tag: u32) -> TestResult {
+            check_field::<_, Default>(value, tag)
+        }
+        fn optional_int64(value: Option<i64>, tag: u32) -> TestResult {
+            check_field::<_, Default>(value, tag)
+        }
+        fn optional_uint32(value: Option<u32>, tag: u32) -> TestResult {
+            check_field::<_, Default>(value, tag)
+        }
+        fn optional_uint64(value: Option<u64>, tag: u32) -> TestResult {
+            check_field::<_, Default>(value, tag)
+        }
+        fn optional_bytes(value: Option<Vec<u8>>, tag: u32) -> TestResult {
+            check_field::<_, Default>(value, tag)
+        }
+        fn optional_string(value: Option<String>, tag: u32) -> TestResult {
+            check_field::<_, Default>(value, tag)
+        }
+        fn optional_sint32(value: Option<i32>, tag: u32) -> TestResult {
+            check_field::<_, Signed>(value, tag)
+        }
+        fn optional_sint64(value: Option<i64>, tag: u32) -> TestResult {
+            check_field::<_, Signed>(value, tag)
+        }
+        fn optional_fixed32(value: Option<u32>, tag: u32) -> TestResult {
+            check_field::<_, Fixed>(value, tag)
+        }
+        fn optional_fixed64(value: Option<u64>, tag: u32) -> TestResult {
+            check_field::<_, Fixed>(value, tag)
+        }
+        fn optional_sfixed32(value: Option<i32>, tag: u32) -> TestResult {
+            check_field::<_, Fixed>(value, tag)
+        }
+        fn optional_sfixed64(value: Option<i64>, tag: u32) -> TestResult {
+            check_field::<_, Fixed>(value, tag)
+        }
+
+        fn packed_bool(value: Vec<bool>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_double(value: Vec<f64>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_float(value: Vec<f32>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_int32(value: Vec<i32>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_int64(value: Vec<i64>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_uint32(value: Vec<u32>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_uint64(value: Vec<u64>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Default)>(value, tag)
+        }
+        fn packed_sint32(value: Vec<i32>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Signed)>(value, tag)
+        }
+        fn packed_sint64(value: Vec<i64>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Signed)>(value, tag)
+        }
+        fn packed_fixed32(value: Vec<u32>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Fixed)>(value, tag)
+        }
+        fn packed_fixed64(value: Vec<u64>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Fixed)>(value, tag)
+        }
+        fn packed_sfixed32(value: Vec<i32>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Fixed)>(value, tag)
+        }
+        fn packed_sfixed64(value: Vec<i64>, tag: u32) -> TestResult {
+            check_field::<_, (PackedRepeated, Fixed)>(value, tag)
         }
     }
 

@@ -3,6 +3,7 @@ extern crate proto_derive;
 #[macro_use]
 extern crate log;
 
+extern crate bytes;
 extern crate env_logger;
 extern crate itertools;
 extern crate multimap;
@@ -14,6 +15,7 @@ use std::path::PathBuf;
 use std::io::{
     Cursor,
     Read,
+    Write,
     self,
 };
 
@@ -47,7 +49,7 @@ fn main() {
     assert_ne!(bytes.len(), 0);
 
     let mut request = CodeGeneratorRequest::default();
-    Message::merge_from(&mut request, bytes.len(), &mut Cursor::new(&mut bytes)).unwrap();
+    Message::merge(&mut request, &mut Cursor::new(&mut bytes)).unwrap();
 
     let mut response = CodeGeneratorResponse::default();
 
@@ -113,8 +115,9 @@ fn main() {
         });
     }
 
-    let out = io::stdout();
-    response.write_to(&mut out.lock()).unwrap();
+    let out = Vec::new();
+    response.encode(&mut out).unwrap();
+    io::stdout().write_all(&out).unwrap();
 }
 
 struct CodeGenerator<'a> {

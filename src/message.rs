@@ -1,12 +1,5 @@
-use std::any::{Any, TypeId};
 use std::fmt::Debug;
-use std::io::{
-    Read,
-    Result,
-    Write,
-    Error,
-    ErrorKind,
-};
+use std::io::Result;
 use std::usize;
 
 use bytes::{
@@ -20,8 +13,10 @@ use field::{
     varint_len,
 };
 
+use invalid_input;
+
 /// A Protocol Buffers message.
-pub trait Message: Any + Debug + Send + Sync {
+pub trait Message: Debug + Send + Sync {
 
     /// Encodes the message, and writes it to the buffer. An error will be
     /// returned if the buffer does not have sufficient capacity.
@@ -33,8 +28,7 @@ pub trait Message: Any + Debug + Send + Sync {
     fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
         let len = self.encoded_len();
         if len + varint_len(len as u64) < buf.remaining_mut() {
-            return Err(Error::new(ErrorKind::InvalidInput,
-                                  "failed to encode message: insufficient buffer capacity"));
+            return Err(invalid_input("failed to encode message: insufficient buffer capacity"));
         }
         encode_varint(len as u64, buf);
         self.encode(buf)
@@ -52,8 +46,7 @@ pub trait Message: Any + Debug + Send + Sync {
         let len = decode_varint(buf)?;
 
         if len > buf.remaining() as u64 {
-            return Err(Error::new(ErrorKind::InvalidInput,
-                                  "failed to decode message: buffer underflow"));
+            return Err(invalid_input("failed to decode message: buffer underflow"));
         }
         Self::decode(&mut buf.take(len as usize))
     }
@@ -67,8 +60,7 @@ pub trait Message: Any + Debug + Send + Sync {
     fn merge_length_delimited<B>(&mut self, buf: &mut B) -> Result<()> where B: Buf {
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(Error::new(ErrorKind::InvalidInput,
-                                  "failed to merge message: buffer underflow"));
+            return Err(invalid_input("failed to merge message: buffer underflow"));
         }
         self.merge(&mut buf.take(len as usize))
     }
@@ -77,7 +69,7 @@ pub trait Message: Any + Debug + Send + Sync {
     fn encoded_len(&self) -> usize;
 }
 
-impl <M> Message for Box<M> where M: Any + Debug + Send + Sync + Message + Sized {
+impl <M> Message for Box<M> where M: Debug + Send + Sync + Message + Sized {
     #[inline]
     fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
         (**self).encode(buf)

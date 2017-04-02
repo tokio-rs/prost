@@ -31,6 +31,7 @@ impl Field {
         let mut fixed = false;
         let mut signed = false;
         let mut ignore = false;
+        let mut packed = false;
 
         let mut fixed_key = false;
         let mut signed_key = false;
@@ -67,6 +68,10 @@ impl Field {
                     // Handle `#[proto(signed)]` and `#[proto(signed = false)]`.
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed" => signed = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed" => signed = value,
+
+                    // Handle `#[proto(packed)]` and `#[proto(packed = false)]`.
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "packed" => packed = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "packed" => packed = value,
 
                     // Handle `#[proto(fixed_key)]` and `#[proto(fixed_key = false)].
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed_key" => fixed_key = true,
@@ -106,44 +111,53 @@ impl Field {
 
         let tags = tags.into_iter().map(|tag| tag as u32).collect::<Vec<_>>();
 
-        let kind = match (!tags.is_empty(), fixed, signed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
-            (false, false, false, false, false, false, false, true) => return None,
+        let kind = match (!tags.is_empty(), fixed, signed, packed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
+            (false, false, false, false, false, false, false, false, true) => return None,
 
-            (true, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
-            (false, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
+            (true, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
+            (false, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
 
-            (true, false, false, false, false, false, false, _) => quote!(field::Default),
-            (true, true, false, false, false, false, false, _)  => quote!(field::Fixed),
-            (true, false, true, false, false, false, false, _)  => quote!(field::Signed),
+            (true, false, false, false, false, false, false, false, _) => quote!(proto::field::Default),
+            (true, true, false, false, false, false, false, false, _)  => quote!(proto::field::Fixed),
+            (true, false, true, false, false, false, false, false, _)  => quote!(proto::field::Signed),
 
-            (true, false, false, true, false, false, false, _) => quote!((field::Fixed, field::Default)),
-            (true, false, false, false, true, false, false, _) => quote!((field::Signed, field::Default)),
-            (true, false, false, false, false, true, false, _) => quote!((field::Default, field::Fixed)),
-            (true, false, false, false, false, false, true, _) => quote!((field::Default, field::Signed)),
+            (true, false, false, true, false, false, false, false, _) => quote!((proto::field::Packed, proto::field::Default)),
+            (true, true, false, true, false, false, false, false, _)  => quote!((proto::field::Packed, proto::field::Fixed)),
+            (true, false, true, true, false, false, false, false, _)  => quote!((proto::field::Packed, proto::field::Signed)),
 
-            (true, false, false, true, false, true, false, _) => quote!((field::Fixed, field::Fixed)),
-            (true, false, false, true, false, false, true, _) => quote!((field::Fixed, field::Signed)),
-            (true, false, false, false, true, true, false, _) => quote!((field::Signed, field::Fixed)),
-            (true, false, false, false, true, false, true, _) => quote!((field::Signed, field::Signed)),
+            (true, false, false, false, true, false, false, false, _) => quote!((proto::field::Fixed, proto::field::Default)),
+            (true, false, false, false, false, true, false, false, _) => quote!((proto::field::Signed, proto::field::Default)),
+            (true, false, false, false, false, false, true, false, _) => quote!((proto::field::Default, proto::field::Fixed)),
+            (true, false, false, false, false, false, false, true, _) => quote!((proto::field::Default, proto::field::Signed)),
 
-            (false, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
-            (false, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
-            (false, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
-            (false, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
-            (false, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
-            (false, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
+            (true, false, false, false, true, false, true, false, _) => quote!((proto::field::Fixed, proto::field::Fixed)),
+            (true, false, false, false, true, false, false, true, _) => quote!((proto::field::Fixed, proto::field::Signed)),
+            (true, false, false, false, false, true, true, false, _) => quote!((proto::field::Signed, proto::field::Fixed)),
+            (true, false, false, false, false, true, false, true, _) => quote!((proto::field::Signed, proto::field::Signed)),
 
-            (_, true, true, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
-            (_, true, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
-            (_, true, _, _, true, _, _, _) => panic!("proto field must not be fixed and signed_key"),
-            (_, true, _, _, _, true, _, _) => panic!("proto field must not be fixed and fixed_value"),
-            (_, true, _, _, _, _, true, _) => panic!("proto field must not be fixed and signed_value"),
-            (_, _, true, true, _, _, _, _) => panic!("proto field must not be signed and fixed_key"),
-            (_, _, true, _, true, _, _, _) => panic!("proto field must not be signed and signed_key"),
-            (_, _, true, _, _, true, _, _) => panic!("proto field must not be signed and fixed_value"),
-            (_, _, true, _, _, _, true, _) => panic!("proto field must not be signed and signed_value"),
-            (_, _, _, true, true, _, _, _) => panic!("proto field must not be fixed_key and signed_key"),
-            (_, _, _, _, _, true, true, _) => panic!("proto field must not be fixed_value and signed_value"),
+            (false, true, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
+            (false, _, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
+            (false, _, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be packed"),
+            (false, _, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
+            (false, _, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
+            (false, _, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
+            (false, _, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
+
+            (_, true, true, _, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
+            (_, true, _, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
+            (_, true, _, _, _, true, _, _, _) => panic!("proto field must not be fixed and signed_key"),
+            (_, true, _, _, _, _, true, _, _) => panic!("proto field must not be fixed and fixed_value"),
+            (_, true, _, _, _, _, _, true, _) => panic!("proto field must not be fixed and signed_value"),
+            (_, _, true, _, true, _, _, _, _) => panic!("proto field must not be signed and fixed_key"),
+            (_, _, true, _, _, true, _, _, _) => panic!("proto field must not be signed and signed_key"),
+            (_, _, true, _, _, _, true, _, _) => panic!("proto field must not be signed and fixed_value"),
+            (_, _, true, _, _, _, _, true, _) => panic!("proto field must not be signed and signed_value"),
+            (_, _, _, true, true, _, _, _, _) => panic!("proto field must not be packed and fixed_key"),
+            (_, _, _, true, _, true, _, _, _) => panic!("proto field must not be packed and signed_key"),
+            (_, _, _, true, _, _, true, _, _) => panic!("proto field must not be packed and fixed_value"),
+            (_, _, _, true, _, _, _, true, _) => panic!("proto field must not be packed and signed_value"),
+            (_, _, _, _, true, true, _, _, _) => panic!("proto field must not be fixed_key and signed_key"),
+            (_, _, _, _, _, _, true, true, _) => panic!("proto field must not be fixed_value and signed_value"),
         };
 
         Some(Field {
@@ -186,32 +200,27 @@ pub fn message(input: TokenStream) -> TokenStream {
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
     let wire_len = wire_len(&fields);
 
-    let write_to = fields.iter().map(|field| {
+    let encode = fields.iter().map(|field| {
         let kind = &field.kind;
         let tag = field.tags[0];
         let field = &field.ident;
         quote! {
-            Field::<#kind>::write_to(&self.#field, #tag, w)
-                           .map_err(|error| {
-                               Error::new(error.kind(),
-                                           format!(concat!("failed to write field ", stringify!(#ident),
-                                                           ".", stringify!(#field), ": {}"),
-                                                   error))
-                           })?;
+            ::proto::field::Field::<#kind>::encode_with_key(&self.#field, #tag, buf);
         }
     }).fold(Tokens::new(), concat_tokens);
 
-    let merge_from = fields.iter().map(|field| {
+    let merge = fields.iter().map(|field| {
         let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let kind = &field.kind;
         let field = &field.ident;
-        quote!{ #tags => Field::<#kind>::merge_from(&mut self.#field, tag, wire_type, r, &mut limit)
-                               .map_err(|error| {
-                                   Error::new(error.kind(),
-                                              format!(concat!("failed to read field ", stringify!(#ident),
-                                                              ".", stringify!(#field), ": {}"),
-                                                      error))
-                               })?, }
+        quote!{ #tags => ::proto::field::Field::<#kind>::merge(&mut self.#field, tag, wire_type, r, &mut limit)
+                                                        .map_err(|error| {
+                                                            ::std::io::Error::new(
+                                                                error.kind(),
+                                                                format!(concat!("failed to read field ", stringify!(#ident),
+                                                                                ".", stringify!(#field), ": {}"),
+                                                                        error))
+                                                        })?, }
     }).fold(Tokens::new(), concat_tokens);
 
     let default = default(&fields);
@@ -225,17 +234,30 @@ pub fn message(input: TokenStream) -> TokenStream {
             unused_variables
         )]
         const #dummy_const: () = {
+            extern crate bytes;
             extern crate proto;
-            use std::any::{Any, TypeId};
-            use std::io::{
-                Error,
-                Read,
-                Write,
-            };
-            use proto::field::{self, Field, WireType};
 
             #[automatically_derived]
             impl proto::Message for #ident {
+
+                #[inline]
+                fn encode<B>(&self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::BufMut {
+                    #encode
+                    Ok(())
+                }
+
+                #[inline]
+                fn merge<B>(&mut self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
+                    unimplemented!()
+                }
+
+                #[inline]
+                fn encoded_len(&self) -> usize {
+                    unimplemented!()
+                }
+
+
+                /*
                 fn write_to(&self, w: &mut Write) -> ::std::io::Result<()> {
                     #write_to
                     Ok(())
@@ -272,6 +294,7 @@ pub fn message(input: TokenStream) -> TokenStream {
                 fn into_any(self: Box<Self>) -> Box<Any> {
                     self
                 }
+                */
             }
 
             #[automatically_derived]
@@ -369,18 +392,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
         const #dummy_const: () = {
+            extern crate bytes;
             extern crate proto;
-            use std::io::{
-                Read,
-                Write,
-            };
-            use std::str::FromStr;
-
-            use proto::field::{
-                Field,
-                WireType,
-                self,
-            };
 
             impl #ident {
                 fn is_valid(value: #repr) -> bool {
@@ -392,7 +405,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl Field for #ident {
+            impl proto::field::Field for #ident {
+                /*
                 fn write_to(&self, tag: u32, w: &mut Write) -> ::std::io::Result<()> {
                     Field::<field::Default>::write_to(&(*self as i64), tag, w)
                 }
@@ -403,6 +417,25 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
                 fn wire_len(&self, tag: u32) -> usize {
                     Field::<field::Default>::wire_len(&(*self as i64), tag)
+                }
+                */
+
+                fn decode<B>(tag: u32, wire_type: proto::field::WireType, buf: &mut B) -> ::std::io::Result<Self>
+                where B: bytes::Buf {
+                    unimplemented!()
+                }
+
+
+                fn encode<B>(&self, buf: &mut B) where B: bytes::BufMut {
+                    unimplemented!()
+                }
+
+                fn encoded_len(&self) -> usize {
+                    unimplemented!()
+                }
+
+                fn wire_type() -> proto::field::WireType {
+                    unimplemented!()
                 }
             }
 
@@ -424,7 +457,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl FromStr for #ident {
+            impl ::std::str::FromStr for #ident {
                 type Err = String;
                 fn from_str(s: &str) -> ::std::result::Result<#ident, String> {
                     match s {
@@ -520,17 +553,12 @@ pub fn oneof(input: TokenStream) -> TokenStream {
             unused_variables
         )]
         const #dummy_const: () = {
+            extern crate bytes;
             extern crate proto;
-            use std::any::{Any, TypeId};
-            use std::io::{
-                Error,
-                Read,
-                Write,
-            };
-            use proto::field::{self, Field, WireType};
 
             #[automatically_derived]
             impl proto::field::Field for #ident {
+                /*
                 fn write_to(&self, _tag: u32, w: &mut Write) -> ::std::io::Result<()> {
                     match *self {
                         #write_to
@@ -551,6 +579,25 @@ pub fn oneof(input: TokenStream) -> TokenStream {
                         #wire_len
                     }
                 }
+                */
+                fn decode<B>(tag: u32, wire_type: proto::field::WireType, buf: &mut B) -> ::std::io::Result<Self>
+                where B: bytes::Buf {
+                    unimplemented!()
+                }
+
+
+                fn encode<B>(&self, buf: &mut B) where B: bytes::BufMut {
+                    unimplemented!()
+                }
+
+                fn encoded_len(&self) -> usize {
+                    unimplemented!()
+                }
+
+                fn wire_type() -> proto::field::WireType {
+                    unimplemented!()
+                }
+
             }
         };
     };

@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Dan Burkert <danburkert@apache.org>"]
 
 [dependencies]
+bytes = "0.4"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
