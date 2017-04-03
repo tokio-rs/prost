@@ -420,13 +420,13 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
                 */
 
-                fn decode<B>(tag: u32, wire_type: proto::field::WireType, buf: &mut B) -> ::std::io::Result<Self>
+                fn decode<B>(_tag: u32, _wire_type: proto::field::WireType, _buf: &mut B) -> ::std::io::Result<Self>
                 where B: bytes::Buf {
                     unimplemented!()
                 }
 
 
-                fn encode<B>(&self, buf: &mut B) where B: bytes::BufMut {
+                fn encode<B>(&self, _buf: &mut B) where B: bytes::BufMut {
                     unimplemented!()
                 }
 

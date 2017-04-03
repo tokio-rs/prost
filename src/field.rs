@@ -185,8 +185,6 @@ pub enum Default {}
 pub enum Signed {}
 /// A type indicating that the integer field should use fixed-width encoding.
 pub enum Fixed {}
-/// A type indicating that a repeated field should use packed encoding.
-pub enum PackedRepeated {}
 
 /// A field type in a Protobuf message.
 ///
@@ -201,6 +199,9 @@ pub trait Field<E=Default> : Sized {
 
     /// Encodes a key and the field to the buffer.
     /// The buffer must have enough remaining space to hold the encoded key and field.
+    ///
+    /// TODO: change this to be a required fn, remove encode(), and make this impl be a free
+    /// standing fn.
     #[inline]
     fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         encode_key(tag, Self::wire_type(), buf);
@@ -263,9 +264,14 @@ pub trait Field<E=Default> : Sized {
     /// This method must be implemented if the default `encode_with_key`
     /// implementation is not overriden. Otherise, the implementation of
     /// `wire_type` may panic.
+    ///
+    /// TODO: make this required.
     #[doc(hidden)]
     fn wire_type() -> WireType;
 }
+
+// TODO: make trait RepeateableField trait, which has the fn wire_type(), and perhaps
+// encode_packed.
 
 // bool
 impl Field for bool {
@@ -624,30 +630,40 @@ impl <F, E> Field<E> for Option<F> where F: Field<E> {
 }
 
 // repeated
-impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
+impl <F, E> Field<E> for Vec<F> where F: Field<E> {
     fn encode<B>(&self, _buf: &mut B) where B: BufMut {
         // encode_with_key is overriden, so this will not be called.
         unimplemented!()
     }
     #[inline]
     fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        for value in self {
-            Field::<E>::encode_with_key(value, tag, buf);
+        if F::wire_type() == WireType::LengthDelimited {
+            // Default repeated encoding.
+            for value in self {
+                Field::<E>::encode_with_key(value, tag, buf);
+            }
+        } else {
+            // Packed repeated encoding.
+            if self.is_empty() { return; }
+            let len: usize = self.iter().map(<F as Field<E>>::encoded_len).sum();
+            encode_key(tag, WireType::LengthDelimited, buf);
+            encode_varint(len as u64, buf);
+            for value in self {
+                F::encode(value, buf);
+            }
         }
     }
     #[inline]
     fn decode<B>(tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
         let mut vec = Vec::new();
-        Field::<(Default, E)>::merge(&mut vec, tag, wire_type, buf)?;
+        Self::merge(&mut vec, tag, wire_type, buf)?;
         Ok(vec)
     }
     #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
         let field_wire_type = <F as Field<E>>::wire_type();
-        if wire_type == WireType::LengthDelimited && (field_wire_type == WireType::Varint ||
-                                                      field_wire_type == WireType::SixtyFourBit ||
-                                                      field_wire_type == WireType::ThirtyTwoBit) {
-            // Packed encoding.
+        if wire_type == WireType::LengthDelimited && field_wire_type != WireType::LengthDelimited {
+            // Packed repeated encoding.
             let len = decode_varint(buf)?;
             if len > buf.remaining() as u64 {
                 return Err(invalid_data("failed to decode packed repeated field: buffer underflow"));
@@ -660,7 +676,7 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
                 }
             }
         } else {
-            // Normal encoding.
+            // Default repeated encoding.
             if let Some(value) = Field::<E>::decode_repeated(tag, field_wire_type, buf)? {
                 self.push(value);
             }
@@ -669,7 +685,16 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
     }
     #[inline]
     fn encoded_len_with_key(&self, tag: u32) -> usize {
-        self.iter().map(|f| f.encoded_len_with_key(tag)).sum()
+        if self.is_empty() {
+            0
+        } else if F::wire_type() == WireType::LengthDelimited {
+            // Default repeated encoding.
+            self.iter().map(|f| f.encoded_len_with_key(tag)).sum()
+        } else {
+            // Packed repeated encoding.
+            let len: usize = self.iter().map(F::encoded_len).sum();
+            key_len(tag) + varint_len(len as u64) + len
+        }
     }
     fn encoded_len(&self) -> usize {
         // Implement encoded_len_with_key instead, because there are a variable
@@ -678,7 +703,7 @@ impl <F, E> Field<(Default, E)> for Vec<F> where F: Field<E> {
     }
     #[inline]
     fn wire_type() -> WireType {
-        <F as Field<E>>::wire_type()
+        WireType::LengthDelimited
     }
 }
 
@@ -693,6 +718,7 @@ impl Packed for f32 {}
 impl Packed for f64 {}
 
 // packed repeated
+/*
 impl <F, E> Field<(PackedRepeated, E)> for Vec<F> where F: Field<E> + Packed {
     fn encode<B>(&self, _buf: &mut B) where B: BufMut {
         unimplemented!()
@@ -738,6 +764,7 @@ impl <F, E> Field<(PackedRepeated, E)> for Vec<F> where F: Field<E> + Packed {
         WireType::LengthDelimited
     }
 }
+*/
 
 // Message
 impl <M> Field for M where M: Message + default::Default {

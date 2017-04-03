@@ -115,7 +115,7 @@ fn main() {
         });
     }
 
-    let out = Vec::new();
+    let mut out = Vec::new();
     response.encode(&mut out).unwrap();
     io::stdout().write_all(&out).unwrap();
 }
