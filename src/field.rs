@@ -195,18 +195,10 @@ pub enum Fixed {}
 /// with different types for `E`, which correspond to `fixed32` and `uint32`.
 pub trait Field<E=Default> : Sized {
 
-    // Methods which must be implemented by every field type.
-
     /// Encodes a key and the field to the buffer.
     /// The buffer must have enough remaining space to hold the encoded key and field.
-    ///
-    /// TODO: change this to be a required fn, remove encode(), and make this impl be a free
-    /// standing fn.
     #[inline]
-    fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        encode_key(tag, Self::wire_type(), buf);
-        self.encode(buf);
-    }
+    fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut;
 
     /// Decodes the field from the buffer.
     ///
@@ -214,19 +206,6 @@ pub trait Field<E=Default> : Sized {
     /// The wire type is provided so that repeated scalar fields can determine
     /// whether the field is packed or unpacked.
     fn decode<B>(tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf;
-
-    /// Decodes the field from the buffer.
-    ///
-    /// This method should return the same value as returned by `decode` wrapped
-    /// in `Some`, except in one circumstance: when reading an unknown
-    /// enumeration value, in which case `None` will be returned.
-    #[inline]
-    fn decode_repeated<B>(tag: u32,
-                          wire_type: WireType,
-                          buf: &mut B)
-                          -> Result<Option<Self>> where B: Buf {
-        <Self as Field<E>>::decode(tag, wire_type, buf).map(|value| Some(value))
-    }
 
     /// Decodes the field from the buffer, and merges the value into self.
     ///
@@ -239,54 +218,65 @@ pub trait Field<E=Default> : Sized {
         Ok(())
     }
 
-    /// Returns the length of the encoded field with the key.
-    ///
-    /// Types which may write multiple keys (like unpacked repeated fields)
-    /// should overide this.
-    fn encoded_len_with_key(&self, tag: u32) -> usize {
-        key_len(tag) + self.encoded_len()
-    }
+    /// Returns the length of the encoded field.
+    #[doc(hidden)]
+    fn encoded_len(&self, tag: u32) -> usize;
+}
 
-    // Internal methods.
+/// A repeatable field type in a Protobuf message.
+///
+/// The `E` type parameter allows `RepeatableField` to be implemented multiple
+/// times for a single type, in the same way as `Field`.
+///
+/// The following protobuf types may be repeated:
+///
+///   * scalar fields
+///   * messages
+///   * enumerations
+pub trait RepeatableField<E=Default> : default::Default {
 
     /// Encodes the field to the buffer.
-    ///
-    /// Must be implemented for scalar types.
-    #[doc(hidden)]
     fn encode<B>(&self, buf: &mut B) where B: BufMut;
 
-    /// Returns the length of the encoded field. The length of the key is not included.
-    #[doc(hidden)]
+    /// Decodes the field from the buffer.
+    ///
+    /// This method should return a `Some` value except in one circumstance:
+    /// when reading an unknown enumeration value.
+    fn decode<B>(buf: &mut B) -> Result<Option<Self>> where B: Buf;
+
+    /// Decodes the field from the buffer, and merges the value into self.
+    ///
+    /// For scalar and enumeration fields, the default implementation can be
+    /// used, which replaces the current value. Message fields must override
+    /// this in order to provide proper merge semantics.
+    #[inline]
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        *self = <Self as Field<E>>::decode(tag, wire_type, buf)?.unwrap_or_default();
+        Ok(())
+    }
+
+    /// Returns the length of the encoded field.
     fn encoded_len(&self) -> usize;
 
     /// Returns the wire type of the field.
-    ///
-    /// This method must be implemented if the default `encode_with_key`
-    /// implementation is not overriden. Otherise, the implementation of
-    /// `wire_type` may panic.
-    ///
-    /// TODO: make this required.
-    #[doc(hidden)]
     fn wire_type() -> WireType;
 }
 
-// TODO: make trait RepeateableField trait, which has the fn wire_type(), and perhaps
-// encode_packed.
-
 // bool
-impl Field for bool {
+impl RepeatableField for bool {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_u8(if *self { 1u8 } else { 0u8 });
     }
+
     #[inline]
-    fn decode<B>(_tag: u32, _wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
+    fn decode<B>(buf: &mut B) -> Result<Option<Self>> where B: Buf {
         if !buf.has_remaining() {
             return Err(invalid_input("failed to decode bool field: buffer underflow"));
         }
         match buf.get_u8() {
-            0 => Ok(false),
-            1 => Ok(true),
+            0 => Ok(Some(false)),
+            1 => Ok(Some(true)),
             _ => Err(invalid_data("failed to decode bool field: invalid value")),
         }
     }
@@ -297,13 +287,13 @@ impl Field for bool {
 }
 
 // int32
-impl Field for i32 {
+impl RepeatableField for i32 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(*self as u64, buf);
     }
     #[inline]
-    fn decode<B>(_tag: u32, _wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
+    fn decode<B>(buf: &mut B) -> Result<Self> where B: Buf {
         decode_varint(buf).map(|value| value as _)
     }
     #[inline]
@@ -313,7 +303,7 @@ impl Field for i32 {
 }
 
 // int64
-impl Field for i64 {
+impl RepeatableField for i64 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(*self as u64, buf);
@@ -329,7 +319,7 @@ impl Field for i64 {
 }
 
 // uint32
-impl Field for u32 {
+impl RepeatableField for u32 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(*self as u64, buf);
@@ -345,7 +335,7 @@ impl Field for u32 {
 }
 
 // uint64
-impl Field for u64 {
+impl RepeatableField for u64 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(*self, buf);
@@ -361,7 +351,7 @@ impl Field for u64 {
 }
 
 // float
-impl Field for f32 {
+impl RepeatableField for f32 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_f32::<LittleEndian>(*self);
@@ -380,7 +370,7 @@ impl Field for f32 {
 }
 
 // double
-impl Field for f64 {
+impl RepeatableField for f64 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_f64::<LittleEndian>(*self);
@@ -399,7 +389,7 @@ impl Field for f64 {
 }
 
 // sint32
-impl Field<Signed> for i32 {
+impl RepeatableField<Signed> for i32 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(((*self << 1) ^ (*self >> 31)) as u64, buf);
@@ -418,7 +408,7 @@ impl Field<Signed> for i32 {
 }
 
 // sint64
-impl Field<Signed> for i64 {
+impl RepeatableField<Signed> for i64 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(((*self << 1) ^ (*self >> 63)) as u64, buf);
@@ -437,7 +427,7 @@ impl Field<Signed> for i64 {
 }
 
 // fixed32
-impl Field<Fixed> for u32 {
+impl RepeatableField<Fixed> for u32 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_u32::<LittleEndian>(*self);
@@ -456,7 +446,7 @@ impl Field<Fixed> for u32 {
 }
 
 // fixed64
-impl Field<Fixed> for u64 {
+impl RepeatableField<Fixed> for u64 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_u64::<LittleEndian>(*self);
@@ -475,7 +465,7 @@ impl Field<Fixed> for u64 {
 }
 
 // sfixed32
-impl Field<Fixed> for i32 {
+impl RepeatableField<Fixed> for i32 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_i32::<LittleEndian>(*self);
@@ -494,7 +484,7 @@ impl Field<Fixed> for i32 {
 }
 
 // sfixed64
-impl Field<Fixed> for i64 {
+impl RepeatableField<Fixed> for i64 {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         buf.put_i64::<LittleEndian>(*self);
@@ -513,7 +503,7 @@ impl Field<Fixed> for i64 {
 }
 
 // bytes
-impl Field for Vec<u8> {
+impl RepeatableField for Vec<u8> {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(self.len() as u64, buf);
@@ -545,7 +535,7 @@ impl Field for Vec<u8> {
 }
 
 // string
-impl Field for String {
+impl RepeatableField for String {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         encode_varint(self.len() as u64, buf);
@@ -582,13 +572,7 @@ impl Field for String {
 // optional
 //
 // All methods are overriden in case the underlying type has an overriden impl.
-impl <F, E> Field<E> for Option<F> where F: Field<E> {
-    #[inline]
-    fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        if let Some(ref f) = *self {
-            f.encode_with_key(tag, buf);
-        }
-    }
+impl <F, E> Field<E> for Option<F> where F: RepeatableField<E> {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         if let Some(ref f) = *self {
@@ -600,13 +584,6 @@ impl <F, E> Field<E> for Option<F> where F: Field<E> {
         <F as Field<E>>::decode(tag, wire_type, buf).map(|f| Some(f))
     }
     #[inline]
-    fn decode_repeated<B>(tag: u32,
-                          wire_type: WireType,
-                          buf: &mut B)
-                          -> Result<Option<Self>> where B: Buf {
-        <F as Field<E>>::decode_repeated(tag, wire_type, buf).map(|f| Some(f))
-    }
-    #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
         match *self {
             Some(ref mut f) => f.merge(tag, wire_type, buf)?,
@@ -615,32 +592,20 @@ impl <F, E> Field<E> for Option<F> where F: Field<E> {
         Ok(())
     }
     #[inline]
-    fn encoded_len_with_key(&self, tag: u32) -> usize {
-        self.as_ref().map(|f| f.encoded_len_with_key(tag)).unwrap_or(0)
-    }
-    fn encoded_len(&self) -> usize {
-        // Implement encoded_len_with_key instead, because there are a variable
-        // number of keys to encode.
-        unimplemented!()
-    }
-    fn wire_type() -> WireType {
-        // encode_with_key is overriden, so this will not be called.
-        unimplemented!()
+    fn encoded_len(&self, tag: u32) -> usize {
+        self.as_ref().map(|f| f.encoded_len(tag)).unwrap_or(0)
     }
 }
 
+/*
 // repeated
 impl <F, E> Field<E> for Vec<F> where F: Field<E> {
-    fn encode<B>(&self, _buf: &mut B) where B: BufMut {
-        // encode_with_key is overriden, so this will not be called.
-        unimplemented!()
-    }
     #[inline]
-    fn encode_with_key<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+    fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         if F::wire_type() == WireType::LengthDelimited {
             // Default repeated encoding.
             for value in self {
-                Field::<E>::encode_with_key(value, tag, buf);
+                Field::<E>::encode(value, tag, buf);
             }
         } else {
             // Packed repeated encoding.
@@ -706,6 +671,7 @@ impl <F, E> Field<E> for Vec<F> where F: Field<E> {
         WireType::LengthDelimited
     }
 }
+*/
 
 /// Marker trait for types which can use packed encoding in repeated fields.
 pub trait Packed {}
@@ -766,26 +732,43 @@ impl <F, E> Field<(PackedRepeated, E)> for Vec<F> where F: Field<E> + Packed {
 }
 */
 
+impl <F, E> Field<E> for F where F: RepeatableField<E> {
+    #[inline]
+    fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+        encode_key(tag, <Self as RepeatableField<E>>::wire_type(), buf);
+        <Self as RepeatableField<E>>::encode(buf);
+    }
+    #[inline]
+    fn decode<B>(_tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
+        check_wire_type(<Self as RepeatableField<E>>::wire_type(), wire_type)?;
+        <Self as RepeatableField<E>>::decode().map(Option::unwrap_or_default)
+    }
+    #[inline]
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        check_wire_type(<Self as RepeatableField<E>>::wire_type(), wire_type)?;
+        <Self as RepeatableField<E>>::merge(self, buf)
+    }
+    #[inline]
+    fn encoded_len(&self, tag: u32) -> usize {
+        key_len(tag) + <Self as RepeatableField<E>>::encoded_len()
+    }
+}
+
 // Message
-impl <M> Field for M where M: Message + default::Default {
+impl <M> RepeatableField for M where M: Message + default::Default {
     #[inline]
     fn encode<B>(&self, buf: &mut B) where B: BufMut {
         // This should never happen, since we check lengths upfront.
         self.encode_length_delimited(buf).expect("failed to encode message: buffer underflow")
     }
     #[inline]
-    fn decode<B>(_tag: u32, wire_type: WireType, buf: &mut B) -> Result<Self> where B: Buf {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        <M as Message>::decode_length_delimited(buf)
-    }
-    #[inline]
-    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        <M as Message>::merge_length_delimited(self, buf)
+    fn decode<B>(buf: &mut B) -> Result<Option<Self>> where B: Buf {
+        M::decode(buf).map(Option::Some)
     }
     #[inline]
     fn encoded_len(&self) -> usize {
-        <M as Message>::encoded_len(self)
+        let len = <M as Message>::encoded_len(self);
+        varint_len(len) + len
     }
     #[inline]
     fn wire_type() -> WireType {
@@ -802,6 +785,7 @@ impl Key for u32 {}
 impl Key for u64 {}
 impl Key for String {}
 
+/*
 // Map
 impl <K, V, EK, EV> Field<(EK, EV)> for HashMap<K, V>
 where K: default::Default + Eq + Hash + Key + Field<EK>,
@@ -867,7 +851,9 @@ where K: default::Default + Eq + Hash + Key + Field<EK>,
         WireType::LengthDelimited
     }
 }
+*/
 
+/*
 impl <K, V> Field<Default> for HashMap<K, V>
 where K: default::Default + Eq + Hash + Key + Field<Default>,
       V: default::Default + Field<Default> {
@@ -902,6 +888,7 @@ where K: default::Default + Eq + Hash + Key + Field<Default>,
         unimplemented!()
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {
