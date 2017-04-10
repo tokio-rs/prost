@@ -1,11 +1,8 @@
 use std::cmp::min;
-use std::default;
 use std::io::Result;
 use std::str;
 use std::u32;
 use std::usize;
-use std::collections::HashMap;
-use std::hash::Hash;
 
 use bytes::{
     Buf,
