@@ -10,6 +10,9 @@ mod message;
 #[doc(hidden)]
 pub mod field;
 
+#[doc(hidden)]
+pub mod encoding;
+
 pub use message::Message;
 
 use std::error;
