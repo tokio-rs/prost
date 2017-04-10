@@ -10,7 +10,7 @@ use bytes::{
 use field::{
     decode_varint,
     encode_varint,
-    varint_len,
+    encoded_len_varint,
 };
 
 use invalid_input;
@@ -27,7 +27,7 @@ pub trait Message: Debug + Send + Sync {
     /// sufficient capacity.
     fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
         let len = self.encoded_len();
-        if len + varint_len(len as u64) < buf.remaining_mut() {
+        if len + encoded_len_varint(len as u64) < buf.remaining_mut() {
             return Err(invalid_input("failed to encode message: insufficient buffer capacity"));
         }
         encode_varint(len as u64, buf);

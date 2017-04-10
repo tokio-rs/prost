@@ -198,14 +198,14 @@ pub fn message(input: TokenStream) -> TokenStream {
     }
 
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
-    let wire_len = wire_len(&fields);
+    let encoded_len = encoded_len(&fields);
 
     let encode = fields.iter().map(|field| {
         let kind = &field.kind;
         let tag = field.tags[0];
         let field = &field.ident;
         quote! {
-            ::proto::field::Field::<#kind>::encode_with_key(&self.#field, #tag, buf);
+            ::proto::field::Field::<#kind>::encode(&self.#field, #tag, buf);
         }
     }).fold(Tokens::new(), concat_tokens);
 
@@ -213,11 +213,11 @@ pub fn message(input: TokenStream) -> TokenStream {
         let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let kind = &field.kind;
         let field = &field.ident;
-        quote!{ #tags => ::proto::field::Field::<#kind>::merge(&mut self.#field, tag, wire_type, r, &mut limit)
+        quote!{ #tags => ::proto::field::Field::<#kind>::merge(&mut self.#field, tag, wire_type, buf)
                                                         .map_err(|error| {
                                                             ::std::io::Error::new(
                                                                 error.kind(),
-                                                                format!(concat!("failed to read field ", stringify!(#ident),
+                                                                format!(concat!("failed to decode field ", stringify!(#ident),
                                                                                 ".", stringify!(#field), ": {}"),
                                                                         error))
                                                         })?, }
@@ -238,8 +238,7 @@ pub fn message(input: TokenStream) -> TokenStream {
             extern crate proto;
 
             #[automatically_derived]
-            impl proto::Message for #ident {
-
+            impl ::proto::Message for #ident {
                 #[inline]
                 fn encode<B>(&self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::BufMut {
                     #encode
@@ -248,53 +247,20 @@ pub fn message(input: TokenStream) -> TokenStream {
 
                 #[inline]
                 fn merge<B>(&mut self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
-                    unimplemented!()
+                    while buf.has_remaining() {
+                        let (tag, wire_type) = ::proto::field::decode_key(buf)?;
+                        match tag {
+                            #merge
+                            _ => ::proto::field::skip_field(wire_type, buf)?,
+                        }
+
+                    }
                 }
 
                 #[inline]
                 fn encoded_len(&self) -> usize {
-                    unimplemented!()
+                    #encoded_len
                 }
-
-
-                /*
-                fn write_to(&self, w: &mut Write) -> ::std::io::Result<()> {
-                    #write_to
-                    Ok(())
-                }
-
-                fn merge_from(&mut self, len: usize, r: &mut Read) -> ::std::io::Result<()> {
-                    let mut limit = len;
-                    while limit > 0 {
-                        let (wire_type, tag) = field::read_key_from(r, &mut limit)?;
-                        match tag {
-                            #merge_from
-                            _ => field::skip_field(wire_type, r, &mut limit)?,
-                        }
-                    }
-                    Ok(())
-                }
-
-                fn wire_len(&self) -> usize {
-                    #wire_len
-                }
-
-                fn type_id(&self) -> TypeId {
-                    TypeId::of::<#ident>()
-                }
-
-                fn as_any(&self) -> &Any {
-                    self
-                }
-
-                fn as_any_mut(&mut self) -> &mut Any {
-                    self
-                }
-
-                fn into_any(self: Box<Self>) -> Box<Any> {
-                    self
-                }
-                */
             }
 
             #[automatically_derived]
@@ -311,12 +277,12 @@ pub fn message(input: TokenStream) -> TokenStream {
     expanded.parse().unwrap()
 }
 
-fn wire_len(fields: &[Field]) -> Tokens {
+fn encoded_len(fields: &[Field]) -> Tokens {
     fields.iter().map(|field| {
         let kind = &field.kind;
         let ident = &field.ident;
         let tag = field.tags[0];
-        quote!(Field::<#kind>::wire_len(&self.#ident, #tag))
+        quote!(::proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag))
     })
     .fold(quote!(0), |mut sum, expr| {
         sum.append("+");
@@ -537,11 +503,11 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         quote! { #tag => Field::<#kind>::read_from(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
     }).fold(Tokens::new(), concat_tokens);
 
-    let wire_len = fields.iter().map(|field| {
+    let encoded_len = fields.iter().map(|field| {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => Field::<#kind>::wire_len(value, #tag), }
+        quote! { #ident::#name(ref value) => Field::<#kind>::encoded_len(value, #tag), }
     }).fold(Tokens::new(), concat_tokens);
 
     let expanded = quote! {
