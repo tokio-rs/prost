@@ -203,7 +203,7 @@ pub enum Packed {}
 /// a single Rust type. For instance, the Protobuf `fixed32` and `uint32` types
 /// both correspond to the Rust `u32` type, so `u32` has two impls of `Field`
 /// with different types for `E`, which correspond to `fixed32` and `uint32`.
-pub trait Field<E=Default> : default::Default {
+pub trait Field<E=Default> : Sized {
 
     /// Encodes a key and the field to the buffer.
     /// The buffer must have enough remaining space to hold the encoded key and field.
@@ -670,8 +670,8 @@ repeated_length_delimited_field!(String);
 
 // Map
 impl <K, V, EK, EV> Field<(EK, EV)> for HashMap<K, V>
-where K: Eq + Hash + KeyField + Field<EK>,
-      V: Field<EV> {
+where K: Eq + Hash + KeyField + Field<EK> + default::Default,
+      V: Field<EV>  + default::Default {
 
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
@@ -719,8 +719,8 @@ where K: Eq + Hash + KeyField + Field<EK>,
 }
 
 impl <K, V> Field for HashMap<K, V>
-where K: Eq + Hash + KeyField + Field,
-      V: Field {
+where K: Eq + Hash + KeyField + Field + default::Default,
+      V: Field + default::Default {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         <HashMap<K, V> as Field<(Default, Default)>>::encode(self, tag, buf)
@@ -736,16 +736,64 @@ where K: Eq + Hash + KeyField + Field,
 }
 
 impl <M> Field for M where M: Message + default::Default {
+    #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        unimplemented!()
+        encode_key(tag, WireType::LengthDelimited, buf);
+        self.encode_length_delimited(buf).expect("failed to encode message");
     }
 
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
-        unimplemented!()
+    #[inline]
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        self.merge_length_delimited(buf)
     }
 
+    #[inline]
     fn encoded_len(&self, tag: u32) -> usize {
-        unimplemented!()
+        key_len(tag) + self.encoded_len()
+    }
+}
+
+impl <M> Field for Option<M> where M: Message + default::Default {
+    #[inline]
+    fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+        if let Some(ref f) = *self {
+            Field::encode(f, tag, buf);
+        }
+    }
+    #[inline]
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        if self.is_none() {
+            *self = Some(default::Default::default());
+        }
+        Field::merge(self.as_mut().unwrap(), tag, wire_type, buf)
+    }
+    #[inline]
+    fn encoded_len(&self, tag: u32) -> usize {
+        if let Some(ref f) = *self {
+            Field::encoded_len(f, tag)
+        } else { 0 }
+    }
+}
+
+impl <M> Field for Vec<M> where M: Message + default::Default {
+    #[inline]
+    fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+        for value in self {
+            Field::encode(value, tag, buf);
+        }
+    }
+    #[inline]
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut value = default::Default::default();
+        Field::merge(&mut value, tag, WireType::LengthDelimited, buf)?;
+        self.push(value);
+        Ok(())
+    }
+    #[inline]
+    fn encoded_len(&self, tag: u32) -> usize {
+        self.iter().map(|f| Field::encoded_len(f, tag)).sum()
     }
 }
 

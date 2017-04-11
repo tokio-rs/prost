@@ -253,8 +253,8 @@ pub fn message(input: TokenStream) -> TokenStream {
                             #merge
                             _ => ::proto::field::skip_field(wire_type, buf)?,
                         }
-
                     }
+                    Ok(())
                 }
 
                 #[inline]
@@ -371,36 +371,20 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl proto::field::Field for #ident {
-                /*
-                fn write_to(&self, tag: u32, w: &mut Write) -> ::std::io::Result<()> {
-                    Field::<field::Default>::write_to(&(*self as i64), tag, w)
-                }
+            impl ::proto::field::Field for #ident {
 
-                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> ::std::io::Result<#ident> {
-                    <i64 as Field<field::Default>>::read_from(tag, wire_type, r, limit).map(From::from)
-                }
-
-                fn wire_len(&self, tag: u32) -> usize {
-                    Field::<field::Default>::wire_len(&(*self as i64), tag)
-                }
-                */
-
-                fn decode<B>(_tag: u32, _wire_type: proto::field::WireType, _buf: &mut B) -> ::std::io::Result<Self>
-                where B: bytes::Buf {
+                #[inline]
+                fn encode<B>(&self, tag: u32, buf: &mut B) where B: bytes::BufMut {
                     unimplemented!()
                 }
 
-
-                fn encode<B>(&self, _buf: &mut B) where B: bytes::BufMut {
+                #[inline]
+                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::field::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
                     unimplemented!()
                 }
 
-                fn encoded_len(&self) -> usize {
-                    unimplemented!()
-                }
-
-                fn wire_type() -> proto::field::WireType {
+                #[inline]
+                fn encoded_len(&self, tag: u32) -> usize {
                     unimplemented!()
                 }
             }
@@ -524,46 +508,20 @@ pub fn oneof(input: TokenStream) -> TokenStream {
 
             #[automatically_derived]
             impl proto::field::Field for #ident {
-                /*
-                fn write_to(&self, _tag: u32, w: &mut Write) -> ::std::io::Result<()> {
-                    match *self {
-                        #write_to
-                    }
-                }
-
-                fn read_from(tag: u32, wire_type: WireType, r: &mut Read, limit: &mut usize) -> ::std::io::Result<#ident> {
-                    match tag {
-                        #read_from
-                        // TODO: test coverage of this case
-                        _ => panic!("proto oneof tag misconfiguration: missing variant of {} with tag: {}",
-                                    stringify!(#ident), tag),
-                    }
-                }
-
-                fn wire_len(&self, tag: u32) -> usize {
-                    match *self {
-                        #wire_len
-                    }
-                }
-                */
-                fn decode<B>(tag: u32, wire_type: proto::field::WireType, buf: &mut B) -> ::std::io::Result<Self>
-                where B: bytes::Buf {
+                #[inline]
+                fn encode<B>(&self, tag: u32, buf: &mut B) where B: bytes::BufMut {
                     unimplemented!()
                 }
 
-
-                fn encode<B>(&self, buf: &mut B) where B: bytes::BufMut {
+                #[inline]
+                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::field::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
                     unimplemented!()
                 }
 
-                fn encoded_len(&self) -> usize {
+                #[inline]
+                fn encoded_len(&self, tag: u32) -> usize {
                     unimplemented!()
                 }
-
-                fn wire_type() -> proto::field::WireType {
-                    unimplemented!()
-                }
-
             }
         };
     };
