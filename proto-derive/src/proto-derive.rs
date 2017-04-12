@@ -117,23 +117,23 @@ impl Field {
             (true, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
             (false, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
 
-            (true, false, false, false, false, false, false, false, _) => quote!(proto::field::Default),
-            (true, true, false, false, false, false, false, false, _)  => quote!(proto::field::Fixed),
-            (true, false, true, false, false, false, false, false, _)  => quote!(proto::field::Signed),
+            (true, false, false, false, false, false, false, false, _) => quote!(proto::encoding::Default),
+            (true, true, false, false, false, false, false, false, _)  => quote!(proto::encoding::Fixed),
+            (true, false, true, false, false, false, false, false, _)  => quote!(proto::encoding::Signed),
 
-            (true, false, false, true, false, false, false, false, _) => quote!((proto::field::Packed, proto::field::Default)),
-            (true, true, false, true, false, false, false, false, _)  => quote!((proto::field::Packed, proto::field::Fixed)),
-            (true, false, true, true, false, false, false, false, _)  => quote!((proto::field::Packed, proto::field::Signed)),
+            (true, false, false, true, false, false, false, false, _) => quote!((proto::encoding::Packed, proto::encoding::Default)),
+            (true, true, false, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Fixed)),
+            (true, false, true, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Signed)),
 
-            (true, false, false, false, true, false, false, false, _) => quote!((proto::field::Fixed, proto::field::Default)),
-            (true, false, false, false, false, true, false, false, _) => quote!((proto::field::Signed, proto::field::Default)),
-            (true, false, false, false, false, false, true, false, _) => quote!((proto::field::Default, proto::field::Fixed)),
-            (true, false, false, false, false, false, false, true, _) => quote!((proto::field::Default, proto::field::Signed)),
+            (true, false, false, false, true, false, false, false, _) => quote!((proto::encoding::Fixed, proto::encoding::Default)),
+            (true, false, false, false, false, true, false, false, _) => quote!((proto::encoding::Signed, proto::encoding::Default)),
+            (true, false, false, false, false, false, true, false, _) => quote!((proto::encoding::Default, proto::encoding::Fixed)),
+            (true, false, false, false, false, false, false, true, _) => quote!((proto::encoding::Default, proto::encoding::Signed)),
 
-            (true, false, false, false, true, false, true, false, _) => quote!((proto::field::Fixed, proto::field::Fixed)),
-            (true, false, false, false, true, false, false, true, _) => quote!((proto::field::Fixed, proto::field::Signed)),
-            (true, false, false, false, false, true, true, false, _) => quote!((proto::field::Signed, proto::field::Fixed)),
-            (true, false, false, false, false, true, false, true, _) => quote!((proto::field::Signed, proto::field::Signed)),
+            (true, false, false, false, true, false, true, false, _) => quote!((proto::encoding::Fixed, proto::encoding::Fixed)),
+            (true, false, false, false, true, false, false, true, _) => quote!((proto::encoding::Fixed, proto::encoding::Signed)),
+            (true, false, false, false, false, true, true, false, _) => quote!((proto::encoding::Signed, proto::encoding::Fixed)),
+            (true, false, false, false, false, true, false, true, _) => quote!((proto::encoding::Signed, proto::encoding::Signed)),
 
             (false, true, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
             (false, _, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
@@ -248,10 +248,10 @@ pub fn message(input: TokenStream) -> TokenStream {
                 #[inline]
                 fn merge<B>(&mut self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
                     while buf.has_remaining() {
-                        let (tag, wire_type) = ::proto::field::decode_key(buf)?;
+                        let (tag, wire_type) = ::proto::encoding::decode_key(buf)?;
                         match tag {
                             #merge
-                            _ => ::proto::field::skip_field(wire_type, buf)?,
+                            _ => ::proto::encoding::skip_field(wire_type, buf)?,
                         }
                     }
                     Ok(())
@@ -263,6 +263,8 @@ pub fn message(input: TokenStream) -> TokenStream {
                 }
             }
 
+            impl ::proto::field::Type for #ident {}
+
             #[automatically_derived]
             impl Default for #ident {
                 fn default() -> #ident {
@@ -273,6 +275,7 @@ pub fn message(input: TokenStream) -> TokenStream {
             }
         };
     };
+
 
     expanded.parse().unwrap()
 }
@@ -379,7 +382,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::field::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
+                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::encoding::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
                     unimplemented!()
                 }
 
@@ -388,6 +391,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                     unimplemented!()
                 }
             }
+
+            impl ::proto::field::Type for #ident {}
 
             #[automatically_derived]
             impl Default for #ident {
@@ -473,25 +478,25 @@ pub fn oneof(input: TokenStream) -> TokenStream {
 
     let dummy_const = syn::Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
 
-    let write_to = fields.iter().map(|field| {
+    let encode = fields.iter().map(|field| {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => Field::<#kind>::write_to(value, #tag, w), }
+        quote! { #ident::#name(ref value) => proto::field::Field::<#kind>::encode(value, #tag, buf), }
     }).fold(Tokens::new(), concat_tokens);
 
-    let read_from = fields.iter().map(|field| {
+    let merge = fields.iter().map(|field| {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #tag => Field::<#kind>::read_from(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
+        quote! { #tag => proto::field::Field::<#kind>::merge(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
     }).fold(Tokens::new(), concat_tokens);
 
     let encoded_len = fields.iter().map(|field| {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => Field::<#kind>::encoded_len(value, #tag), }
+        quote! { #ident::#name(ref value) => proto::field::Field::<#kind>::encoded_len(value, #tag), }
     }).fold(Tokens::new(), concat_tokens);
 
     let expanded = quote! {
@@ -510,11 +515,13 @@ pub fn oneof(input: TokenStream) -> TokenStream {
             impl proto::field::Field for #ident {
                 #[inline]
                 fn encode<B>(&self, tag: u32, buf: &mut B) where B: bytes::BufMut {
-                    unimplemented!()
+                    match *self {
+                        #encode
+                    }
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::field::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
+                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::encoding::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
                     unimplemented!()
                 }
 
