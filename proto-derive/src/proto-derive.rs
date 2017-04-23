@@ -32,6 +32,7 @@ impl Field {
         let mut signed = false;
         let mut ignore = false;
         let mut packed = false;
+        let mut enumeration = false;
 
         let mut fixed_key = false;
         let mut signed_key = false;
@@ -69,6 +70,10 @@ impl Field {
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed" => signed = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed" => signed = value,
 
+                    // Handle `#[proto(enumeration)]` and `#[proto(enumeration = false)]`.
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "enumeration" => enumeration = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "enumeration" => enumeration = value,
+
                     // Handle `#[proto(packed)]` and `#[proto(packed = false)]`.
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "packed" => packed = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "packed" => packed = value,
@@ -93,6 +98,10 @@ impl Field {
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
 
+                    // Handle `#[proto(enumeration)]` and `#[proto(enumeration = false)]`.
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "enumeration" => enumeration = true,
+                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "enumeration" => enumeration = value,
+
                     // Handle `#[proto(default = "")]`
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) if name == "default" => default = Some(value.clone()),
 
@@ -111,19 +120,21 @@ impl Field {
 
         let tags = tags.into_iter().map(|tag| tag as u32).collect::<Vec<_>>();
 
-        let kind = match (!tags.is_empty(), fixed, signed, packed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
-            (false, false, false, false, false, false, false, false, true) => return None,
+        let kind = match (!tags.is_empty(), fixed, signed, enumeration, packed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
+            (false, false, false, false, false, false, false, false, false, true) => return None,
 
-            (true, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
-            (false, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
+            (true, _, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
+            (false, _, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
 
-            (true, false, false, false, false, false, false, false, _) => quote!(proto::encoding::Default),
-            (true, true, false, false, false, false, false, false, _)  => quote!(proto::encoding::Fixed),
-            (true, false, true, false, false, false, false, false, _)  => quote!(proto::encoding::Signed),
+            (true, false, false, false, false, false, false, false, false, _) => quote!(proto::encoding::Default),
+            (true, true, false, false, false, false, false, false, false, _)  => quote!(proto::encoding::Fixed),
+            (true, false, true, false, false, false, false, false, false, _)  => quote!(proto::encoding::Signed),
+            (true, false, false, true, false, false, false, false, false, _)  => quote!(proto::encoding::Enumeration),
 
-            (true, false, false, true, false, false, false, false, _) => quote!((proto::encoding::Packed, proto::encoding::Default)),
-            (true, true, false, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Fixed)),
-            (true, false, true, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Signed)),
+            (true, false, false, false, true, false, false, false, false, _) => quote!((proto::encoding::Packed, proto::encoding::Default)),
+            (true, true, false, false, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Fixed)),
+            (true, false, true, false, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Signed)),
+            (true, false, false, true, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Enumeration)),
 
             (true, false, false, false, true, false, false, false, _) => quote!((proto::encoding::Fixed, proto::encoding::Default)),
             (true, false, false, false, false, true, false, false, _) => quote!((proto::encoding::Signed, proto::encoding::Default)),
@@ -262,8 +273,6 @@ pub fn message(input: TokenStream) -> TokenStream {
                     #encoded_len
                 }
             }
-
-            impl ::proto::field::Type for #ident {}
 
             #[automatically_derived]
             impl Default for #ident {
