@@ -101,11 +101,11 @@ pub struct FieldDescriptorProto {
     pub name: String,
     #[proto(tag="3")]
     pub number: i32,
-    #[proto(tag="4")]
+    #[proto(enumeration, tag="4")]
     pub label: field_descriptor_proto::Label,
     /// If type_name is set, this need not be set.  If both this and type_name
     /// are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
-    #[proto(tag="5")]
+    #[proto(enumeration, tag="5")]
     pub field_type: field_descriptor_proto::Type,
     /// For message and enum types, this is the name of the type.  If the name
     /// starts with a '.', it is fully-qualified.  Otherwise, C++-like scoping
@@ -306,7 +306,7 @@ pub struct FileOptions {
     /// This option has no effect on when used with the lite runtime.
     #[proto(tag="27")]
     pub java_string_check_utf8: bool,
-    #[proto(tag="9")]
+    #[proto(enumeration, tag="9")]
     pub optimize_for: file_options::OptimizeMode,
     /// Sets the Go package where structs generated from this .proto will be
     /// placed. If omitted, the Go package will be derived from the following:
@@ -437,7 +437,7 @@ pub struct FieldOptions {
     /// representation of the field than it normally would.  See the specific
     /// options below.  This option is not yet implemented in the open source
     /// release -- sorry, we'll try to include it in a future version!
-    #[proto(tag="1")]
+    #[proto(enumeration, tag="1")]
     pub ctype: field_options::CType,
     /// The packed option can be enabled for repeated primitive fields to enable
     /// a more efficient representation on the wire. Rather than repeatedly
@@ -455,7 +455,7 @@ pub struct FieldOptions {
     /// JavaScript code to use the JavaScript "number" type instead of strings.
     /// This option is an enum to permit additional types to be added,
     /// e.g. goog.math.Integer.
-    #[proto(tag="6")]
+    #[proto(enumeration, tag="6")]
     pub jstype: field_options::JSType,
     /// Should this field be parsed lazily?  Lazy applies only to message-type
     /// fields.  It means that when the outer message is initially parsed, the
@@ -582,7 +582,7 @@ pub struct MethodOptions {
     /// this is a formalization for deprecating methods.
     #[proto(tag="33")]
     pub deprecated: bool,
-    #[proto(tag="34")]
+    #[proto(enumeration, tag="34")]
     pub idempotency_level: method_options::IdempotencyLevel,
     /// The parser stores options it doesn't recognize here. See above.
     #[proto(tag="999")]

@@ -24,7 +24,7 @@ pub trait Message: Debug + Send + Sync {
     /// sufficient capacity.
     fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
         let len = self.encoded_len();
-        if len + encoded_len_varint(len as u64) < buf.remaining_mut() {
+        if len + encoded_len_varint(len as u64) > buf.remaining_mut() {
             return Err(invalid_input("failed to encode message: insufficient buffer capacity"));
         }
         encode_varint(len as u64, buf);
@@ -56,7 +56,6 @@ pub trait Message: Debug + Send + Sync {
         if len > buf.remaining() as u64 {
             return Err(invalid_input("failed to merge message: buffer underflow"));
         }
-
         self.merge(&mut buf.take(len as usize))
     }
 
@@ -89,7 +88,6 @@ impl <M> Field for M where M: Message + default::Default {
     #[inline]
     fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
             return Err(invalid_input("failed to merge message: buffer underflow"));
@@ -117,9 +115,11 @@ impl <M> Field for Vec<M> where M: Message + default::Default {
         }
     }
     #[inline]
-    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-        self.push(M::decode_length_delimited(buf)?);
+        let mut m = M::default();
+        <M as Field>::merge(&mut m, tag, wire_type, buf)?;
+        self.push(m);
         Ok(())
     }
     #[inline]

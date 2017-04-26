@@ -129,12 +129,12 @@ impl Field {
             (true, false, false, false, false, false, false, false, false, _) => quote!(_proto::encoding::Default),
             (true, true, false, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Fixed),
             (true, false, true, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Signed),
-            (true, false, false, true, false, false, false, false, false, _)  => quote!(_proto::encoding::Enumeration),
+            (true, false, false, true, false, false, false, false, false, _)  => quote!(_proto::field::Enumeration),
 
             (true, false, false, false, true, false, false, false, false, _) => quote!((_proto::encoding::Packed, _proto::encoding::Default)),
             (true, true, false, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Fixed)),
             (true, false, true, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Signed)),
-            (true, false, false, true, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Enumeration)),
+            (true, false, false, true, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::field::Enumeration)),
 
             (true, false, false, false, false, false, false, true, false, _) => quote!((_proto::encoding::Default, _proto::encoding::Fixed)),
             (true, false, false, false, false, false, false, false, true, _) => quote!((_proto::encoding::Default, _proto::encoding::Signed)),
@@ -142,12 +142,12 @@ impl Field {
             (true, false, false, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Default)),
             (true, false, false, false, false, true, false, true, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Fixed)),
             (true, false, false, false, false, true, false, false, true, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Signed)),
-            (true, false, false, true, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Enumeration)),
+            (true, false, false, true, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::field::Enumeration)),
 
             (true, false, false, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Default)),
             (true, false, false, false, false, false, true, true, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Fixed)),
             (true, false, false, false, false, false, true, false, true, _) => quote!((_proto::encoding::Signed, _proto::encoding::Signed)),
-            (true, false, false, true, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Enumeration)),
+            (true, false, false, true, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::field::Enumeration)),
 
             (false, true, _, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
             (false, _, true, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
@@ -326,16 +326,16 @@ fn default(fields: &[Field]) -> Tokens {
 #[proc_macro_derive(Enumeration, attributes(proto))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
     let syn::DeriveInput { ident, generics, attrs, body, .. } =
-        syn::parse_derive_input(&input.to_string()).expect("unable to parse enum type");
+        syn::parse_derive_input(&input.to_string()).expect("unable to parse enumeration type");
 
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
        !generics.where_clause.predicates.is_empty() {
-        panic!("Enum may not be derived for generic type");
+        panic!("Enumeration may not be derived for generic type");
     }
 
     let variants = match body {
-        syn::Body::Struct(..) => panic!("Enum can not be derived for a struct"),
+        syn::Body::Struct(..) => panic!("Enumeration can not be derived for a struct"),
         syn::Body::Enum(variants) => variants,
     };
 
@@ -344,15 +344,15 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             if let Some(discriminant) = discriminant {
                 (variant, discriminant)
             } else {
-                panic!("Enum variants must have a discriminant value: {}::{}", ident, variant);
+                panic!("Enumeration variants must have a discriminant value: {}::{}", ident, variant);
             }
         } else {
-            panic!("Enum variants may not have fields: {}::{}", ident, variant);
+            panic!("Enumeration variants may not have fields: {}::{}", ident, variant);
         }
     }).collect::<Vec<_>>();
 
     if variants.is_empty() {
-        panic!("Enum must have at least one variant: {}", ident);
+        panic!("Enumeration must have at least one variant: {}", ident);
     }
 
     let repr = attrs.into_iter()
@@ -365,7 +365,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
     let default = variants[0].0.clone();
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_ENUM_FOR_{}", ident));
+    let dummy_const = syn::Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
     let is_valid = variants.iter()
                            .map(|&(_, ref value)| quote!(#value => true,))
                            .fold(Tokens::new(), concat_tokens);

@@ -53,9 +53,7 @@ fn main() {
     let len = bytes.len();
     assert_ne!(len, 0);
 
-    let request = CodeGeneratorRequest::decode_length_delimited(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
-    //let request: CodeGeneratorRequest = unimplemented!();
-
+    let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
     trace!("{:#?}", request);
@@ -96,7 +94,7 @@ fn main() {
         module.children.sort();
         module.children.dedup();
 
-        if !module.children.is_empty() {
+        if !module.children.is_empty() || path.iter().count() == 0 {
             path.push("mod");
         }
         path.set_extension("rs");
