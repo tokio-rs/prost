@@ -5,6 +5,7 @@ use bytes::{
     Buf,
     BufMut,
     LittleEndian,
+    Take,
 };
 
 use field::{Field, Type};
@@ -45,7 +46,7 @@ macro_rules! numeric_field {
                 <$ty as Numeric<$e>>::encode(*self, buf);
             }
             #[inline]
-            fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+            fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 check_wire_type(<$ty as Numeric<$e>>::wire_type(), wire_type)?;
                 *self = <$ty as Numeric<$e>>::decode(buf)?;
                 Ok(())
@@ -63,7 +64,7 @@ macro_rules! numeric_field {
                 }
             }
             #[inline]
-            fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+            fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 if wire_type == WireType::LengthDelimited {
                     // Packed repeated encoding.
                     let len = decode_varint(buf)?;
@@ -71,10 +72,12 @@ macro_rules! numeric_field {
                         return Err(invalid_data("failed to decode packed repeated field: buffer underflow"));
                     }
 
-                    let mut buf = buf.take(len as usize);
+                    let limit = buf.limit();
+                    buf.set_limit(len as usize);
                     while buf.has_remaining() {
-                        self.push(<$ty as Numeric<$e>>::decode(&mut buf)?);
+                        self.push(<$ty as Numeric<$e>>::decode(buf)?);
                     }
+                    buf.set_limit(limit - len as usize);
                 } else {
                     // Default repeated encoding.
                     let mut value = default::Default::default();
@@ -101,7 +104,7 @@ macro_rules! numeric_field {
                 }
             }
             #[inline]
-            fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+            fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 <Vec<$ty> as Field<$e>>::merge(self, tag, wire_type, buf)
             }
             #[inline]

@@ -14,9 +14,9 @@ use std::hash::Hash;
 use bytes::{
     Buf,
     BufMut,
+    Take,
 };
 
-use Message;
 use encoding::*;
 
 /// A field in a Protobuf message.
@@ -44,7 +44,7 @@ pub trait Field<E=Default> : Sized {
     /// For scalar, enumeration, and oneof types, the default implementation
     /// can be used, which replaces the current value. Message, repeated, and
     /// map fields must override this in order to provide proper merge semantics.
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf;
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf;
 
     /// Returns the length of the encoded field.
     fn encoded_len(&self, tag: u32) -> usize;
@@ -74,7 +74,7 @@ impl <T, E> Field<E> for Option<T> where T: Type<E> {
             <T as Field<E>>::encode(f, tag, buf);
         }
     }
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         if self.is_none() {
             *self = Some(default::Default::default());
         }
@@ -111,27 +111,29 @@ where K: Eq + Hash + KeyType + Type<EK>,
         }
     }
     #[inline]
-    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
             return Err(invalid_data("failed to decode map entry: buffer underflow"));
         }
-        let mut buf = buf.take(len as usize);
+        let limit = buf.limit();
+        buf.set_limit(len as usize);
 
         let mut key = K::default();
         let mut value = V::default();
 
         while buf.has_remaining() {
-            let (tag, wire_type) = decode_key(&mut buf)?;
+            let (tag, wire_type) = decode_key(buf)?;
             match tag {
-                1 => key.merge(tag, wire_type, &mut buf)?,
-                2 => value.merge(tag, wire_type, &mut buf)?,
+                1 => key.merge(tag, wire_type, buf)?,
+                2 => value.merge(tag, wire_type, buf)?,
                 _ => return Err(invalid_data(format!("failed to decode map entry: unexpected field ({:?}, {:?})",
                                                      tag, wire_type))),
             }
         }
         self.insert(key, value);
+        buf.set_limit(limit - len as usize);
         Ok(())
     }
     #[inline]
@@ -152,7 +154,7 @@ where K: Eq + Hash + KeyType + Type,
         <HashMap<K, V> as Field<(Default, Default)>>::encode(self, tag, buf)
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         <HashMap<K, V> as Field<(Default, Default)>>::merge(self, tag, wire_type, buf)
     }
     #[inline]
@@ -161,14 +163,14 @@ where K: Eq + Hash + KeyType + Type,
     }
 }
 
-struct Enumeration;
-impl <T> Field<Enumeration> for Vec<T> where T: Type {
+pub struct Enumeration;
+impl <T> Field<Enumeration> for Vec<T> where T: Type<Enumeration> {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         unimplemented!()
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         unimplemented!()
     }
     #[inline]
@@ -205,7 +207,7 @@ mod tests {
         let mut buf = BytesMut::with_capacity(expected_len);
         value.encode(tag, &mut buf);
 
-        let mut buf = buf.freeze().into_buf();
+        let mut buf = buf.freeze().into_buf().take(expected_len);
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",

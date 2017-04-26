@@ -21,7 +21,7 @@ pub trait LengthDelimited : default::Default {
     fn encode<B>(&self, buf: &mut B) where B: BufMut;
 
     /// Decodes the length-delimited type from the buffer, and merges the value into self.
-    fn merge<B>(&mut self, buf: Take<&mut B>) -> Result<()> where B: Buf;
+    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf;
 
     /// Returns the length of the encoded field, without the length delimiter.
     fn encoded_len(&self) -> usize;
@@ -38,13 +38,17 @@ macro_rules! length_delimited_field {
                 LengthDelimited::encode(self, buf);
             }
             #[inline]
-            fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+            fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
                 let len = decode_varint(buf)?;
                 if (buf.remaining() as u64) < len {
                     return Err(invalid_input("failed to decode length-delimited field: buffer underflow"));
                 }
-                LengthDelimited::merge(self, buf.take(len as usize))
+                let limit = buf.limit();
+                buf.set_limit(len as usize);
+                LengthDelimited::merge(self, buf)?;
+                buf.set_limit(limit - len as usize);
+                Ok(())
             }
             #[inline]
             fn encoded_len(&self, tag: u32) -> usize {
@@ -62,7 +66,7 @@ macro_rules! length_delimited_field {
                 }
             }
             #[inline]
-            fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+            fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
                 let mut value = default::Default::default();
                 Field::merge(&mut value, tag, WireType::LengthDelimited, buf)?;
@@ -84,7 +88,7 @@ impl LengthDelimited for String {
         buf.put_slice(self.as_bytes());
     }
     #[inline]
-    fn merge<B>(&mut self, mut buf: Take<&mut B>) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf {
         self.clear();
         self.push_str(str::from_utf8(buf.bytes()).map_err(|_| {
             invalid_data("failed to decode string: data is not UTF-8 encoded")
@@ -107,8 +111,9 @@ impl LengthDelimited for Vec<u8> {
         buf.put_slice(self);
     }
     #[inline]
-    fn merge<B>(&mut self, mut buf: Take<&mut B>) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf {
         self.clear();
+        // TODO: this isn't right; bytes() can return a partial buffer.
         self.extend_from_slice(buf.bytes());
         let len = buf.remaining();
         buf.advance(len);

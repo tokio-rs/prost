@@ -126,49 +126,57 @@ impl Field {
             (true, _, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
             (false, _, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
 
-            (true, false, false, false, false, false, false, false, false, _) => quote!(proto::encoding::Default),
-            (true, true, false, false, false, false, false, false, false, _)  => quote!(proto::encoding::Fixed),
-            (true, false, true, false, false, false, false, false, false, _)  => quote!(proto::encoding::Signed),
-            (true, false, false, true, false, false, false, false, false, _)  => quote!(proto::encoding::Enumeration),
+            (true, false, false, false, false, false, false, false, false, _) => quote!(_proto::encoding::Default),
+            (true, true, false, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Fixed),
+            (true, false, true, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Signed),
+            (true, false, false, true, false, false, false, false, false, _)  => quote!(_proto::encoding::Enumeration),
 
-            (true, false, false, false, true, false, false, false, false, _) => quote!((proto::encoding::Packed, proto::encoding::Default)),
-            (true, true, false, false, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Fixed)),
-            (true, false, true, false, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Signed)),
-            (true, false, false, true, true, false, false, false, false, _)  => quote!((proto::encoding::Packed, proto::encoding::Enumeration)),
+            (true, false, false, false, true, false, false, false, false, _) => quote!((_proto::encoding::Packed, _proto::encoding::Default)),
+            (true, true, false, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Fixed)),
+            (true, false, true, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Signed)),
+            (true, false, false, true, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Enumeration)),
 
-            (true, false, false, false, true, false, false, false, _) => quote!((proto::encoding::Fixed, proto::encoding::Default)),
-            (true, false, false, false, false, true, false, false, _) => quote!((proto::encoding::Signed, proto::encoding::Default)),
-            (true, false, false, false, false, false, true, false, _) => quote!((proto::encoding::Default, proto::encoding::Fixed)),
-            (true, false, false, false, false, false, false, true, _) => quote!((proto::encoding::Default, proto::encoding::Signed)),
+            (true, false, false, false, false, false, false, true, false, _) => quote!((_proto::encoding::Default, _proto::encoding::Fixed)),
+            (true, false, false, false, false, false, false, false, true, _) => quote!((_proto::encoding::Default, _proto::encoding::Signed)),
 
-            (true, false, false, false, true, false, true, false, _) => quote!((proto::encoding::Fixed, proto::encoding::Fixed)),
-            (true, false, false, false, true, false, false, true, _) => quote!((proto::encoding::Fixed, proto::encoding::Signed)),
-            (true, false, false, false, false, true, true, false, _) => quote!((proto::encoding::Signed, proto::encoding::Fixed)),
-            (true, false, false, false, false, true, false, true, _) => quote!((proto::encoding::Signed, proto::encoding::Signed)),
+            (true, false, false, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Default)),
+            (true, false, false, false, false, true, false, true, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Fixed)),
+            (true, false, false, false, false, true, false, false, true, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Signed)),
+            (true, false, false, true, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Enumeration)),
 
-            (false, true, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
-            (false, _, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
-            (false, _, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be packed"),
-            (false, _, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
-            (false, _, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
-            (false, _, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
-            (false, _, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
+            (true, false, false, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Default)),
+            (true, false, false, false, false, false, true, true, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Fixed)),
+            (true, false, false, false, false, false, true, false, true, _) => quote!((_proto::encoding::Signed, _proto::encoding::Signed)),
+            (true, false, false, true, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Enumeration)),
 
-            (_, true, true, _, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
-            (_, true, _, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
-            (_, true, _, _, _, true, _, _, _) => panic!("proto field must not be fixed and signed_key"),
-            (_, true, _, _, _, _, true, _, _) => panic!("proto field must not be fixed and fixed_value"),
-            (_, true, _, _, _, _, _, true, _) => panic!("proto field must not be fixed and signed_value"),
-            (_, _, true, _, true, _, _, _, _) => panic!("proto field must not be signed and fixed_key"),
-            (_, _, true, _, _, true, _, _, _) => panic!("proto field must not be signed and signed_key"),
-            (_, _, true, _, _, _, true, _, _) => panic!("proto field must not be signed and fixed_value"),
-            (_, _, true, _, _, _, _, true, _) => panic!("proto field must not be signed and signed_value"),
-            (_, _, _, true, true, _, _, _, _) => panic!("proto field must not be packed and fixed_key"),
-            (_, _, _, true, _, true, _, _, _) => panic!("proto field must not be packed and signed_key"),
-            (_, _, _, true, _, _, true, _, _) => panic!("proto field must not be packed and fixed_value"),
-            (_, _, _, true, _, _, _, true, _) => panic!("proto field must not be packed and signed_value"),
-            (_, _, _, _, true, true, _, _, _) => panic!("proto field must not be fixed_key and signed_key"),
-            (_, _, _, _, _, _, true, true, _) => panic!("proto field must not be fixed_value and signed_value"),
+            (false, true, _, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
+            (false, _, true, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
+            (false, _, _, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be an enumeration"),
+            (false, _, _, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be packed"),
+            (false, _, _, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
+            (false, _, _, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
+            (false, _, _, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
+            (false, _, _, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
+
+            (_, true, true, _, _, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
+            (_, true, _, true, _, _, _, _, _, _) => panic!("proto field must not be fixed and an enumeration"),
+            (_, true, _, _, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
+            (_, true, _, _, _, _, true, _, _, _) => panic!("proto field must not be fixed and signed_key"),
+            (_, true, _, _, _, _, _, true, _, _) => panic!("proto field must not be fixed and fixed_value"),
+            (_, true, _, _, _, _, _, _, true, _) => panic!("proto field must not be fixed and signed_value"),
+            (_, _, true, true, _, _, _, _, _, _) => panic!("proto field must not be signed and an enumeration"),
+            (_, _, true, _, _, true, _, _, _, _) => panic!("proto field must not be signed and fixed_key"),
+            (_, _, true, _, _, _, true, _, _, _) => panic!("proto field must not be signed and signed_key"),
+            (_, _, true, _, _, _, _, true, _, _) => panic!("proto field must not be signed and fixed_value"),
+            (_, _, true, _, _, _, _, _, true, _) => panic!("proto field must not be signed and signed_value"),
+            (_, _, _, _, true, true, _, _, _, _) => panic!("proto field must not be packed and fixed_key"),
+            (_, _, _, _, true, _, true, _, _, _) => panic!("proto field must not be packed and signed_key"),
+            (_, _, _, _, true, _, _, true, _, _) => panic!("proto field must not be packed and fixed_value"),
+            (_, _, _, _, true, _, _, _, true, _) => panic!("proto field must not be packed and signed_value"),
+            (_, _, _, _, _, true, true, _, _, _) => panic!("proto field must not be fixed_key and signed_key"),
+            (_, _, _, _, _, _, _, true, true, _) => panic!("proto field must not be fixed_value and signed_value"),
+            (_, _, _, true, _, _, _, true, _, _) => panic!("proto field must not be an enumeration and fixed_value"),
+            (_, _, _, true, _, _, _, _, true, _) => panic!("proto field must not be an enumeration and signed_value"),
         };
 
         Some(Field {
@@ -216,7 +224,7 @@ pub fn message(input: TokenStream) -> TokenStream {
         let tag = field.tags[0];
         let field = &field.ident;
         quote! {
-            ::proto::field::Field::<#kind>::encode(&self.#field, #tag, buf);
+            _proto::field::Field::<#kind>::encode(&self.#field, #tag, buf);
         }
     }).fold(Tokens::new(), concat_tokens);
 
@@ -224,7 +232,7 @@ pub fn message(input: TokenStream) -> TokenStream {
         let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let kind = &field.kind;
         let field = &field.ident;
-        quote!{ #tags => ::proto::field::Field::<#kind>::merge(&mut self.#field, tag, wire_type, buf)
+        quote!{ #tags => _proto::field::Field::<#kind>::merge(&mut self.#field, tag, wire_type, buf)
                                                         .map_err(|error| {
                                                             ::std::io::Error::new(
                                                                 error.kind(),
@@ -245,24 +253,25 @@ pub fn message(input: TokenStream) -> TokenStream {
             unused_variables
         )]
         const #dummy_const: () = {
-            extern crate bytes;
-            extern crate proto;
+
+            extern crate proto as _proto;
+            extern crate bytes as _bytes;
 
             #[automatically_derived]
-            impl ::proto::Message for #ident {
+            impl _proto::Message for #ident {
                 #[inline]
-                fn encode<B>(&self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::BufMut {
+                fn encode<B>(&self, buf: &mut B) -> ::std::io::Result<()> where B: _bytes::BufMut {
                     #encode
                     Ok(())
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
-                    while buf.has_remaining() {
-                        let (tag, wire_type) = ::proto::encoding::decode_key(buf)?;
+                fn merge<B>(&mut self, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
+                    while _bytes::Buf::has_remaining(buf) {
+                        let (tag, wire_type) = _proto::encoding::decode_key(buf)?;
                         match tag {
                             #merge
-                            _ => ::proto::encoding::skip_field(wire_type, buf)?,
+                            _ => _proto::encoding::skip_field(wire_type, buf)?,
                         }
                     }
                     Ok(())
@@ -294,7 +303,7 @@ fn encoded_len(fields: &[Field]) -> Tokens {
         let kind = &field.kind;
         let ident = &field.ident;
         let tag = field.tags[0];
-        quote!(::proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag))
+        quote!(_proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag))
     })
     .fold(quote!(0), |mut sum, expr| {
         sum.append("+");
@@ -317,16 +326,16 @@ fn default(fields: &[Field]) -> Tokens {
 #[proc_macro_derive(Enumeration, attributes(proto))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
     let syn::DeriveInput { ident, generics, attrs, body, .. } =
-        syn::parse_derive_input(&input.to_string()).expect("unable to parse message type");
+        syn::parse_derive_input(&input.to_string()).expect("unable to parse enum type");
 
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
        !generics.where_clause.predicates.is_empty() {
-        panic!("Enumeration may not be derived for generic type");
+        panic!("Enum may not be derived for generic type");
     }
 
     let variants = match body {
-        syn::Body::Struct(..) => panic!("Enumeration can not be derived for a struct"),
+        syn::Body::Struct(..) => panic!("Enum can not be derived for a struct"),
         syn::Body::Enum(variants) => variants,
     };
 
@@ -335,15 +344,15 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             if let Some(discriminant) = discriminant {
                 (variant, discriminant)
             } else {
-                panic!("Enumeration variants must have a discriminant value: {}::{}", ident, variant);
+                panic!("Enum variants must have a discriminant value: {}::{}", ident, variant);
             }
         } else {
-            panic!("Enumeration variants may not have fields: {}::{}", ident, variant);
+            panic!("Enum variants may not have fields: {}::{}", ident, variant);
         }
     }).collect::<Vec<_>>();
 
     if variants.is_empty() {
-        panic!("Enumeration must have at least one variant: {}", ident);
+        panic!("Enum must have at least one variant: {}", ident);
     }
 
     let repr = attrs.into_iter()
@@ -356,7 +365,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
     let default = variants[0].0.clone();
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
+    let dummy_const = syn::Ident::new(format!("_IMPL_ENUM_FOR_{}", ident));
     let is_valid = variants.iter()
                            .map(|&(_, ref value)| quote!(#value => true,))
                            .fold(Tokens::new(), concat_tokens);
@@ -370,8 +379,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
         const #dummy_const: () = {
-            extern crate bytes;
-            extern crate proto;
+            extern crate bytes as _bytes;
+            extern crate proto as _proto;
 
             impl #ident {
                 fn is_valid(value: #repr) -> bool {
@@ -383,25 +392,28 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl ::proto::field::Field for #ident {
+            impl ::proto::field::Field<::proto::field::Enumeration> for #ident {
 
                 #[inline]
-                fn encode<B>(&self, tag: u32, buf: &mut B) where B: bytes::BufMut {
-                    unimplemented!()
+                fn encode<B>(&self, tag: u32, buf: &mut B) where B: _bytes::BufMut {
+                    ::proto::encoding::encode_key(tag, ::proto::encoding::WireType::Varint, buf);
+                    ::proto::encoding::encode_varint(*self as u64, buf);
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::encoding::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
-                    unimplemented!()
+                fn merge<B>(&mut self, _tag: u32, wire_type: ::proto::encoding::WireType, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
+                    ::proto::encoding::check_wire_type(::proto::encoding::WireType::Varint, wire_type)?;
+                    *self = #ident::from(::proto::encoding::decode_varint(buf)? as #repr);
+                    Ok(())
                 }
 
                 #[inline]
                 fn encoded_len(&self, tag: u32) -> usize {
-                    unimplemented!()
+                    ::proto::encoding::key_len(tag) + ::proto::encoding::encoded_len_varint(*self as u64)
                 }
             }
 
-            impl ::proto::field::Type for #ident {}
+            impl ::proto::field::Type<::proto::field::Enumeration> for #ident {}
 
             #[automatically_derived]
             impl Default for #ident {
@@ -491,21 +503,21 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => proto::field::Field::<#kind>::encode(value, #tag, buf), }
+        quote! { #ident::#name(ref value) => _proto::field::Field::<#kind>::encode(value, #tag, buf), }
     }).fold(Tokens::new(), concat_tokens);
 
     let merge = fields.iter().map(|field| {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #tag => proto::field::Field::<#kind>::merge(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
+        quote! { #tag => _proto::field::Field::<#kind>::merge(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
     }).fold(Tokens::new(), concat_tokens);
 
     let encoded_len = fields.iter().map(|field| {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => proto::field::Field::<#kind>::encoded_len(value, #tag), }
+        quote! { #ident::#name(ref value) => _proto::field::Field::<#kind>::encoded_len(value, #tag), }
     }).fold(Tokens::new(), concat_tokens);
 
     let expanded = quote! {
@@ -517,20 +529,20 @@ pub fn oneof(input: TokenStream) -> TokenStream {
             unused_variables
         )]
         const #dummy_const: () = {
-            extern crate bytes;
-            extern crate proto;
+            extern crate bytes as _bytes;
+            extern crate proto as _proto;
 
             #[automatically_derived]
-            impl proto::field::Field for #ident {
+            impl _proto::field::Field for #ident {
                 #[inline]
-                fn encode<B>(&self, tag: u32, buf: &mut B) where B: bytes::BufMut {
+                fn encode<B>(&self, tag: u32, buf: &mut B) where B: _bytes::BufMut {
                     match *self {
                         #encode
                     }
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::encoding::WireType, buf: &mut B) -> ::std::io::Result<()> where B: bytes::Buf {
+                fn merge<B>(&mut self, tag: u32, wire_type: ::proto::encoding::WireType, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
                     unimplemented!()
                 }
 

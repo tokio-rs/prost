@@ -1,3 +1,5 @@
+#![recursion_limit = "128"]
+
 #[macro_use]
 extern crate proto_derive;
 #[macro_use]
@@ -18,6 +20,8 @@ use std::io::{
     Write,
     self,
 };
+
+use bytes::Buf;
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
@@ -46,10 +50,11 @@ fn main() {
     let mut bytes = Vec::new();
     io::stdin().read_to_end(&mut bytes).unwrap();
 
-    assert_ne!(bytes.len(), 0);
+    let len = bytes.len();
+    assert_ne!(len, 0);
 
-    let mut request = CodeGeneratorRequest::default();
-    Message::merge(&mut request, &mut Cursor::new(&mut bytes)).unwrap();
+    let request = CodeGeneratorRequest::decode_length_delimited(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
+    //let request: CodeGeneratorRequest = unimplemented!();
 
     let mut response = CodeGeneratorResponse::default();
 

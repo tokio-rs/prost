@@ -5,7 +5,8 @@ use std::usize;
 
 use bytes::{
     Buf,
-    BufMut
+    BufMut,
+    Take,
 };
 
 use encoding::*;
@@ -32,24 +33,21 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes an instance of the message from the buffer.
     /// The entire buffer will be consumed.
-    fn decode<B>(buf: &mut B) -> Result<Self> where B: Buf, Self: default::Default {
+    fn decode<B>(buf: &mut Take<B>) -> Result<Self> where B: Buf, Self: default::Default {
         let mut message = Self::default();
         Self::merge(&mut message, buf).map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
     fn decode_length_delimited<B>(buf: &mut B) -> Result<Self> where B: Buf, Self: default::Default {
-        let len = decode_varint(buf)?;
-
-        if len > buf.remaining() as u64 {
-            return Err(invalid_input("failed to decode message: buffer underflow"));
-        }
-        Self::decode(&mut buf.take(len as usize))
+        let mut message = Self::default();
+        message.merge_length_delimited(buf)?;
+        Ok(message)
     }
 
     /// Decodes an instance of the message from the buffer, and merges
     /// it into `self`. The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: &mut B) -> Result<()> where B: Buf;
+    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf;
 
     /// Decodes a length-delimited instance of the message from the
     /// buffer, and merges it into `self`.
@@ -58,6 +56,7 @@ pub trait Message: Debug + Send + Sync {
         if len > buf.remaining() as u64 {
             return Err(invalid_input("failed to merge message: buffer underflow"));
         }
+
         self.merge(&mut buf.take(len as usize))
     }
 
@@ -71,7 +70,7 @@ impl <M> Message for Box<M> where M: Debug + Send + Sync + Message + Sized {
         (**self).encode(buf)
     }
     #[inline]
-    fn merge<B>(&mut self, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf {
         (**self).merge(buf)
     }
     #[inline]
@@ -88,9 +87,19 @@ impl <M> Field for M where M: Message + default::Default {
     }
 
     #[inline]
-    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-        self.merge_length_delimited(buf)
+
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(invalid_input("failed to merge message: buffer underflow"));
+        }
+
+        let limit = buf.limit();
+        buf.set_limit(len as usize);
+        self.merge(buf)?;
+        buf.set_limit(limit - len as usize);
+        Ok(())
     }
 
     #[inline]
@@ -108,11 +117,9 @@ impl <M> Field for Vec<M> where M: Message + default::Default {
         }
     }
     #[inline]
-    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
+    fn merge<B>(&mut self, _tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let mut value = default::Default::default();
-        Field::merge(&mut value, tag, WireType::LengthDelimited, buf)?;
-        self.push(value);
+        self.push(M::decode_length_delimited(buf)?);
         Ok(())
     }
     #[inline]
