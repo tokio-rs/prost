@@ -1,5 +1,5 @@
 /// The version number of protocol compiler.
-#[derive(Debug, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Message)]
 pub struct Version {
     #[proto(tag="1")]
     pub major: i32,
@@ -13,7 +13,7 @@ pub struct Version {
     pub suffix: String,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
-#[derive(Debug, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Message)]
 pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
     /// code generator should generate code only for these files.  Each file's
@@ -41,7 +41,7 @@ pub struct CodeGeneratorRequest {
     pub compiler_version: Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
-#[derive(Debug, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Message)]
 pub struct CodeGeneratorResponse {
     /// Error message.  If non-empty, code generation failed.  The plugin process
     /// should exit with status code zero even if it reports an error in this way.
@@ -58,7 +58,7 @@ pub struct CodeGeneratorResponse {
 }
 pub mod code_generator_response {
     /// Represents a single generated file.
-    #[derive(Debug, PartialEq, Message)]
+    #[derive(Clone, Debug, PartialEq, Message)]
     pub struct File {
         /// The file name, relative to the output directory.  The name must not
         /// contain "." or ".." components and must be relative, not be absolute (so,

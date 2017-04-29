@@ -547,6 +547,7 @@ fn field_type_modifier(field_type: field_descriptor_proto::Type) -> Option<&'sta
     match field_type {
         TypeSint32 | TypeSint64 => Some("signed"),
         TypeFixed32 | TypeFixed64 | TypeSfixed32 | TypeSfixed64 => Some("fixed"),
+        TypeEnum => Some("enumeration"),
         _ => None,
     }
 }
