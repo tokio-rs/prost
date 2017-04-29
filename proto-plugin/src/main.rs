@@ -195,8 +195,8 @@ impl <'a> CodeGenerator<'a> {
         // preserved so that comments can be retrieved.
         let (fields, mut oneof_fields): (Vec<(FieldDescriptorProto, usize)>, MultiMap<i32, (FieldDescriptorProto, usize)>) =
             message.field.into_iter().enumerate().partition_map(|(idx, field)| {
-                if field.oneof_index >= 0 {
-                    Either::Right((field.oneof_index, (field, idx)))
+                if let Some(oneof_index) = field.oneof_index {
+                    Either::Right((oneof_index, (field, idx)))
                 } else {
                     Either::Left((field, idx))
                 }
