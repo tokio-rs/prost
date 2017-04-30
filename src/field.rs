@@ -66,7 +66,9 @@ pub trait Field<E=Default> : Sized {
 /// instances. A blanket implementation of `Field` is not provided for
 /// `Vec<Type>` because each class of types (numeric, length-delimited, and
 /// enumeration) encode repeated fields slightly differently.
-pub trait Type<E = Default> : Field<E> + default::Default {}
+pub trait Type<E = Default> : Field<E> + Sized {
+    fn empty() -> Self;
+}
 
 impl <T, E> Field<E> for Option<T> where T: Type<E> {
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
@@ -76,7 +78,7 @@ impl <T, E> Field<E> for Option<T> where T: Type<E> {
     }
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         if self.is_none() {
-            *self = Some(default::Default::default());
+            *self = Some(T::empty());
         }
         <T as Field<E>>::merge(self.as_mut().unwrap(), tag, wire_type, buf)
     }
@@ -120,8 +122,8 @@ where K: Eq + Hash + KeyType + Type<EK>,
         let limit = buf.limit();
         buf.set_limit(len as usize);
 
-        let mut key = K::default();
-        let mut value = V::default();
+        let mut key = K::empty();
+        let mut value = V::empty();
 
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(buf)?;

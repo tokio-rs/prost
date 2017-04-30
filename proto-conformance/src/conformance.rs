@@ -6,7 +6,7 @@
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct ConformanceRequest {
     /// Which format should the testee serialize its message to?
-    #[proto(tag="3")]
+    #[proto(enumeration, tag="3")]
     pub requested_output_format: WireFormat,
     /// The payload (whether protobuf of JSON) is always for a
     /// protobuf_test_messages.proto3.TestAllTypes proto (as defined in
@@ -15,7 +15,7 @@ pub struct ConformanceRequest {
     /// TODO(haberman): if/when we expand the conformance tests to support proto2,
     /// we will want to include a field that lets the payload/response be a
     /// protobuf_test_messages.proto2.TestAllTypes message instead.
-    #[proto(tag="1", tag="2")]
+    #[proto(oneof, tag="1", tag="2")]
     payload: Option<conformance_request::Payload>,
 }
 pub mod conformance_request {
@@ -37,7 +37,7 @@ pub mod conformance_request {
 /// Represents a single test case's output.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct ConformanceResponse {
-    #[proto(tag="1", tag="6", tag="2", tag="3", tag="4", tag="5")]
+    #[proto(oneof, tag="1", tag="6", tag="2", tag="3", tag="4", tag="5")]
     result: Option<conformance_response::Result>,
 }
 pub mod conformance_response {

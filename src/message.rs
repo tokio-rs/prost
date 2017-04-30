@@ -106,7 +106,11 @@ impl <M> Field for M where M: Message + default::Default {
     }
 }
 
-impl <M> Type for M where M: Message + default::Default {}
+impl <M> Type for M where M: Message + default::Default {
+    fn empty() -> M {
+        default::Default::default()
+    }
+}
 impl <M> Field for Vec<M> where M: Message + default::Default {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {

@@ -56,7 +56,11 @@ macro_rules! length_delimited_field {
                 key_len(tag) + encoded_len_varint(len as u64) + len
             }
         }
-        impl Type for $ty {}
+        impl Type for $ty {
+            fn empty() -> $ty {
+                ::std::default::Default::default()
+            }
+        }
 
         impl Field for Vec<$ty> {
             #[inline]

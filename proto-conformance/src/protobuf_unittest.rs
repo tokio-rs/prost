@@ -133,7 +133,7 @@ pub mod test_all_types {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct NestedTestAllTypes {
     #[proto(tag="1")]
-    pub child: Option<NestedTestAllTypes>,
+    pub child: Option<Box<NestedTestAllTypes>>,
     #[proto(tag="2")]
     pub payload: Option<TestAllTypes>,
     #[proto(tag="3")]
@@ -173,7 +173,7 @@ pub struct TestReallyLargeTagNumber {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestRecursiveMessage {
     #[proto(tag="1")]
-    pub a: Option<TestRecursiveMessage>,
+    pub a: Option<Box<TestRecursiveMessage>>,
     #[proto(tag="2")]
     pub i: i32,
 }
@@ -181,7 +181,7 @@ pub struct TestRecursiveMessage {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestMutualRecursionA {
     #[proto(tag="1")]
-    pub bb: Option<TestMutualRecursionB>,
+    pub bb: Option<Box<TestMutualRecursionB>>,
 }
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestMutualRecursionB {
@@ -436,8 +436,6 @@ pub enum TestEnumWithDupValue {
     Foo1 = 1,
     Bar1 = 2,
     Baz = 3,
-    Foo2 = 1,
-    Bar2 = 2,
 }
 /// Test an enum with large, unordered values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]

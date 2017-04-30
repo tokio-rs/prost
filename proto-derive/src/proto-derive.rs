@@ -327,6 +327,10 @@ fn default(fields: &[Field]) -> Tokens {
         let ident = &field.ident;
         match field.default {
             Some(ref default) => quote!(#ident: #default.parse().unwrap(),),
+            // Total hack: if a oneof, default to None (we always wrap oneofs in a None).
+            // This really should be checking the type, but we don't have a typesafe type, its just
+            // tokens.
+            None if field.tags.len() > 1 => quote!(#ident: None),
             None => quote!(#ident: Default::default(),),
         }
     })
@@ -423,7 +427,11 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
             }
 
-            impl _proto::field::Type<_proto::field::Enumeration> for #ident {}
+            impl _proto::field::Type<_proto::field::Enumeration> for #ident {
+                fn empty() -> #ident {
+                    ::std::default::Default::default()
+                }
+            }
 
             #[automatically_derived]
             impl Default for #ident {
@@ -530,6 +538,11 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         quote! { #ident::#name(ref value) => _proto::field::Field::<#kind>::encoded_len(value, #tag), }
     }).fold(Tokens::new(), concat_tokens);
 
+    let empty = {
+        let field_ident = &fields[0].ident;
+        quote!(#ident::#field_ident(::std::default::Default::default()))
+    };
+
     let expanded = quote! {
         #[allow(
             non_upper_case_globals,
@@ -559,6 +572,11 @@ pub fn oneof(input: TokenStream) -> TokenStream {
                 #[inline]
                 fn encoded_len(&self, tag: u32) -> usize {
                     unimplemented!()
+                }
+            }
+            impl _proto::field::Type<_proto::field::Oneof> for #ident {
+                fn empty() -> #ident {
+                    #empty
                 }
             }
         };
