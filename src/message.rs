@@ -102,7 +102,8 @@ impl <M> Field for M where M: Message + default::Default {
 
     #[inline]
     fn encoded_len(&self, tag: u32) -> usize {
-        key_len(tag) + self.encoded_len()
+        let len = self.encoded_len();
+        key_len(tag) + encoded_len_varint(len as u64) + len
     }
 }
 

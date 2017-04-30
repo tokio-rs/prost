@@ -528,7 +528,12 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         let kind = &field.kind;
         let name = &field.ident;
         let tag = field.tags[0];
-        quote! { #tag => _proto::field::Field::<#kind>::merge(tag, wire_type, r, limit).map(|value| #ident::#name(value)), }
+        quote! { #tag => {
+            let mut value = _proto::field::Type::<#kind>::empty();
+            _proto::field::Field::<#kind>::merge(&mut value, tag, wire_type, buf)?;
+            #ident::#name(value)
+        },
+        }
     }).fold(Tokens::new(), concat_tokens);
 
     let encoded_len = fields.iter().map(|field| {
@@ -566,12 +571,18 @@ pub fn oneof(input: TokenStream) -> TokenStream {
 
                 #[inline]
                 fn merge<B>(&mut self, tag: u32, wire_type: _proto::encoding::WireType, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
-                    unimplemented!()
+                    *self = match tag {
+                        #merge
+                        _ => panic!("unknown tag: {}", tag),
+                    };
+                    ::std::result::Result::Ok(())
                 }
 
                 #[inline]
                 fn encoded_len(&self, tag: u32) -> usize {
-                    unimplemented!()
+                    match *self {
+                        #encoded_len
+                    }
                 }
             }
             impl _proto::field::Type<_proto::field::Oneof> for #ident {

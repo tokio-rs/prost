@@ -16,7 +16,7 @@ pub struct ConformanceRequest {
     /// we will want to include a field that lets the payload/response be a
     /// protobuf_test_messages.proto2.TestAllTypes message instead.
     #[proto(oneof, tag="1", tag="2")]
-    payload: Option<conformance_request::Payload>,
+    pub payload: Option<conformance_request::Payload>,
 }
 pub mod conformance_request {
     /// The payload (whether protobuf of JSON) is always for a
@@ -38,7 +38,7 @@ pub mod conformance_request {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct ConformanceResponse {
     #[proto(oneof, tag="1", tag="6", tag="2", tag="3", tag="4", tag="5")]
-    result: Option<conformance_response::Result>,
+    pub result: Option<conformance_response::Result>,
 }
 pub mod conformance_response {
     #[derive(Clone, Debug, PartialEq, Oneof)]
