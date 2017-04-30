@@ -339,7 +339,7 @@ impl <'a> CodeGenerator<'a> {
                           fields: &[(FieldDescriptorProto, usize)]) {
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&format!("#[proto({})]\n",
+        self.buf.push_str(&format!("#[proto({}, oneof)]\n",
                                    fields.iter()
                                          .format_with(", ", |&(ref field, _), f| {
                                              f(&format_args!("tag=\"{}\"", field.number))

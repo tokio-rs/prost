@@ -179,6 +179,22 @@ impl <T> Field<Enumeration> for Vec<T> where T: Type<Enumeration> {
     }
 }
 
+pub struct Oneof;
+impl <T> Field<Oneof> for Vec<T> where T: Type<Oneof> {
+    #[inline]
+    fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
+        unimplemented!()
+    }
+    #[inline]
+    fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
+        unimplemented!()
+    }
+    #[inline]
+    fn encoded_len(&self, tag: u32) -> usize {
+        unimplemented!()
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

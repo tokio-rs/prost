@@ -39,11 +39,11 @@ pub struct TestAllTypes {
     pub single_foreign_message: Option<ForeignMessage>,
     #[proto(tag="20")]
     pub single_import_message: Option<super::protobuf_unittest_import::ImportMessage>,
-    #[proto(tag="21")]
+    #[proto(tag="21", enumeration)]
     pub single_nested_enum: test_all_types::NestedEnum,
-    #[proto(tag="22")]
+    #[proto(tag="22", enumeration)]
     pub single_foreign_enum: ForeignEnum,
-    #[proto(tag="23")]
+    #[proto(tag="23", enumeration)]
     pub single_import_enum: super::protobuf_unittest_import::ImportEnum,
     /// Defined in unittest_import_public.proto
     #[proto(tag="26")]
@@ -85,17 +85,17 @@ pub struct TestAllTypes {
     pub repeated_foreign_message: Vec<ForeignMessage>,
     #[proto(tag="50")]
     pub repeated_import_message: Vec<super::protobuf_unittest_import::ImportMessage>,
-    #[proto(tag="51")]
+    #[proto(tag="51", enumeration)]
     pub repeated_nested_enum: Vec<test_all_types::NestedEnum>,
-    #[proto(tag="52")]
+    #[proto(tag="52", enumeration)]
     pub repeated_foreign_enum: Vec<ForeignEnum>,
-    #[proto(tag="53")]
+    #[proto(tag="53", enumeration)]
     pub repeated_import_enum: Vec<super::protobuf_unittest_import::ImportEnum>,
     /// Defined in unittest_import_public.proto
     #[proto(tag="54")]
     pub repeated_public_import_message: Vec<super::protobuf_unittest_import::PublicImportMessage>,
     /// For oneof test
-    #[proto(tag="111", tag="112", tag="113", tag="114")]
+    #[proto(tag="111", tag="112", tag="113", tag="114", oneof)]
     oneof_field: Option<test_all_types::OneofField>,
 }
 pub mod test_all_types {
@@ -133,11 +133,11 @@ pub mod test_all_types {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct NestedTestAllTypes {
     #[proto(tag="1")]
-    pub child: Option<Box<NestedTestAllTypes>>,
+    pub child: Option<NestedTestAllTypes>,
     #[proto(tag="2")]
     pub payload: Option<TestAllTypes>,
     #[proto(tag="3")]
-    pub repeated_child: Vec<Box<NestedTestAllTypes>>,
+    pub repeated_child: Vec<NestedTestAllTypes>,
 }
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestDeprecatedFields {
@@ -173,16 +173,15 @@ pub struct TestReallyLargeTagNumber {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestRecursiveMessage {
     #[proto(tag="1")]
-    pub a: Option<Box<TestRecursiveMessage>>,
+    pub a: Option<TestRecursiveMessage>,
     #[proto(tag="2")]
     pub i: i32,
 }
-
 /// Test that mutual recursion works.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestMutualRecursionA {
     #[proto(tag="1")]
-    pub bb: Option<Box<TestMutualRecursionB>>,
+    pub bb: Option<TestMutualRecursionB>,
 }
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestMutualRecursionB {
@@ -191,10 +190,9 @@ pub struct TestMutualRecursionB {
     #[proto(tag="2")]
     pub optional_int32: i32,
 }
-
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestEnumAllowAlias {
-    #[proto(tag="1")]
+    #[proto(tag="1", enumeration)]
     pub value: TestEnumWithDupValue,
 }
 /// Test message with CamelCase field names.  This violates Protocol Buffer
@@ -205,7 +203,7 @@ pub struct TestCamelCaseFieldNames {
     pub PrimitiveField: i32,
     #[proto(tag="2")]
     pub StringField: String,
-    #[proto(tag="3")]
+    #[proto(tag="3", enumeration)]
     pub EnumField: ForeignEnum,
     #[proto(tag="4")]
     pub MessageField: Option<ForeignMessage>,
@@ -213,7 +211,7 @@ pub struct TestCamelCaseFieldNames {
     pub RepeatedPrimitiveField: Vec<i32>,
     #[proto(tag="8")]
     pub RepeatedStringField: Vec<String>,
-    #[proto(tag="9")]
+    #[proto(tag="9", enumeration)]
     pub RepeatedEnumField: Vec<ForeignEnum>,
     #[proto(tag="10")]
     pub RepeatedMessageField: Vec<ForeignMessage>,
@@ -245,7 +243,7 @@ pub mod test_field_orderings {
 }
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct SparseEnumMessage {
-    #[proto(tag="1")]
+    #[proto(tag="1", enumeration)]
     pub sparse_enum: TestSparseEnum,
 }
 /// Test String and Bytes: string is for valid UTF-8 strings
@@ -298,7 +296,7 @@ pub struct BoolMessage {
 /// Test oneofs.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct TestOneof {
-    #[proto(tag="1", tag="2", tag="3")]
+    #[proto(tag="1", tag="2", tag="3", oneof)]
     foo: Option<test_oneof::Foo>,
 }
 pub mod test_oneof {
@@ -342,7 +340,7 @@ pub struct TestPackedTypes {
     pub packed_double: Vec<f64>,
     #[proto(tag="102")]
     pub packed_bool: Vec<bool>,
-    #[proto(tag="103")]
+    #[proto(tag="103", enumeration)]
     pub packed_enum: Vec<ForeignEnum>,
 }
 /// A message with the same fields as TestPackedTypes, but without packing. Used
@@ -375,7 +373,7 @@ pub struct TestUnpackedTypes {
     pub unpacked_double: Vec<f64>,
     #[proto(tag="102")]
     pub unpacked_bool: Vec<bool>,
-    #[proto(tag="103")]
+    #[proto(tag="103", enumeration)]
     pub unpacked_enum: Vec<ForeignEnum>,
 }
 #[derive(Clone, Debug, PartialEq, Message)]
@@ -438,6 +436,8 @@ pub enum TestEnumWithDupValue {
     Foo1 = 1,
     Bar1 = 2,
     Baz = 3,
+    Foo2 = 1,
+    Bar2 = 2,
 }
 /// Test an enum with large, unordered values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
