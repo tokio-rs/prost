@@ -169,15 +169,21 @@ pub struct Enumeration;
 impl <T> Field<Enumeration> for Vec<T> where T: Type<Enumeration> {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        unimplemented!()
+        for value in self {
+            Field::encode(value, tag, buf);
+        }
     }
     #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
-        unimplemented!()
+        check_wire_type(WireType::Varint, wire_type)?;
+        let mut value = T::empty();
+        <T as Field<Enumeration>>::merge(&mut value, tag, wire_type, buf)?;
+        self.push(value);
+        Ok(())
     }
     #[inline]
     fn encoded_len(&self, tag: u32) -> usize {
-        unimplemented!()
+        self.iter().map(|e| Field::encoded_len(e, tag)).sum()
     }
 }
 
@@ -185,15 +191,20 @@ pub struct Oneof;
 impl <T> Field<Oneof> for Vec<T> where T: Type<Oneof> {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        unimplemented!()
+        for value in self {
+            Field::encode(value, tag, buf);
+        }
     }
     #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
-        unimplemented!()
+        let mut value = T::empty();
+        <T as Field<Oneof>>::merge(&mut value, tag, wire_type, buf)?;
+        self.push(value);
+        Ok(())
     }
     #[inline]
     fn encoded_len(&self, tag: u32) -> usize {
-        unimplemented!()
+        self.iter().map(|e| Field::encoded_len(e, tag)).sum()
     }
 }
 

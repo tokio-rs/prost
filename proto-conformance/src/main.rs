@@ -31,6 +31,9 @@ use conformance::{
     ConformanceResponse,
     WireFormat,
 };
+use protobuf_unittest::{
+    TestAllTypes,
+};
 
 fn main() {
     env_logger::init().unwrap();
@@ -78,9 +81,21 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         return conformance_response::Result::Skipped("JSON output is not supported".to_string());
     }
 
-    if let conformance_request::Payload::JsonPayload(_) = request.payload.unwrap() {
-        return conformance_response::Result::Skipped("JSON input is not supported".to_string());
-    }
+    let mut buf = match request.payload {
+        None => return conformance_response::Result::ParseError("no payload".to_string()),
+        Some(conformance_request::Payload::JsonPayload(_)) =>
+            return conformance_response::Result::Skipped("JSON input is not supported".to_string()),
+        Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
+    };
 
-    return conformance_response::Result::RuntimeError("unimplemented".to_string());
+    let len = buf.len();
+    let all_types = match TestAllTypes::decode(&mut Buf::take(Cursor::new(&mut buf), len)) {
+        Ok(all_types) => all_types,
+        Err(error) => return conformance_response::Result::ParseError(format!("failed to parse TestAllTypes: {:?}", error)),
+    };
+
+    buf.clear();
+    all_types.encode(&mut buf);
+
+    conformance_response::Result::ProtobufPayload(buf)
 }
