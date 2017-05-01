@@ -235,8 +235,8 @@ impl Numeric<Signed> for i32 {
     #[inline]
     fn decode<B>(buf: &mut B) -> Result<i32> where B: Buf {
         decode_varint(buf).map(|value| {
-            let value = value as i32;
-            (value >> 1) ^ -(value & 1)
+            let value = value as u32;
+            ((value >> 1) as i32) ^ (-((value & 1) as i32))
         })
     }
     #[inline]
@@ -257,8 +257,7 @@ impl Numeric<Signed> for i64 {
     #[inline]
     fn decode<B>(buf: &mut B) -> Result<i64> where B: Buf {
         decode_varint(buf).map(|value| {
-            let value = value as i64;
-            (value >> 1) ^ -(value & 1)
+            ((value >> 1) as i64) ^ (-((value & 1) as i64))
         })
     }
     #[inline]
