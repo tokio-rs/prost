@@ -5,7 +5,5 @@ authors = ["Dan Burkert <danburkert@apache.org>"]
 
 [dependencies]
 bytes = "0.4"
-env_logger = "0.4"
-log = "0.3"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }

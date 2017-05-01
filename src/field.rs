@@ -3,7 +3,6 @@
 //!
 //! The `Field` trait should not be used directly by users of the `proto` library.
 
-use std::default;
 use std::io::Result;
 use std::str;
 use std::u32;
@@ -223,7 +222,7 @@ mod tests {
     use super::*;
 
     // Creates a checker function for each field trait.
-    fn check_field<T, E>(value: T, tag: u32) -> TestResult where T: Debug + default::Default + PartialEq + Field<E> {
+    fn check_field<T, E>(value: T, tag: u32) -> TestResult where T: Debug + Default + PartialEq + Field<E> {
         if tag > MAX_TAG || tag < MIN_TAG {
             return TestResult::discard()
         }
@@ -422,7 +421,7 @@ mod tests {
     }
 
     // Creates a checker function for each field trait.
-    fn check_repeated_field<T, E>(value: T, tag: u32) -> TestResult where T: Debug + default::Default + PartialEq + Field<E> {
+    fn check_repeated_field<T, E>(value: T, tag: u32) -> TestResult where T: Debug + Default + PartialEq + Field<E> {
         if tag > MAX_TAG || tag < MIN_TAG {
             return TestResult::discard()
         }

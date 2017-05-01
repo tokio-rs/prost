@@ -1,7 +1,4 @@
 extern crate bytes;
-#[macro_use]
-extern crate log;
-extern crate env_logger;
 extern crate proto;
 #[macro_use]
 extern crate proto_derive;
@@ -36,7 +33,6 @@ use protobuf_unittest::{
 };
 
 fn main() {
-    env_logger::init().unwrap();
     let mut bytes = Vec::new();
 
     loop {
@@ -44,8 +40,6 @@ fn main() {
 
         io::stdin().read_exact(&mut bytes[..]).expect("input closed");
         let len = LittleEndian::read_u32(&bytes[..]) as usize;
-
-        trace!("request len: {}", len);
 
         bytes.resize(len, 0);
         io::stdin().read_exact(&mut bytes[..]).unwrap();
@@ -58,14 +52,11 @@ fn main() {
         let mut response = ConformanceResponse::default();
         response.result = Some(result);
 
-        trace!("response: {:#?}", response);
-
         let len = response.encoded_len();
-        trace!("response len: {}", len);
         bytes.resize(4, 0);
 
         LittleEndian::write_u32(&mut bytes[..4], len as u32);
-        response.encode(&mut bytes);
+        response.encode(&mut bytes).unwrap();
         assert_eq!(len + 4, bytes.len());
 
         let mut stdout = io::stdout();
@@ -75,8 +66,6 @@ fn main() {
 }
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
-    trace!("request: {:?}", request);
-
     if let WireFormat::Json = request.requested_output_format {
         return conformance_response::Result::Skipped("JSON output is not supported".to_string());
     }
@@ -95,7 +84,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     };
 
     buf.clear();
-    all_types.encode(&mut buf);
+    all_types.encode(&mut buf).unwrap();
 
     if all_types.encoded_len() != buf.len() {
         return conformance_response::Result::RuntimeError(

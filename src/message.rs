@@ -1,4 +1,3 @@
-use std::default;
 use std::fmt::Debug;
 use std::io::Result;
 use std::usize;
@@ -13,7 +12,7 @@ use encoding::*;
 use field::*;
 
 /// A Protocol Buffers message.
-pub trait Message: Debug + Send + Sync {
+pub trait Message: Debug + Default /*+ PartialEq + Eq*/ + Send + Sync {
 
     /// Encodes the message, and writes it to the buffer. An error will be
     /// returned if the buffer does not have sufficient capacity.
@@ -33,13 +32,13 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes an instance of the message from the buffer.
     /// The entire buffer will be consumed.
-    fn decode<B>(buf: &mut Take<B>) -> Result<Self> where B: Buf, Self: default::Default {
+    fn decode<B>(buf: &mut Take<B>) -> Result<Self> where B: Buf, Self: Default {
         let mut message = Self::default();
         Self::merge(&mut message, buf).map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
-    fn decode_length_delimited<B>(buf: &mut B) -> Result<Self> where B: Buf, Self: default::Default {
+    fn decode_length_delimited<B>(buf: &mut B) -> Result<Self> where B: Buf, Self: Default {
         let mut message = Self::default();
         message.merge_length_delimited(buf)?;
         Ok(message)
@@ -63,7 +62,7 @@ pub trait Message: Debug + Send + Sync {
     fn encoded_len(&self) -> usize;
 }
 
-impl <M> Message for Box<M> where M: Debug + Send + Sync + Message + Sized {
+impl <M> Message for Box<M> where M: Message {
     #[inline]
     fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
         (**self).encode(buf)
@@ -78,7 +77,7 @@ impl <M> Message for Box<M> where M: Debug + Send + Sync + Message + Sized {
     }
 }
 
-impl <M> Field for M where M: Message + default::Default {
+impl <M> Field for M where M: Message + Default {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         encode_key(tag, WireType::LengthDelimited, buf);
@@ -107,12 +106,12 @@ impl <M> Field for M where M: Message + default::Default {
     }
 }
 
-impl <M> Type for M where M: Message + default::Default {
+impl <M> Type for M where M: Message + Default {
     fn empty() -> M {
-        default::Default::default()
+        M::default()
     }
 }
-impl <M> Field for Vec<M> where M: Message + default::Default {
+impl <M> Field for Vec<M> where M: Message + Default {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
         for value in self {

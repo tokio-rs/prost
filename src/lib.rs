@@ -9,10 +9,6 @@ extern crate quickcheck;
 #[macro_use]
 extern crate proto_derive;
 
-/// TODO: remove
-#[macro_use]
-extern crate log;
-
 mod message;
 
 pub mod encoding;

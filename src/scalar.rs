@@ -11,7 +11,7 @@ use encoding::*;
 use field::Field;
 
 /// Marker trait for scalar Protobuf types.
-pub trait Scalar<E=Plain> : Field + default::Default {}
+pub trait Scalar<E=Plain> : Field + Default {}
 
 /// Provides a Field implementation for length delimited scalar fields (bytes and string).
 /// Has to be provided as a macro instead of a blanket impl due to coherence.
@@ -27,7 +27,7 @@ macro_rules! repeated_length_delimited_scalar {
             #[inline]
             fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
-                let mut value = default::Default::default();
+                let mut value = Default::default();
                 <$ty as Field>::merge(&mut value, tag, WireType::LengthDelimited, buf)?;
                 self.push(value);
                 Ok(())

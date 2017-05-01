@@ -8,33 +8,25 @@ extern crate bytes;
 extern crate log;
 extern crate env_logger;
 
-use std::default;
-use std::fmt::Debug;
 use std::io::Cursor;
 
-use bytes::{
-    Buf,
-    IntoBuf,
-};
+use bytes::Buf;
 
-use proto::encoding::WireType;
-use proto::field::Field;
 use proto::Message;
 
 // Creates a checker function for each field trait.
-fn check_message<M>(msg: M) where M: Message + Default + PartialEq {
+fn check_message<M>(msg: M) where M: Message + PartialEq {
     let expected_len = msg.encoded_len();
 
     let mut buf = Vec::with_capacity(18);
-    msg.encode(&mut buf);
+    msg.encode(&mut buf).unwrap();
 
     assert_eq!(expected_len, buf.len());
 
     info!("encoded message: {:?}", buf);
 
     let mut buf = Cursor::new(&mut buf).take(expected_len);
-
-    let mut roundtrip = M::decode(&mut buf).unwrap();
+    let roundtrip = M::decode(&mut buf).unwrap();
 
     if buf.has_remaining() {
         panic!(format!("expected buffer to be empty: {}", buf.remaining()));
