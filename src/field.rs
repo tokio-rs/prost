@@ -208,7 +208,6 @@ impl <T> Field<Oneof> for Vec<T> where T: Type<Oneof> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::fmt::Debug;
@@ -223,9 +222,7 @@ mod tests {
 
     use super::*;
 
-    // Creates a checker function for each field trait. Necessary to create as a macro as opposed
-    // to taking the field trait as a parameter, because Field, SignedField, and FixedField don't
-    // share a common super trait.
+    // Creates a checker function for each field trait.
     fn check_field<T, E>(value: T, tag: u32) -> TestResult where T: Debug + default::Default + PartialEq + Field<E> {
         if tag > MAX_TAG || tag < MIN_TAG {
             return TestResult::discard()
@@ -382,6 +379,7 @@ mod tests {
             check_field::<_, Fixed>(value, tag)
         }
 
+
         fn packed_bool(value: Vec<bool>, tag: u32) -> TestResult {
             check_field::<_, (Packed, Default)>(value, tag)
         }
@@ -423,10 +421,103 @@ mod tests {
         }
     }
 
+    // Creates a checker function for each field trait.
+    fn check_repeated_field<T, E>(value: T, tag: u32) -> TestResult where T: Debug + default::Default + PartialEq + Field<E> {
+        if tag > MAX_TAG || tag < MIN_TAG {
+            return TestResult::discard()
+        }
+
+        let expected_len = value.encoded_len(tag);
+
+        let mut buf = BytesMut::with_capacity(expected_len);
+        value.encode(tag, &mut buf);
+
+        let mut buf = buf.freeze().into_buf().take(expected_len);
+
+        if buf.remaining() != expected_len {
+            return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
+                                              expected_len, buf.remaining()));
+        }
+
+        let mut roundtrip_value = T::default();
+        while buf.has_remaining() {
+            let (decoded_tag, wire_type) = match decode_key(&mut buf) {
+                Ok(key) => key,
+                Err(error) => return TestResult::error(format!("{:?}", error)),
+            };
+
+            if tag != decoded_tag {
+                return TestResult::error(
+                    format!("decoded tag does not match; expected: {}, actual: {}",
+                            tag, decoded_tag));
+            }
+
+            if let Err(error) = roundtrip_value.merge(tag, wire_type, &mut buf) {
+                return TestResult::error(format!("{:?}", error));
+            };
+        }
+
+        if value == roundtrip_value {
+            TestResult::passed()
+        } else {
+            TestResult::failed()
+        }
+    }
+
+    quickcheck! {
+        fn repeated_bool(value: Vec<bool>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_double(value: Vec<f64>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_float(value: Vec<f32>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_int32(value: Vec<i32>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_int64(value: Vec<i64>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_uint32(value: Vec<u32>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_uint64(value: Vec<u64>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_string(value: Vec<String>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Default>(value, tag)
+        }
+        fn repeated_sint32(value: Vec<i32>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Signed>(value, tag)
+        }
+        fn repeated_sint64(value: Vec<i64>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Signed>(value, tag)
+        }
+        fn repeated_fixed32(value: Vec<u32>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Fixed>(value, tag)
+        }
+        fn repeated_fixed64(value: Vec<u64>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Fixed>(value, tag)
+        }
+        fn repeated_sfixed32(value: Vec<i32>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Fixed>(value, tag)
+        }
+        fn repeated_sfixed64(value: Vec<i64>, tag: u32) -> TestResult {
+            check_repeated_field::<_, Fixed>(value, tag)
+        }
+    }
+
     #[test]
     fn varint() {
         fn check(value: u64, encoded: &[u8]) {
-            let mut buf = Vec::new();
+            // A capacity of 1 makes sure the encoding goes through at least two iterations of the
+            // outer loop in encode_varint.
+            let mut buf = Vec::with_capacity(1);
 
             encode_varint(value, &mut buf);
 

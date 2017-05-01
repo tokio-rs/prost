@@ -135,7 +135,7 @@ impl Numeric for bool {
         match buf.get_u8() {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(invalid_data("failed to decode bool: invalid value")),
+            b => Err(invalid_data(format!("failed to decode bool: invalid value: {}", b))),
         }
     }
     #[inline]

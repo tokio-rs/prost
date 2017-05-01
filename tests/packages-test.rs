@@ -3,6 +3,9 @@ extern crate proto_derive;
 extern crate proto;
 mod packages;
 
+#[macro_use]
+extern crate log;
+
 /// Tests corner-cases in package handling. Regenerate the protobufs by running
 ///
 /// protoc tests/packages/widget_factory.proto  --rust_out=tests/packages -Itests/packages

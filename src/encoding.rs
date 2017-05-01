@@ -37,8 +37,10 @@ pub fn invalid_input<E>(error: E) -> Error where E: Into<Box<error::Error + Send
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
 pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
-    let mut i = 0;
+    let mut i;
     'outer: loop {
+        i = 0;
+
         // bytes_mut is unsafe because it may return an uninitialized slice.
         // This use is safe because the slice is only written to, not read from.
         for byte in unsafe { buf.bytes_mut() } {
@@ -51,8 +53,11 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
                 value >>= 7;
             }
         }
+
+        unsafe { buf.advance_mut(i); }
         assert!(buf.has_remaining_mut());
     }
+
     // advance_mut is unsafe because it could cause uninitialized memory to be
     // advanced over. This use is safe since each byte which is advanced over
     // has been written to in the previous loop.

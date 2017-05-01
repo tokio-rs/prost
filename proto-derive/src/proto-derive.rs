@@ -234,9 +234,7 @@ pub fn message(input: TokenStream) -> TokenStream {
         let kind = &field.kind;
         let tag = field.tags[0];
         let field = &field.ident;
-        quote! {
-            _proto::field::Field::<#kind>::encode(&self.#field, #tag, buf);
-        }
+        quote! { _proto::field::Field::<#kind>::encode(&self.#field, #tag, buf); }
     }).fold(Tokens::new(), concat_tokens);
 
     let merge = fields.iter().map(|field| {

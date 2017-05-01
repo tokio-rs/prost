@@ -75,7 +75,7 @@ fn main() {
 }
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
-    trace!("request: {:#?}", request);
+    trace!("request: {:?}", request);
 
     if let WireFormat::Json = request.requested_output_format {
         return conformance_response::Result::Skipped("JSON output is not supported".to_string());
@@ -96,6 +96,24 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
 
     buf.clear();
     all_types.encode(&mut buf);
+
+    if all_types.encoded_len() != buf.len() {
+        return conformance_response::Result::RuntimeError(
+            format!("encoded length does not match actual; encoded_len: {}, buf len: {}",
+                    all_types.encoded_len(), buf.len()));
+    }
+
+    let len = buf.len();
+    let roundtrip = match TestAllTypes::decode(&mut Buf::take(Cursor::new(&mut buf), len)) {
+        Ok(roundtrip) => roundtrip,
+        Err(error) => return conformance_response::Result::ParseError(format!("failed to parse roundtrip TestAllTypes: {:?}", error)),
+    };
+
+    if all_types != roundtrip {
+        return conformance_response::Result::RuntimeError(
+            format!("roundtrip value does not match original;\n\t original: {:?}\n\troundtrip: {:?}",
+                    all_types, roundtrip));
+    }
 
     conformance_response::Result::ProtobufPayload(buf)
 }

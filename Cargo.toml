@@ -13,6 +13,9 @@ members = [
 [dependencies]
 byteorder = "1"
 bytes = "0.4"
+# TODO: remove
+log = "0.3"
+env_logger = "0.4"
 
 [dev-dependencies]
 quickcheck = "0.4"
