@@ -128,16 +128,7 @@ impl Numeric for bool {
         buf.put_u8(if self { 1u8 } else { 0u8 });
     }
     #[inline]
-    fn decode<B>(buf: &mut B) -> Result<bool> where B: Buf {
-        if !buf.has_remaining() {
-            return Err(invalid_data("failed to decode bool: buffer underflow"));
-        }
-        match buf.get_u8() {
-            0 => Ok(false),
-            1 => Ok(true),
-            b => Err(invalid_data(format!("failed to decode bool: invalid value: {}", b))),
-        }
-    }
+    fn decode<B>(buf: &mut B) -> Result<bool> where B: Buf { decode_varint(buf).map(|value| value != 0) }
     #[inline]
     fn encoded_len(self) -> usize { 1 }
     #[inline]
