@@ -32,7 +32,7 @@ use encoding::*;
 /// to implement `Field` multiple times. This is useful for numeric types which
 /// can have multiple encodings, and repeated numeric fields which can be packed
 /// or unpacked.
-pub trait Field<E=Plain> : Sized {
+pub trait Field<E=Plain> : Default {
 
     /// Encodes a key and the field to the buffer.
     /// The buffer must have enough remaining space to hold the encoded key and field.
@@ -65,9 +65,7 @@ pub trait Field<E=Plain> : Sized {
 /// instances. A blanket implementation of `Field` is not provided for
 /// `Vec<Type>` because each class of types (numeric, length-delimited, and
 /// enumeration) encode repeated fields slightly differently.
-pub trait Type<E=Plain> : Field<E> + Sized {
-    fn empty() -> Self;
-}
+pub trait Type<E=Plain> : Field<E> + Sized {}
 
 impl <T, E> Field<E> for Option<T> where T: Type<E> {
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
@@ -77,7 +75,7 @@ impl <T, E> Field<E> for Option<T> where T: Type<E> {
     }
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         if self.is_none() {
-            *self = Some(T::empty());
+            *self = Some(T::default());
         }
         <T as Field<E>>::merge(self.as_mut().unwrap(), tag, wire_type, buf)
     }
@@ -121,8 +119,8 @@ where K: Eq + Hash + KeyType + Type<EK>,
         let limit = buf.limit();
         buf.set_limit(len as usize);
 
-        let mut key = K::empty();
-        let mut value = V::empty();
+        let mut key = K::default();
+        let mut value = V::default();
 
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(buf)?;
@@ -175,7 +173,7 @@ impl <T> Field<Enumeration> for Vec<T> where T: Type<Enumeration> {
     #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
         check_wire_type(WireType::Varint, wire_type)?;
-        let mut value = T::empty();
+        let mut value = T::default();
         <T as Field<Enumeration>>::merge(&mut value, tag, wire_type, buf)?;
         self.push(value);
         Ok(())
@@ -196,7 +194,7 @@ impl <T> Field<Oneof> for Vec<T> where T: Type<Oneof> {
     }
     #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
-        let mut value = T::empty();
+        let mut value = T::default();
         <T as Field<Oneof>>::merge(&mut value, tag, wire_type, buf)?;
         self.push(value);
         Ok(())

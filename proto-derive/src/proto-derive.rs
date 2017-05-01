@@ -425,11 +425,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
             }
 
-            impl _proto::field::Type<_proto::field::Enumeration> for #ident {
-                fn empty() -> #ident {
-                    ::std::default::Default::default()
-                }
-            }
+            impl _proto::field::Type<_proto::field::Enumeration> for #ident {}
 
             #[automatically_derived]
             impl Default for #ident {
@@ -527,7 +523,7 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         let name = &field.ident;
         let tag = field.tags[0];
         quote! { #tag => {
-            let mut value = _proto::field::Type::<#kind>::empty();
+            let mut value = ::std::default::Default::default();
             _proto::field::Field::<#kind>::merge(&mut value, tag, wire_type, buf)?;
             #ident::#name(value)
         },
@@ -541,7 +537,7 @@ pub fn oneof(input: TokenStream) -> TokenStream {
         quote! { #ident::#name(ref value) => _proto::field::Field::<#kind>::encoded_len(value, #tag), }
     }).fold(Tokens::new(), concat_tokens);
 
-    let empty = {
+    let default = {
         let field_ident = &fields[0].ident;
         quote!(#ident::#field_ident(::std::default::Default::default()))
     };
@@ -583,11 +579,14 @@ pub fn oneof(input: TokenStream) -> TokenStream {
                     }
                 }
             }
-            impl _proto::field::Type<_proto::field::Oneof> for #ident {
-                fn empty() -> #ident {
-                    #empty
+
+            impl ::std::default::Default for #ident {
+                fn default() -> #ident {
+                    #default
                 }
             }
+
+            impl _proto::field::Type<_proto::field::Oneof> for #ident {}
         };
     };
 

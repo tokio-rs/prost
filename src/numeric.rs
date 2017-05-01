@@ -54,11 +54,7 @@ macro_rules! numeric_field {
             #[inline]
             fn encoded_len(&self, tag: u32) -> usize { key_len(tag) + <$ty as Numeric<$e>>::encoded_len(*self) }
         }
-        impl Type<$e> for $ty {
-            fn empty() -> $ty {
-                ::std::default::Default::default()
-            }
-        }
+        impl Type<$e> for $ty {}
 
         impl Field<$e> for Vec<$ty> {
             #[inline]

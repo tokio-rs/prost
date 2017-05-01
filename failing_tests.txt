@@ -1,0 +1,5 @@
+Recommended.ProtobufInput.OneofZeroBool.ProtobufOutput
+Recommended.ProtobufInput.OneofZeroDouble.ProtobufOutput
+Recommended.ProtobufInput.OneofZeroEnum.ProtobufOutput
+Recommended.ProtobufInput.OneofZeroFloat.ProtobufOutput
+Recommended.ProtobufInput.OneofZeroUint64.ProtobufOutput
