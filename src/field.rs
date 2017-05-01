@@ -39,10 +39,6 @@ pub trait Field<E=Plain> : Default {
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut;
 
     /// Decodes the field from the buffer, and merges the value into self.
-    ///
-    /// For scalar, enumeration, and oneof types, the default implementation
-    /// can be used, which replaces the current value. Message, repeated, and
-    /// map fields must override this in order to provide proper merge semantics.
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf;
 
     /// Returns the length of the encoded field.
@@ -57,6 +53,7 @@ pub trait Field<E=Plain> : Default {
 ///  * numerics (`int32`, `float`, etc.)
 ///  * length-delimited types (`string`, `message`s)
 ///  * enumerations
+///  * messages
 ///
 /// Unlike fields in general, `Type` instances can be `optional`, `repeated`,
 /// have a default value, and can be values in a map field.
@@ -65,7 +62,7 @@ pub trait Field<E=Plain> : Default {
 /// instances. A blanket implementation of `Field` is not provided for
 /// `Vec<Type>` because each class of types (numeric, length-delimited, and
 /// enumeration) encode repeated fields slightly differently.
-pub trait Type<E=Plain> : Field<E> + Sized {}
+pub trait Type<E=Plain> : Field<E> {}
 
 impl <T, E> Field<E> for Option<T> where T: Type<E> {
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
@@ -96,7 +93,7 @@ impl KeyType for String {}
 // Map
 impl <K, V, EK, EV> Field<(EK, EV)> for HashMap<K, V>
 where K: Eq + Hash + KeyType + Type<EK>,
-      V: Type {
+      V: Type<EV> {
 
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
