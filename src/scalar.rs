@@ -11,7 +11,7 @@ use encoding::*;
 use field::Field;
 
 /// Marker trait for scalar Protobuf types.
-pub trait Scalar<E=Default> : Field + default::Default {}
+pub trait Scalar<E=Plain> : Field + default::Default {}
 
 /// Provides a Field implementation for length delimited scalar fields (bytes and string).
 /// Has to be provided as a macro instead of a blanket impl due to coherence.

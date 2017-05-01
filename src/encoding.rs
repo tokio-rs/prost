@@ -203,7 +203,7 @@ pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<()> where B: Bu
 }
 
 /// A type indicating that the default encoding is used for a field.
-pub enum Default {}
+pub enum Plain {}
 /// A type indicating that the integer field should use variable-width,
 /// ZigZag, signed encoding.
 pub enum Signed {}

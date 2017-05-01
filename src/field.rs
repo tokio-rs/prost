@@ -33,7 +33,7 @@ use encoding::*;
 /// to implement `Field` multiple times. This is useful for numeric types which
 /// can have multiple encodings, and repeated numeric fields which can be packed
 /// or unpacked.
-pub trait Field<E=Default> : Sized {
+pub trait Field<E=Plain> : Sized {
 
     /// Encodes a key and the field to the buffer.
     /// The buffer must have enough remaining space to hold the encoded key and field.
@@ -66,7 +66,7 @@ pub trait Field<E=Default> : Sized {
 /// instances. A blanket implementation of `Field` is not provided for
 /// `Vec<Type>` because each class of types (numeric, length-delimited, and
 /// enumeration) encode repeated fields slightly differently.
-pub trait Type<E = Default> : Field<E> + Sized {
+pub trait Type<E=Plain> : Field<E> + Sized {
     fn empty() -> Self;
 }
 
@@ -153,15 +153,15 @@ where K: Eq + Hash + KeyType + Type,
       V: Type {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
-        <HashMap<K, V> as Field<(Default, Default)>>::encode(self, tag, buf)
+        <HashMap<K, V> as Field<(Plain, Plain)>>::encode(self, tag, buf)
     }
     #[inline]
     fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
-        <HashMap<K, V> as Field<(Default, Default)>>::merge(self, tag, wire_type, buf)
+        <HashMap<K, V> as Field<(Plain, Plain)>>::merge(self, tag, wire_type, buf)
     }
     #[inline]
     fn encoded_len(&self, tag: u32) -> usize {
-        <HashMap<K, V> as Field<(Default, Default)>>::encoded_len(self, tag)
+        <HashMap<K, V> as Field<(Plain, Plain)>>::encoded_len(self, tag)
     }
 }
 
@@ -297,22 +297,22 @@ mod tests {
             check_field(value, tag)
         }
         fn int32(value: i32, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn int64(value: i64, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn uint32(value: u32, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn uint64(value: u64, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn bytes(value: Vec<u8>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn string(value: String, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn sint32(value: i32, tag: u32) -> TestResult {
             check_field::<_, Signed>(value, tag)
@@ -343,22 +343,22 @@ mod tests {
             check_field(value, tag)
         }
         fn optional_int32(value: Option<i32>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn optional_int64(value: Option<i64>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn optional_uint32(value: Option<u32>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn optional_uint64(value: Option<u64>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn optional_bytes(value: Option<Vec<u8>>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn optional_string(value: Option<String>, tag: u32) -> TestResult {
-            check_field::<_, Default>(value, tag)
+            check_field::<_, Plain>(value, tag)
         }
         fn optional_sint32(value: Option<i32>, tag: u32) -> TestResult {
             check_field::<_, Signed>(value, tag)
@@ -381,25 +381,25 @@ mod tests {
 
 
         fn packed_bool(value: Vec<bool>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_double(value: Vec<f64>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_float(value: Vec<f32>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_int32(value: Vec<i32>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_int64(value: Vec<i64>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_uint32(value: Vec<u32>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_uint64(value: Vec<u64>, tag: u32) -> TestResult {
-            check_field::<_, (Packed, Default)>(value, tag)
+            check_field::<_, (Packed, Plain)>(value, tag)
         }
         fn packed_sint32(value: Vec<i32>, tag: u32) -> TestResult {
             check_field::<_, (Packed, Signed)>(value, tag)
@@ -466,31 +466,31 @@ mod tests {
 
     quickcheck! {
         fn repeated_bool(value: Vec<bool>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_double(value: Vec<f64>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_float(value: Vec<f32>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_int32(value: Vec<i32>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_int64(value: Vec<i64>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_uint32(value: Vec<u32>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_uint64(value: Vec<u64>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_string(value: Vec<String>, tag: u32) -> TestResult {
-            check_repeated_field::<_, Default>(value, tag)
+            check_repeated_field::<_, Plain>(value, tag)
         }
         fn repeated_sint32(value: Vec<i32>, tag: u32) -> TestResult {
             check_repeated_field::<_, Signed>(value, tag)

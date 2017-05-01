@@ -127,26 +127,26 @@ impl Field {
             (true, _, _, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
             (false, _, _, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
 
-            (true, false, false, false, false, false, false, false, false, false, _) => quote!(_proto::encoding::Default),
+            (true, false, false, false, false, false, false, false, false, false, _) => quote!(_proto::encoding::Plain),
             (true, true, false, false, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Fixed),
             (true, false, true, false, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Signed),
             (true, false, false, true, false, false, false, false, false, false, _)  => quote!(_proto::field::Enumeration),
             (true, false, false, false, true, false, false, false, false, false, _)  => quote!(_proto::field::Oneof),
 
-            (true, false, false, false, false, true, false, false, false, false, _) => quote!((_proto::encoding::Packed, _proto::encoding::Default)),
+            (true, false, false, false, false, true, false, false, false, false, _) => quote!((_proto::encoding::Packed, _proto::encoding::Plain)),
             (true, true, false, false, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Fixed)),
             (true, false, true, false, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Signed)),
             (true, false, false, true, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::field::Enumeration)),
 
-            (true, false, false, false, false, false, false, false, true, false, _) => quote!((_proto::encoding::Default, _proto::encoding::Fixed)),
-            (true, false, false, false, false, false, false, false, false, true, _) => quote!((_proto::encoding::Default, _proto::encoding::Signed)),
+            (true, false, false, false, false, false, false, false, true, false, _) => quote!((_proto::encoding::Plain, _proto::encoding::Fixed)),
+            (true, false, false, false, false, false, false, false, false, true, _) => quote!((_proto::encoding::Plain, _proto::encoding::Signed)),
 
-            (true, false, false, false, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Default)),
+            (true, false, false, false, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Plain)),
             (true, false, false, false, false, false, true, false, true, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Fixed)),
             (true, false, false, false, false, false, true, false, false, true, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Signed)),
             (true, false, false, true, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::field::Enumeration)),
 
-            (true, false, false, false, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Default)),
+            (true, false, false, false, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Plain)),
             (true, false, false, false, false, false, false, true, true, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Fixed)),
             (true, false, false, false, false, false, false, true, false, true, _) => quote!((_proto::encoding::Signed, _proto::encoding::Signed)),
             (true, false, false, true, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::field::Enumeration)),
