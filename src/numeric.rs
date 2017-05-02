@@ -1,4 +1,3 @@
-use std::default;
 use std::io::Result;
 
 use bytes::{
@@ -20,7 +19,7 @@ use encoding::*;
 /// with different types for `E`, which correspond to `fixed32` and `uint32`.
 /// Repeated numeric fields can optionally use packed encoding, which is
 /// controlled using the `Packed` type.
-pub trait Numeric<E=Plain> : default::Default {
+pub trait Numeric<E=Plain> : Default {
     /// Encodes the scalar field to the buffer, without a key.
     /// The buffer must have enough remaining space to hold the encoded key and field.
     fn encode<B>(self, buf: &mut B) where B: BufMut;
@@ -80,7 +79,7 @@ macro_rules! numeric_field {
                     buf.set_limit(limit - len as usize);
                 } else {
                     // Default repeated encoding.
-                    let mut value = default::Default::default();
+                    let mut value = Default::default();
                     <$ty as Field<$e>>::merge(&mut value, tag, wire_type, buf)?;
                     self.push(value);
                 }

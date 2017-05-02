@@ -89,22 +89,22 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64> where B: Buf {
         }
     }
     buf.advance(i);
-    return Ok(value);
+    Ok(value)
 }
 
 /// Returns the encoded length of the value in LEB128 variable length format.
 /// The returned value will be between 1 and 10, inclusive.
 #[inline]
 pub fn encoded_len_varint(value: u64) -> usize {
-    if value < 1 <<  7 { 1 } else
-    if value < 1 << 14 { 2 } else
-    if value < 1 << 21 { 3 } else
-    if value < 1 << 28 { 4 } else
-    if value < 1 << 35 { 5 } else
-    if value < 1 << 42 { 6 } else
-    if value < 1 << 49 { 7 } else
-    if value < 1 << 56 { 8 } else
-    if value < 1 << 63 { 9 }
+         if value < 1 <<  7 { 1 }
+    else if value < 1 << 14 { 2 }
+    else if value < 1 << 21 { 3 }
+    else if value < 1 << 28 { 4 }
+    else if value < 1 << 35 { 5 }
+    else if value < 1 << 42 { 6 }
+    else if value < 1 << 49 { 7 }
+    else if value < 1 << 56 { 8 }
+    else if value < 1 << 63 { 9 }
     else { 10 }
 }
 
@@ -129,7 +129,7 @@ impl WireType {
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
             5 => Ok(WireType::ThirtyTwoBit),
-            _ => return Err(invalid_data(format!("unknown wire type value: {}", val))),
+            _ => Err(invalid_data(format!("unknown wire type value: {}", val))),
         }
     }
 }

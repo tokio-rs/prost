@@ -10,7 +10,7 @@ extern crate quote;
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use quote::Tokens;
+use quote::{ToTokens, Tokens};
 
 fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
     sum.append(rest.as_str());
@@ -103,7 +103,7 @@ impl Field {
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
 
-                    // Handle `#[proto(default = "")]`
+                    // Handle `#[proto(default = "123")]`
                     syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) if name == "default" => default = Some(value.clone()),
 
                     syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute item: {:?}", meta_item),
@@ -324,7 +324,10 @@ fn default(fields: &[Field]) -> Tokens {
     fields.iter().map(|field| {
         let ident = &field.ident;
         match field.default {
-            Some(ref default) => quote!(#ident: #default.parse().unwrap(),),
+            Some(ref default) => {
+                let lit = default_value(default.clone());
+                quote!(#ident: #lit,)
+            },
             // Total hack: if a oneof, default to None (we always wrap oneofs in a None).
             // This really should be checking the type, but we don't have a typesafe type, its just
             // tokens.
@@ -333,6 +336,19 @@ fn default(fields: &[Field]) -> Tokens {
         }
     })
     .fold(Tokens::new(), concat_tokens)
+}
+
+fn default_value(lit: syn::Lit) -> Tokens {
+    match lit {
+        syn::Lit::Str(s, _) => {
+            let mut tokens = Tokens::new();
+            for tt in syn::parse_token_trees(&s).expect(&format!("unable to parse default literal value: {}", s)) {
+                tt.to_tokens(&mut tokens);
+            }
+            quote!(#tokens)
+        },
+        other => quote!(#other),
+    }
 }
 
 #[proc_macro_derive(Enumeration, attributes(proto))]

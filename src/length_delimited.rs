@@ -1,4 +1,3 @@
-use std::default;
 use std::io::Result;
 use std::str;
 
@@ -15,7 +14,7 @@ use field::{
 };
 
 /// A length-delimited scalar Protobuf field type.
-pub trait LengthDelimited : default::Default {
+pub trait LengthDelimited : Default {
     /// Encodes the length-delimited type to the buffer, without the length delimiter.
     /// The buffer must have enough remaining space to hold the encoded type.
     fn encode<B>(&self, buf: &mut B) where B: BufMut;
@@ -68,7 +67,7 @@ macro_rules! length_delimited_field {
             #[inline]
             fn merge<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
-                let mut value = default::Default::default();
+                let mut value = Default::default();
                 Field::merge(&mut value, tag, WireType::LengthDelimited, buf)?;
                 self.push(value);
                 Ok(())

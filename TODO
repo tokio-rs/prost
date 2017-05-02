@@ -1,6 +1,4 @@
 Don't encode default valued fields
 Output packed attributes
-See about getting rid of 'Type'
 Invert Message and Field for messages, remove Take from Message API
 See about doing a blanket impl of Field for Vec<T> where T: Field
-Make Field : Default again
