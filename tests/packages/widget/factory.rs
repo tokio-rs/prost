@@ -1,4 +1,4 @@
-#[derive(Debug, Message)]
+#[derive(Debug, Message, PartialEq)]
 pub struct WidgetFactory {
     #[proto(tag="1")]
     pub inner: Option<widget_factory::Inner>,
@@ -20,7 +20,7 @@ pub struct WidgetFactory {
     pub gizmo_factory_inner: Option<super::super::gizmo::factory::gizmo_factory::Inner>,
 }
 pub mod widget_factory {
-    #[derive(Debug, Message)]
+    #[derive(Debug, Message, PartialEq)]
     pub struct Inner {
     }
 }

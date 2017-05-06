@@ -254,13 +254,19 @@ pub struct DefaultValues {
     #[proto(tag="1", default="42")]
     pub int32: i32,
 
-    #[proto(tag="2", default="Some(42)")]
-    pub optional_int32: Option<i32>,
+    //#[proto(tag="2", default="Some(42)")]
+    //pub optional_int32: Option<i32>,
+
+    //#[proto(tag="3", default="\"fourty two\".to_string()")]
+    //pub string: String,
+
 }
 
 #[test]
 fn check_default_values() {
     let default = DefaultValues::default();
     assert_eq!(default.int32, 42);
-    assert_eq!(default.optional_int32, Some(42));
+    //assert_eq!(default.optional_int32, Some(42));
+    //assert_eq!(&default.string, "fourty two");
+    //assert_eq!(0, default.encoded_len());
 }

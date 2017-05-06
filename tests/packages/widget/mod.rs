@@ -1,9 +1,9 @@
 pub mod factory;
-#[derive(Debug, Message)]
+#[derive(Debug, Message, PartialEq)]
 pub struct Widget {
 }
 pub mod widget {
-    #[derive(Debug, Message)]
+    #[derive(Debug, Message, PartialEq)]
     pub struct Inner {
     }
 }

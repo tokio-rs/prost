@@ -311,7 +311,22 @@ fn encoded_len(fields: &[Field]) -> Tokens {
         let kind = &field.kind;
         let ident = &field.ident;
         let tag = field.tags[0];
-        quote!(_proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag))
+        match field.default {
+            Some(ref tokens) => quote! {
+                if self.#ident == #tokens {
+                    0
+                } else {
+                    _proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag)
+                }
+            },
+            None => quote! {
+                if self.#ident == ::std::default::Default::default() {
+                    0
+                } else {
+                    _proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag)
+                }
+            },
+        }
     })
     .fold(quote!(0), |mut sum, expr| {
         sum.append("+");
