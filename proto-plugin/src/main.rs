@@ -169,7 +169,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_message(&mut self, message: DescriptorProto) {
-        debug!("  message: {:?}", message.name);
+        debug!("\tmessage: {:?}", message.name);
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
@@ -191,8 +191,8 @@ impl <'a> CodeGenerator<'a> {
                 }
         });
 
-        // Split the fields into a vector of the normal fields, and oneof field. Path indexes are
-        // preserved so that comments can be retrieved.
+        // Split the fields into a vector of the normal fields, and oneof fields.
+        // Path indexes are preserved so that comments can be retrieved.
         let (fields, mut oneof_fields): (Vec<(FieldDescriptorProto, usize)>, MultiMap<i32, (FieldDescriptorProto, usize)>) =
             message.field.into_iter().enumerate().partition_map(|(idx, field)| {
                 if let Some(oneof_index) = field.oneof_index {
@@ -206,7 +206,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, PartialEq, Message)]\n");
+        self.buf.push_str("#[derive(Clone, Debug, Message)]\n");
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&message_name);
@@ -270,21 +270,29 @@ impl <'a> CodeGenerator<'a> {
 
         let repeated = field.label == LabelRepeated;
         let message = field.field_type == TypeMessage;
-        let type_modifier = field_type_modifier(field.field_type);
         let ty = self.resolve_type(&field);
 
-        debug!("    field: {:?}, type: {:?}", field.name, ty);
+        debug!("\t\tfield: {:?}, type: {:?}", field.name, ty);
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[proto(tag=\"");
-        self.buf.push_str(&field.number.to_string());
-        self.buf.push_str("\"");
-        if let Some(modifier) = type_modifier {
-            self.buf.push_str(", ");
-            self.buf.push_str(modifier);
+        self.buf.push_str("#[proto(");
+        self.buf.push_str(field_type_tag(field.field_type));
+
+        match field.label {
+            LabelOptional => (),
+            LabelRequired => self.buf.push_str(", required"),
+            LabelRepeated => {
+                self.buf.push_str(", repeated");
+                if !field.options.map_or(false, |options| options.packed) {
+                    self.buf.push_str(", packed=\"false\"");
+                }
+            },
         }
-        self.buf.push_str(")]\n");
+
+        self.buf.push_str(", tag=\"");
+        self.buf.push_str(&field.number.to_string());
+        self.buf.push_str("\")]\n");
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&field.name);
@@ -300,37 +308,22 @@ impl <'a> CodeGenerator<'a> {
                         field: FieldDescriptorProto,
                         key: &FieldDescriptorProto,
                         value: &FieldDescriptorProto) {
-        let key_type_modifier = field_type_modifier(key.field_type);
-        let value_type_modifier = field_type_modifier(value.field_type);
         let key_ty = self.resolve_type(key);
         let value_ty = self.resolve_type(value);
 
-        debug!("    map field: {:?}, key type: {:?}, value type: {:?}", field.name, key_ty, value_ty);
+        debug!("\t\tmap field: {:?}, key type: {:?}, value type: {:?}",
+               field.name, key_ty, value_ty);
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[proto(tag=\"");
-        self.buf.push_str(&field.number.to_string());
-        self.buf.push_str("\"");
-        if let Some(modifier) = key_type_modifier {
-            self.buf.push_str(", ");
-            self.buf.push_str(modifier);
-            self.buf.push_str("_key");
-        }
-        if let Some(modifier) = value_type_modifier {
-            self.buf.push_str(", ");
-            self.buf.push_str(modifier);
-            self.buf.push_str("_value");
-        }
-        self.buf.push_str(")]\n");
+
+        self.buf.push_str(&format!("#[proto(key=\"{}\", value=\"{}\", tag=\"{}\")]\n",
+                                  field_type_tag(key.field_type),
+                                  field_type_tag(value.field_type),
+                                  field.number));
         self.push_indent();
-        self.buf.push_str("pub ");
-        self.buf.push_str(&field.name);
-        self.buf.push_str(": ::std::collections::HashMap<");
-        self.buf.push_str(&key_ty);
-        self.buf.push_str(", ");
-        self.buf.push_str(&value_ty);
-        self.buf.push_str(">,\n");
+        self.buf.push_str(&format!("pub {}: ::std::collections::HashMap<{}, {}>,\n",
+                                   field.name, key_ty, value_ty));
     }
 
     fn append_oneof_field(&mut self,
@@ -339,13 +332,10 @@ impl <'a> CodeGenerator<'a> {
                           fields: &[(FieldDescriptorProto, usize)]) {
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&format!("#[proto({}, oneof)]\n",
-                                   fields.iter()
-                                         .format_with(", ", |&(ref field, _), f| {
-                                             f(&format_args!("tag=\"{}\"", field.number))
-                                         })));
+        self.buf.push_str(&format!("#[proto(oneof, tags=\"{}\")]\n",
+                                   fields.iter().map(|&(ref field, _)| field.number).join(", ")));
         self.push_indent();
-        self.buf.push_str(&format!("{}: Option<{}::{}>,\n",
+        self.buf.push_str(&format!("pub {}: Option<{}::{}>,\n",
                                    oneof.name,
                                    camel_to_snake(message_name),
                                    snake_to_upper_camel(&oneof.name)));
@@ -362,7 +352,7 @@ impl <'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, PartialEq, Oneof)]\n");
+        self.buf.push_str("#[derive(Clone, Debug, Oneof)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&snake_to_upper_camel(&oneof.name));
@@ -375,25 +365,15 @@ impl <'a> CodeGenerator<'a> {
             self.append_doc();
             self.path.pop();
 
-            let type_modifier = field_type_modifier(field.field_type);
+            self.push_indent();
+            self.buf.push_str(&format!("#[proto(\"{}\", tag=\"{}\")]\n",
+                                        field_type_tag(field.field_type),
+                                        field.number));
 
             self.push_indent();
-            self.buf.push_str("#[proto(tag=\"");
-            self.buf.push_str(&field.number.to_string());
-            self.buf.push_str("\"");
-            if let Some(modifier) = type_modifier {
-                self.buf.push_str(", ");
-                self.buf.push_str(modifier);
-            }
-            self.buf.push_str(")]\n");
-
-            self.push_indent();
-            let name = snake_to_upper_camel(&field.name);
-            self.buf.push_str(&name);
-            self.buf.push_str("(");
-            let ty = self.resolve_type(&field);
-            self.buf.push_str(&ty);
-            self.buf.push_str("),\n");
+            self.buf.push_str(&format!("{}({}),\n",
+                                       snake_to_upper_camel(&field.name),
+                                       self.resolve_type(&field)));
         }
         self.depth -= 1;
         self.path.pop();
@@ -441,11 +421,11 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_enum(&mut self, desc: EnumDescriptorProto) {
-        debug!("  enum: {:?}", desc.name);
+        debug!("\tenum: {:?}", desc.name);
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
+        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&desc.name);
@@ -542,13 +522,27 @@ impl <'a> CodeGenerator<'a> {
     }
 }
 
-fn field_type_modifier(field_type: field_descriptor_proto::Type) -> Option<&'static str> {
+fn field_type_tag(field_type: field_descriptor_proto::Type) -> &'static str {
     use field_descriptor_proto::Type::*;
     match field_type {
-        TypeSint32 | TypeSint64 => Some("signed"),
-        TypeFixed32 | TypeFixed64 | TypeSfixed32 | TypeSfixed64 => Some("fixed"),
-        TypeEnum => Some("enumeration"),
-        _ => None,
+        TypeFloat => "float",
+        TypeDouble => "double",
+        TypeInt32 => "int32",
+        TypeInt64 => "int64",
+        TypeUint32 => "uint32",
+        TypeUint64 => "uint64",
+        TypeSint32 => "sint32",
+        TypeSint64 => "sint64",
+        TypeFixed32 => "fixed32",
+        TypeFixed64 => "fixed64",
+        TypeSfixed32 => "sfixed32",
+        TypeSfixed64 => "sfixed64",
+        TypeBool => "bool",
+        TypeString => "string",
+        TypeBytes => "bytes",
+        TypeGroup => "group",
+        TypeMessage => "message",
+        TypeEnum => "enum",
     }
 }
 
