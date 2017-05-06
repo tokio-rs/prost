@@ -11,6 +11,8 @@ extern crate itertools;
 extern crate multimap;
 extern crate proto;
 
+mod ast;
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
