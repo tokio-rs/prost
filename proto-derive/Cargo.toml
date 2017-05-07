@@ -8,6 +8,7 @@ workspace = ".."
 proc_macro = true
 
 [dependencies]
+error-chain = "0.10"
 itertools = "0.6"
 quote = "0.3"
 syn = { version = "0.11", features = ["aster", "visit"] }

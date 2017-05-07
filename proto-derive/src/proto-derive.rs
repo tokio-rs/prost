@@ -6,201 +6,423 @@ extern crate proc_macro;
 extern crate syn;
 
 #[macro_use]
+extern crate error_chain;
+#[macro_use]
 extern crate quote;
+
+use std::ascii::AsciiExt;
+use std::fmt;
+use std::slice;
+use std::str::{self, FromStr};
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use quote::{ToTokens, Tokens};
+
+// Proc-macro crates can't export anything, so error chain definitions go in a private module.
+mod error {
+    error_chain!();
+}
+use error::*;
 
 fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
     sum.append(rest.as_str());
     sum
 }
 
-struct Field {
-    ident: syn::Ident,
-    kind: quote::Tokens,
-    default: Option<syn::Lit>,
-    tags: Vec<u32>,
+/// A protobuf field type.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FieldKind {
+    Double,
+    Float,
+    Int32,
+    Int64,
+    Uint32,
+    Uint64,
+    Sint32,
+    Sint64,
+    Fixed32,
+    Fixed64,
+    Sfixed32,
+    Sfixed64,
+    Bool,
+    String,
+    Bytes,
+    Enum,
+    Message,
 }
 
-impl Field {
-    fn extract(field: syn::Field) -> Option<Field> {
-        let mut tags = Vec::new();
-        let mut default = None;
-        let mut fixed = false;
-        let mut signed = false;
-        let mut ignore = false;
-        let mut packed = false;
-        let mut enumeration = false;
-        let mut oneof = false;
+impl FieldKind {
+    fn as_str(&self) -> &'static str {
+        match *self {
+            FieldKind::Double => "double",
+            FieldKind::Float => "double",
+            FieldKind::Int32 => "int32",
+            FieldKind::Int64 => "int64",
+            FieldKind::Uint32 => "uint32",
+            FieldKind::Uint64 => "uint64",
+            FieldKind::Sint32 => "sint32",
+            FieldKind::Sint64 => "sint64",
+            FieldKind::Fixed32 => "fixed32",
+            FieldKind::Fixed64 => "fixed64",
+            FieldKind::Sfixed32 => "sfixed32",
+            FieldKind::Sfixed64 => "sfixed64",
+            FieldKind::Bool => "bool",
+            FieldKind::String => "string",
+            FieldKind::Bytes => "bytes",
+            FieldKind::Enum => "enum",
+            FieldKind::Message => "message",
+        }
+    }
 
-        let mut fixed_key = false;
-        let mut signed_key = false;
-        let mut fixed_value = false;
-        let mut signed_value = false;
+    fn variants() -> slice::Iter<'static, FieldKind> {
+        const VARIANTS: &'static [FieldKind] = &[
+            FieldKind::Double,
+            FieldKind::Float,
+            FieldKind::Int32,
+            FieldKind::Int64,
+            FieldKind::Uint32,
+            FieldKind::Uint64,
+            FieldKind::Sint32,
+            FieldKind::Sint64,
+            FieldKind::Fixed32,
+            FieldKind::Fixed64,
+            FieldKind::Sfixed32,
+            FieldKind::Sfixed64,
+            FieldKind::Bool,
+            FieldKind::String,
+            FieldKind::Bytes,
+            FieldKind::Enum,
+            FieldKind::Message,
+        ];
+        VARIANTS.iter()
+    }
 
-        let attrs = field.attrs;
-        let ident = field.ident.expect("Message struct has unnamed field");
-
-        {
-            // Get the metadata items belonging to 'proto' list attributes (e.g. #[proto(foo, bar="baz")]).
-            let proto_items = attrs.iter().flat_map(|attr| {
-                match attr.value {
-                    syn::MetaItem::List(ref ident, ref items) if ident == "proto" => items.into_iter(),
-                    _ => [].into_iter(),
-                }
-            });
-
-            for item in proto_items {
-                match *item {
-                    // Handle `#[proto(tag = 1)]` and `#[proto(tag = "1")]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Int(value, _))) if name == "tag" => tags.push(value),
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Str(ref value, _))) if name == "tag" => {
-                        match value.parse() {
-                            Ok(value) => tags.push(value),
-                            Err(..) => panic!("tag attribute value must be an integer"),
-                        }
-                    },
-
-                    // Handle `#[proto(fixed)]` and `#[proto(fixed = false)].
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed" => fixed = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed" => fixed = value,
-
-                    // Handle `#[proto(signed)]` and `#[proto(signed = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed" => signed = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed" => signed = value,
-
-                    // Handle `#[proto(enumeration)]` and `#[proto(enumeration = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "enumeration" => enumeration = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "enumeration" => enumeration = value,
-
-                    // Handle `#[proto(oneof)]` and `#[proto(oneof = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "oneof" => oneof = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "oneof" => oneof = value,
-
-                    // Handle `#[proto(packed)]` and `#[proto(packed = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "packed" => packed = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "packed" => packed = value,
-
-                    // Handle `#[proto(fixed_key)]` and `#[proto(fixed_key = false)].
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed_key" => fixed_key = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed_key" => fixed_key = value,
-
-                    // Handle `#[proto(signed_key)]` and `#[proto(signed_key = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed_key" => signed_key = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed_key" => signed_key = value,
-
-                    // Handle `#[proto(fixed_value)]` and `#[proto(fixed_value = false)].
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "fixed_value" => fixed_value = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "fixed_value" => fixed_key = value,
-
-                    // Handle `#[proto(signed_value)]` and `#[proto(signed_value = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "signed_value" => signed_value = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "signed_value" => signed_value = value,
-
-                    // Handle `#[proto(ignore)]` and `#[proto(ignore = false)]`.
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref name)) if name == "ignore" => ignore = true,
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, syn::Lit::Bool(value))) if name == "ignore" => ignore = value,
-
-                    // Handle `#[proto(default = "123")]`
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) if name == "default" => default = Some(value.clone()),
-
-                    syn::NestedMetaItem::MetaItem(ref meta_item) => panic!("unknown proto field attribute item: {:?}", meta_item),
-                    syn::NestedMetaItem::Literal(ref literal) => panic!("unexpected literal in proto field attribute: `{:?}`", literal),
-                }
+    /// Parses a string into a field type.
+    /// If the string doesn't match a field type, `None` is returned.
+    fn from_str(s: &str) -> Option<FieldKind> {
+        for &kind in FieldKind::variants() {
+            if s.eq_ignore_ascii_case(kind.as_str()) {
+                return Some(kind);
             }
         }
-
-        if !tags.iter().all(|&tag| tag > 0) {
-            panic!("proto tag must be greater than 0");
-        }
-        if !tags.iter().all(|&tag| tag < (1 << 29)) {
-            panic!("proto tag must be less than 2^29");
-        }
-
-        let tags = tags.into_iter().map(|tag| tag as u32).collect::<Vec<_>>();
-
-        let kind = match (!tags.is_empty(), fixed, signed, enumeration, oneof, packed, fixed_key, signed_key, fixed_value, signed_value, ignore) {
-            (false, false, false, false, false, false, false, false, false, false, true) => return None,
-
-            (true, _, _, _, _, _, _, _, _, _, true) => panic!("ignored proto field must not have a tag attribute"),
-            (false, _, _, _, _, _, _, _, _, _, false)   => panic!("proto field must have a tag attribute"),
-
-            (true, false, false, false, false, false, false, false, false, false, _) => quote!(_proto::encoding::Plain),
-            (true, true, false, false, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Fixed),
-            (true, false, true, false, false, false, false, false, false, false, _)  => quote!(_proto::encoding::Signed),
-            (true, false, false, true, false, false, false, false, false, false, _)  => quote!(_proto::field::Enumeration),
-            (true, false, false, false, true, false, false, false, false, false, _)  => quote!(_proto::field::Oneof),
-
-            (true, false, false, false, false, true, false, false, false, false, _) => quote!((_proto::encoding::Packed, _proto::encoding::Plain)),
-            (true, true, false, false, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Fixed)),
-            (true, false, true, false, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::encoding::Signed)),
-            (true, false, false, true, false, true, false, false, false, false, _)  => quote!((_proto::encoding::Packed, _proto::field::Enumeration)),
-
-            (true, false, false, false, false, false, false, false, true, false, _) => quote!((_proto::encoding::Plain, _proto::encoding::Fixed)),
-            (true, false, false, false, false, false, false, false, false, true, _) => quote!((_proto::encoding::Plain, _proto::encoding::Signed)),
-
-            (true, false, false, false, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Plain)),
-            (true, false, false, false, false, false, true, false, true, false, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Fixed)),
-            (true, false, false, false, false, false, true, false, false, true, _) => quote!((_proto::encoding::Fixed, _proto::encoding::Signed)),
-            (true, false, false, true, false, false, true, false, false, false, _) => quote!((_proto::encoding::Fixed, _proto::field::Enumeration)),
-
-            (true, false, false, false, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Plain)),
-            (true, false, false, false, false, false, false, true, true, false, _) => quote!((_proto::encoding::Signed, _proto::encoding::Fixed)),
-            (true, false, false, false, false, false, false, true, false, true, _) => quote!((_proto::encoding::Signed, _proto::encoding::Signed)),
-            (true, false, false, true, false, false, false, true, false, false, _) => quote!((_proto::encoding::Signed, _proto::field::Enumeration)),
-
-            (false, true, _, _, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be fixed"),
-            (false, _, true, _, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be signed"),
-            (false, _, _, true, _, _, _, _, _, _, _)  => panic!("ignored proto field must not be an enumeration"),
-            (false, _, _, _, true, _, _, _, _, _, _)  => panic!("ignored proto field must not be a oneof"),
-            (false, _, _, _, _, true, _, _, _, _, _)  => panic!("ignored proto field must not be packed"),
-            (false, _, _, _, _, _, true, _, _, _, _)  => panic!("ignored proto field must not be fixed_key"),
-            (false, _, _, _, _, _, _, true, _, _, _)  => panic!("ignored proto field must not be signed_key"),
-            (false, _, _, _, _, _, _, _, true, _, _)  => panic!("ignored proto field must not be fixed_value"),
-            (false, _, _, _, _, _, _, _, _, true, _)  => panic!("ignored proto field must not be signed_value"),
-
-            (_, true, true, _, _, _, _, _, _, _, _) => panic!("proto field must not be fixed and signed"),
-            (_, true, _, true, _, _, _, _, _, _, _) => panic!("proto field must not be fixed and an enumeration"),
-            (_, true, _, _, true, _, _, _, _, _, _) => panic!("proto field must not be fixed and a oneof"),
-            (_, true, _, _, _, _, true, _, _, _, _) => panic!("proto field must not be fixed and fixed_key"),
-            (_, true, _, _, _, _, _, true, _, _, _) => panic!("proto field must not be fixed and signed_key"),
-            (_, true, _, _, _, _, _, _, true, _, _) => panic!("proto field must not be fixed and fixed_value"),
-            (_, true, _, _, _, _, _, _, _, true, _) => panic!("proto field must not be fixed and signed_value"),
-            (_, _, true, true, _, _, _, _, _, _, _) => panic!("proto field must not be signed and an enumeration"),
-            (_, _, true, _, true, _, _, _, _, _, _) => panic!("proto field must not be signed and a oneof"),
-            (_, _, true, _, _, _, true, _, _, _, _) => panic!("proto field must not be signed and fixed_key"),
-            (_, _, true, _, _, _, _, true, _, _, _) => panic!("proto field must not be signed and signed_key"),
-            (_, _, true, _, _, _, _, _, true, _, _) => panic!("proto field must not be signed and fixed_value"),
-            (_, _, true, _, _, _, _, _, _, true, _) => panic!("proto field must not be signed and signed_value"),
-            (_, _, _, _, true, true, _, _, _, _, _) => panic!("proto field must not be packed and a oneof"),
-            (_, _, _, _, _, true, true, _, _, _, _) => panic!("proto field must not be packed and fixed_key"),
-            (_, _, _, _, _, true, _, true, _, _, _) => panic!("proto field must not be packed and signed_key"),
-            (_, _, _, _, _, true, _, _, true, _, _) => panic!("proto field must not be packed and fixed_value"),
-            (_, _, _, _, _, true, _, _, _, true, _) => panic!("proto field must not be packed and signed_value"),
-            (_, _, _, _, _, _, true, true, _, _, _) => panic!("proto field must not be fixed_key and signed_key"),
-            (_, _, _, _, _, _, _, _, true, true, _) => panic!("proto field must not be fixed_value and signed_value"),
-            (_, _, _, true, _, _, _, _, true, _, _) => panic!("proto field must not be an enumeration and fixed_value"),
-            (_, _, _, true, _, _, _, _, _, true, _) => panic!("proto field must not be an enumeration and signed_value"),
-            (_, _, _, true, true, _, _, _, _, _, _) => panic!("proto field must not be an enumeration and a oneof"),
-            (_, _, _, _, true, _, true, _, _, _, _) => panic!("proto field must not be a oneof and fixed_key"),
-            (_, _, _, _, true, _, _, _, true, _, _) => panic!("proto field must not be a oneof and fixed_value"),
-            (_, _, _, _, true, _, _, _, _, true, _) => panic!("proto field must not be a oneof and signed_value"),
-            (_, _, _, _, true, _, _, true, _, _, _) => panic!("proto field must not be a oneof and a signed_key"),
-        };
-
-        Some(Field {
-            ident: ident,
-            kind: kind,
-            default: default,
-            tags: tags,
-        })
+        None
     }
 }
 
-#[proc_macro_derive(Message, attributes(proto))]
-pub fn message(input: TokenStream) -> TokenStream {
+impl fmt::Debug for FieldKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for FieldKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FieldLabel {
+    /// An optional field.
+    Optional,
+    /// A required field.
+    Required,
+    /// A repeated field.
+    Repeated,
+}
+
+impl FieldLabel {
+    fn as_str(&self) -> &'static str {
+        match *self {
+            FieldLabel::Optional => "optional",
+            FieldLabel::Required => "required",
+            FieldLabel::Repeated => "repeated",
+        }
+    }
+
+    fn variants() -> slice::Iter<'static, FieldLabel> {
+        const VARIANTS: &'static [FieldLabel] = &[
+            FieldLabel::Optional,
+            FieldLabel::Required,
+            FieldLabel::Repeated,
+        ];
+        VARIANTS.iter()
+    }
+
+    /// Parses a string into a field label.
+    /// If the string doesn't match a field label, `None` is returned.
+    fn from_str(s: &str) -> Option<FieldLabel> {
+        for &label in FieldLabel::variants() {
+            if s.eq_ignore_ascii_case(label.as_str()) {
+                return Some(label);
+            }
+        }
+        None
+    }
+}
+
+impl fmt::Debug for FieldLabel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for FieldLabel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+enum Field {
+    /// An ordinary field.
+    Field {
+        kind: FieldKind,
+        label: Option<FieldLabel>,
+        tag: u32,
+        default: Option<syn::Lit>,
+    },
+    /// A map field.
+    Map {
+        key_kind: FieldKind,
+        value_kind: FieldKind,
+        tag: u32,
+    },
+    /// A oneof field.
+    Oneof {
+        tags: Vec<u32>,
+    },
+}
+
+impl Field {
+
+    /// Converts an iterator of meta items into a field descriptor.
+    ///
+    /// If the meta items are invalid, an error will be returned.
+    /// If the field should be ignored, `None` is returned.
+    fn from_attrs(attrs: &[syn::Attribute]) -> Result<Option<Field>> {
+
+        fn lit_to_field_kind(lit: &syn::Lit) -> Result<FieldKind> {
+            let s = if let syn::Lit::Str(ref s, _) = *lit {
+                s
+            } else {
+                bail!("invalid type: {:?}", lit);
+            };
+
+            FieldKind::from_str(s).map(|kind| Ok(kind))
+                                  .unwrap_or_else(|| bail!("unknown type: {}", s))
+        }
+
+        fn lit_to_tag(lit: &syn::Lit) -> Result<u32> {
+            match *lit {
+                syn::Lit::Str(ref s, _) => s.parse::<u32>().map_err(|err| Error::from(err.to_string())),
+                syn::Lit::Int(i, _) => Ok(i as u32),
+                _ => bail!("{:?}", lit),
+            }
+        }
+
+        fn lit_to_tags(lit: &syn::Lit) -> Result<Vec<u32>> {
+            match *lit {
+                syn::Lit::Str(ref s, _) => {
+                    s.split(",")
+                     .map(|s| s.trim().parse::<u32>().map_err(|err| Error::from(err.to_string())))
+                     .collect()
+                },
+                _ => bail!("{:?}", lit),
+            }
+        }
+
+        // Ordinary field options.
+        let mut kind = None;
+        let mut label = None;
+        let mut packed = None;
+        let mut tag = None;
+        let mut default = None;
+
+        // Map field options.
+        let mut map = false;
+        let mut key_kind = None;
+        let mut value_kind = None;
+
+        // Oneof field options.
+        let mut oneof = false;
+        let mut tags = None;
+
+        // Get the items belonging to the 'proto' list attribute (e.g. #[proto(foo, bar="baz")]).
+        let proto_attrs = attrs.iter().flat_map(|attr| {
+            match attr.value {
+                syn::MetaItem::List(ref ident, ref items) if ident == "proto" => items.into_iter(),
+                _ => [].into_iter(),
+            }
+        });
+
+        // Parse the field attributes into the corresponding option fields.
+        for meta_item in proto_attrs {
+            match *meta_item {
+                syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref word)) => {
+                    let word = word.as_ref();
+                    if word.eq_ignore_ascii_case("ignore") {
+                        return Ok(None);
+                    } else if word.eq_ignore_ascii_case("map") {
+                        map = true;
+                    } else if word.eq_ignore_ascii_case("oneof") {
+                        oneof = true;
+                    } else if let Some(field_kind) = FieldKind::from_str(word) {
+                        if let Some(existing_kind) = kind {
+                            bail!("duplicate type attributes: {} and {}", existing_kind, field_kind);
+                        }
+                        kind = Some(field_kind);
+                    } else if let Some(field_label) = FieldLabel::from_str(word) {
+                        if let Some(existing_label) = label {
+                            bail!("duplicate label attributes: {:?} and {:?}", existing_label, field_label);
+                        }
+                        label = Some(field_label);
+
+                    } else {
+                        bail!("unknown attribute: {}", word);
+                    }
+                },
+                syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) => {
+                    let name = name.as_ref();
+                    if name.eq_ignore_ascii_case("tag") {
+                        if tag.is_some() {
+                            bail!("duplicate tag attributes");
+                        }
+                        let field_tag = lit_to_tag(&value).chain_err(|| "invalid tag attribute")?;
+                        tag = Some(field_tag);
+                    } else if name.eq_ignore_ascii_case("tags") {
+                        if tags.is_some() {
+                            bail!("duplicate tags attributes");
+                        }
+                        let field_tags = lit_to_tags(&value).chain_err(|| "invalid tags attribute")?;
+                        tags = Some(field_tags);
+                    } else if name.eq_ignore_ascii_case("key") {
+                        let field_key_kind = lit_to_field_kind(&value).chain_err(|| "invalid map key type attribute")?;
+                        if let Some(existing_key_kind) = key_kind {
+                            bail!("duplicate map key type attributes: {} and {}",
+                                  existing_key_kind, field_key_kind);
+                        }
+                        key_kind = Some(field_key_kind);
+                    } else if name.eq_ignore_ascii_case("value") {
+                        let field_value_kind = lit_to_field_kind(&value).chain_err(|| "invalid map value type attribute")?;
+                        if let Some(existing_value_kind) = value_kind {
+                            bail!("duplicate map value type attributes: {} and {}",
+                                  existing_value_kind, field_value_kind);
+                        }
+                        value_kind = Some(field_value_kind);
+                    } else if name.eq_ignore_ascii_case("packed") {
+                        if packed.is_some() {
+                            bail!("duplicate packed attributes");
+                        }
+                        let field_packed = lit_to_bool(&value).chain_err(|| "illegal packed attribute")?;
+                        packed = Some(field_packed);
+                    } else if name.eq_ignore_ascii_case("default") {
+                        if default.is_some() {
+                            bail!("duplicate default attributes");
+                        }
+                        default = Some(value);
+                    }
+                },
+                syn::NestedMetaItem::Literal(lit) => bail!("invalid field attribute: {:?}", lit),
+                syn::NestedMetaItem::MetaItem(syn::MetaItem::List(ref ident, _)) => bail!("invalid field attributes: {}", ident),
+            }
+        }
+
+        // Check that either the field is an ordinary type, a map, or a oneof.
+        match (kind, map, oneof) {
+            (Some(_), false, false) | (None, true, false) | (None, false, true) => (),
+            (Some(kind), true, _) => bail!("field may not be a {} and a map", kind),
+            (Some(kind), _, true) => bail!("field may not be a {} and a oneof", kind),
+            (_, true, true) => bail!("field may not be a map and a oneof"),
+            (None, false, false) => bail!("field must have a type attribute"),
+        }
+
+        let field = if let Some(kind) = kind {
+            if key_kind.is_some() { bail!("invalid key type attribute for {} field", kind); }
+            if value_kind.is_some() { bail!("invalid value type attribute for {} field", kind); }
+            if tags.is_some() { bail!("invalid tags attribute for {} field", kind); }
+
+            let tag = match tag {
+                Some(tag) => tag,
+                None => bail!("{} field must have a tag attribute", kind),
+            };
+
+            Field::Field {
+                kind: kind,
+                label: label,
+                tag: tag,
+                default: default.cloned(),
+            }
+        } else if map {
+            if let Some(label) = label { bail!("invalid {} attribute for map field", label); }
+            if packed.is_some() { bail!("invalid packed attribute for map field"); }
+            if default.is_some() { bail!("invalid default attribute for map field"); }
+            if tags.is_some() { bail!("invalid tags attribute for oneof field"); }
+
+            let tag = match tag {
+                Some(tag) => tag,
+                None => bail!("map field must have a tag attribute"),
+            };
+
+            let key_kind = match key_kind {
+                Some(key_kind) => key_kind,
+                None => bail!("map field must have a key type attribute"),
+            };
+
+            let value_kind = match value_kind {
+                Some(value_kind) => value_kind,
+                None => bail!("map field must have a value type attribute"),
+            };
+
+            Field::Map {
+                key_kind: key_kind,
+                value_kind: value_kind,
+                tag: tag,
+            }
+        } else {
+            assert!(oneof);
+            if let Some(label) = label { bail!("invalid {} attribute for oneof field", label); }
+            if packed.is_some() { bail!("invalid packed attribute for oneof field"); }
+            if default.is_some() { bail!("invalid default attribute for oneof field"); }
+            if tag.is_some() { bail!("invalid tag attribute for oneof field"); }
+            if key_kind.is_some() { bail!("invalid key type attribute for oneof field"); }
+            if value_kind.is_some() { bail!("invalid value type attribute for oneof field"); }
+
+            let tags = match tags {
+                Some(tags) => tags,
+                None => bail!("oneof field must have a tags attribute"),
+            };
+
+            Field::Oneof {
+                tags: tags,
+            }
+        };
+
+        Ok(Some(field))
+    }
+
+    fn tags(&self) -> &[u32] {
+        match *self {
+            Field::Field { tag, .. } => &[tag],
+            Field::Map { tag, .. } => &[tag],
+            Field::Oneof { ref tags, .. } => tags,
+        }
+    }
+
+    fn encode(&self) -> Tokens {
+        match *self {
+            Field::Field { kind, .. } => {
+
+            },
+            Field::Map { .. } => {
+            },
+            Field::Oneof { .. } => {
+            },
+        }
+    }
+}
+
+fn try_message(input: TokenStream) -> Result<TokenStream> {
     let syn::DeriveInput { ident, generics, body, .. } =
         syn::parse_derive_input(&input.to_string()).expect("unable to parse message type");
 
@@ -217,14 +439,31 @@ pub fn message(input: TokenStream) -> TokenStream {
         syn::Body::Enum(..) => panic!("Message can not be derived for an enum"),
     };
 
-    let fields = fields.into_iter().filter_map(Field::extract).collect::<Vec<_>>();
+    let fields: Vec<Field> = fields.into_iter()
+                                   .enumerate()
+                                   .flat_map(|(idx, field)| {
+                                       match Field::from_attrs(&field.attrs) {
+                                           Ok(Some(field)) => Some(Ok(field)),
+                                           Ok(None) => None,
+                                           Err(err) => Some(Err(err).chain_err(|| {
+                                               match field.ident {
+                                                   Some(ref field_ident) =>
+                                                       format!("invalid message field {}.{}",
+                                                               ident, field_ident),
+                                                   None => format!("invalid message field {}.{}",
+                                                                   ident, idx),
+                                               }
+                                           })),
+                                       }
+                                   })
+                                   .collect()?;
 
-    let mut tags = fields.iter().flat_map(|field| &field.tags).collect::<Vec<_>>();
+    let mut tags = fields.iter().flat_map(|field| field.tags()).collect::<Vec<_>>();
     let num_tags = tags.len();
     tags.sort();
     tags.dedup();
     if tags.len() != num_tags {
-        panic!("Message '{}' has fields with duplicate tags", ident);
+        bail!("message {} has fields with duplicate tags", ident);
     }
 
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
@@ -304,6 +543,12 @@ pub fn message(input: TokenStream) -> TokenStream {
     };
 
     expanded.parse().unwrap()
+
+}
+
+#[proc_macro_derive(Message, attributes(proto))]
+pub fn message(input: TokenStream) -> TokenStream {
+    try_message(input).unwrap()
 }
 
 fn encoded_len(fields: &[Field]) -> Tokens {
@@ -366,6 +611,7 @@ fn default_value(lit: syn::Lit) -> Tokens {
     }
 }
 
+/*
 #[proc_macro_derive(Enumeration, attributes(proto))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
     let syn::DeriveInput { ident, generics, attrs, body, .. } =
@@ -622,4 +868,14 @@ pub fn oneof(input: TokenStream) -> TokenStream {
     };
 
     expanded.parse().unwrap()
+}
+*/
+
+/// Parses a literal value into a bool.
+fn lit_to_bool(lit: &syn::Lit) -> Result<bool> {
+    match *lit {
+        syn::Lit::Bool(b) => Ok(b),
+        syn::Lit::Str(ref s, _) => s.parse::<bool>().map_err(|e| Error::from(e.to_string())),
+        _ => bail!("invalid literal value: {:?}", lit),
+    }
 }

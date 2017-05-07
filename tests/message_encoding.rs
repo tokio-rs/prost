@@ -53,6 +53,7 @@ fn check_repeated_floats() {
     });
 }
 
+/*
 #[test]
 fn check_scalar_types() {
     let _ = env_logger::init();
@@ -121,7 +122,9 @@ fn check_scalar_types() {
     };
     check_message(scalar_types);
 }
+*/
 
+/*
 /// A protobuf message which contains all scalar types.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct ScalarTypes {
@@ -247,7 +250,9 @@ pub struct ScalarTypes {
     #[proto(tag="58")]
     pub packed_bool: Vec<bool>,
 }
+*/
 
+/*
 /// A protobuf message with default value.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct DefaultValues {
@@ -269,4 +274,16 @@ fn check_default_values() {
     //assert_eq!(default.optional_int32, Some(42));
     //assert_eq!(&default.string, "fourty two");
     //assert_eq!(0, default.encoded_len());
+}
+*/
+
+
+/// A protobuf message with default value.
+#[derive(Clone, Debug, PartialEq, Message)]
+pub struct Basic {
+    #[proto(int32, tag="1")]
+    pub int32: i32,
+
+    #[proto(bool, repeated, packed="false", tag="2")]
+    pub bools: Vec<bool>,
 }
