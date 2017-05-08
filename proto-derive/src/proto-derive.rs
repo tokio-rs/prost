@@ -32,7 +32,7 @@ fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
 
 /// A protobuf field type.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum FieldKind {
+enum ScalarType {
     Double,
     Float,
     Int32,
@@ -49,59 +49,56 @@ enum FieldKind {
     String,
     Bytes,
     Enum,
-    Message,
 }
 
-impl FieldKind {
+impl ScalarType {
     fn as_str(&self) -> &'static str {
         match *self {
-            FieldKind::Double => "double",
-            FieldKind::Float => "double",
-            FieldKind::Int32 => "int32",
-            FieldKind::Int64 => "int64",
-            FieldKind::Uint32 => "uint32",
-            FieldKind::Uint64 => "uint64",
-            FieldKind::Sint32 => "sint32",
-            FieldKind::Sint64 => "sint64",
-            FieldKind::Fixed32 => "fixed32",
-            FieldKind::Fixed64 => "fixed64",
-            FieldKind::Sfixed32 => "sfixed32",
-            FieldKind::Sfixed64 => "sfixed64",
-            FieldKind::Bool => "bool",
-            FieldKind::String => "string",
-            FieldKind::Bytes => "bytes",
-            FieldKind::Enum => "enum",
-            FieldKind::Message => "message",
+            ScalarType::Double => "double",
+            ScalarType::Float => "double",
+            ScalarType::Int32 => "int32",
+            ScalarType::Int64 => "int64",
+            ScalarType::Uint32 => "uint32",
+            ScalarType::Uint64 => "uint64",
+            ScalarType::Sint32 => "sint32",
+            ScalarType::Sint64 => "sint64",
+            ScalarType::Fixed32 => "fixed32",
+            ScalarType::Fixed64 => "fixed64",
+            ScalarType::Sfixed32 => "sfixed32",
+            ScalarType::Sfixed64 => "sfixed64",
+            ScalarType::Bool => "bool",
+            ScalarType::String => "string",
+            ScalarType::Bytes => "bytes",
+            ScalarType::Enum => "enum",
         }
     }
 
-    fn variants() -> slice::Iter<'static, FieldKind> {
-        const VARIANTS: &'static [FieldKind] = &[
-            FieldKind::Double,
-            FieldKind::Float,
-            FieldKind::Int32,
-            FieldKind::Int64,
-            FieldKind::Uint32,
-            FieldKind::Uint64,
-            FieldKind::Sint32,
-            FieldKind::Sint64,
-            FieldKind::Fixed32,
-            FieldKind::Fixed64,
-            FieldKind::Sfixed32,
-            FieldKind::Sfixed64,
-            FieldKind::Bool,
-            FieldKind::String,
-            FieldKind::Bytes,
-            FieldKind::Enum,
-            FieldKind::Message,
+    fn variants() -> slice::Iter<'static, ScalarType> {
+        const VARIANTS: &'static [ScalarType] = &[
+            ScalarType::Double,
+            ScalarType::Float,
+            ScalarType::Int32,
+            ScalarType::Int64,
+            ScalarType::Uint32,
+            ScalarType::Uint64,
+            ScalarType::Sint32,
+            ScalarType::Sint64,
+            ScalarType::Fixed32,
+            ScalarType::Fixed64,
+            ScalarType::Sfixed32,
+            ScalarType::Sfixed64,
+            ScalarType::Bool,
+            ScalarType::String,
+            ScalarType::Bytes,
+            ScalarType::Enum,
         ];
         VARIANTS.iter()
     }
 
     /// Parses a string into a field type.
     /// If the string doesn't match a field type, `None` is returned.
-    fn from_str(s: &str) -> Option<FieldKind> {
-        for &kind in FieldKind::variants() {
+    fn from_str(s: &str) -> Option<ScalarType> {
+        for &kind in ScalarType::variants() {
             if s.eq_ignore_ascii_case(kind.as_str()) {
                 return Some(kind);
             }
@@ -110,20 +107,20 @@ impl FieldKind {
     }
 }
 
-impl fmt::Debug for FieldKind {
+impl fmt::Debug for ScalarType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl fmt::Display for FieldKind {
+impl fmt::Display for ScalarType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum FieldLabel {
+enum Label {
     /// An optional field.
     Optional,
     /// A required field.
@@ -132,28 +129,28 @@ enum FieldLabel {
     Repeated,
 }
 
-impl FieldLabel {
+impl Label {
     fn as_str(&self) -> &'static str {
         match *self {
-            FieldLabel::Optional => "optional",
-            FieldLabel::Required => "required",
-            FieldLabel::Repeated => "repeated",
+            Label::Optional => "optional",
+            Label::Required => "required",
+            Label::Repeated => "repeated",
         }
     }
 
-    fn variants() -> slice::Iter<'static, FieldLabel> {
-        const VARIANTS: &'static [FieldLabel] = &[
-            FieldLabel::Optional,
-            FieldLabel::Required,
-            FieldLabel::Repeated,
+    fn variants() -> slice::Iter<'static, Label> {
+        const VARIANTS: &'static [Label] = &[
+            Label::Optional,
+            Label::Required,
+            Label::Repeated,
         ];
         VARIANTS.iter()
     }
 
     /// Parses a string into a field label.
     /// If the string doesn't match a field label, `None` is returned.
-    fn from_str(s: &str) -> Option<FieldLabel> {
-        for &label in FieldLabel::variants() {
+    fn from_str(s: &str) -> Option<Label> {
+        for &label in Label::variants() {
             if s.eq_ignore_ascii_case(label.as_str()) {
                 return Some(label);
             }
@@ -162,34 +159,43 @@ impl FieldLabel {
     }
 }
 
-impl fmt::Debug for FieldLabel {
+impl fmt::Debug for Label {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl fmt::Display for FieldLabel {
+impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
 enum Field {
-    /// An ordinary field.
-    Field {
-        kind: FieldKind,
-        label: Option<FieldLabel>,
+    /// A scalar field.
+    Scalar {
+        ident: syn::Ident,
+        ty: ScalarType,
         tag: u32,
+        label: Option<Label>,
         default: Option<syn::Lit>,
+    },
+    /// A message field.
+    Message {
+        ident: syn::Ident,
+        tag: u32,
+        label: Label,
     },
     /// A map field.
     Map {
-        key_kind: FieldKind,
-        value_kind: FieldKind,
+        ident: syn::Ident,
         tag: u32,
+        key_type: ScalarType,
+        value_type: ScalarType,
     },
     /// A oneof field.
     Oneof {
+        ident: syn::Ident,
         tags: Vec<u32>,
     },
 }
@@ -200,17 +206,17 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    fn from_attrs(attrs: &[syn::Attribute]) -> Result<Option<Field>> {
+    fn new(ident: syn::Ident, attrs: &[syn::Attribute]) -> Result<Option<Field>> {
 
-        fn lit_to_field_kind(lit: &syn::Lit) -> Result<FieldKind> {
+        fn lit_to_scalar_type(lit: &syn::Lit) -> Result<ScalarType> {
             let s = if let syn::Lit::Str(ref s, _) = *lit {
                 s
             } else {
                 bail!("invalid type: {:?}", lit);
             };
 
-            FieldKind::from_str(s).map(|kind| Ok(kind))
-                                  .unwrap_or_else(|| bail!("unknown type: {}", s))
+            ScalarType::from_str(s).map(|kind| Ok(kind))
+                                   .unwrap_or_else(|| bail!("unknown type: {}", s))
         }
 
         fn lit_to_tag(lit: &syn::Lit) -> Result<u32> {
@@ -232,17 +238,31 @@ impl Field {
             }
         }
 
-        // Ordinary field options.
-        let mut kind = None;
-        let mut label = None;
-        let mut packed = None;
+        fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<()>
+        where T: fmt::Debug {
+            if let Some(ref existing) = *option {
+                bail!("{}: {:?} and {:?}", message, existing, value);
+            }
+            *option = Some(value);
+            Ok(())
+        }
+
+        // Common options.
         let mut tag = None;
+        let mut label = None;
+
+        // Scalar field options.
+        let mut scalar_type = None;
+        let mut packed = None;
         let mut default = None;
+
+        // Message field optoins
+        let mut message = false;
 
         // Map field options.
         let mut map = false;
-        let mut key_kind = None;
-        let mut value_kind = None;
+        let mut key_type = None;
+        let mut value_type = None;
 
         // Oneof field options.
         let mut oneof = false;
@@ -261,23 +281,14 @@ impl Field {
             match *meta_item {
                 syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref word)) => {
                     let word = word.as_ref();
-                    if word.eq_ignore_ascii_case("ignore") {
-                        return Ok(None);
-                    } else if word.eq_ignore_ascii_case("map") {
-                        map = true;
-                    } else if word.eq_ignore_ascii_case("oneof") {
-                        oneof = true;
-                    } else if let Some(field_kind) = FieldKind::from_str(word) {
-                        if let Some(existing_kind) = kind {
-                            bail!("duplicate type attributes: {} and {}", existing_kind, field_kind);
-                        }
-                        kind = Some(field_kind);
-                    } else if let Some(field_label) = FieldLabel::from_str(word) {
-                        if let Some(existing_label) = label {
-                            bail!("duplicate label attributes: {:?} and {:?}", existing_label, field_label);
-                        }
-                        label = Some(field_label);
-
+                    if word.eq_ignore_ascii_case("ignore") { return Ok(None); }
+                    else if word.eq_ignore_ascii_case("message") { message = true; }
+                    else if word.eq_ignore_ascii_case("map") { map = true; }
+                    else if word.eq_ignore_ascii_case("oneof") { oneof = true; }
+                    else if let Some(ty) = ScalarType::from_str(word) {
+                        set_option(&mut scalar_type, ty, "duplicate type attributes")?;
+                    } else if let Some(l) = Label::from_str(word) {
+                        set_option(&mut label, l, "duplicate label attributes")?;
                     } else {
                         bail!("unknown attribute: {}", word);
                     }
@@ -285,73 +296,74 @@ impl Field {
                 syn::NestedMetaItem::MetaItem(syn::MetaItem::NameValue(ref name, ref value)) => {
                     let name = name.as_ref();
                     if name.eq_ignore_ascii_case("tag") {
-                        if tag.is_some() {
-                            bail!("duplicate tag attributes");
-                        }
-                        let field_tag = lit_to_tag(&value).chain_err(|| "invalid tag attribute")?;
-                        tag = Some(field_tag);
+                        let t = lit_to_tag(&value).chain_err(|| "invalid tag attribute")?;
+                        set_option(&mut tag, t, "duplicate tag attributes")?;
                     } else if name.eq_ignore_ascii_case("tags") {
-                        if tags.is_some() {
-                            bail!("duplicate tags attributes");
-                        }
-                        let field_tags = lit_to_tags(&value).chain_err(|| "invalid tags attribute")?;
-                        tags = Some(field_tags);
+                        let ts = lit_to_tags(&value).chain_err(|| "invalid tags attribute")?;
+                        set_option(&mut tags, ts, "invalid tags attributes");
                     } else if name.eq_ignore_ascii_case("key") {
-                        let field_key_kind = lit_to_field_kind(&value).chain_err(|| "invalid map key type attribute")?;
-                        if let Some(existing_key_kind) = key_kind {
-                            bail!("duplicate map key type attributes: {} and {}",
-                                  existing_key_kind, field_key_kind);
-                        }
-                        key_kind = Some(field_key_kind);
+                        let kt = lit_to_scalar_type(&value).chain_err(|| "invalid map key type attribute")?;
+                        set_option(&mut key_type, kt, "duplicate map key type attributes")?;
                     } else if name.eq_ignore_ascii_case("value") {
-                        let field_value_kind = lit_to_field_kind(&value).chain_err(|| "invalid map value type attribute")?;
-                        if let Some(existing_value_kind) = value_kind {
-                            bail!("duplicate map value type attributes: {} and {}",
-                                  existing_value_kind, field_value_kind);
-                        }
-                        value_kind = Some(field_value_kind);
+                        let vt = lit_to_scalar_type(&value).chain_err(|| "invalid map value type attribute")?;
+                        set_option(&mut value_type, vt, "duplicate map value type attributes")?;
                     } else if name.eq_ignore_ascii_case("packed") {
-                        if packed.is_some() {
-                            bail!("duplicate packed attributes");
-                        }
-                        let field_packed = lit_to_bool(&value).chain_err(|| "illegal packed attribute")?;
-                        packed = Some(field_packed);
+                        let p = lit_to_bool(&value).chain_err(|| "illegal packed attribute")?;
+                        set_option(&mut packed, p, "duplicate packed attributes")?;
                     } else if name.eq_ignore_ascii_case("default") {
-                        if default.is_some() {
-                            bail!("duplicate default attributes");
-                        }
-                        default = Some(value);
+                        set_option(&mut default, value, "duplicate default attributes")?;
                     }
                 },
-                syn::NestedMetaItem::Literal(lit) => bail!("invalid field attribute: {:?}", lit),
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::List(ref ident, _)) => bail!("invalid field attributes: {}", ident),
+                syn::NestedMetaItem::Literal(ref lit) => bail!("invalid field attribute: {:?}", lit),
+                syn::NestedMetaItem::MetaItem(syn::MetaItem::List(ref ident, _)) => bail!("invalid field attribute: {}", ident),
             }
         }
 
-        // Check that either the field is an ordinary type, a map, or a oneof.
-        match (kind, map, oneof) {
-            (Some(_), false, false) | (None, true, false) | (None, false, true) => (),
-            (Some(kind), true, _) => bail!("field may not be a {} and a map", kind),
-            (Some(kind), _, true) => bail!("field may not be a {} and a oneof", kind),
-            (_, true, true) => bail!("field may not be a map and a oneof"),
-            (None, false, false) => bail!("field must have a type attribute"),
+        // Check that either the field is a scalar type, a message, a map, or a oneof.
+        match (scalar_type, message, map, oneof) {
+            (Some(_), false, false, false) | (None, true, false, false) | (None, false, true, false) | (None, false, false, true) => (),
+            (Some(ty), true, _, _) => bail!("duplicate type attributes: {} and message", ty),
+            (Some(ty), _, true, _) => bail!("duplicate type attributes: {} and map", ty),
+            (Some(ty), _, _, true) => bail!("duplicate type attributes: {} and oneof", ty),
+            (_, true, true, _) => bail!("duplicate type attributes: message and map"),
+            (_, true, _, true) => bail!("duplicate type attributes: message and oneof"),
+            (_, _, true, true) => bail!("duplicate type attributes: map and oneof"),
+            (None, false, false, false) => bail!("field must have a type attribute"),
         }
 
-        let field = if let Some(kind) = kind {
-            if key_kind.is_some() { bail!("invalid key type attribute for {} field", kind); }
-            if value_kind.is_some() { bail!("invalid value type attribute for {} field", kind); }
-            if tags.is_some() { bail!("invalid tags attribute for {} field", kind); }
+        let field = if let Some(ty) = scalar_type {
+            if key_type.is_some() { bail!("invalid key type attribute for {} field", ty); }
+            if value_type.is_some() { bail!("invalid value type attribute for {} field", ty); }
+            if tags.is_some() { bail!("invalid tags attribute for {} field", ty); }
 
             let tag = match tag {
                 Some(tag) => tag,
-                None => bail!("{} field must have a tag attribute", kind),
+                None => bail!("{} field must have a tag attribute", ty),
             };
 
-            Field::Field {
-                kind: kind,
+            Field::Scalar {
+                ident: ident,
+                ty: ty,
                 label: label,
                 tag: tag,
                 default: default.cloned(),
+            }
+        } else if message {
+            if key_type.is_some() { bail!("invalid key type attribute for message field"); }
+            if value_type.is_some() { bail!("invalid value type attribute for message field"); }
+            if tags.is_some() { bail!("invalid tags attribute for message field"); }
+            if packed.is_some() { bail!("invalid packed attribute for message field"); }
+            if default.is_some() { bail!("invalid default attribute for message field"); }
+
+            let tag = match tag {
+                Some(tag) => tag,
+                None => bail!("message field must have a tag attribute"),
+            };
+
+            Field::Message {
+                ident: ident,
+                label: label.unwrap_or(Label::Optional),
+                tag: tag,
             }
         } else if map {
             if let Some(label) = label { bail!("invalid {} attribute for map field", label); }
@@ -364,19 +376,20 @@ impl Field {
                 None => bail!("map field must have a tag attribute"),
             };
 
-            let key_kind = match key_kind {
-                Some(key_kind) => key_kind,
+            let key_type = match key_type {
+                Some(key_type) => key_type,
                 None => bail!("map field must have a key type attribute"),
             };
 
-            let value_kind = match value_kind {
-                Some(value_kind) => value_kind,
+            let value_type = match value_type {
+                Some(value_type) => value_type,
                 None => bail!("map field must have a value type attribute"),
             };
 
             Field::Map {
-                key_kind: key_kind,
-                value_kind: value_kind,
+                ident: ident,
+                key_type: key_type,
+                value_type: value_type,
                 tag: tag,
             }
         } else {
@@ -385,8 +398,8 @@ impl Field {
             if packed.is_some() { bail!("invalid packed attribute for oneof field"); }
             if default.is_some() { bail!("invalid default attribute for oneof field"); }
             if tag.is_some() { bail!("invalid tag attribute for oneof field"); }
-            if key_kind.is_some() { bail!("invalid key type attribute for oneof field"); }
-            if value_kind.is_some() { bail!("invalid value type attribute for oneof field"); }
+            if key_type.is_some() { bail!("invalid key type attribute for oneof field"); }
+            if value_type.is_some() { bail!("invalid value type attribute for oneof field"); }
 
             let tags = match tags {
                 Some(tags) => tags,
@@ -394,6 +407,7 @@ impl Field {
             };
 
             Field::Oneof {
+                ident: ident,
                 tags: tags,
             }
         };
@@ -401,24 +415,38 @@ impl Field {
         Ok(Some(field))
     }
 
-    fn tags(&self) -> &[u32] {
+    fn ident(&self) -> &syn::Ident {
         match *self {
-            Field::Field { tag, .. } => &[tag],
-            Field::Map { tag, .. } => &[tag],
-            Field::Oneof { ref tags, .. } => tags,
+            Field::Scalar { ref ident, .. } => ident,
+            Field::Message { ref ident, .. } => ident,
+            Field::Map { ref ident, .. } => ident,
+            Field::Oneof { ref ident, .. } => ident,
+        }
+    }
+
+    fn tags(&self) -> Vec<u32> {
+        match *self {
+            Field::Scalar { tag, .. } => vec![tag],
+            Field::Message { tag, .. } => vec![tag],
+            Field::Map { tag, .. } => vec![tag],
+            Field::Oneof { ref tags, .. } => tags.clone(),
         }
     }
 
     fn encode(&self) -> Tokens {
-        match *self {
-            Field::Field { kind, .. } => {
+        quote!(unimplemented!())
+    }
 
-            },
-            Field::Map { .. } => {
-            },
-            Field::Oneof { .. } => {
-            },
-        }
+    fn merge(&self, tag: &syn::Ident, wire_type: &syn::Ident) -> Tokens {
+        quote!(unimplemented!())
+    }
+
+    fn encoded_len(&self) -> Tokens {
+        quote!(unimplemented!())
+    }
+
+    fn default(&self) -> Tokens {
+        quote!(unimplemented!())
     }
 }
 
@@ -439,24 +467,21 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         syn::Body::Enum(..) => panic!("Message can not be derived for an enum"),
     };
 
-    let fields: Vec<Field> = fields.into_iter()
-                                   .enumerate()
-                                   .flat_map(|(idx, field)| {
-                                       match Field::from_attrs(&field.attrs) {
-                                           Ok(Some(field)) => Some(Ok(field)),
-                                           Ok(None) => None,
-                                           Err(err) => Some(Err(err).chain_err(|| {
-                                               match field.ident {
-                                                   Some(ref field_ident) =>
-                                                       format!("invalid message field {}.{}",
-                                                               ident, field_ident),
-                                                   None => format!("invalid message field {}.{}",
-                                                                   ident, idx),
-                                               }
-                                           })),
-                                       }
-                                   })
-                                   .collect()?;
+    let fields = fields.into_iter()
+                       .enumerate()
+                       .flat_map(|(idx, field)| {
+                           let field_ident = field.ident
+                                                   .unwrap_or_else(|| syn::Ident::new(idx.to_string()));
+                           match Field::new(field_ident.clone(), &field.attrs) {
+                               Ok(Some(field)) => Some(Ok(field)),
+                               Ok(None) => None,
+                               Err(err) => Some(Err(err).chain_err(|| {
+                                   format!("invalid message field {}.{}",
+                                           ident, field_ident)
+                               })),
+                           }
+                       })
+                       .collect::<Result<Vec<Field>>>()?;
 
     let mut tags = fields.iter().flat_map(|field| field.tags()).collect::<Vec<_>>();
     let num_tags = tags.len();
@@ -467,30 +492,32 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     }
 
     let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
-    let encoded_len = encoded_len(&fields);
 
-    let encode = fields.iter().map(|field| {
-        let kind = &field.kind;
-        let tag = field.tags[0];
-        let field = &field.ident;
-        quote! { _proto::field::Field::<#kind>::encode(&self.#field, #tag, buf); }
-    }).fold(Tokens::new(), concat_tokens);
+    let encoded_len = fields.iter()
+                            .map(Field::encoded_len)
+                            .fold(quote!(0), |mut sum, expr| {
+                                sum.append("+");
+                                sum.append(expr.as_str());
+                                sum
+                            });
+
+    let encode = fields.iter().map(Field::encode).fold(Tokens::new(), concat_tokens);
 
     let merge = fields.iter().map(|field| {
-        let tags = field.tags.iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
-        let kind = &field.kind;
-        let field = &field.ident;
-        quote!{ #tags => _proto::field::Field::<#kind>::merge(&mut self.#field, tag, wire_type, buf)
-                                                        .map_err(|error| {
-                                                            ::std::io::Error::new(
-                                                                error.kind(),
-                                                                format!(concat!("failed to decode field ", stringify!(#ident),
-                                                                                ".", stringify!(#field), ": {}"),
-                                                                        error))
-                                                        })?, }
+        let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
+        let tags = field.tags().iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
+        let field_ident = field.ident();
+        quote! { #tags => { #merge }.map_err(|error| {
+            ::std::io::Error::new(
+                error.kind(),
+                format!(concat!("failed to decode field ", stringify!(#ident), ".", stringify!(#field_ident), ": {}"),
+                        error))
+        })?, }
     }).fold(Tokens::new(), concat_tokens);
 
-    let default = default(&fields);
+    let default = fields.iter()
+                        .map(Field::default)
+                        .fold(Tokens::new(), concat_tokens);
 
     let expanded = quote! {
         #[allow(
@@ -542,73 +569,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         };
     };
 
-    expanded.parse().unwrap()
-
+    expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
 }
 
 #[proc_macro_derive(Message, attributes(proto))]
 pub fn message(input: TokenStream) -> TokenStream {
     try_message(input).unwrap()
-}
-
-fn encoded_len(fields: &[Field]) -> Tokens {
-    fields.iter().map(|field| {
-        let kind = &field.kind;
-        let ident = &field.ident;
-        let tag = field.tags[0];
-        match field.default {
-            Some(ref tokens) => quote! {
-                if self.#ident == #tokens {
-                    0
-                } else {
-                    _proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag)
-                }
-            },
-            None => quote! {
-                if self.#ident == ::std::default::Default::default() {
-                    0
-                } else {
-                    _proto::field::Field::<#kind>::encoded_len(&self.#ident, #tag)
-                }
-            },
-        }
-    })
-    .fold(quote!(0), |mut sum, expr| {
-        sum.append("+");
-        sum.append(expr.as_str());
-        sum
-    })
-}
-
-fn default(fields: &[Field]) -> Tokens {
-    fields.iter().map(|field| {
-        let ident = &field.ident;
-        match field.default {
-            Some(ref default) => {
-                let lit = default_value(default.clone());
-                quote!(#ident: #lit,)
-            },
-            // Total hack: if a oneof, default to None (we always wrap oneofs in a None).
-            // This really should be checking the type, but we don't have a typesafe type, its just
-            // tokens.
-            None if field.tags.len() > 1 => quote!(#ident: None),
-            None => quote!(#ident: Default::default(),),
-        }
-    })
-    .fold(Tokens::new(), concat_tokens)
-}
-
-fn default_value(lit: syn::Lit) -> Tokens {
-    match lit {
-        syn::Lit::Str(s, _) => {
-            let mut tokens = Tokens::new();
-            for tt in syn::parse_token_trees(&s).expect(&format!("unable to parse default literal value: {}", s)) {
-                tt.to_tokens(&mut tokens);
-            }
-            quote!(#tokens)
-        },
-        other => quote!(#other),
-    }
 }
 
 /*
