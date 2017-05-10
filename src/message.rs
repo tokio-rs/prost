@@ -9,7 +9,6 @@ use bytes::{
 };
 
 use encoding::*;
-use field::*;
 
 /// A Protocol Buffers message.
 pub trait Message: Debug + Default /*+ PartialEq + Eq*/ + Send + Sync {
@@ -77,6 +76,7 @@ impl <M> Message for Box<M> where M: Message {
     }
 }
 
+/*
 impl <M> Field for M where M: Message + Default {
     #[inline]
     fn encode<B>(&self, tag: u32, buf: &mut B) where B: BufMut {
@@ -127,3 +127,4 @@ impl <M> Field for Vec<M> where M: Message + Default {
         self.iter().map(|f| Field::encoded_len(f, tag)).sum()
     }
 }
+*/

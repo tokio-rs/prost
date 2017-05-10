@@ -4,3 +4,5 @@ Invert Message and Field for messages, remove Take from Message API
 See about doing a blanket impl of Field for Vec<T> where T: Field
 Simplify the module system
   - Don't output intermediate mod files that are otherwise empty
+Add an UnknownField API, see:
+    - https://docs.google.com/document/d/1KMRX-G91Aa-Y2FkEaHeeviLRRNblgIahbsk4wA14gRk/view

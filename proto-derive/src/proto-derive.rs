@@ -13,11 +13,11 @@ extern crate quote;
 use std::ascii::AsciiExt;
 use std::fmt;
 use std::slice;
-use std::str::{self, FromStr};
+use std::str;
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use quote::{ToTokens, Tokens};
+use quote::Tokens;
 
 // Proc-macro crates can't export anything, so error chain definitions go in a private module.
 mod error {
@@ -105,6 +105,48 @@ impl ScalarType {
         }
         None
     }
+
+    fn encode(&self, ident: &syn::Ident) -> Tokens {
+        match *self {
+            ScalarType::Double => quote!(_proto::encoding::encode_double(self.#ident, buf)),
+            ScalarType::Float => quote!(_proto::encoding::encode_float(self.#ident, buf)),
+            ScalarType::Int32 => quote!(_proto::encoding::encode_int32(self.#ident, buf)),
+            ScalarType::Int64 => quote!(_proto::encoding::encode_int64(self.#ident, buf)),
+            ScalarType::Uint32 => quote!(_proto::encoding::encode_uint32(self.#ident, buf)),
+            ScalarType::Uint64 => quote!(_proto::encoding::encode_uint64(self.#ident, buf)),
+            ScalarType::Sint32 => quote!(_proto::encoding::encode_sint32(self.#ident, buf)),
+            ScalarType::Sint64 => quote!(_proto::encoding::encode_sint64(self.#ident, buf)),
+            ScalarType::Fixed32 => quote!(_proto::encoding::encode_fixed32(self.#ident, buf)),
+            ScalarType::Fixed64 => quote!(_proto::encoding::encode_fixed64(self.#ident, buf)),
+            ScalarType::Sfixed32 => quote!(_proto::encoding::encode_sfixed32(self.#ident, buf)),
+            ScalarType::Sfixed64 => quote!(_proto::encoding::encode_sfixed64(self.#ident, buf)),
+            ScalarType::Bool => quote!(_proto::encoding::encode_bool(self.#ident, buf)),
+            ScalarType::String => quote!(_proto::encoding::encode_string(&self.#ident, buf)),
+            ScalarType::Bytes => quote!(_proto::encoding::encode_bytes(&self.#ident, buf)),
+            ScalarType::Enum => quote!(_proto::encoding::encode_int32(self.#ident as i32, buf)),
+        }
+    }
+
+    fn wire_type(*self) -> Tokens {
+        let wire_type = match *self {
+            ScalarType::Float
+                | ScalarType::Fixed32
+                | ScalarType::Sfixed32 => quote!(_proto::encoding::WireType::ThirtyTwoBit)),
+            ScalarType::Double
+                | ScalarType::Fixed64
+                | ScalarType::Sfixed64 => quote!(_proto::encoding::WireType::SixtyFourBit)),
+            ScalarType::Int32
+                | ScalarType::Int64
+                | ScalarType::Uint32
+                | ScalarType::Uint64
+                | ScalarType::Sint32
+                | ScalarType::Sint64
+                | ScalarType::Bool
+                | ScalarType::Enum => quote!(_proto::encoding::WireType::Varint),
+            ScalarType::String
+                | ScalarType::Bytes => quote!(_proto::encoding::WireType::LengthDelimited),
+        }
+    }
 }
 
 impl fmt::Debug for ScalarType {
@@ -171,6 +213,44 @@ impl fmt::Display for Label {
     }
 }
 
+fn encode_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32, default: Option<&syn::Lit>) -> Tokens {
+    let encode_fn = format!("_proto::encoding::encode_{}", ty.as_str());
+    let encode = scalar_field_encode(ident, ty);
+    let wire_type = ty.wire_type();
+    let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type));
+
+    match default {
+        Some(default) => {
+            quote! {
+                #encode_key
+                if self.#ident != #default {
+                    #encode;
+                }
+            }
+        },
+        None => {
+            quote! {
+                #encode_key
+                if self.#ident != ::std::default::Default::default() {
+                    #encode;
+                }
+            }
+        },
+    }
+}
+
+fn encode_optional_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+}
+
+fn encode_required_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+}
+
+fn encode_repeated_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+}
+
+fn encode_packed_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+}
+
 enum Field {
     /// A scalar field.
     Scalar {
@@ -179,6 +259,7 @@ enum Field {
         tag: u32,
         label: Option<Label>,
         default: Option<syn::Lit>,
+        packed: bool,
     },
     /// A message field.
     Message {
@@ -341,12 +422,26 @@ impl Field {
                 None => bail!("{} field must have a tag attribute", ty),
             };
 
+            if let Some(packed) = packed {
+                match label {
+                    Some(Label::Repeated) => (),
+                    _ => bail!("packed attribute may only be applied to repeated fields"),
+                }
+                match ty  {
+                    ScalarType::String | ScalarType::Bytes => {
+                        bail!("packed attribute may only be applied to numeric fields");
+                    },
+                    _ => (),
+                }
+            }
+
             Field::Scalar {
                 ident: ident,
                 ty: ty,
                 label: label,
                 tag: tag,
                 default: default.cloned(),
+                packed: packed.unwrap_or(false),
             }
         } else if message {
             if key_type.is_some() { bail!("invalid key type attribute for message field"); }
@@ -434,19 +529,93 @@ impl Field {
     }
 
     fn encode(&self) -> Tokens {
-        quote!(unimplemented!())
+        match *self {
+            Field::Scalar { ref ident, ty, tag, label, ref default , packed, .. } => {
+                let encode = ty.encode(ident);
+                let wire_type = ty.wire_type();
+                let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type));
+
+                match label {
+                    None => {
+                        if let Some(default) = default {
+                            quote! {
+                                #encode_key;
+                                if self.#ident != #default {
+                                    #encode;
+                                }
+                            }
+                        } else {
+                        quote! {
+                            #encode_key;
+                            if self.#ident != ::std::default::Default::default() {
+                                #encode;
+                            }
+                        }
+
+                        }
+                    },
+                    Some(Label::Optional) => {
+
+                    },
+                    Some(Label::Required) => {
+
+                    },
+                    Some(Lable::Repeated) => {
+
+                    }
+                }
+
+                match default {
+                    Some(default) => {
+                    },
+                    None => {
+                    },
+                }
+
+
+
+
+
+
+
+
+                quote!(();)
+            },
+            Field::Scalar { ref ident, ty, tag, label: Some(Label::Optional), .. } => {
+                quote!(();)
+            }
+            Field::Scalar { ref ident, ty, tag, label: Some(Label::Required), .. } => {
+                quote!(();)
+            }
+            Field::Scalar { ref ident, ty, tag, label: Some(Label::Repeated), packed, .. } => {
+                quote!(();)
+            }
+            Field::Message { tag, .. } => {
+                quote!(();)
+            }
+            Field::Map { tag, .. } => {
+                quote!(();)
+            }
+            Field::Oneof { .. } => {
+                quote!(();)
+            }
+
+        }
+
     }
 
     fn merge(&self, tag: &syn::Ident, wire_type: &syn::Ident) -> Tokens {
-        quote!(unimplemented!())
+        quote!(Ok(()))
     }
 
     fn encoded_len(&self) -> Tokens {
-        quote!(unimplemented!())
+        quote!(0)
     }
 
     fn default(&self) -> Tokens {
-        quote!(unimplemented!())
+        let ident = self.ident();
+
+        quote!(#ident: ::std::default::Default::default(),)
     }
 }
 
@@ -507,12 +676,13 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
         let tags = field.tags().iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let field_ident = field.ident();
-        quote! { #tags => { #merge }.map_err(|error| {
-            ::std::io::Error::new(
-                error.kind(),
-                format!(concat!("failed to decode field ", stringify!(#ident), ".", stringify!(#field_ident), ": {}"),
-                        error))
-        })?, }
+        //quote! { #tags => { #merge }.map_err(|error| {
+            //::std::io::Error::new(
+                //error.kind(),
+                //format!(concat!("failed to decode field ", stringify!(#ident), ".", stringify!(#field_ident), ": {}"),
+                        //error))
+        //})?, }
+        quote!( #tags => (), )
     }).fold(Tokens::new(), concat_tokens);
 
     let default = fields.iter()

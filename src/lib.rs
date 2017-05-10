@@ -12,8 +12,6 @@ extern crate proto_derive;
 mod message;
 
 pub mod encoding;
-pub mod field;
-pub mod length_delimited;
-pub mod numeric;
+//pub mod field;
 
 pub use message::Message;

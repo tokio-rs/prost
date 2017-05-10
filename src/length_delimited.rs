@@ -13,19 +13,6 @@ use field::{
     Type,
 };
 
-/// A length-delimited scalar Protobuf field type.
-pub trait LengthDelimited : Default {
-    /// Encodes the length-delimited type to the buffer, without the length delimiter.
-    /// The buffer must have enough remaining space to hold the encoded type.
-    fn encode<B>(&self, buf: &mut B) where B: BufMut;
-
-    /// Decodes the length-delimited type from the buffer, and merges the value into self.
-    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf;
-
-    /// Returns the length of the encoded field, without the length delimiter.
-    fn encoded_len(&self) -> usize;
-}
-
 // Provides Field, Type, and repeated Field impls for length-delimited types.
 macro_rules! length_delimited_field {
     ($ty: ty) => {
@@ -79,48 +66,3 @@ macro_rules! length_delimited_field {
         }
     };
 }
-
-// string
-impl LengthDelimited for String {
-    #[inline]
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
-        buf.put_slice(self.as_bytes());
-    }
-    #[inline]
-    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf {
-        self.clear();
-        self.push_str(str::from_utf8(buf.bytes()).map_err(|_| {
-            invalid_data("failed to decode string: data is not UTF-8 encoded")
-        })?);
-        let len = buf.remaining();
-        buf.advance(len);
-        Ok(())
-    }
-    #[inline]
-    fn encoded_len(&self) -> usize {
-        self.len()
-    }
-}
-length_delimited_field!(String);
-
-// bytes
-impl LengthDelimited for Vec<u8> {
-    #[inline]
-    fn encode<B>(&self, buf: &mut B) where B: BufMut {
-        buf.put_slice(self);
-    }
-    #[inline]
-    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf {
-        self.clear();
-        // TODO: this isn't right; bytes() can return a partial buffer.
-        self.extend_from_slice(buf.bytes());
-        let len = buf.remaining();
-        buf.advance(len);
-        Ok(())
-    }
-    #[inline]
-    fn encoded_len(&self) -> usize {
-        self.len()
-    }
-}
-length_delimited_field!(Vec<u8>);

@@ -35,6 +35,7 @@ fn check_message<M>(msg: M) where M: Message + PartialEq {
     assert_eq!(msg, roundtrip);
 }
 
+/*
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct RepeatedFloats {
     #[proto(tag="11")]
@@ -52,6 +53,7 @@ fn check_repeated_floats() {
                                                          0.000000000000000000000000000000000000011754944 ]
     });
 }
+*/
 
 /*
 #[test]

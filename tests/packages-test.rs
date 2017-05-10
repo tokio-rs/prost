@@ -1,3 +1,4 @@
+/*
 #[macro_use]
 extern crate proto_derive;
 extern crate proto;
@@ -12,3 +13,4 @@ fn test() {
     let mut factory = packages::widget::factory::WidgetFactory::default();
     factory.root = Default::default();
 }
+*/
