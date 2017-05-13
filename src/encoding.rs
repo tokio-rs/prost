@@ -205,40 +205,40 @@ pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<()> where B: Bu
 }
 
 #[inline]
-pub fn encode_bool<B>(value: &bool, buf: &mut B) where B: BufMut { buf.put_u8(if *value { 1u8 } else { 0u8 }); }
+pub fn encode_bool<B>(value: bool, buf: &mut B) where B: BufMut { buf.put_u8(if value { 1u8 } else { 0u8 }); }
 #[inline]
 pub fn decode_bool<B>(buf: &mut B) -> Result<bool> where B: Buf { decode_varint(buf).map(|value| value != 0) }
 
 #[inline]
-pub fn encode_int32<B>(value: &i32, buf: &mut B) where B: BufMut { encode_varint(*value as _, buf) }
+pub fn encode_int32<B>(value: i32, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
 #[inline]
 pub fn decode_int32<B>(buf: &mut B) -> Result<i32> where B: Buf { decode_varint(buf).map(|value| value as _) }
 #[inline]
-pub fn encoded_len_int32(value: &i32) -> usize { encoded_len_varint(*value as _) }
+pub fn encoded_len_int32(value: i32) -> usize { encoded_len_varint(value as _) }
 
 #[inline]
-pub fn encode_int64<B>(value: &i64, buf: &mut B) where B: BufMut { encode_varint(*value as _, buf) }
+pub fn encode_int64<B>(value: i64, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
 #[inline]
 pub fn decode_int64<B>(buf: &mut B) -> Result<i64> where B: Buf { decode_varint(buf).map(|value| value as _) }
 #[inline]
-pub fn encoded_len_int64(value: &i64) -> usize { encoded_len_varint(*value as _) }
+pub fn encoded_len_int64(value: i64) -> usize { encoded_len_varint(value as _) }
 
 #[inline]
-pub fn encode_uint32<B>(value: &u32, buf: &mut B) where B: BufMut { encode_varint(*value as _, buf) }
+pub fn encode_uint32<B>(value: u32, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
 #[inline]
 pub fn decode_uint32<B>(buf: &mut B) -> Result<u32> where B: Buf { decode_varint(buf).map(|value| value as _) }
 #[inline]
-pub fn encoded_len_uint32(value: &u32) -> usize { encoded_len_varint(*value as _) }
+pub fn encoded_len_uint32(value: u32) -> usize { encoded_len_varint(value as _) }
 
 #[inline]
-pub fn encode_uint64<B>(value: &u64, buf: &mut B) where B: BufMut { encode_varint(*value as _, buf) }
+pub fn encode_uint64<B>(value: u64, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
 #[inline]
 pub fn decode_uint64<B>(buf: &mut B) -> Result<u64> where B: Buf { decode_varint(buf).map(|value| value as _) }
 #[inline]
-pub fn encoded_len_uint64(value: &u64) -> usize { encoded_len_varint(*value as _) }
+pub fn encoded_len_uint64(value: u64) -> usize { encoded_len_varint(value as _) }
 
 #[inline]
-pub fn encode_float<B>(value: &f32, buf: &mut B) where B: BufMut { buf.put_f32::<LittleEndian>(*value) }
+pub fn encode_float<B>(value: f32, buf: &mut B) where B: BufMut { buf.put_f32::<LittleEndian>(value) }
 #[inline]
 pub fn decode_float<B>(buf: &mut B) -> Result<f32> where B: Buf {
     if buf.remaining() < 4 {
@@ -248,7 +248,7 @@ pub fn decode_float<B>(buf: &mut B) -> Result<f32> where B: Buf {
 }
 
 #[inline]
-pub fn encode_double<B>(value: &f64, buf: &mut B) where B: BufMut { buf.put_f64::<LittleEndian>(*value) }
+pub fn encode_double<B>(value: f64, buf: &mut B) where B: BufMut { buf.put_f64::<LittleEndian>(value) }
 #[inline]
 pub fn decode_double<B>(buf: &mut B) -> Result<f64> where B: Buf {
     if buf.remaining() < 8 {
@@ -258,8 +258,8 @@ pub fn decode_double<B>(buf: &mut B) -> Result<f64> where B: Buf {
 }
 
 #[inline]
-pub fn encode_sint32<B>(value: &i32, buf: &mut B) where B: BufMut {
-    encode_varint(((*value << 1) ^ (*value >> 31)) as u64, buf)
+pub fn encode_sint32<B>(value: i32, buf: &mut B) where B: BufMut {
+    encode_varint(((value << 1) ^ (value >> 31)) as u64, buf)
 }
 #[inline]
 pub fn decode_sint32<B>(buf: &mut B) -> Result<i32> where B: Buf {
@@ -269,13 +269,13 @@ pub fn decode_sint32<B>(buf: &mut B) -> Result<i32> where B: Buf {
     })
 }
 #[inline]
-pub fn encoded_len_sint32(value: &i32) -> usize {
-    encoded_len_varint(((*value << 1) ^ (*value >> 31)) as u64)
+pub fn encoded_len_sint32(value: i32) -> usize {
+    encoded_len_varint(((value << 1) ^ (value >> 31)) as u64)
 }
 
 #[inline]
-pub fn encode_sint64<B>(value: &i64, buf: &mut B) where B: BufMut {
-    encode_varint(((*value << 1) ^ (*value >> 63)) as u64, buf)
+pub fn encode_sint64<B>(value: i64, buf: &mut B) where B: BufMut {
+    encode_varint(((value << 1) ^ (value >> 63)) as u64, buf)
 }
 #[inline]
 pub fn decode_sint64<B>(buf: &mut B) -> Result<i64> where B: Buf {
@@ -284,12 +284,12 @@ pub fn decode_sint64<B>(buf: &mut B) -> Result<i64> where B: Buf {
     })
 }
 #[inline]
-pub fn encoded_len_sint64(value: &i64) -> usize {
-    encoded_len_varint(((*value << 1) ^ (*value >> 63)) as u64)
+pub fn encoded_len_sint64(value: i64) -> usize {
+    encoded_len_varint(((value << 1) ^ (value >> 63)) as u64)
 }
 
 #[inline]
-pub fn encode_fixed32<B>(value: &u32, buf: &mut B) where B: BufMut { buf.put_u32::<LittleEndian>(*value) }
+pub fn encode_fixed32<B>(value: u32, buf: &mut B) where B: BufMut { buf.put_u32::<LittleEndian>(value) }
 #[inline]
 pub fn decode_fixed32<B>(buf: &mut B) -> Result<u32> where B: Buf {
     if buf.remaining() < 4 {
@@ -299,7 +299,7 @@ pub fn decode_fixed32<B>(buf: &mut B) -> Result<u32> where B: Buf {
 }
 
 #[inline]
-pub fn encode_fixed64<B>(value: &u64, buf: &mut B) where B: BufMut { buf.put_u64::<LittleEndian>(*value) }
+pub fn encode_fixed64<B>(value: u64, buf: &mut B) where B: BufMut { buf.put_u64::<LittleEndian>(value) }
 #[inline]
 pub fn decode_fixed64<B>(buf: &mut B) -> Result<u64> where B: Buf {
     if buf.remaining() < 8 {
@@ -309,7 +309,7 @@ pub fn decode_fixed64<B>(buf: &mut B) -> Result<u64> where B: Buf {
 }
 
 #[inline]
-pub fn encode_sfixed32<B>(value: &i32, buf: &mut B) where B: BufMut { buf.put_i32::<LittleEndian>(*value) }
+pub fn encode_sfixed32<B>(value: i32, buf: &mut B) where B: BufMut { buf.put_i32::<LittleEndian>(value) }
 #[inline]
 pub fn decode_sfixed32<B>(buf: &mut B) -> Result<i32> where B: Buf {
     if buf.remaining() < 4 {
@@ -319,7 +319,7 @@ pub fn decode_sfixed32<B>(buf: &mut B) -> Result<i32> where B: Buf {
 }
 
 #[inline]
-pub fn encode_sfixed64<B>(value: &i64, buf: &mut B) where B: BufMut { buf.put_i64::<LittleEndian>(*value); }
+pub fn encode_sfixed64<B>(value: i64, buf: &mut B) where B: BufMut { buf.put_i64::<LittleEndian>(value); }
 #[inline]
 pub fn decode_sfixed64<B>(buf: &mut B) -> Result<i64> where B: Buf {
     if buf.remaining() < 8 {
@@ -329,7 +329,7 @@ pub fn decode_sfixed64<B>(buf: &mut B) -> Result<i64> where B: Buf {
 }
 
 #[inline]
-pub fn encode_string<B>(value: &String, buf: &mut B) where B: BufMut {
+pub fn encode_string<B>(value: &str, buf: &mut B) where B: BufMut {
     buf.put_slice(value.as_bytes());
 }
 #[inline]
@@ -346,13 +346,13 @@ pub fn merge_string<B>(value: &mut String, buf: &mut Take<B>) -> Result<()> wher
     Ok(())
 }
 #[inline]
-pub fn encoded_len_string(value: &String) -> usize {
+pub fn encoded_len_string(value: &str) -> usize {
     value.len()
 }
 
 #[inline]
-pub fn encode_bytes<B>(value: &Vec<u8>, buf: &mut B) where B: BufMut {
-    buf.put_slice(&value[..]);
+pub fn encode_bytes<B>(value: &[u8], buf: &mut B) where B: BufMut {
+    buf.put_slice(value);
 }
 #[inline]
 pub fn merge_bytes<B>(value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> where B: Buf {
@@ -376,7 +376,7 @@ pub fn merge_bytes<B>(value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> wher
     Ok(())
 }
 #[inline]
-pub fn encoded_len_bytes(value: &Vec<u8>) -> usize {
+pub fn encoded_len_bytes(value: &[u8]) -> usize {
     value.len()
 }
 

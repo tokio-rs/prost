@@ -108,33 +108,33 @@ impl ScalarType {
 
     fn encode(&self, ident: &syn::Ident) -> Tokens {
         match *self {
-            ScalarType::Double => quote!(_proto::encoding::encode_double(self.#ident, buf)),
-            ScalarType::Float => quote!(_proto::encoding::encode_float(self.#ident, buf)),
-            ScalarType::Int32 => quote!(_proto::encoding::encode_int32(self.#ident, buf)),
-            ScalarType::Int64 => quote!(_proto::encoding::encode_int64(self.#ident, buf)),
-            ScalarType::Uint32 => quote!(_proto::encoding::encode_uint32(self.#ident, buf)),
-            ScalarType::Uint64 => quote!(_proto::encoding::encode_uint64(self.#ident, buf)),
-            ScalarType::Sint32 => quote!(_proto::encoding::encode_sint32(self.#ident, buf)),
-            ScalarType::Sint64 => quote!(_proto::encoding::encode_sint64(self.#ident, buf)),
-            ScalarType::Fixed32 => quote!(_proto::encoding::encode_fixed32(self.#ident, buf)),
-            ScalarType::Fixed64 => quote!(_proto::encoding::encode_fixed64(self.#ident, buf)),
-            ScalarType::Sfixed32 => quote!(_proto::encoding::encode_sfixed32(self.#ident, buf)),
-            ScalarType::Sfixed64 => quote!(_proto::encoding::encode_sfixed64(self.#ident, buf)),
-            ScalarType::Bool => quote!(_proto::encoding::encode_bool(self.#ident, buf)),
-            ScalarType::String => quote!(_proto::encoding::encode_string(&self.#ident, buf)),
-            ScalarType::Bytes => quote!(_proto::encoding::encode_bytes(&self.#ident, buf)),
-            ScalarType::Enum => quote!(_proto::encoding::encode_int32(self.#ident as i32, buf)),
+            ScalarType::Double => quote!(_proto::encoding::encode_double(#ident, buf)),
+            ScalarType::Float => quote!(_proto::encoding::encode_float(#ident, buf)),
+            ScalarType::Int32 => quote!(_proto::encoding::encode_int32(#ident, buf)),
+            ScalarType::Int64 => quote!(_proto::encoding::encode_int64(#ident, buf)),
+            ScalarType::Uint32 => quote!(_proto::encoding::encode_uint32(#ident, buf)),
+            ScalarType::Uint64 => quote!(_proto::encoding::encode_uint64(#ident, buf)),
+            ScalarType::Sint32 => quote!(_proto::encoding::encode_sint32(#ident, buf)),
+            ScalarType::Sint64 => quote!(_proto::encoding::encode_sint64(#ident, buf)),
+            ScalarType::Fixed32 => quote!(_proto::encoding::encode_fixed32(#ident, buf)),
+            ScalarType::Fixed64 => quote!(_proto::encoding::encode_fixed64(#ident, buf)),
+            ScalarType::Sfixed32 => quote!(_proto::encoding::encode_sfixed32(#ident, buf)),
+            ScalarType::Sfixed64 => quote!(_proto::encoding::encode_sfixed64(#ident, buf)),
+            ScalarType::Bool => quote!(_proto::encoding::encode_bool(#ident, buf)),
+            ScalarType::String => quote!(_proto::encoding::encode_string(&#ident[..], buf)),
+            ScalarType::Bytes => quote!(_proto::encoding::encode_bytes(&#ident[..], buf)),
+            ScalarType::Enum => quote!(_proto::encoding::encode_int32(#ident as i32, buf)),
         }
     }
 
-    fn wire_type(*self) -> Tokens {
-        let wire_type = match *self {
+    fn wire_type(&self) -> Tokens {
+        match *self {
             ScalarType::Float
                 | ScalarType::Fixed32
-                | ScalarType::Sfixed32 => quote!(_proto::encoding::WireType::ThirtyTwoBit)),
+                | ScalarType::Sfixed32 => quote!(_proto::encoding::WireType::ThirtyTwoBit),
             ScalarType::Double
                 | ScalarType::Fixed64
-                | ScalarType::Sfixed64 => quote!(_proto::encoding::WireType::SixtyFourBit)),
+                | ScalarType::Sfixed64 => quote!(_proto::encoding::WireType::SixtyFourBit),
             ScalarType::Int32
                 | ScalarType::Int64
                 | ScalarType::Uint32
@@ -214,15 +214,14 @@ impl fmt::Display for Label {
 }
 
 fn encode_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32, default: Option<&syn::Lit>) -> Tokens {
-    let encode_fn = format!("_proto::encoding::encode_{}", ty.as_str());
-    let encode = scalar_field_encode(ident, ty);
     let wire_type = ty.wire_type();
-    let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type));
+    let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf));
+    let encode = ty.encode(&syn::Ident::new(format!("self.{}", ident)));
 
     match default {
         Some(default) => {
             quote! {
-                #encode_key
+                #encode_key;
                 if self.#ident != #default {
                     #encode;
                 }
@@ -230,7 +229,7 @@ fn encode_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32, default: Op
         },
         None => {
             quote! {
-                #encode_key
+                #encode_key;
                 if self.#ident != ::std::default::Default::default() {
                     #encode;
                 }
@@ -240,15 +239,44 @@ fn encode_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32, default: Op
 }
 
 fn encode_optional_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+    let wire_type = ty.wire_type();
+    let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf));
+    let encode = ty.encode(&syn::Ident::new(format!("*self.{}", ident)));
+
+    quote! {
+        if let Some(ref value) = self.#ident {
+            #encode_key;
+            #encode;
+        }
+    }
 }
 
 fn encode_required_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+    let wire_type = ty.wire_type();
+    let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf));
+    let encode = ty.encode(&syn::Ident::new(format!("self.{}", ident)));
+
+    quote! {
+        #encode_key;
+        #encode;
+    }
 }
 
 fn encode_repeated_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+    let wire_type = ty.wire_type();
+    let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf));
+    let encode = ty.encode(&syn::Ident::new("value".to_string()));
+
+    quote! {
+        for &value in &self.#ident {
+            #encode_key;
+            #encode;
+        }
+    }
 }
 
 fn encode_packed_scalar_field(ident: &syn::Ident, ty: ScalarType, tag: u32) -> Tokens {
+    quote!(();)
 }
 
 enum Field {
@@ -531,66 +559,21 @@ impl Field {
     fn encode(&self) -> Tokens {
         match *self {
             Field::Scalar { ref ident, ty, tag, label, ref default , packed, .. } => {
-                let encode = ty.encode(ident);
-                let wire_type = ty.wire_type();
-                let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type));
-
                 match label {
-                    None => {
-                        if let Some(default) = default {
-                            quote! {
-                                #encode_key;
-                                if self.#ident != #default {
-                                    #encode;
-                                }
-                            }
-                        } else {
-                        quote! {
-                            #encode_key;
-                            if self.#ident != ::std::default::Default::default() {
-                                #encode;
-                            }
-                        }
-
-                        }
-                    },
-                    Some(Label::Optional) => {
-
-                    },
-                    Some(Label::Required) => {
-
-                    },
-                    Some(Lable::Repeated) => {
-
-                    }
+                    None => encode_scalar_field(ident, ty, tag, default.as_ref()),
+                    Some(Label::Optional) => encode_optional_scalar_field(ident, ty, tag),
+                    Some(Label::Required) => encode_required_scalar_field(ident, ty, tag),
+                    Some(Label::Repeated) if packed => encode_packed_scalar_field(ident, ty, tag),
+                    Some(Label::Repeated) => encode_repeated_scalar_field(ident, ty, tag),
                 }
-
-                match default {
-                    Some(default) => {
-                    },
-                    None => {
-                    },
-                }
-
-
-
-
-
-
-
-
-                quote!(();)
             },
-            Field::Scalar { ref ident, ty, tag, label: Some(Label::Optional), .. } => {
-                quote!(();)
-            }
-            Field::Scalar { ref ident, ty, tag, label: Some(Label::Required), .. } => {
-                quote!(();)
-            }
-            Field::Scalar { ref ident, ty, tag, label: Some(Label::Repeated), packed, .. } => {
-                quote!(();)
-            }
-            Field::Message { tag, .. } => {
+            Field::Message { ref ident, tag, .. } => {
+                quote! {
+                    let len = self.#ident.encoded_len();
+                    _proto::encoding::encode_key(#tag, _proto::encoding::WireType::Varint, buf);
+                    _proto::encoding::encode_varint(len as u64, buf);
+                    self.#ident.encode_length_delimited(buf)
+                }
                 quote!(();)
             }
             Field::Map { tag, .. } => {
@@ -599,9 +582,7 @@ impl Field {
             Field::Oneof { .. } => {
                 quote!(();)
             }
-
         }
-
     }
 
     fn merge(&self, tag: &syn::Ident, wire_type: &syn::Ident) -> Tokens {
