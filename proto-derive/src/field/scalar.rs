@@ -59,10 +59,8 @@ impl Field {
         let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf););
         let encode = self.ty.encode(&field);
 
-
         let value = syn::Ident::new(format!("value"));
         let encode_value = self.ty.encode(&value);
-
 
         match self.kind {
             Kind::Plain(Some(ref default)) => quote! {
@@ -111,6 +109,83 @@ impl Field {
                     }
                 }
             },
+        }
+    }
+
+    /// Returns a statement which decodes the scalar field.
+    pub fn merge(&self, wire_type: &syn::Ident) -> Tokens {
+        let field_wire_type = self.ty.wire_type();
+
+        let name = &self.ident;
+        let ty = self.ty.as_str();
+        let field = syn::Ident::new(format!("self.{}", name));
+        let merge = self.ty.merge(&field);
+
+        match self.kind {
+            Kind::Plain(..) | Kind::Required(..) => {
+                quote! {
+                    if #field_wire_type != #wire_type {
+                        return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
+                                                     format!("invalid wire type: {}", #wire_type));
+                    }
+                    #merge
+                }
+            },
+            Kind::Optional if self.ty.is_length_delimited() => {
+                let merge = self.ty.merge(&field);
+                quote! {
+                    if #field_wire_type != #wire_type {
+                        return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
+                                                     format!("invalid wire type: {}", #wire_type));
+                    }
+                    #merge
+                }
+            },
+            Kind::Plain(..) | Kind::Required(..) => {
+                let decode = self.ty.decode();
+                quote! {
+                    if #field_wire_type != #wire_type {
+                        return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
+                                                     format!("invalid wire type: {}", #wire_type));
+                    }
+                    #field = #decode?;
+                }
+            }
+
+            Kind::Optional => quote! {
+                debug_assert_eq!(#field_tag, #tag);
+                debug_assert_eq!(#field_wire_type, #wire_type);
+            },
+            Kind::Repeated if self.ty.is_length_delimited() => quote! {
+                debug_assert_eq!(#wire_type, #field_wire_type);
+
+
+            },
+            Kind::Repeated | Kind::Packed => {
+                let decode = self.ty.decode();
+                quote! {
+                    if #wire_type == _proto::encoding::WireType::LengthDelimited {
+                        let len = _proto::encoding::decode_varint(buf)?;
+                        if len > buf.remaining() as u64 {
+                            return ::std::Result::Err(
+                                ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
+                                                      "buffer underflow"));
+                        }
+                        let len = len as usize;
+                        let buf = &mut buf.take(len);
+                        while buf.has_remaining() {
+                            #field.push(#decode?);
+                        }
+                    } else {
+                        if #field_wire_type != #wire_type {
+                            return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
+                                                         format!("invalid wire type: {}", #wire_type));
+                        }
+
+
+                    }
+                }
+            }
         }
     }
 }
@@ -212,6 +287,49 @@ impl Ty {
             Ty::String => quote!(_proto::encoding::encode_string(&#ident[..], buf);),
             Ty::Bytes => quote!(_proto::encoding::encode_bytes(&#ident[..], buf);),
             Ty::Enum => quote!(_proto::encoding::encode_int32(#ident as i32, buf);),
+        }
+    }
+
+    /// Returns an expression which evaluates to a decoded value.
+    fn decode(&self) -> Tokens {
+        match *self {
+            Ty::Double => quote!(_proto::encoding::decode_double(buf)),
+            Ty::Float => quote!(_proto::encoding::decode_float(buf)),
+            Ty::Int32 => quote!(_proto::encoding::decode_int32(buf)),
+            Ty::Int64 => quote!(_proto::encoding::decode_int64(buf)),
+            Ty::Uint32 => quote!(_proto::encoding::decode_uint32(buf)),
+            Ty::Uint64 => quote!(_proto::encoding::decode_uint64(buf)),
+            Ty::Sint32 => quote!(_proto::encoding::decode_sint32(buf)),
+            Ty::Sint64 => quote!(_proto::encoding::decode_sint64(buf)),
+            Ty::Fixed32 => quote!(_proto::encoding::decode_fixed32(buf)),
+            Ty::Fixed64 => quote!(_proto::encoding::decode_fixed64(buf)),
+            Ty::Sfixed32 => quote!(_proto::encoding::decode_sfixed32(buf)),
+            Ty::Sfixed64 => quote!(_proto::encoding::decode_sfixed64(buf)),
+            Ty::Bool => quote!(_proto::encoding::decode_bool(buf)),
+            Ty::Enum => quote!(::std::convert::From(_proto::encoding::decode_int32(buf))),
+            Ty::String | Ty::Bytes => {
+                let merge = self.merge(&syn::Ident::new("value".to_string()));
+                quote! {
+                    {
+                        let mut value = ::std::default::Default::default();
+                        let value = &mut value;
+                        #merge;
+                        value
+                    }
+                }
+            }
+        }
+    }
+
+    /// Returns an statement which merges a new decoded value into the provided field.
+    fn merge(&self, ident: &syn::Ident) -> Tokens {
+        match *self {
+            Ty::String => quote!(_proto::encoding::merge_string(&mut #ident, buf);),
+            Ty::Bytes => quote!(_proto::encoding::merge_bytes(&mut #ident, buf);),
+            _ => {
+                let decode = self.decode();
+                quote!(#ident = #decode;);
+            }
         }
     }
 

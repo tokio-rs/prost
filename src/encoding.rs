@@ -345,10 +345,6 @@ pub fn merge_string<B>(value: &mut String, buf: &mut Take<B>) -> Result<()> wher
     }
     Ok(())
 }
-#[inline]
-pub fn encoded_len_string(value: &str) -> usize {
-    value.len()
-}
 
 #[inline]
 pub fn encode_bytes<B>(value: &[u8], buf: &mut B) where B: BufMut {
@@ -374,28 +370,4 @@ pub fn merge_bytes<B>(value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> wher
     }
     buf.set_limit(limit - len as usize);
     Ok(())
-}
-#[inline]
-pub fn encoded_len_bytes(value: &[u8]) -> usize {
-    value.len()
-}
-
-pub fn encode_repeated<T, E, B>(tag: u32, wire_type: WireType, values: &[T], mut encode: E, b: &mut B)
-where E: FnMut(&T, &mut B),
-      B: BufMut {
-    for value in values {
-        encode_key(tag, wire_type, b);
-        encode(value, b);
-    }
-}
-
-pub fn encode_packed<T, E, L, B>(tag: u32, values: &[T], mut encode: E, mut encoded_len: L, b: &mut B)
-where E: FnMut(&T, &mut B),
-      L: FnMut(&T) -> usize,
-      B: BufMut {
-    encode_key(tag, WireType::LengthDelimited, b);
-    encode_varint(values.iter().map(|value| encoded_len(value) as u64).sum(), b);
-    for value in values {
-        encode(value, b);
-    }
 }
