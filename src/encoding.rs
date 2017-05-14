@@ -207,9 +207,7 @@ pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<()> where B: Bu
 }
 
 macro_rules! encode_repeated {
-    ($ty:ty,
-     $encode:ident,
-     $encode_repeated:ident) => (
+    ($ty:ty, $encode:ident, $encode_repeated:ident) => (
          #[inline]
          pub fn $encode_repeated<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
              for value in values {
@@ -259,7 +257,9 @@ macro_rules! varint {
      $encode_repeated:ident,
      $merge_repeated:ident,
      $encode_packed:ident,
-     $encoded_len:ident) => (
+     $encoded_len:ident,
+     $encoded_len_repeated:ident,
+     $encoded_len_packed:ident) => (
         varint!($ty,
                 $encode,
                 $merge,
@@ -267,6 +267,8 @@ macro_rules! varint {
                 $merge_repeated,
                 $encode_packed,
                 $encoded_len,
+                $encoded_len_repeated,
+                $encoded_len_packed,
                 to_uint64(value) { *value as u64 },
                 from_uint64(value) { value as $ty });
     );
@@ -278,6 +280,8 @@ macro_rules! varint {
      $merge_repeated:ident,
      $encode_packed:ident,
      $encoded_len:ident,
+     $encoded_len_repeated:ident,
+     $encoded_len_packed:ident,
      to_uint64($to_uint64_value:ident) $to_uint64:expr,
      from_uint64($from_uint64_value:ident) $from_uint64:expr) => (
 
@@ -302,7 +306,9 @@ macro_rules! varint {
              if values.is_empty() { return; }
 
              encode_key(tag, WireType::LengthDelimited, buf);
-             let len: usize = values.iter().map($encoded_len).sum();
+             let len: usize = values.iter().map(|$to_uint64_value| {
+                 encoded_len_varint($to_uint64)
+             }).sum();
              encode_varint(len as u64, buf);
 
              for $to_uint64_value in values {
@@ -313,8 +319,22 @@ macro_rules! varint {
          merge_repeated_numeric!($ty, WireType::Varint, $merge, $merge_repeated);
 
          #[inline]
-         pub fn $encoded_len($to_uint64_value: &$ty) -> usize {
-             encoded_len_varint($to_uint64)
+         pub fn $encoded_len(tag: u32, $to_uint64_value: &$ty) -> usize {
+             key_len(tag) + encoded_len_varint($to_uint64)
+         }
+
+         #[inline]
+         pub fn $encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+             key_len(tag) * values.len() + values.iter().map(|$to_uint64_value| {
+                 encoded_len_varint($to_uint64)
+             }).sum::<usize>()
+         }
+
+         #[inline]
+         pub fn $encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
+             key_len(tag) + values.iter().map(|$to_uint64_value| {
+                 encoded_len_varint($to_uint64)
+             }).sum::<usize>()
          }
     );
 }
@@ -326,6 +346,8 @@ varint!(bool,
         merge_repeated_bool,
         encode_packed_bool,
         encoded_len_bool,
+        encoded_len_repeated_bool,
+        encoded_len_packed_bool,
         to_uint64(value) if *value { 1u64 } else { 0u64 },
         from_uint64(value) value != 0);
 
@@ -335,7 +357,9 @@ varint!(i32,
         encode_repeated_int32,
         merge_repeated_int32,
         encode_packed_int32,
-        encoded_len_int32);
+        encoded_len_int32,
+        encoded_len_repeated_int32,
+        encoded_len_packed_int32);
 
 varint!(i64,
         encode_int64,
@@ -343,7 +367,9 @@ varint!(i64,
         encode_repeated_int64,
         merge_repeated_int64,
         encode_packed_int64,
-        encoded_len_int64);
+        encoded_len_int64,
+        encoded_len_repeated_int64,
+        encoded_len_packed_int64);
 
 varint!(u32,
         encode_uint32,
@@ -351,7 +377,9 @@ varint!(u32,
         encode_repeated_uint32,
         merge_repeated_uint32,
         encode_packed_uint32,
-        encoded_len_uint32);
+        encoded_len_uint32,
+        encoded_len_repeated_uint32,
+        encoded_len_packed_uint32);
 
 varint!(u64,
         encode_uint64,
@@ -359,7 +387,9 @@ varint!(u64,
         encode_repeated_uint64,
         merge_repeated_uint64,
         encode_packed_uint64,
-        encoded_len_uint64);
+        encoded_len_uint64,
+        encoded_len_repeated_uint64,
+        encoded_len_packed_uint64);
 
 varint!(i32,
         encode_sint32,
@@ -367,7 +397,9 @@ varint!(i32,
         encode_repeated_sint32,
         merge_repeated_sint32,
         encode_packed_sint32,
-        encoded_len_sint32,
+        encoded_len_sint3,
+        encoded_len_repeated_sint32,
+        encoded_len_packed_sint32,
         to_uint64(value) {
             ((value << 1) ^ (value >> 31)) as u64
         },
@@ -382,7 +414,9 @@ varint!(i64,
         encode_repeated_sint64,
         merge_repeated_sint64,
         encode_packed_sint64,
-        encoded_len_sint64,
+        encoded_len_sint6,
+        encoded_len_repeated_sint64,
+        encoded_len_packed_sint64,
         to_uint64(value) {
             ((value << 1) ^ (value >> 63)) as u64
         },
@@ -400,6 +434,8 @@ macro_rules! fixed_width {
      $merge_repeated:ident,
      $encode_packed:ident,
      $encoded_len:ident,
+     $encoded_len_repeated:ident,
+     $encoded_len_packed:ident,
      $put:ident,
      $get:ident) => (
 
@@ -461,8 +497,18 @@ macro_rules! fixed_width {
          }
 
          #[inline]
-         pub fn $encoded_len(_: &$ty) -> usize {
-             $width
+         pub fn $encoded_len(tag: u32, _: &$ty) -> usize {
+             key_len(tag) + $width
+         }
+
+         #[inline]
+         pub fn $encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+             (key_len(tag) + $width) * values.len()
+         }
+
+         #[inline]
+         pub fn $encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
+             key_len(tag) + $width * values.len()
          }
     );
 }
@@ -476,6 +522,8 @@ fixed_width!(f32,
              merge_repeated_float,
              encode_packed_float,
              encoded_len_float,
+             encoded_len_repeated_float,
+             encoded_len_packed_float,
              put_f32,
              get_f32);
 
@@ -488,6 +536,8 @@ fixed_width!(f64,
              merge_repeated_double,
              encode_packed_double,
              encoded_len_double,
+             encoded_len_repeated_double,
+             encoded_len_packed_double,
              put_f64,
              get_f64);
 
@@ -500,6 +550,8 @@ fixed_width!(u32,
              merge_repeated_fixed32,
              encode_packed_fixed32,
              encoded_len_fixed32,
+             encoded_len_repeated_fixed32,
+             encoded_len_packed_fixed32,
              put_u32,
              get_u32);
 
@@ -512,6 +564,8 @@ fixed_width!(u64,
              merge_repeated_fixed64,
              encode_packed_fixed64,
              encoded_len_fixed64,
+             encoded_len_repeated_fixed64,
+             encoded_len_packed_fixed64,
              put_u64,
              get_u64);
 
@@ -524,6 +578,8 @@ fixed_width!(i32,
              merge_repeated_sfixed32,
              encode_packed_sfixed32,
              encoded_len_sfixed32,
+             encoded_len_repeated_sfixed32,
+             encoded_len_packed_sfixed32,
              put_i32,
              get_i32);
 
@@ -536,13 +592,17 @@ fixed_width!(i64,
              merge_repeated_sfixed64,
              encode_packed_sfixed64,
              encoded_len_sfixed64,
+             encoded_len_repeated_sfixed64,
+             encoded_len_packed_sfixed64,
              put_i64,
              get_i64);
 
-macro_rules! merge_repeated_length_delimited {
+macro_rules! length_delimited {
     ($ty:ty,
      $merge:ident,
-     $merge_repeated:ident) => (
+     $merge_repeated:ident,
+     $encoded_len:ident,
+     $encoded_len_repeated:ident) => (
          #[inline]
          pub fn $merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
@@ -550,6 +610,18 @@ macro_rules! merge_repeated_length_delimited {
                 $merge(wire_type, &mut value, buf)?;
                 values.push(value);
                 Ok(())
+         }
+
+         #[inline]
+         pub fn $encoded_len(tag: u32, value: &$ty) -> usize {
+             key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
+         }
+
+         #[inline]
+         pub fn $encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+             key_len(tag) * values.len() + values.iter().map(|value| {
+                 encoded_len_varint(value.len() as u64) + value.len()
+             }).sum::<usize>()
          }
     )
 }
@@ -573,7 +645,7 @@ pub fn merge_string<B>(wire_type: WireType, value: &mut String, buf: &mut Take<B
     Ok(())
 }
 encode_repeated!(String, encode_string, encode_repeated_string);
-merge_repeated_length_delimited!(String, merge_string, merge_repeated_string);
+length_delimited!(String, merge_string, merge_repeated_string, encoded_len_string, encoded_len_repeated_string);
 
 #[inline]
 pub fn encode_bytes<B>(tag: u32, value: &Vec<u8>, buf: &mut B) where B: BufMut {
@@ -603,4 +675,4 @@ pub fn merge_bytes<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B
     Ok(())
 }
 encode_repeated!(Vec<u8>, encode_bytes, encode_repeated_bytes);
-merge_repeated_length_delimited!(Vec<u8>, merge_bytes, merge_repeated_bytes);
+length_delimited!(Vec<u8>, merge_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes);

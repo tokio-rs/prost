@@ -26,10 +26,9 @@ impl Field {
                packed: bool) -> Result<Field> {
 
         let kind = match (label, packed, default.is_some()) {
-
-            (None, false, _) => Kind::Plain(default),
-            (Some(Label::Optional), false, false) => Kind::Optional,
-            (Some(Label::Required), false, _) => Kind::Required(default),
+            (None, false, _) => Kind::Plain(default.unwrap_or_else(|| ty.default())),
+            (Some(Label::Optional), false, _) => Kind::Optional(default.unwrap_or_else(|| ty.default())),
+            (Some(Label::Required), false, _) => Kind::Required(default.unwrap_or_else(|| ty.default())),
             (Some(Label::Repeated), false, false) => Kind::Repeated,
             (Some(Label::Repeated), true, false) => {
                 if ty.is_length_delimited() {
@@ -39,7 +38,6 @@ impl Field {
             },
             (_, true, _) => bail!("packed attribute may only be applied to repeated fields"),
             (Some(Label::Repeated), _, true) => bail!("repeated fields may not have a default value"),
-            (Some(Label::Optional), _, true) => bail!("optional fields may not have a default value"),
         };
 
         Ok(Field {
@@ -52,140 +50,97 @@ impl Field {
 
     /// Returns a statement which encodes the scalar field.
     pub fn encode(&self) -> Tokens {
+        let encode_fn = {
+            let kind = match self.kind {
+                Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+                Kind::Repeated => "repeated_",
+                Kind::Packed => "packed_",
+            };
+            let ty = self.ty.as_str();
+            syn::Ident::new(format!("_proto::encoding::encode_{}{}", kind, ty))
+        };
+
         let tag = self.tag;
-
         let field = syn::Ident::new(format!("self.{}", self.ident));
-        let wire_type = self.ty.wire_type();
-        let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf););
-        let encode = self.ty.encode(&field);
-
-        let value = syn::Ident::new(format!("value"));
-        let encode_value = self.ty.encode(&value);
 
         match self.kind {
-            Kind::Plain(Some(ref default)) => quote! {
+            Kind::Plain(ref default) => quote! {
                 if #field != #default {
-                    #encode_key
-                    #encode
+                    #encode_fn(#tag, &#field, buf);
                 }
             },
-            Kind::Plain(None) => quote! {
-                if #field != ::std::default::Default::default() {
-                    #encode_key
-                    #encode
-                }
-            },
-            Kind::Optional => quote! {
+            Kind::Optional(ref default) => quote! {
                 if let Some(value) = #field {
-                    #encode_key
-                    #encode_value
-                }
-            },
-            Kind::Required(..) => quote! {
-                #encode_key
-                #encode
-            },
-            Kind::Repeated => {
-                quote! {
-                    for value in #field {
-                        #encode_key
-                        #encode_value
+                    if value != #default {
+                        #encode_fn(#tag, value, buf);
                     }
                 }
             },
-            Kind::Packed => {
-                let len = if let Some(len) = self.ty.fixed_encoded_len() {
-                    quote!(#field.len() as u64 * #len)
-                } else {
-                    let encoded_len = self.ty.encoded_len(&value);
-                    quote!(#field.iter().map(|value| #encoded_len).sum() as u64)
-                };
-
-                quote! {
-                    _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
-                    _proto::encoding::encode_varint(#len, buf);
-                    for value in #field {
-                        #encode_value
-                    }
-                }
+            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
+                #encode_fn(#tag, &#field, buf);
             },
         }
     }
 
-    /// Returns a statement which decodes the scalar field.
+    /// Returns a statement which decodes a scalar value and merges it with the field.
     pub fn merge(&self, wire_type: &syn::Ident) -> Tokens {
-        let field_wire_type = self.ty.wire_type();
-
-        let name = &self.ident;
-        let ty = self.ty.as_str();
-        let field = syn::Ident::new(format!("self.{}", name));
-        let merge = self.ty.merge(&field);
+        let merge_fn = {
+            let kind = match self.kind {
+                Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+                Kind::Repeated | Kind::Packed => "repeated_",
+            };
+            let ty = self.ty.as_str();
+            syn::Ident::new(format!("_proto::encoding::merge_{}{}", kind, ty))
+        };
+        let field = syn::Ident::new(format!("self.{}", self.ident));
 
         match self.kind {
-            Kind::Plain(..) | Kind::Required(..) => {
-                quote! {
-                    if #field_wire_type != #wire_type {
-                        return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
-                                                     format!("invalid wire type: {}", #wire_type));
-                    }
-                    #merge
+            Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+                #merge_fn(#wire_type, &mut #field, buf)?;
+            },
+            Kind::Optional(..) => quote! {
+                let mut value = #field.take().unwrap_or_default();
+                #merge_fn(#wire_type, &mut value, buf)?;
+                #field = Some(value);
+            },
+        }
+    }
+
+    /// Returns an expression which evaluates to the encoded length of the field.
+    pub fn encoded_len(&self) -> Tokens {
+        let encoded_len_fn = {
+            let kind = match self.kind {
+                Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+                Kind::Repeated => "repeated_",
+                Kind::Packed => "packed_",
+            };
+            let ty = self.ty.as_str();
+            syn::Ident::new(format!("_proto::encoding::encode_len_{}{}", kind, ty))
+        };
+
+        let tag = self.tag;
+        let field = syn::Ident::new(format!("self.{}", self.ident));
+
+        match self.kind {
+            Kind::Plain(ref default) => quote! {
+                if #field != #default {
+                    #encoded_len_fn(#tag, &#field);
+                } else {
+                    0
                 }
             },
-            Kind::Optional if self.ty.is_length_delimited() => {
-                let merge = self.ty.merge(&field);
-                quote! {
-                    if #field_wire_type != #wire_type {
-                        return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
-                                                     format!("invalid wire type: {}", #wire_type));
-                    }
-                    #merge
-                }
-            },
-            Kind::Plain(..) | Kind::Required(..) => {
-                let decode = self.ty.decode();
-                quote! {
-                    if #field_wire_type != #wire_type {
-                        return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
-                                                     format!("invalid wire type: {}", #wire_type));
-                    }
-                    #field = #decode?;
-                }
-            }
-
-            Kind::Optional => quote! {
-                debug_assert_eq!(#field_tag, #tag);
-                debug_assert_eq!(#field_wire_type, #wire_type);
-            },
-            Kind::Repeated if self.ty.is_length_delimited() => quote! {
-                debug_assert_eq!(#wire_type, #field_wire_type);
-
-
-            },
-            Kind::Repeated | Kind::Packed => {
-                let decode = self.ty.decode();
-                quote! {
-                    if #wire_type == _proto::encoding::WireType::LengthDelimited {
-                        let len = _proto::encoding::decode_varint(buf)?;
-                        if len > buf.remaining() as u64 {
-                            return ::std::Result::Err(
-                                ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
-                                                      "buffer underflow"));
-                        }
-                        let len = len as usize;
-                        let buf = &mut buf.take(len);
-                        while buf.has_remaining() {
-                            #field.push(#decode?);
-                        }
+            Kind::Optional(ref default) => quote! {
+                #field.as_ref().map_or(0, |value| {
+                    if value != #default {
+                        #encoded_len_fn(#tag, value);
                     } else {
-                        if #field_wire_type != #wire_type {
-                            return ::std::io::Error::new(::std::io::ErrorKind::InvalidData,
-                                                         format!("invalid wire type: {}", #wire_type));
-                        }
-
-
+                        0
                     }
-                }
-            }
+                })
+            },
+            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
+                #encoded_len_fn(#tag, &#field)
+            },
         }
     }
 }
@@ -268,122 +223,24 @@ impl Ty {
         None
     }
 
-    /// Returns a statement which encodes the scalar field with the provided name.
-    fn encode(&self, ident: &syn::Ident) -> Tokens {
+    pub fn default(&self) -> syn::Lit {
         match *self {
-            Ty::Double => quote!(_proto::encoding::encode_double(#ident, buf);),
-            Ty::Float => quote!(_proto::encoding::encode_float(#ident, buf);),
-            Ty::Int32 => quote!(_proto::encoding::encode_int32(#ident, buf);),
-            Ty::Int64 => quote!(_proto::encoding::encode_int64(#ident, buf);),
-            Ty::Uint32 => quote!(_proto::encoding::encode_uint32(#ident, buf);),
-            Ty::Uint64 => quote!(_proto::encoding::encode_uint64(#ident, buf);),
-            Ty::Sint32 => quote!(_proto::encoding::encode_sint32(#ident, buf);),
-            Ty::Sint64 => quote!(_proto::encoding::encode_sint64(#ident, buf);),
-            Ty::Fixed32 => quote!(_proto::encoding::encode_fixed32(#ident, buf);),
-            Ty::Fixed64 => quote!(_proto::encoding::encode_fixed64(#ident, buf);),
-            Ty::Sfixed32 => quote!(_proto::encoding::encode_sfixed32(#ident, buf);),
-            Ty::Sfixed64 => quote!(_proto::encoding::encode_sfixed64(#ident, buf);),
-            Ty::Bool => quote!(_proto::encoding::encode_bool(#ident, buf);),
-            Ty::String => quote!(_proto::encoding::encode_string(&#ident[..], buf);),
-            Ty::Bytes => quote!(_proto::encoding::encode_bytes(&#ident[..], buf);),
-            Ty::Enum => quote!(_proto::encoding::encode_int32(#ident as i32, buf);),
-        }
-    }
-
-    /// Returns an expression which evaluates to a decoded value.
-    fn decode(&self) -> Tokens {
-        match *self {
-            Ty::Double => quote!(_proto::encoding::decode_double(buf)),
-            Ty::Float => quote!(_proto::encoding::decode_float(buf)),
-            Ty::Int32 => quote!(_proto::encoding::decode_int32(buf)),
-            Ty::Int64 => quote!(_proto::encoding::decode_int64(buf)),
-            Ty::Uint32 => quote!(_proto::encoding::decode_uint32(buf)),
-            Ty::Uint64 => quote!(_proto::encoding::decode_uint64(buf)),
-            Ty::Sint32 => quote!(_proto::encoding::decode_sint32(buf)),
-            Ty::Sint64 => quote!(_proto::encoding::decode_sint64(buf)),
-            Ty::Fixed32 => quote!(_proto::encoding::decode_fixed32(buf)),
-            Ty::Fixed64 => quote!(_proto::encoding::decode_fixed64(buf)),
-            Ty::Sfixed32 => quote!(_proto::encoding::decode_sfixed32(buf)),
-            Ty::Sfixed64 => quote!(_proto::encoding::decode_sfixed64(buf)),
-            Ty::Bool => quote!(_proto::encoding::decode_bool(buf)),
-            Ty::Enum => quote!(::std::convert::From(_proto::encoding::decode_int32(buf))),
-            Ty::String | Ty::Bytes => {
-                let merge = self.merge(&syn::Ident::new("value".to_string()));
-                quote! {
-                    {
-                        let mut value = ::std::default::Default::default();
-                        let value = &mut value;
-                        #merge;
-                        value
-                    }
-                }
-            }
-        }
-    }
-
-    /// Returns an statement which merges a new decoded value into the provided field.
-    fn merge(&self, ident: &syn::Ident) -> Tokens {
-        match *self {
-            Ty::String => quote!(_proto::encoding::merge_string(&mut #ident, buf);),
-            Ty::Bytes => quote!(_proto::encoding::merge_bytes(&mut #ident, buf);),
-            _ => {
-                let decode = self.decode();
-                quote!(#ident = #decode;);
-            }
-        }
-    }
-
-    /// Returns an expression which evaluates to the encoded length of the value.
-    fn encoded_len(&self, ident: &syn::Ident) -> Tokens {
-        match *self {
-            Ty::Bool => quote!(1),
-            Ty::Float | Ty::Fixed32 | Ty::Sfixed32 => quote!(4),
-            Ty::Double | Ty::Fixed64 | Ty::Sfixed64 => quote!(8),
-            Ty::Int32 => quote!(_proto::encoding::encoded_len_int32(#ident)),
-            Ty::Int64 => quote!(_proto::encoding::encoded_len_int64(#ident)),
-            Ty::Uint32 => quote!(_proto::encoding::encoded_len_uint32(#ident)),
-            Ty::Uint64 => quote!(_proto::encoding::encoded_len_uint64(#ident)),
-            Ty::Sint32 => quote!(_proto::encoding::encoded_len_sint32(#ident)),
-            Ty::Sint64 => quote!(_proto::encoding::encoded_len_sint64(#ident)),
-            Ty::Enum => quote!(_proto::encoding::encoded_len_varint(#ident as u64)),
-            Ty::String | Ty::Bytes => quote! {
-                {
-                    let len = #ident.len();
-                    len + _proto::encoding::encoded_len_varint(len as u64)
-                }
-            },
-        }
-    }
-
-    /// Returns the encoded length of the type, if it's not value-dependent.
-    fn fixed_encoded_len(&self) -> Option<usize> {
-        match *self {
-            Ty::Bool => Some(1),
-            Ty::Float | Ty::Fixed32 | Ty::Sfixed32 => Some(4),
-            Ty::Double | Ty::Fixed64 | Ty::Sfixed64 => Some(8),
-            _ => None,
-        }
-    }
-
-    /// Returns an expression which evaluates to the wire type of the scalar type.
-    fn wire_type(&self) -> Tokens {
-        match *self {
-            Ty::Float
-                | Ty::Fixed32
-                | Ty::Sfixed32 => quote!(_proto::encoding::WireType::ThirtyTwoBit),
-            Ty::Double
-                | Ty::Fixed64
-                | Ty::Sfixed64 => quote!(_proto::encoding::WireType::SixtyFourBit),
-            Ty::Int32
-                | Ty::Int64
-                | Ty::Uint32
-                | Ty::Uint64
-                | Ty::Sint32
-                | Ty::Sint64
-                | Ty::Bool
-                | Ty::Enum => quote!(_proto::encoding::WireType::Varint),
-            Ty::String
-                | Ty::Bytes => quote!(_proto::encoding::WireType::LengthDelimited),
+            Ty::Float => syn::Lit::Float("0.0".to_string(), syn::FloatTy::F32),
+            Ty::Double => syn::Lit::Float("0.0".to_string(), syn::FloatTy::F64),
+            Ty::Int32 => syn::Lit::Int(0, syn::IntTy::I32),
+            Ty::Int64 => syn::Lit::Int(0, syn::IntTy::I64),
+            Ty::Uint32 => syn::Lit::Int(0, syn::IntTy::U32),
+            Ty::Uint64 => syn::Lit::Int(0, syn::IntTy::U64),
+            Ty::Sint32 => syn::Lit::Int(0, syn::IntTy::I32),
+            Ty::Sint64 => syn::Lit::Int(0, syn::IntTy::I64),
+            Ty::Fixed32 => syn::Lit::Int(0, syn::IntTy::U32),
+            Ty::Fixed64 => syn::Lit::Int(0, syn::IntTy::U64),
+            Ty::Sfixed32 => syn::Lit::Int(0, syn::IntTy::I32),
+            Ty::Sfixed64 => syn::Lit::Int(0, syn::IntTy::I64),
+            Ty::Bool => syn::Lit::Bool(false),
+            Ty::String => syn::Lit::Str(String::new(), syn::StrStyle::Cooked),
+            Ty::Bytes => syn::Lit::ByteStr(Vec::new(), syn::StrStyle::Cooked),
+            Ty::Enum => unimplemented!(),
         }
     }
 
@@ -408,11 +265,11 @@ impl fmt::Display for Ty {
 /// Scalar protobuf field types.
 pub enum Kind {
     /// A plain proto3 scalar field with an optional default value.
-    Plain(Option<syn::Lit>),
+    Plain(syn::Lit),
     /// An optional scalar field.
-    Optional,
+    Optional(syn::Lit),
     /// A required proto2 scalar field with an optional default value.
-    Required(Option<syn::Lit>),
+    Required(syn::Lit),
     /// A repeated scalar field.
     Repeated,
     /// A packed repeated scalar field.
