@@ -5,10 +5,6 @@ extern crate bytes;
 #[macro_use]
 extern crate quickcheck;
 
-#[cfg(test)]
-#[macro_use]
-extern crate proto_derive;
-
 mod message;
 
 pub mod encoding;

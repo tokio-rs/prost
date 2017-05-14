@@ -539,30 +539,50 @@ fixed_width!(i64,
              put_i64,
              get_i64);
 
+macro_rules! merge_repeated_length_delimited {
+    ($ty:ty,
+     $merge:ident,
+     $merge_repeated:ident) => (
+         #[inline]
+         pub fn $merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+                check_wire_type(WireType::LengthDelimited, wire_type)?;
+                let mut value = Default::default();
+                $merge(wire_type, &mut value, buf)?;
+                values.push(value);
+                Ok(())
+         }
+    )
+}
+
 #[inline]
-pub fn encode_string<B>(value: &str, buf: &mut B) where B: BufMut {
+pub fn encode_string<B>(tag: u32, value: &String, buf: &mut B) where B: BufMut {
+    encode_key(tag, WireType::LengthDelimited, buf);
     buf.put_slice(value.as_bytes());
 }
 #[inline]
-pub fn merge_string<B>(value: &mut String, buf: &mut Take<B>) -> Result<()> where B: Buf {
+pub fn merge_string<B>(wire_type: WireType, value: &mut String, buf: &mut Take<B>) -> Result<()> where B: Buf {
     unsafe {
         // String::as_mut_vec is unsafe because it doesn't check that the bytes
         // inserted into it the resulting vec are valid UTF-8. We check
         // explicitly in order to ensure this is safe.
-        merge_bytes(value.as_mut_vec(), buf)?;
+        merge_bytes(wire_type, value.as_mut_vec(), buf)?;
         str::from_utf8(value.as_bytes()).map_err(|_| {
             invalid_data("failed to decode string: data is not UTF-8 encoded")
         })?;
     }
     Ok(())
 }
+encode_repeated!(String, encode_string, encode_repeated_string);
+merge_repeated_length_delimited!(String, merge_string, merge_repeated_string);
 
 #[inline]
-pub fn encode_bytes<B>(value: &[u8], buf: &mut B) where B: BufMut {
+pub fn encode_bytes<B>(tag: u32, value: &Vec<u8>, buf: &mut B) where B: BufMut {
+    encode_key(tag, WireType::LengthDelimited, buf);
     buf.put_slice(value);
 }
 #[inline]
-pub fn merge_bytes<B>(value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+pub fn merge_bytes<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+    check_wire_type(WireType::LengthDelimited, wire_type)?;
     let len = decode_varint(buf)?;
     if (buf.remaining() as u64) < len {
         return Err(invalid_input("failed to decode length-delimited field: buffer underflow"));
@@ -582,3 +602,5 @@ pub fn merge_bytes<B>(value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> wher
     buf.set_limit(limit - len as usize);
     Ok(())
 }
+encode_repeated!(Vec<u8>, encode_bytes, encode_repeated_bytes);
+merge_repeated_length_delimited!(Vec<u8>, merge_bytes, merge_repeated_bytes);
