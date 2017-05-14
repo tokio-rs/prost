@@ -84,10 +84,10 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64> where B: Buf {
         }
 
         if i == 10 {
-            return Err(invalid_data("failed to decode varint: integer overflow"));
+            return Err(invalid_data("varint overflow"));
         }
         if !buf.has_remaining() {
-            return Err(invalid_data("failed to decode varint: buffer underflow"));
+            return Err(invalid_data("buffer underflow"));
         }
     }
     buf.advance(i);
@@ -131,7 +131,7 @@ impl WireType {
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
             5 => Ok(WireType::ThirtyTwoBit),
-            _ => Err(invalid_data(format!("unknown wire type value: {}", val))),
+            _ => Err(invalid_data(format!("invalid wire type value: {}", val))),
         }
     }
 }
@@ -151,7 +151,7 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut
 pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType)> where B: Buf {
     let key = decode_varint(buf)?;
     if key > u32::MAX as u64 {
-        return Err(invalid_data("failed to decode field key: u8 overflow"));
+        return Err(invalid_data("failed to decode field key: u32 overflow"));
     }
     let wire_type = WireType::try_from(key as u8 & 0x07)?;
     let tag = key as u32 >> 3;
@@ -168,9 +168,9 @@ pub fn key_len(tag: u32) -> usize {
 /// Checks that the expected wire type matches the actual wire type,
 /// or returns an error result.
 #[inline]
-pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
+fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
     if expected != actual {
-        return Err(invalid_data(format!("illegal wire type: {:?} (expected {:?})", actual, expected)));
+        return Err(invalid_data(format!("invalid wire type: {:?} (expected {:?})", actual, expected)));
     }
     Ok(())
 }
@@ -179,24 +179,26 @@ pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
 pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
     match wire_type {
         WireType::Varint => {
-            decode_varint(buf)?;
+            decode_varint(buf).map_err(|error| {
+                Error::new(error.kind(), format!("failed to skip varint field: {}", error))
+            })?;
         },
         WireType::SixtyFourBit => {
             if buf.remaining() < 8 {
-                return Err(invalid_input("failed to skip field: buffer underflow"));
+                return Err(invalid_input("failed to skip 64-bit field: buffer underflow"));
             }
             buf.advance(8);
         },
         WireType::ThirtyTwoBit => {
             if buf.remaining() < 4 {
-                return Err(invalid_input("failed to skip field: buffer underflow"));
+                return Err(invalid_input("failed to skip 32-bit field: buffer underflow"));
             }
             buf.advance(4);
         },
         WireType::LengthDelimited => {
             let len = decode_varint(buf)?;
             if len > buf.remaining() as u64 {
-                return Err(invalid_input("failed to skip field: buffer underflow"));
+                return Err(invalid_input("failed to skip length delimited field: buffer underflow"));
             }
             buf.advance(len as usize);
         },
@@ -204,129 +206,338 @@ pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<()> where B: Bu
     Ok(())
 }
 
-#[inline]
-pub fn encode_bool<B>(value: bool, buf: &mut B) where B: BufMut { buf.put_u8(if value { 1u8 } else { 0u8 }); }
-#[inline]
-pub fn decode_bool<B>(buf: &mut B) -> Result<bool> where B: Buf { decode_varint(buf).map(|value| value != 0) }
-
-#[inline]
-pub fn encode_int32<B>(value: i32, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
-#[inline]
-pub fn decode_int32<B>(buf: &mut B) -> Result<i32> where B: Buf { decode_varint(buf).map(|value| value as _) }
-#[inline]
-pub fn encoded_len_int32(value: i32) -> usize { encoded_len_varint(value as _) }
-
-#[inline]
-pub fn encode_int64<B>(value: i64, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
-#[inline]
-pub fn decode_int64<B>(buf: &mut B) -> Result<i64> where B: Buf { decode_varint(buf).map(|value| value as _) }
-#[inline]
-pub fn encoded_len_int64(value: i64) -> usize { encoded_len_varint(value as _) }
-
-#[inline]
-pub fn encode_uint32<B>(value: u32, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
-#[inline]
-pub fn decode_uint32<B>(buf: &mut B) -> Result<u32> where B: Buf { decode_varint(buf).map(|value| value as _) }
-#[inline]
-pub fn encoded_len_uint32(value: u32) -> usize { encoded_len_varint(value as _) }
-
-#[inline]
-pub fn encode_uint64<B>(value: u64, buf: &mut B) where B: BufMut { encode_varint(value as _, buf) }
-#[inline]
-pub fn decode_uint64<B>(buf: &mut B) -> Result<u64> where B: Buf { decode_varint(buf).map(|value| value as _) }
-#[inline]
-pub fn encoded_len_uint64(value: u64) -> usize { encoded_len_varint(value as _) }
-
-#[inline]
-pub fn encode_float<B>(value: f32, buf: &mut B) where B: BufMut { buf.put_f32::<LittleEndian>(value) }
-#[inline]
-pub fn decode_float<B>(buf: &mut B) -> Result<f32> where B: Buf {
-    if buf.remaining() < 4 {
-        return Err(invalid_input("failed to decode float: buffer underflow"));
-    }
-    Ok(buf.get_f32::<LittleEndian>())
+macro_rules! encode_repeated {
+    ($ty:ty,
+     $encode:ident,
+     $encode_repeated:ident) => (
+         #[inline]
+         pub fn $encode_repeated<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+             for value in values {
+                 $encode(tag, value, buf);
+             }
+         }
+    )
 }
 
-#[inline]
-pub fn encode_double<B>(value: f64, buf: &mut B) where B: BufMut { buf.put_f64::<LittleEndian>(value) }
-#[inline]
-pub fn decode_double<B>(buf: &mut B) -> Result<f64> where B: Buf {
-    if buf.remaining() < 8 {
-        return Err(invalid_input("failed to decode double: buffer underflow"));
-    }
-    Ok(buf.get_f64::<LittleEndian>())
+macro_rules! merge_repeated_numeric {
+    ($ty:ty,
+     $wire_type:expr,
+     $merge:ident,
+     $merge_repeated:ident) => (
+        #[inline]
+        pub fn $merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+            if wire_type == WireType::LengthDelimited {
+                let len = decode_varint(buf)?;
+                if len > buf.remaining() as u64 {
+                    return Err(invalid_input("buffer underflow"));
+                }
+                let len = len as usize;
+                let limit = buf.limit();
+                buf.set_limit(len);
+
+                while buf.has_remaining() {
+                let mut value = Default::default();
+                $merge(wire_type, &mut value, buf)?;
+                values.push(value);
+                }
+                buf.set_limit(limit - len);
+            } else {
+                check_wire_type($wire_type, wire_type)?;
+                let mut value = Default::default();
+                $merge(wire_type, &mut value, buf)?;
+                values.push(value);
+            }
+            Ok(())
+        }
+    )
 }
 
-#[inline]
-pub fn encode_sint32<B>(value: i32, buf: &mut B) where B: BufMut {
-    encode_varint(((value << 1) ^ (value >> 31)) as u64, buf)
-}
-#[inline]
-pub fn decode_sint32<B>(buf: &mut B) -> Result<i32> where B: Buf {
-    decode_varint(buf).map(|value| {
-        let value = value as u32;
-        ((value >> 1) as i32) ^ (-((value & 1) as i32))
-    })
-}
-#[inline]
-pub fn encoded_len_sint32(value: i32) -> usize {
-    encoded_len_varint(((value << 1) ^ (value >> 31)) as u64)
+macro_rules! varint {
+    ($ty:ty,
+     $encode:ident,
+     $merge:ident,
+     $encode_repeated:ident,
+     $merge_repeated:ident,
+     $encode_packed:ident,
+     $encoded_len:ident) => (
+        varint!($ty,
+                $encode,
+                $merge,
+                $encode_repeated,
+                $merge_repeated,
+                $encode_packed,
+                $encoded_len,
+                to_uint64(value) { *value as u64 },
+                from_uint64(value) { value as $ty });
+    );
+
+    ($ty:ty,
+     $encode:ident,
+     $merge:ident,
+     $encode_repeated:ident,
+     $merge_repeated:ident,
+     $encode_packed:ident,
+     $encoded_len:ident,
+     to_uint64($to_uint64_value:ident) $to_uint64:expr,
+     from_uint64($from_uint64_value:ident) $from_uint64:expr) => (
+
+         #[inline]
+         pub fn $encode<B>(tag: u32, $to_uint64_value: &$ty, buf: &mut B) where B: BufMut {
+             encode_key(tag, WireType::Varint, buf);
+             encode_varint($to_uint64, buf);
+         }
+
+         #[inline]
+         pub fn $merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<()> where B: Buf {
+             check_wire_type(WireType::Varint, wire_type)?;
+             let $from_uint64_value = decode_varint(buf)?;
+             *value = $from_uint64;
+             Ok(())
+         }
+
+         encode_repeated!($ty, $encode, $encode_repeated);
+
+         #[inline]
+         pub fn $encode_packed<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+             if values.is_empty() { return; }
+
+             encode_key(tag, WireType::LengthDelimited, buf);
+             let len: usize = values.iter().map($encoded_len).sum();
+             encode_varint(len as u64, buf);
+
+             for $to_uint64_value in values {
+                 encode_varint($to_uint64, buf);
+             }
+         }
+
+         merge_repeated_numeric!($ty, WireType::Varint, $merge, $merge_repeated);
+
+         #[inline]
+         pub fn $encoded_len($to_uint64_value: &$ty) -> usize {
+             encoded_len_varint($to_uint64)
+         }
+    );
 }
 
-#[inline]
-pub fn encode_sint64<B>(value: i64, buf: &mut B) where B: BufMut {
-    encode_varint(((value << 1) ^ (value >> 63)) as u64, buf)
-}
-#[inline]
-pub fn decode_sint64<B>(buf: &mut B) -> Result<i64> where B: Buf {
-    decode_varint(buf).map(|value| {
-        ((value >> 1) as i64) ^ (-((value & 1) as i64))
-    })
-}
-#[inline]
-pub fn encoded_len_sint64(value: i64) -> usize {
-    encoded_len_varint(((value << 1) ^ (value >> 63)) as u64)
+varint!(bool,
+        encode_bool,
+        merge_bool,
+        encode_repeated_bool,
+        merge_repeated_bool,
+        encode_packed_bool,
+        encoded_len_bool,
+        to_uint64(value) if *value { 1u64 } else { 0u64 },
+        from_uint64(value) value != 0);
+
+varint!(i32,
+        encode_int32,
+        merge_int32,
+        encode_repeated_int32,
+        merge_repeated_int32,
+        encode_packed_int32,
+        encoded_len_int32);
+
+varint!(i64,
+        encode_int64,
+        merge_int64,
+        encode_repeated_int64,
+        merge_repeated_int64,
+        encode_packed_int64,
+        encoded_len_int64);
+
+varint!(u32,
+        encode_uint32,
+        merge_uint32,
+        encode_repeated_uint32,
+        merge_repeated_uint32,
+        encode_packed_uint32,
+        encoded_len_uint32);
+
+varint!(u64,
+        encode_uint64,
+        merge_uint64,
+        encode_repeated_uint64,
+        merge_repeated_uint64,
+        encode_packed_uint64,
+        encoded_len_uint64);
+
+varint!(i32,
+        encode_sint32,
+        merge_sint32,
+        encode_repeated_sint32,
+        merge_repeated_sint32,
+        encode_packed_sint32,
+        encoded_len_sint32,
+        to_uint64(value) {
+            ((value << 1) ^ (value >> 31)) as u64
+        },
+        from_uint64(value) {
+            let value = value as u32;
+            ((value >> 1) as i32) ^ (-((value & 1) as i32))
+        });
+
+varint!(i64,
+        encode_sint64,
+        merge_sint64,
+        encode_repeated_sint64,
+        merge_repeated_sint64,
+        encode_packed_sint64,
+        encoded_len_sint64,
+        to_uint64(value) {
+            ((value << 1) ^ (value >> 63)) as u64
+        },
+        from_uint64(value) {
+            ((value >> 1) as i64) ^ (-((value & 1) as i64))
+        });
+
+macro_rules! fixed_width {
+    ($ty:ty,
+     $width:expr,
+     $wire_type:expr,
+     $encode:ident,
+     $merge:ident,
+     $encode_repeated:ident,
+     $merge_repeated:ident,
+     $encode_packed:ident,
+     $encoded_len:ident,
+     $put:ident,
+     $get:ident) => (
+
+         #[inline]
+         pub fn $encode<B>(tag: u32, value: &$ty, buf: &mut B) where B: BufMut {
+             encode_key(tag, $wire_type, buf);
+             buf.$put::<LittleEndian>(*value);
+         }
+
+         #[inline]
+         pub fn $merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<()> where B: Buf {
+             check_wire_type(WireType::Varint, wire_type)?;
+             if buf.remaining() < 4 {
+                 return Err(invalid_input("buffer underflow"));
+             }
+             *value = buf.$get::<LittleEndian>();
+             Ok(())
+         }
+
+         encode_repeated!($ty, $encode, $encode_repeated);
+
+         #[inline]
+         pub fn $encode_packed<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+             if values.is_empty() { return; }
+
+             encode_key(tag, WireType::LengthDelimited, buf);
+             let len = values.len() as u64 * $width;
+             encode_varint(len as u64, buf);
+
+             for value in values {
+                 buf.$put::<LittleEndian>(*value);
+             }
+         }
+
+         #[inline]
+         pub fn $merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+             if wire_type == WireType::LengthDelimited {
+                 let len = decode_varint(buf)?;
+                 if len > buf.remaining() as u64 {
+                     return Err(invalid_input("buffer underflow"));
+                 }
+                 let len = len as usize;
+                 let limit = buf.limit();
+                 buf.set_limit(len);
+
+                 while buf.has_remaining() {
+                    let mut value = Default::default();
+                    $merge(wire_type, &mut value, buf)?;
+                    values.push(value);
+                 }
+                 buf.set_limit(limit - len);
+             } else {
+                 check_wire_type(WireType::Varint, wire_type)?;
+                 let mut value = Default::default();
+                 $merge(wire_type, &mut value, buf)?;
+                 values.push(value);
+             }
+             Ok(())
+         }
+
+         #[inline]
+         pub fn $encoded_len(_: &$ty) -> usize {
+             $width
+         }
+    );
 }
 
-#[inline]
-pub fn encode_fixed32<B>(value: u32, buf: &mut B) where B: BufMut { buf.put_u32::<LittleEndian>(value) }
-#[inline]
-pub fn decode_fixed32<B>(buf: &mut B) -> Result<u32> where B: Buf {
-    if buf.remaining() < 4 {
-        return Err(invalid_input("failed to decode fixed32: buffer underflow"));
-    }
-    Ok(buf.get_u32::<LittleEndian>())
-}
+fixed_width!(f32,
+             4,
+             WireType::ThirtyTwoBit,
+             encode_float,
+             merge_float,
+             encode_repeated_float,
+             merge_repeated_float,
+             encode_packed_float,
+             encoded_len_float,
+             put_f32,
+             get_f32);
 
-#[inline]
-pub fn encode_fixed64<B>(value: u64, buf: &mut B) where B: BufMut { buf.put_u64::<LittleEndian>(value) }
-#[inline]
-pub fn decode_fixed64<B>(buf: &mut B) -> Result<u64> where B: Buf {
-    if buf.remaining() < 8 {
-        return Err(invalid_input("failed to decode fixed64: buffer underflow"));
-    }
-    Ok(buf.get_u64::<LittleEndian>())
-}
+fixed_width!(f64,
+             8,
+             WireType::SixtyFourBit,
+             encode_double,
+             merge_double,
+             encode_repeated_double,
+             merge_repeated_double,
+             encode_packed_double,
+             encoded_len_double,
+             put_f64,
+             get_f64);
 
-#[inline]
-pub fn encode_sfixed32<B>(value: i32, buf: &mut B) where B: BufMut { buf.put_i32::<LittleEndian>(value) }
-#[inline]
-pub fn decode_sfixed32<B>(buf: &mut B) -> Result<i32> where B: Buf {
-    if buf.remaining() < 4 {
-        return Err(invalid_input("failed to decode sfixed32: buffer underflow"));
-    }
-    Ok(buf.get_i32::<LittleEndian>())
-}
+fixed_width!(u32,
+             4,
+             WireType::ThirtyTwoBit,
+             encode_fixed32,
+             merge_fixed32,
+             encode_repeated_fixed32,
+             merge_repeated_fixed32,
+             encode_packed_fixed32,
+             encoded_len_fixed32,
+             put_u32,
+             get_u32);
 
-#[inline]
-pub fn encode_sfixed64<B>(value: i64, buf: &mut B) where B: BufMut { buf.put_i64::<LittleEndian>(value); }
-#[inline]
-pub fn decode_sfixed64<B>(buf: &mut B) -> Result<i64> where B: Buf {
-    if buf.remaining() < 8 {
-        return Err(invalid_input("failed to decode sfixed64 field: buffer underflow"));
-    }
-    Ok(buf.get_i64::<LittleEndian>())
-}
+fixed_width!(u64,
+             8,
+             WireType::SixtyFourBit,
+             encode_fixed64,
+             merge_fixed64,
+             encode_repeated_fixed64,
+             merge_repeated_fixed64,
+             encode_packed_fixed64,
+             encoded_len_fixed64,
+             put_u64,
+             get_u64);
+
+fixed_width!(i32,
+             4,
+             WireType::ThirtyTwoBit,
+             encode_sfixed32,
+             merge_sfixed32,
+             encode_repeated_sfixed32,
+             merge_repeated_sfixed32,
+             encode_packed_sfixed32,
+             encoded_len_sfixed32,
+             put_i32,
+             get_i32);
+
+fixed_width!(i64,
+             8,
+             WireType::SixtyFourBit,
+             encode_sfixed64,
+             merge_sfixed64,
+             encode_repeated_sfixed64,
+             merge_repeated_sfixed64,
+             encode_packed_sfixed64,
+             encoded_len_sfixed64,
+             put_i64,
+             get_i64);
 
 #[inline]
 pub fn encode_string<B>(value: &str, buf: &mut B) where B: BufMut {
