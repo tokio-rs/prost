@@ -288,4 +288,10 @@ pub struct Basic {
 
     #[proto(bool, repeated, packed="false", tag="2")]
     pub bools: Vec<bool>,
+
+    #[proto(string, tag="3")]
+    pub string: String,
+
+    #[proto(string, optional, tag="4")]
+    pub optional_string: Option<String>,
 }

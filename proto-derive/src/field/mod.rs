@@ -283,7 +283,7 @@ impl Field {
     pub fn merge(&self, tag: &syn::Ident, wire_type: &syn::Ident) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.merge(wire_type),
-            _ => quote!(()),
+            _ => quote!(Ok(())),
         }
 
     }

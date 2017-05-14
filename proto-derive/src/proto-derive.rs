@@ -87,12 +87,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
         let tags = field.tags().iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let field_ident = field.ident();
-        quote! { #tags => #merge.map_err(|error| {
-            ::std::io::Error::new(
-                error.kind(),
-                format!(concat!("failed to decode field ", stringify!(#ident), ".", stringify!(#field_ident), ": {}"),
-                        error))
-        })?, }
+        quote! { #tags => #merge.map_err(|error| map_err(stringify!(#field_ident), error))?, }
     }).fold(Tokens::new(), concat_tokens);
 
     let default = fields.iter()
@@ -125,6 +120,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
 
                 #[inline]
                 fn merge<B>(&mut self, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
+                    fn map_err(field: &str, cause: ::std::io::Error) -> ::std::io::Error {
+                        ::std::io::Error::new(cause.kind(),
+                                              format!(concat!("failed to decode field ",
+                                                              stringify!(#ident),
+                                                              ".{}: {}"),
+                                                      field, cause))
+                    }
+
                     while _bytes::Buf::has_remaining(buf) {
                         let (tag, wire_type) = _proto::encoding::decode_key(buf)?;
                         match tag {

@@ -72,7 +72,7 @@ impl Field {
             // TODO: figure out if this is right.  Will the c++ proto2 skip encoding default values
             // even if they are set?
             Kind::Optional(ref default) => quote! {
-                if let Some(value) = #field {
+                if let Some(ref value) = #field {
                     if value != #default {
                         #encode_fn(#tag, value, buf);
                     }
@@ -102,8 +102,10 @@ impl Field {
                 #merge_fn(#wire_type, &mut #field, buf)
             },
             Kind::Optional(..) => quote! {
-                let mut value = #field.take().unwrap_or_default();
-                #merge_fn(#wire_type, &mut value, buf).map(move |_| #field = Some(value))
+                {
+                    let mut value = #field.take().unwrap_or_default();
+                    #merge_fn(#wire_type, &mut value, buf).map(|_| #field = ::std::option::Option::Some(value))
+                }
             },
         }
     }
@@ -126,7 +128,7 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => quote! {
                 if #field != #default {
-                    #encoded_len_fn(#tag, &#field);
+                    #encoded_len_fn(#tag, &#field)
                 } else {
                     0
                 }
@@ -134,7 +136,7 @@ impl Field {
             Kind::Optional(ref default) => quote! {
                 #field.as_ref().map_or(0, |value| {
                     if value != #default {
-                        #encoded_len_fn(#tag, value);
+                        #encoded_len_fn(#tag, value)
                     } else {
                         0
                     }
@@ -146,9 +148,21 @@ impl Field {
         }
     }
 
+    /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> Tokens {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Optional(ref value) | Kind::Required(ref value) => quote!(#value),
+            Kind::Plain(ref value) | Kind::Required(ref value) => {
+                match *value {
+                    syn::Lit::Str(ref value, _) => quote!(#value.to_string()),
+                    _ => quote!(#value),
+                }
+            },
+            Kind::Optional(ref value) => {
+                match *value {
+                    syn::Lit::Str(ref value, _) => quote!(::std::option::Option::Some(#value.to_string())),
+                    _ => quote!(::std::option::Option::Some(#value.to_string())),
+                }
+            },
             Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
         }
     }
