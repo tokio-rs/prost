@@ -21,22 +21,25 @@ impl Field {
     pub fn new(ident: syn::Ident,
                ty: Ty,
                tag: u32,
-               label: Label,
+               label: Option<Label>,
                default: Option<syn::Lit>,
                packed: bool) -> Result<Field> {
 
         let kind = match (label, packed, default.is_some()) {
-            (Label::Optional, false, _) => Kind::Optional(default),
-            (Label::Required, false, _) => Kind::Required(default),
-            (Label::Repeated, false, false) => Kind::Repeated,
-            (Label::Repeated, true, false) => {
+
+            (None, false, _) => Kind::Plain(default),
+            (Some(Label::Optional), false, false) => Kind::Optional,
+            (Some(Label::Required), false, _) => Kind::Required(default),
+            (Some(Label::Repeated), false, false) => Kind::Repeated,
+            (Some(Label::Repeated), true, false) => {
                 if ty.is_length_delimited() {
                     bail!("packed attribute may only be applied to numeric fields")
                 }
                 Kind::Packed
             },
             (_, true, _) => bail!("packed attribute may only be applied to repeated fields"),
-            (Label::Repeated, _, true) => bail!("repeated fields may not have a default value"),
+            (Some(Label::Repeated), _, true) => bail!("repeated fields may not have a default value"),
+            (Some(Label::Optional), _, true) => bail!("optional fields may not have a default value"),
         };
 
         Ok(Field {
@@ -50,22 +53,34 @@ impl Field {
     /// Returns a statement which encodes the scalar field.
     pub fn encode(&self) -> Tokens {
         let tag = self.tag;
+
         let field = syn::Ident::new(format!("self.{}", self.ident));
         let wire_type = self.ty.wire_type();
         let encode_key = quote!(_proto::encoding::encode_key(#tag, #wire_type, buf););
         let encode = self.ty.encode(&field);
 
+
+        let value = syn::Ident::new(format!("value"));
+        let encode_value = self.ty.encode(&value);
+
+
         match self.kind {
-            Kind::Optional(Some(ref default)) => quote! {
+            Kind::Plain(Some(ref default)) => quote! {
                 if #field != #default {
                     #encode_key
                     #encode
                 }
             },
-            Kind::Optional(None) => quote! {
+            Kind::Plain(None) => quote! {
                 if #field != ::std::default::Default::default() {
                     #encode_key
                     #encode
+                }
+            },
+            Kind::Optional => quote! {
+                if let Some(value) = #field {
+                    #encode_key
+                    #encode_value
                 }
             },
             Kind::Required(..) => quote! {
@@ -73,18 +88,14 @@ impl Field {
                 #encode
             },
             Kind::Repeated => {
-                let encode = self.ty.encode(&syn::Ident::new("value".to_string()));
                 quote! {
                     for value in #field {
                         #encode_key
-                        #encode
+                        #encode_value
                     }
                 }
             },
             Kind::Packed => {
-                let encode_key = quote!(_proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf););
-                let value = syn::Ident::new("value".to_string());
-                let encode = self.ty.encode(&value);
                 let len = if let Some(len) = self.ty.fixed_encoded_len() {
                     quote!(#field.len() as u64 * #len)
                 } else {
@@ -93,10 +104,10 @@ impl Field {
                 };
 
                 quote! {
-                    #encode_key
+                    _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
                     _proto::encoding::encode_varint(#len, buf);
                     for value in #field {
-                        #encode
+                        #encode_value
                     }
                 }
             },
@@ -278,9 +289,11 @@ impl fmt::Display for Ty {
 
 /// Scalar protobuf field types.
 pub enum Kind {
-    /// An optional scalar field with an optional default value.
-    Optional(Option<syn::Lit>),
-    /// A required scalar field with an optional default value.
+    /// A plain proto3 scalar field with an optional default value.
+    Plain(Option<syn::Lit>),
+    /// An optional scalar field.
+    Optional,
+    /// A required proto2 scalar field with an optional default value.
     Required(Option<syn::Lit>),
     /// A repeated scalar field.
     Repeated,

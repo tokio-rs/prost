@@ -173,7 +173,7 @@ impl Field {
                 None => bail!("{} field must have a tag attribute", ty),
             };
 
-            Field::Scalar(scalar::Field::new(ident, ty, tag, label.unwrap_or(Label::Optional),
+            Field::Scalar(scalar::Field::new(ident, ty, tag, label,
                                              default.cloned(), packed.unwrap_or(false))?)
         } else if message {
             if key_type.is_some() { bail!("invalid key type attribute for message field"); }
