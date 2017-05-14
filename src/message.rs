@@ -11,11 +11,19 @@ use bytes::{
 use encoding::*;
 
 /// A Protocol Buffers message.
-pub trait Message: Debug + Default /*+ PartialEq + Eq*/ + Send + Sync {
+pub trait Message: Debug + Default /*+ PartialEq + PartialOrd*/ + Send + Sync {
 
     /// Encodes the message, and writes it to the buffer. An error will be
     /// returned if the buffer does not have sufficient capacity.
-    fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut;
+    fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
+        let len = self.encoded_len();
+        if len > buf.remaining_mut() {
+            return Err(invalid_input("failed to encode message: insufficient buffer capacity"));
+        }
+
+        self.encode_raw(buf);
+        Ok(())
+    }
 
     /// Encodes the message, and writes it with a length-delimiter prefix to
     /// the buffer. An error will be returned if the buffer does not have
@@ -26,8 +34,17 @@ pub trait Message: Debug + Default /*+ PartialEq + Eq*/ + Send + Sync {
             return Err(invalid_input("failed to encode message: insufficient buffer capacity"));
         }
         encode_varint(len as u64, buf);
-        self.encode(buf)
+        self.encode_raw(buf);
+        Ok(())
     }
+
+    /// Encodes the message, writing it to the buffer.
+    ///
+    /// This method will panic if the buffer has insufficient capacity.
+    ///
+    /// Prefer using `Message::encode`.
+    #[doc(hidden)]
+    fn encode_raw<B>(&self, buf: &mut B) where B: BufMut;
 
     /// Decodes an instance of the message from the buffer.
     /// The entire buffer will be consumed.
@@ -63,8 +80,8 @@ pub trait Message: Debug + Default /*+ PartialEq + Eq*/ + Send + Sync {
 
 impl <M> Message for Box<M> where M: Message {
     #[inline]
-    fn encode<B>(&self, buf: &mut B) -> Result<()> where B: BufMut {
-        (**self).encode(buf)
+    fn encode_raw<B>(&self, buf: &mut B) where B: BufMut {
+        (**self).encode_raw(buf)
     }
     #[inline]
     fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<()> where B: Buf {
