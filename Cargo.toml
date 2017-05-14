@@ -17,3 +17,5 @@ bytes = "0.4"
 [dev-dependencies]
 quickcheck = "0.4"
 proto-derive = { path = "proto-derive" }
+log = "0.3"
+env_logger = "0.4"

@@ -281,17 +281,25 @@ impl Field {
     }
 
     pub fn merge(&self, tag: &syn::Ident, wire_type: &syn::Ident) -> Tokens {
-        quote!(Ok(()))
+        match *self {
+            Field::Scalar(ref scalar) => scalar.merge(wire_type),
+            _ => quote!(()),
+        }
+
     }
 
     pub fn encoded_len(&self) -> Tokens {
-        quote!(0)
+        match *self {
+            Field::Scalar(ref scalar) => scalar.encoded_len(),
+            _ => quote!(0),
+        }
     }
 
     pub fn default(&self) -> Tokens {
-        let ident = self.ident();
-
-        quote!(#ident: ::std::default::Default::default(),)
+        match *self {
+            Field::Scalar(ref scalar) => scalar.default(),
+            _ => quote!(::std::default::Default::default()),
+        }
     }
 }
 

@@ -69,6 +69,8 @@ impl Field {
                     #encode_fn(#tag, &#field, buf);
                 }
             },
+            // TODO: figure out if this is right.  Will the c++ proto2 skip encoding default values
+            // even if they are set?
             Kind::Optional(ref default) => quote! {
                 if let Some(value) = #field {
                     if value != #default {
@@ -82,7 +84,8 @@ impl Field {
         }
     }
 
-    /// Returns a statement which decodes a scalar value and merges it with the field.
+    /// Returns an expression which evaluates to the result of merging a decoded scalar value into
+    /// the field.
     pub fn merge(&self, wire_type: &syn::Ident) -> Tokens {
         let merge_fn = {
             let kind = match self.kind {
@@ -96,12 +99,11 @@ impl Field {
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(#wire_type, &mut #field, buf)?;
+                #merge_fn(#wire_type, &mut #field, buf)
             },
             Kind::Optional(..) => quote! {
                 let mut value = #field.take().unwrap_or_default();
-                #merge_fn(#wire_type, &mut value, buf)?;
-                #field = Some(value);
+                #merge_fn(#wire_type, &mut value, buf).map(move |_| #field = Some(value))
             },
         }
     }
@@ -115,7 +117,7 @@ impl Field {
                 Kind::Packed => "packed_",
             };
             let ty = self.ty.as_str();
-            syn::Ident::new(format!("_proto::encoding::encode_len_{}{}", kind, ty))
+            syn::Ident::new(format!("_proto::encoding::encoded_len_{}{}", kind, ty))
         };
 
         let tag = self.tag;
@@ -141,6 +143,13 @@ impl Field {
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
                 #encoded_len_fn(#tag, &#field)
             },
+        }
+    }
+
+    pub fn default(&self) -> Tokens {
+        match self.kind {
+            Kind::Plain(ref value) | Kind::Optional(ref value) | Kind::Required(ref value) => quote!(#value),
+            Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
         }
     }
 }

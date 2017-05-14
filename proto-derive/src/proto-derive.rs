@@ -87,17 +87,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
         let tags = field.tags().iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
         let field_ident = field.ident();
-        //quote! { #tags => { #merge }.map_err(|error| {
-            //::std::io::Error::new(
-                //error.kind(),
-                //format!(concat!("failed to decode field ", stringify!(#ident), ".", stringify!(#field_ident), ": {}"),
-                        //error))
-        //})?, }
-        quote!( #tags => (), )
+        quote! { #tags => #merge.map_err(|error| {
+            ::std::io::Error::new(
+                error.kind(),
+                format!(concat!("failed to decode field ", stringify!(#ident), ".", stringify!(#field_ident), ": {}"),
+                        error))
+        })?, }
     }).fold(Tokens::new(), concat_tokens);
 
     let default = fields.iter()
-                        .map(Field::default)
+                        .map(|field| {
+                            let ident = field.ident();
+                            let value = field.default();
+                            quote!(#ident: #value,)
+                        })
                         .fold(Tokens::new(), concat_tokens);
 
     let expanded = quote! {
