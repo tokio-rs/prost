@@ -47,8 +47,7 @@ impl Field {
                 bail!("invalid type: {:?}", lit);
             };
 
-            scalar::Ty::from_str(s).map(|kind| Ok(kind))
-                                   .unwrap_or_else(|| bail!("unknown type: {}", s))
+            scalar::Ty::from_attr(s).map_or_else(|| bail!("unknown type: {}", s), |ty| Ok(ty))
         }
 
         fn lit_to_tag(lit: &syn::Lit) -> Result<u32> {
@@ -117,9 +116,9 @@ impl Field {
                     else if word.eq_ignore_ascii_case("message") { message = true; }
                     else if word.eq_ignore_ascii_case("map") { map = true; }
                     else if word.eq_ignore_ascii_case("oneof") { oneof = true; }
-                    else if let Some(ty) = scalar::Ty::from_str(word) {
+                    else if let Some(ty) = scalar::Ty::from_attr(word) {
                         set_option(&mut scalar_type, ty, "duplicate type attributes")?;
-                    } else if let Some(l) = Label::from_str(word) {
+                    } else if let Some(l) = Label::from_attr(word) {
                         set_option(&mut label, l, "duplicate label attributes")?;
                     } else {
                         bail!("unknown attribute: {}", word);
@@ -333,9 +332,9 @@ impl Label {
 
     /// Parses a string into a field label.
     /// If the string doesn't match a field label, `None` is returned.
-    fn from_str(s: &str) -> Option<Label> {
+    fn from_attr(attr: &str) -> Option<Label> {
         for &label in Label::variants() {
-            if s.eq_ignore_ascii_case(label.as_str()) {
+            if attr.eq_ignore_ascii_case(label.as_str()) {
                 return Some(label);
             }
         }

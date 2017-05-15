@@ -280,7 +280,15 @@ fn check_default_values() {
 */
 
 
-/// A protobuf message with default value.
+/// A protobuf enum.
+#[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
+pub enum BasicEnumeration {
+    DEFAULT = 0,
+    ONE = 1,
+    TWO = 2,
+    THREE = 3,
+}
+
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Basic {
     #[proto(int32, tag="1")]
@@ -294,4 +302,7 @@ pub struct Basic {
 
     #[proto(string, optional, tag="4")]
     pub optional_string: Option<String>,
+
+    #[proto(enumeration, tag="5")]
+    pub e: BasicEnumeration,
 }

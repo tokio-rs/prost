@@ -1,21 +1,15 @@
 use std::ascii::AsciiExt;
 use std::fmt;
 
-use quote::{self, Tokens};
-use syn::{
-    Ident,
-    Lit,
-    FloatTy,
-    IntTy,
-    StrStyle,
-};
+use quote::Tokens;
+use syn;
 
 use error::*;
 use field::Label;
 
-/// A scalar protobuf field.
+/// An enum protobuf field.
 pub struct Field {
-    pub ident: Ident,
+    pub ident: syn::Ident,
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
@@ -23,25 +17,20 @@ pub struct Field {
 
 impl Field {
 
-    /// Creates a new scalar field.
-    pub fn new(ident: Ident,
-               ty: Ty,
+    /// Creates a new enum field.
+    pub fn new(ident: syn::Ident,
                tag: u32,
                label: Option<Label>,
-               default: Option<Lit>,
+               default: Option<syn::Lit>,
                packed: bool) -> Result<Field> {
 
-        let has_default = default.is_some();
-        let default = default.map_or_else(|| DefaultValue::new(ty),
-                                          |lit| DefaultValue::from_lit(ty, lit));
-
-        let kind = match (label, packed, has_default) {
-            (None, false, _) => Kind::Plain(default),
-            (Some(Label::Optional), false, _) => Kind::Optional(default),
-            (Some(Label::Required), false, _) => Kind::Required(default),
+        let kind = match (label, packed, default.is_some()) {
+            (None, false, _) => Kind::Plain(default.unwrap_or_else(|| ty.default())),
+            (Some(Label::Optional), false, _) => Kind::Optional(default.unwrap_or_else(|| ty.default())),
+            (Some(Label::Required), false, _) => Kind::Required(default.unwrap_or_else(|| ty.default())),
             (Some(Label::Repeated), false, false) => Kind::Repeated,
             (Some(Label::Repeated), true, false) => {
-                if !ty.is_numeric() {
+                if ty.is_length_delimited() {
                     bail!("packed attribute may only be applied to numeric fields")
                 }
                 Kind::Packed
@@ -66,18 +55,17 @@ impl Field {
                 Kind::Repeated => "repeated_",
                 Kind::Packed => "packed_",
             };
-            let ty = self.ty.encode_as();
-            Ident::new(format!("_proto::encoding::encode_{}{}", kind, ty))
+            let ty = self.ty.as_str();
+            syn::Ident::new(format!("_proto::encoding::encode_{}{}", kind, ty))
         };
 
         let tag = self.tag;
-        let field = Ident::new(format!("self.{}", self.ident));
-        let cast = if self.ty == Ty::Enumeration { quote!(as i32) } else { quote!() };
+        let field = syn::Ident::new(format!("self.{}", self.ident));
 
         match self.kind {
             Kind::Plain(ref default) => quote! {
                 if #field != #default {
-                    #encode_fn(#tag, &(#field #cast), buf);
+                    #encode_fn(#tag, &#field, buf);
                 }
             },
             // TODO: figure out if this is right.  Will the c++ proto2 skip encoding default values
@@ -85,38 +73,37 @@ impl Field {
             Kind::Optional(ref default) => quote! {
                 if let Some(ref value) = #field {
                     if value != #default {
-                        #encode_fn(#tag, &(value #cast), buf);
+                        #encode_fn(#tag, value, buf);
                     }
                 }
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
-                #encode_fn(#tag, &(#field #cast), buf);
+                #encode_fn(#tag, &#field, buf);
             },
         }
     }
 
     /// Returns an expression which evaluates to the result of merging a decoded scalar value into
     /// the field.
-    pub fn merge(&self, wire_type: &Ident) -> Tokens {
+    pub fn merge(&self, wire_type: &syn::Ident) -> Tokens {
         let merge_fn = {
             let kind = match self.kind {
                 Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
                 Kind::Repeated | Kind::Packed => "repeated_",
             };
-            let ty = self.ty.encode_as();
-            Ident::new(format!("_proto::encoding::merge_{}{}", kind, ty))
+            let ty = self.ty.as_str();
+            syn::Ident::new(format!("_proto::encoding::merge_{}{}", kind, ty))
         };
-        let field = Ident::new(format!("self.{}", self.ident));
-        let cast = if self.ty == Ty::Enumeration { quote!(as i32) } else { quote!() };
+        let field = syn::Ident::new(format!("self.{}", self.ident));
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(#wire_type, &mut (#field #cast), buf)
+                #merge_fn(#wire_type, &mut #field, buf)
             },
             Kind::Optional(..) => quote! {
                 {
                     let mut value = #field.take().unwrap_or_default();
-                    #merge_fn(#wire_type, &mut (value #cast), buf).map(|_| #field = ::std::option::Option::Some(value))
+                    #merge_fn(#wire_type, &mut value, buf).map(|_| #field = ::std::option::Option::Some(value))
                 }
             },
         }
@@ -130,18 +117,17 @@ impl Field {
                 Kind::Repeated => "repeated_",
                 Kind::Packed => "packed_",
             };
-            let ty = self.ty.encode_as();
-            Ident::new(format!("_proto::encoding::encoded_len_{}{}", kind, ty))
+            let ty = self.ty.as_str();
+            syn::Ident::new(format!("_proto::encoding::encoded_len_{}{}", kind, ty))
         };
 
         let tag = self.tag;
-        let field = Ident::new(format!("self.{}", self.ident));
-        let cast = if self.ty == Ty::Enumeration { quote!(as i32) } else { quote!() };
+        let field = syn::Ident::new(format!("self.{}", self.ident));
 
         match self.kind {
             Kind::Plain(ref default) => quote! {
                 if #field != #default {
-                    #encoded_len_fn(#tag, &(#field #cast))
+                    #encoded_len_fn(#tag, &#field)
                 } else {
                     0
                 }
@@ -149,14 +135,14 @@ impl Field {
             Kind::Optional(ref default) => quote! {
                 #field.as_ref().map_or(0, |value| {
                     if value != #default {
-                        #encoded_len_fn(#tag, &(value #cast))
+                        #encoded_len_fn(#tag, value)
                     } else {
                         0
                     }
                 })
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
-                #encoded_len_fn(#tag, &(#field #cast))
+                #encoded_len_fn(#tag, &#field)
             },
         }
     }
@@ -164,10 +150,17 @@ impl Field {
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> Tokens {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
+            Kind::Plain(ref value) | Kind::Required(ref value) => {
+                match *value {
+                    syn::Lit::Str(ref value, _) => quote!(#value.to_string()),
+                    _ => quote!(#value),
+                }
+            },
             Kind::Optional(ref value) => {
-                let value = value.owned();
-                quote!(::std::option::Option::Some(#value))
+                match *value {
+                    syn::Lit::Str(ref value, _) => quote!(::std::option::Option::Some(#value.to_string())),
+                    _ => quote!(::std::option::Option::Some(#value.to_string())),
+                }
             },
             Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
         }
@@ -192,7 +185,7 @@ pub enum Ty {
     Bool,
     String,
     Bytes,
-    Enumeration,
+    Enum,
 }
 
 impl Ty {
@@ -215,21 +208,7 @@ impl Ty {
             Ty::Bool => "bool",
             Ty::String => "string",
             Ty::Bytes => "bytes",
-            Ty::Enumeration => "enum",
-        }
-    }
-
-    pub fn attr(&self) -> &'static str {
-        match *self {
-            Ty::Enumeration => "enumeration",
-            _ => self.as_str(),
-        }
-    }
-
-    pub fn encode_as(&self) -> &'static str {
-        match *self {
-            Ty::Enumeration => "int32",
-            _ => self.as_str(),
+            Ty::Enum => "enum",
         }
     }
 
@@ -250,25 +229,46 @@ impl Ty {
             Ty::Bool,
             Ty::String,
             Ty::Bytes,
-            Ty::Enumeration,
+            Ty::Enum,
         ];
         VARIANTS
     }
 
-    /// Parses an attribute into a field type.
-    /// If then attribute doesn't match a field type, `None` is returned.
-    pub fn from_attr(attr: &str) -> Option<Ty> {
-        for &ty in Ty::variants() {
-            if attr.eq_ignore_ascii_case(ty.attr()) {
-                return Some(ty);
+    /// Parses a string into a field type.
+    /// If the string doesn't match a field type, `None` is returned.
+    pub fn from_str(s: &str) -> Option<Ty> {
+        for &kind in Ty::variants() {
+            if s.eq_ignore_ascii_case(kind.as_str()) {
+                return Some(kind);
             }
         }
         None
     }
 
+    pub fn default(&self) -> syn::Lit {
+        match *self {
+            Ty::Float => syn::Lit::Float("0.0".to_string(), syn::FloatTy::F32),
+            Ty::Double => syn::Lit::Float("0.0".to_string(), syn::FloatTy::F64),
+            Ty::Int32 => syn::Lit::Int(0, syn::IntTy::I32),
+            Ty::Int64 => syn::Lit::Int(0, syn::IntTy::I64),
+            Ty::Uint32 => syn::Lit::Int(0, syn::IntTy::U32),
+            Ty::Uint64 => syn::Lit::Int(0, syn::IntTy::U64),
+            Ty::Sint32 => syn::Lit::Int(0, syn::IntTy::I32),
+            Ty::Sint64 => syn::Lit::Int(0, syn::IntTy::I64),
+            Ty::Fixed32 => syn::Lit::Int(0, syn::IntTy::U32),
+            Ty::Fixed64 => syn::Lit::Int(0, syn::IntTy::U64),
+            Ty::Sfixed32 => syn::Lit::Int(0, syn::IntTy::I32),
+            Ty::Sfixed64 => syn::Lit::Int(0, syn::IntTy::I64),
+            Ty::Bool => syn::Lit::Bool(false),
+            Ty::String => syn::Lit::Str(String::new(), syn::StrStyle::Cooked),
+            Ty::Bytes => syn::Lit::ByteStr(Vec::new(), syn::StrStyle::Cooked),
+            Ty::Enum => unimplemented!(),
+        }
+    }
+
     /// Returns true if the scalar type is length delimited (i.e., `string` or `bytes`).
-    fn is_numeric(&self) -> bool {
-        *self != Ty::String && *self != Ty::Bytes
+    fn is_length_delimited(&self) -> bool {
+        *self == Ty::String || *self == Ty::Bytes
     }
 }
 
@@ -286,72 +286,14 @@ impl fmt::Display for Ty {
 
 /// Scalar protobuf field types.
 pub enum Kind {
-    /// A plain proto3 scalar field.
-    Plain(DefaultValue),
+    /// A plain proto3 scalar field with an optional default value.
+    Plain(syn::Lit),
     /// An optional scalar field.
-    Optional(DefaultValue),
-    /// A required proto2 scalar field.
-    Required(DefaultValue),
+    Optional(syn::Lit),
+    /// A required proto2 scalar field with an optional default value.
+    Required(syn::Lit),
     /// A repeated scalar field.
     Repeated,
     /// A packed repeated scalar field.
     Packed,
-}
-
-pub enum DefaultValue {
-    Lit(Lit),
-    Ident(Ident),
-}
-
-impl DefaultValue {
-    fn new(ty: Ty) -> DefaultValue {
-        let lit = match ty {
-            Ty::Float => Lit::Float("0.0".to_string(), FloatTy::F32),
-            Ty::Double => Lit::Float("0.0".to_string(), FloatTy::F64),
-            Ty::Int32 => Lit::Int(0, IntTy::I32),
-            Ty::Int64 => Lit::Int(0, IntTy::I64),
-            Ty::Uint32 => Lit::Int(0, IntTy::U32),
-            Ty::Uint64 => Lit::Int(0, IntTy::U64),
-            Ty::Sint32 => Lit::Int(0, IntTy::I32),
-            Ty::Sint64 => Lit::Int(0, IntTy::I64),
-            Ty::Fixed32 => Lit::Int(0, IntTy::U32),
-            Ty::Fixed64 => Lit::Int(0, IntTy::U64),
-            Ty::Sfixed32 => Lit::Int(0, IntTy::I32),
-            Ty::Sfixed64 => Lit::Int(0, IntTy::I64),
-            Ty::Bool => Lit::Bool(false),
-            Ty::String => Lit::Str(String::new(), StrStyle::Cooked),
-            Ty::Bytes => Lit::ByteStr(Vec::new(), StrStyle::Cooked),
-            Ty::Enumeration => return DefaultValue::Ident(Ident::new("::std::default::Default::default()")),
-        };
-        DefaultValue::Lit(lit)
-    }
-
-    fn from_lit(ty: Ty, lit: Lit) -> DefaultValue {
-        match lit {
-            // If the default value is a string literal, and the type isn't a
-            // string, assume the default is an expression which, when evaluated,
-            // returns a value of the correct type.
-            Lit::Str(ref value, ..) if ty != Ty::String => DefaultValue::Ident(Ident::new(value.to_string())),
-            // Otherwise, we assume the user has provided a literal of the correct type.
-            // TODO: parse protobuf's hex encoding for bytes fields.
-            _ => DefaultValue::Lit(lit),
-        }
-    }
-
-    fn owned(&self) -> Tokens {
-        match *self {
-            DefaultValue::Lit(ref lit@Lit::Str(..)) => quote!(#lit.to_owned()),
-            DefaultValue::Lit(ref lit@Lit::ByteStr(..)) => quote!(#lit.to_owned()),
-            _ => quote!(#self),
-        }
-    }
-}
-
-impl quote::ToTokens for DefaultValue {
-    fn to_tokens(&self, tokens: &mut Tokens) {
-        match *self {
-            DefaultValue::Lit(ref lit) => lit.to_tokens(tokens),
-            DefaultValue::Ident(ref ident) => ident.to_tokens(tokens),
-        }
-    }
 }

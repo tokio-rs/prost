@@ -37,14 +37,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
        !generics.where_clause.predicates.is_empty() {
-        panic!("Message may not be derived for generic type");
+        bail!("Message may not be derived for generic type");
     }
 
     let fields = match body {
         syn::Body::Struct(syn::VariantData::Struct(fields)) => fields,
         syn::Body::Struct(syn::VariantData::Tuple(fields)) => fields,
         syn::Body::Struct(syn::VariantData::Unit) => Vec::new(),
-        syn::Body::Enum(..) => panic!("Message can not be derived for an enum"),
+        syn::Body::Enum(..) => bail!("Message can not be derived for an enum"),
     };
 
     let fields = fields.into_iter()
@@ -163,7 +163,6 @@ pub fn message(input: TokenStream) -> TokenStream {
     try_message(input).unwrap()
 }
 
-/*
 #[proc_macro_derive(Enumeration, attributes(proto))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
     let syn::DeriveInput { ident, generics, attrs, body, .. } =
@@ -196,14 +195,6 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
         panic!("Enumeration must have at least one variant: {}", ident);
     }
 
-    let repr = attrs.into_iter()
-                    .filter_map(|mut attr: syn::Attribute| match attr.value {
-                        syn::MetaItem::List(ref attr, ref mut repr) if attr == "repr" => repr.pop(),
-                        _ => None,
-                    })
-                    .last()
-                    .map_or_else(|| quote!(i64), |repr| quote!(#repr));
-
     let default = variants[0].0.clone();
 
     let dummy_const = syn::Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
@@ -224,7 +215,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             extern crate proto as _proto;
 
             impl #ident {
-                fn is_valid(value: #repr) -> bool {
+                fn is_valid(value: i32) -> bool {
                     match value {
                         #is_valid
                         _ => false,
@@ -233,39 +224,15 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl _proto::field::Field<_proto::field::Enumeration> for #ident {
-
-                #[inline]
-                fn encode<B>(&self, tag: u32, buf: &mut B) where B: _bytes::BufMut {
-                    _proto::encoding::encode_key(tag, _proto::encoding::WireType::Varint, buf);
-                    _proto::encoding::encode_varint(*self as u64, buf);
-                }
-
-                #[inline]
-                fn merge<B>(&mut self, _tag: u32, wire_type: _proto::encoding::WireType, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
-                    _proto::encoding::check_wire_type(_proto::encoding::WireType::Varint, wire_type)?;
-                    *self = #ident::from(_proto::encoding::decode_varint(buf)? as #repr);
-                    Ok(())
-                }
-
-                #[inline]
-                fn encoded_len(&self, tag: u32) -> usize {
-                    _proto::encoding::key_len(tag) + _proto::encoding::encoded_len_varint(*self as u64)
-                }
-            }
-
-            impl _proto::field::Type<_proto::field::Enumeration> for #ident {}
-
-            #[automatically_derived]
-            impl Default for #ident {
+            impl ::std::default::Default for #ident {
                 fn default() -> #ident {
                     #ident::#default
                 }
             }
 
             #[automatically_derived]
-            impl From<#repr> for #ident {
-                fn from(value: #repr) -> #ident {
+            impl ::std::convert::From<i32> for #ident {
+                fn from(value: i32) -> #ident {
                     match value {
                         #from
                         _ => #ident::#default,
@@ -279,7 +246,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 fn from_str(s: &str) -> ::std::result::Result<#ident, String> {
                     match s {
                         #from_str
-                        _ => Err(format!(concat!("unknown ", stringify!(#ident), " variant: {}"), s)),
+                        _ => Err(format!(concat!("invalid ", stringify!(#ident), " variant: {}"), s)),
                     }
                 }
             }
@@ -289,6 +256,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     expanded.parse().unwrap()
 }
 
+/*
 #[proc_macro_derive(Oneof, attributes(proto))]
 pub fn oneof(input: TokenStream) -> TokenStream {
     let syn::DeriveInput { ident, generics, body, .. } =

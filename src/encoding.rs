@@ -168,7 +168,7 @@ pub fn key_len(tag: u32) -> usize {
 /// Checks that the expected wire type matches the actual wire type,
 /// or returns an error result.
 #[inline]
-fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
+pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
     if expected != actual {
         return Err(invalid_data(format!("invalid wire type: {:?} (expected {:?})", actual, expected)));
     }
@@ -676,3 +676,58 @@ pub fn merge_bytes<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B
 }
 encode_repeated!(Vec<u8>, encode_bytes, encode_repeated_bytes);
 length_delimited!(Vec<u8>, merge_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes);
+
+/*
+
+         #[inline]
+         pub fn $encode<B>(tag: u32, $to_uint64_value: &$ty, buf: &mut B) where B: BufMut {
+             encode_key(tag, WireType::Varint, buf);
+             encode_varint($to_uint64, buf);
+         }
+
+         #[inline]
+         pub fn $merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<()> where B: Buf {
+             check_wire_type(WireType::Varint, wire_type)?;
+             let $from_uint64_value = decode_varint(buf)?;
+             *value = $from_uint64;
+             Ok(())
+         }
+
+         encode_repeated!($ty, $encode, $encode_repeated);
+
+         #[inline]
+         pub fn $encode_packed<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+             if values.is_empty() { return; }
+
+             encode_key(tag, WireType::LengthDelimited, buf);
+             let len: usize = values.iter().map(|$to_uint64_value| {
+                 encoded_len_varint($to_uint64)
+             }).sum();
+             encode_varint(len as u64, buf);
+
+             for $to_uint64_value in values {
+                 encode_varint($to_uint64, buf);
+             }
+         }
+
+         merge_repeated_numeric!($ty, WireType::Varint, $merge, $merge_repeated);
+
+         #[inline]
+         pub fn $encoded_len(tag: u32, $to_uint64_value: &$ty) -> usize {
+             key_len(tag) + encoded_len_varint($to_uint64)
+         }
+
+         #[inline]
+         pub fn $encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+             key_len(tag) * values.len() + values.iter().map(|$to_uint64_value| {
+                 encoded_len_varint($to_uint64)
+             }).sum::<usize>()
+         }
+
+         #[inline]
+         pub fn $encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
+             key_len(tag) + values.iter().map(|$to_uint64_value| {
+                 encoded_len_varint($to_uint64)
+             }).sum::<usize>()
+         }
+         */
