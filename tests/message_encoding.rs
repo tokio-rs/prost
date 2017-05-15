@@ -303,14 +303,16 @@ pub struct Basic {
 
     #[proto(string, optional, tag="4")]
     pub optional_string: Option<String>,
+    */
 
     #[proto(enumeration, tag="5")]
     pub enumeration: BasicEnumeration,
 
+    /*
     #[proto(enumeration, tag="6", default="BasicEnumeration::TWO")]
     pub enumeration_with_default: BasicEnumeration,
-    */
 
     #[proto(enumeration, optional, tag="7", default="::BasicEnumeration::THREE")]
     pub optional_enumeration: Option<BasicEnumeration>,
+    */
 }

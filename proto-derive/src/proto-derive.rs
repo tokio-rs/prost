@@ -241,6 +241,22 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
+            impl ::std::convert::From<#ident> for i32 {
+                fn from(value: #ident) -> i32 {
+                    value as i32
+                }
+            }
+
+            /*
+            #[automatically_derived]
+            impl ::std::convert::Into<i32> for #ident {
+                fn into(self) -> i32 {
+                }
+
+            }
+            */
+
+            #[automatically_derived]
             impl ::std::str::FromStr for #ident {
                 type Err = String;
                 fn from_str(s: &str) -> ::std::result::Result<#ident, String> {
