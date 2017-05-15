@@ -165,10 +165,7 @@ impl Field {
     pub fn default(&self) -> Tokens {
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
-            Kind::Optional(ref value) => {
-                let value = value.owned();
-                quote!(::std::option::Option::Some(#value))
-            },
+            Kind::Optional(ref value) => quote!(::std::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
         }
     }
@@ -340,7 +337,9 @@ impl DefaultValue {
 
     fn owned(&self) -> Tokens {
         match *self {
+            DefaultValue::Lit(Lit::Str(ref value, ..)) if value.is_empty() => quote!(::std::string::String::new()),
             DefaultValue::Lit(ref lit@Lit::Str(..)) => quote!(#lit.to_owned()),
+            DefaultValue::Lit(Lit::ByteStr(ref value, ..)) if value.is_empty() => quote!(::std::vec::Vec::new()),
             DefaultValue::Lit(ref lit@Lit::ByteStr(..)) => quote!(#lit.to_owned()),
             _ => quote!(#self),
         }

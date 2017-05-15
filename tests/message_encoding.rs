@@ -283,7 +283,7 @@ fn check_default_values() {
 /// A protobuf enum.
 #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
 pub enum BasicEnumeration {
-    DEFAULT = 0,
+    ZERO = 0,
     ONE = 1,
     TWO = 2,
     THREE = 3,
@@ -291,6 +291,7 @@ pub enum BasicEnumeration {
 
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Basic {
+    /*
     #[proto(int32, tag="1")]
     pub int32: i32,
 
@@ -304,5 +305,12 @@ pub struct Basic {
     pub optional_string: Option<String>,
 
     #[proto(enumeration, tag="5")]
-    pub e: BasicEnumeration,
+    pub enumeration: BasicEnumeration,
+
+    #[proto(enumeration, tag="6", default="BasicEnumeration::TWO")]
+    pub enumeration_with_default: BasicEnumeration,
+    */
+
+    #[proto(enumeration, optional, tag="7", default="::BasicEnumeration::THREE")]
+    pub optional_enumeration: Option<BasicEnumeration>,
 }
