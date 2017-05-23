@@ -305,8 +305,11 @@ pub struct Basic {
     pub optional_string: Option<String>,
     */
 
-    #[proto(enumeration, tag="5")]
-    pub enumeration: BasicEnumeration,
+    #[proto(enumeration="BasicEnumeration", tag="5")]
+    pub enumeration: i32,
+
+    #[proto(map="(int32, enumeration(BasicEnumeration))", tag="6")]
+    pub enumeration_map: ::std::collections::HashMap<i32, i32>,
 
     /*
     #[proto(enumeration, tag="6", default="BasicEnumeration::TWO")]

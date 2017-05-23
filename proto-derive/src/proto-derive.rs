@@ -51,8 +51,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                        .enumerate()
                        .flat_map(|(idx, field)| {
                            let field_ident = field.ident
-                                                   .unwrap_or_else(|| syn::Ident::new(idx.to_string()));
-                           match Field::new(field_ident.clone(), &field.attrs) {
+                                                  .unwrap_or_else(|| syn::Ident::new(idx.to_string()));
+                           match Field::new(field_ident.clone(), field.attrs) {
                                Ok(Some(field)) => Some(Ok(field)),
                                Ok(None) => None,
                                Err(err) => Some(Err(err).chain_err(|| {
@@ -97,6 +97,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                             quote!(#ident: #value,)
                         })
                         .fold(Tokens::new(), concat_tokens);
+
+    let methods = fields.iter()
+                        .flat_map(Field::methods)
+                        .collect::<Vec<_>>();
+
+    let methods = if methods.is_empty() {
+        quote!()
+    } else {
+        quote! {
+            impl #ident {
+                #(#methods)*
+            }
+        }
+    };
 
     let expanded = quote! {
         #[allow(
@@ -143,6 +157,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     #encoded_len
                 }
             }
+
+            #methods
 
             #[automatically_derived]
             impl Default for #ident {
@@ -202,11 +218,14 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                            .map(|&(_, ref value)| quote!(#value => true,))
                            .fold(Tokens::new(), concat_tokens);
     let from = variants.iter()
-                       .map(|&(ref variant, ref value)| quote!(#value => #ident::#variant,))
+                       .map(|&(ref variant, ref value)| quote!(#value => Some(#ident::#variant),))
                        .fold(Tokens::new(), concat_tokens);
     let from_str = variants.iter()
                            .map(|&(ref variant, _)| quote!(stringify!(#variant) => Ok(#ident::#variant),))
                            .fold(Tokens::new(), concat_tokens);
+
+    let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
+    let from_i32_doc = format!("Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.", ident);
 
     let expanded = quote! {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
@@ -214,11 +233,22 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             extern crate bytes as _bytes;
             extern crate proto as _proto;
 
+            #[automatically_derived]
             impl #ident {
+
+                #[doc=#is_valid_doc]
                 fn is_valid(value: i32) -> bool {
                     match value {
                         #is_valid
                         _ => false,
+                    }
+                }
+
+                #[doc=#from_i32_doc]
+                fn from_i32(value: i32) -> Option<#ident> {
+                    match value {
+                        #from
+                        _ => None,
                     }
                 }
             }
@@ -231,39 +261,9 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             }
 
             #[automatically_derived]
-            impl ::std::convert::From<i32> for #ident {
-                fn from(value: i32) -> #ident {
-                    match value {
-                        #from
-                        _ => #ident::#default,
-                    }
-                }
-            }
-
-            #[automatically_derived]
             impl ::std::convert::From<#ident> for i32 {
                 fn from(value: #ident) -> i32 {
                     value as i32
-                }
-            }
-
-            /*
-            #[automatically_derived]
-            impl ::std::convert::Into<i32> for #ident {
-                fn into(self) -> i32 {
-                }
-
-            }
-            */
-
-            #[automatically_derived]
-            impl ::std::str::FromStr for #ident {
-                type Err = String;
-                fn from_str(s: &str) -> ::std::result::Result<#ident, String> {
-                    match s {
-                        #from_str
-                        _ => Err(format!(concat!("invalid ", stringify!(#ident), " variant: {}"), s)),
-                    }
                 }
             }
         };
