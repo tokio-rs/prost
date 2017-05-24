@@ -308,7 +308,7 @@ pub struct Basic {
     #[proto(enumeration="BasicEnumeration", tag="5")]
     pub enumeration: i32,
 
-    #[proto(map="(int32, enumeration(BasicEnumeration))", tag="6")]
+    #[proto(map="int32, enumeration(BasicEnumeration)", tag="6")]
     pub enumeration_map: ::std::collections::HashMap<i32, i32>,
 
     /*

@@ -19,7 +19,7 @@ pub struct Field {
 
 impl Field {
     pub fn new(ident: &Ident, attrs: &[MetaItem]) -> Result<Option<Field>> {
-        unimplemented!()
+        Ok(None)
     }
 
     pub fn encode(&self) -> Tokens {

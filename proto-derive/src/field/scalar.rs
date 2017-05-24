@@ -13,7 +13,12 @@ use syn::{
 };
 
 use error::*;
-use field::Label;
+use field::{
+    Label,
+    bool_attr,
+    set_option,
+    tag_attr,
+};
 
 /// A scalar protobuf field.
 pub struct Field {
@@ -26,7 +31,74 @@ pub struct Field {
 impl Field {
 
     pub fn new(ident: &Ident, attrs: &[MetaItem]) -> Result<Option<Field>> {
-        unimplemented!()
+        let mut ty = None;
+        let mut label = None;
+        let mut packed = None;
+        let mut default = None;
+        let mut tag = None;
+
+        let mut unknown_attrs = Vec::new();
+
+        for attr in attrs {
+            if let Some(t) = Ty::from_attr(attr)? {
+                set_option(&mut ty, t, "duplicate type attributes")?;
+            } else if let Some(p) = bool_attr("packed", attr)? {
+                set_option(&mut packed, p, "duplicate packed attributes")?;
+            } else if let Some(t) = tag_attr(attr)? {
+                set_option(&mut tag, t, "duplicate tag attributes")?;
+            } else if let Some(l) = Label::from_attr(attr) {
+                set_option(&mut label, l, "duplicate label attributes")?;
+            } else if let Some(d) = DefaultValue::from_attr(attr)? {
+                set_option(&mut default, d, "duplicate default attributes")?;
+            } else {
+                unknown_attrs.push(attr);
+            }
+        }
+
+        let ty = match ty {
+            Some(ty) => ty,
+            None => return Ok(None),
+        };
+
+        match unknown_attrs.len() {
+            0 => (),
+            1 => bail!("unknown attribute for {} field: {:?}", ty, unknown_attrs[0]),
+            _ => bail!("unknown attributes for {} field: {:?}", ty, unknown_attrs),
+        }
+
+        let tag = match tag {
+            Some(tag) => tag,
+            None => bail!("{} field is missing a tag attribute", ty),
+        };
+
+        let has_default = default.is_some();
+        let default = default.unwrap_or_else(|| DefaultValue::new(&ty));
+        let kind = match (label, packed, has_default) {
+            (None, Some(true), _) |
+            (Some(Label::Optional), Some(true), _) |
+            (Some(Label::Required), Some(true), _) => {
+                bail!("packed attribute may only be applied to repeated fields");
+            },
+            (Some(Label::Repeated), Some(true), _) if !ty.is_numeric() => {
+                bail!("packed attribute may only be applied to numeric fields");
+            },
+            (Some(Label::Repeated), _, true) => {
+                bail!("repeated fields may not have a default value");
+            },
+
+            (None, _, _) => Kind::Plain(default),
+            (Some(Label::Optional), _, _) => Kind::Optional(default),
+            (Some(Label::Required), _, _) => Kind::Required(default),
+            (Some(Label::Repeated), packed, false) if packed.unwrap_or(ty.is_numeric()) => Kind::Packed,
+            (Some(Label::Repeated), _, false) => Kind::Repeated,
+        };
+
+        Ok(Some(Field {
+            ident: ident.clone(),
+            ty: ty,
+            kind: kind,
+            tag: tag,
+        }))
     }
 
 
@@ -384,12 +456,38 @@ pub enum Kind {
     Packed,
 }
 
+#[derive(Debug)]
 pub enum DefaultValue {
     Lit(Lit),
     Ident(Ident),
 }
 
 impl DefaultValue {
+
+    fn from_attr(attr: &MetaItem) -> Result<Option<DefaultValue>> {
+        if attr.name() != "default" {
+            return Ok(None);
+        }
+        match *attr {
+            MetaItem::List(_, ref items) => {
+                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
+                if items.len() == 1 {
+                    if let Some(&NestedMetaItem::Literal(ref lit)) = items.first() {
+                        return Ok(Some(DefaultValue::Lit(lit.clone())));
+                    }
+                }
+                bail!("invalid default value attribute: {:?}", attr);
+            },
+            MetaItem::NameValue(_, ref lit) => {
+                match *lit {
+                    Lit::Str(ref s, _) => return Ok(Some(DefaultValue::Ident(Ident::new(s.as_str())))),
+                    _ => bail!("invalid default value attribute: {:?}", attr),
+                }
+            },
+            _ => bail!("invalid tag attribute: {:?}", attr),
+        }
+    }
+
     fn new(ty: &Ty) -> DefaultValue {
         let lit = match *ty {
             Ty::Float => Lit::Float("0.0".to_string(), FloatTy::F32),

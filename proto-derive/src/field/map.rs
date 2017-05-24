@@ -82,11 +82,24 @@ impl Field {
     }
 
     pub fn encode(&self) -> Tokens {
-        unimplemented!()
+        let tag = self.tag;
+        let field = Ident::new(format!("self.{}", self.ident));
+
+        let cast = if let ValueTy::Scalar(scalar::Ty::Enumeration(..)) = self.value_ty {
+            quote!(as i32)
+        } else {
+            quote!()
+        };
+
+        quote! {
+            for kv in &#field {
+                // TODO: encode
+            }
+        }
     }
 
     pub fn merge(&self, tag: &Ident, wire_type: &Ident) -> Tokens {
-        unimplemented!()
+        panic!("unimplemented: map merge");
     }
 }
 
