@@ -101,77 +101,27 @@ impl Field {
         }))
     }
 
-
-    /*
-    /// Creates a new scalar field.
-    pub fn new(ident: Ident,
-               ty: Ty,
-               tag: u32,
-               label: Option<Label>,
-               default: Option<Lit>,
-               packed: bool) -> Result<Field> {
-
-        let has_default = default.is_some();
-        let default = default.map_or_else(|| DefaultValue::new(&ty),
-                                          |lit| DefaultValue::from_lit(&ty, lit));
-
-        let kind = match (label, packed, has_default) {
-            (None, false, _) => Kind::Plain(default),
-            (Some(Label::Optional), false, _) => Kind::Optional(default),
-            (Some(Label::Required), false, _) => Kind::Required(default),
-            (Some(Label::Repeated), false, false) => Kind::Repeated,
-            (Some(Label::Repeated), true, false) => {
-                if !ty.is_numeric() {
-                    bail!("packed attribute may only be applied to numeric fields")
-                }
-                Kind::Packed
-            },
-            (_, true, _) => bail!("packed attribute may only be applied to repeated fields"),
-            (Some(Label::Repeated), _, true) => bail!("repeated fields may not have a default value"),
-        };
-
-        Ok(Field {
-            ident: ident,
-            ty: ty,
-            kind: kind,
-            tag: tag,
-        })
-    }
-    */
-
     /// Returns a statement which encodes the scalar field.
     pub fn encode(&self) -> Tokens {
-        let encode_fn = {
-            let kind = match self.kind {
-                Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-                Kind::Repeated => "repeated_",
-                Kind::Packed => "packed_",
-            };
-            let ty = self.ty.encode_as();
-            Ident::new(format!("_proto::encoding::encode_{}{}", kind, ty))
-        };
-
+        let encode_fn = self.ty.encode_fn(&self.kind);
         let tag = self.tag;
         let field = Ident::new(format!("self.{}", self.ident));
-        let cast = if let Ty::Enumeration(..) = self.ty { quote!(as i32) } else { quote!() };
 
         match self.kind {
             Kind::Plain(ref default) => quote! {
                 if #field != #default {
-                    #encode_fn(#tag, &(#field #cast), buf);
+                    #encode_fn(#tag, &#field, buf);
                 }
             },
-            // TODO: figure out if this is right.  Will the c++ proto2 skip encoding default values
-            // even if they are set?
             Kind::Optional(ref default) => quote! {
                 if let Some(ref value) = #field {
                     if value != #default {
-                        #encode_fn(#tag, &(value #cast), buf);
+                        #encode_fn(#tag, &value, buf);
                     }
                 }
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
-                #encode_fn(#tag, &(#field #cast), buf);
+                #encode_fn(#tag, &#field, buf);
             },
         }
     }
@@ -179,25 +129,17 @@ impl Field {
     /// Returns an expression which evaluates to the result of merging a decoded scalar value into
     /// the field.
     pub fn merge(&self, wire_type: &Ident) -> Tokens {
-        let merge_fn = {
-            let kind = match self.kind {
-                Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-                Kind::Repeated | Kind::Packed => "repeated_",
-            };
-            let ty = self.ty.encode_as();
-            Ident::new(format!("_proto::encoding::merge_{}{}", kind, ty))
-        };
+        let merge_fn = self.ty.merge_fn(&self.kind);
         let field = Ident::new(format!("self.{}", self.ident));
-        let cast = if let Ty::Enumeration(..) = self.ty { quote!(as i32) } else { quote!() };
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(#wire_type, &mut (#field #cast), buf)
+                #merge_fn(#wire_type, &mut #field, buf)
             },
             Kind::Optional(..) => quote! {
                 {
                     let mut value = #field.take().unwrap_or_default();
-                    #merge_fn(#wire_type, &mut (value #cast), buf).map(|_| #field = ::std::option::Option::Some(value))
+                    #merge_fn(#wire_type, &mut value, buf).map(|_| #field = ::std::option::Option::Some(value))
                 }
             },
         }
@@ -205,24 +147,14 @@ impl Field {
 
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self) -> Tokens {
-        let encoded_len_fn = {
-            let kind = match self.kind {
-                Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-                Kind::Repeated => "repeated_",
-                Kind::Packed => "packed_",
-            };
-            let ty = self.ty.encode_as();
-            Ident::new(format!("_proto::encoding::encoded_len_{}{}", kind, ty))
-        };
-
+        let encoded_len_fn = self.ty.encoded_len_fn(&self.kind);
         let tag = self.tag;
         let field = Ident::new(format!("self.{}", self.ident));
-        let cast = if let Ty::Enumeration(..) = self.ty { quote!(as i32) } else { quote!() };
 
         match self.kind {
             Kind::Plain(ref default) => quote! {
                 if #field != #default {
-                    #encoded_len_fn(#tag, &(#field #cast))
+                    #encoded_len_fn(#tag, &#field)
                 } else {
                     0
                 }
@@ -230,14 +162,14 @@ impl Field {
             Kind::Optional(ref default) => quote! {
                 #field.as_ref().map_or(0, |value| {
                     if value != #default {
-                        #encoded_len_fn(#tag, &(value #cast))
+                        #encoded_len_fn(#tag, &value)
                     } else {
                         0
                     }
                 })
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
-                #encoded_len_fn(#tag, &(#field #cast))
+                #encoded_len_fn(#tag, &#field)
             },
         }
     }
@@ -424,6 +356,37 @@ impl Ty {
         }
     }
 
+    pub fn encode_fn(&self, kind: &Kind) -> Ident {
+        let kind = match *kind {
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+            Kind::Repeated => "repeated_",
+            Kind::Packed => "packed_",
+        };
+
+
+        let ty = self.encode_as();
+        Ident::new(format!("_proto::encoding::encode_{}{}", kind, ty))
+    }
+
+    pub fn merge_fn(&self, kind: &Kind) -> Ident {
+        let kind = match *kind {
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+            Kind::Repeated | Kind::Packed => "repeated_",
+        };
+        let ty = self.encode_as();
+        Ident::new(format!("_proto::encoding::merge_{}{}", kind, ty))
+    }
+
+    pub fn encoded_len_fn(&self, kind: &Kind) -> Ident {
+        let kind = match *kind {
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+            Kind::Repeated => "repeated_",
+            Kind::Packed => "packed_",
+        };
+        let ty = self.encode_as();
+        Ident::new(format!("_proto::encoding::encoded_len_{}{}", kind, ty))
+    }
+
     /// Returns true if the scalar type is length delimited (i.e., `string` or `bytes`).
     fn is_numeric(&self) -> bool {
         *self != Ty::String && *self != Ty::Bytes
@@ -464,7 +427,7 @@ pub enum DefaultValue {
 
 impl DefaultValue {
 
-    fn from_attr(attr: &MetaItem) -> Result<Option<DefaultValue>> {
+    pub fn from_attr(attr: &MetaItem) -> Result<Option<DefaultValue>> {
         if attr.name() != "default" {
             return Ok(None);
         }
@@ -488,7 +451,7 @@ impl DefaultValue {
         }
     }
 
-    fn new(ty: &Ty) -> DefaultValue {
+    pub fn new(ty: &Ty) -> DefaultValue {
         let lit = match *ty {
             Ty::Float => Lit::Float("0.0".to_string(), FloatTy::F32),
             Ty::Double => Lit::Float("0.0".to_string(), FloatTy::F64),
@@ -522,7 +485,7 @@ impl DefaultValue {
         }
     }
 
-    fn owned(&self) -> Tokens {
+    pub fn owned(&self) -> Tokens {
         match *self {
             DefaultValue::Lit(Lit::Str(ref value, ..)) if value.is_empty() => quote!(::std::string::String::new()),
             DefaultValue::Lit(ref lit@Lit::Str(..)) => quote!(#lit.to_owned()),

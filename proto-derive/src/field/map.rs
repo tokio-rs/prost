@@ -16,7 +16,7 @@ use field::{
 
 pub struct Field {
     pub ident: Ident,
-    pub key_ty: KeyTy,
+    pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
 }
@@ -61,7 +61,7 @@ impl Field {
                     },
                     _ => return Ok(None),
                 };
-                set_option(&mut types, (KeyTy::from_str(k)?, ValueTy::from_str(v)?),
+                set_option(&mut types, (key_ty_from_str(k)?, ValueTy::from_str(v)?),
                            "duplicate map type attribute")?;
             } else {
                 return Ok(None);
@@ -85,58 +85,153 @@ impl Field {
         let tag = self.tag;
         let field = Ident::new(format!("self.{}", self.ident));
 
-        let cast = if let ValueTy::Scalar(scalar::Ty::Enumeration(..)) = self.value_ty {
-            quote!(as i32)
-        } else {
-            quote!()
-        };
+        let key_kind = scalar::Kind::Plain(scalar::DefaultValue::new(&self.key_ty));
+        let key_encode_fn = self.key_ty.encode_fn(&key_kind);
+        let key_encoded_len_fn = self.key_ty.encoded_len_fn(&key_kind);
 
-        quote! {
-            for kv in &#field {
-                // TODO: encode
-            }
+        match self.value_ty {
+            ValueTy::Scalar(ref value_ty) => {
+                let value_kind = scalar::Kind::Plain(scalar::DefaultValue::new(value_ty));
+                let value_encode_fn = value_ty.encode_fn(&value_kind);
+                let value_encoded_len_fn = value_ty.encoded_len_fn(&value_kind);
+
+                quote! {
+                    for (key, value) in &#field {
+                        let len = #key_encoded_len_fn(1, key) + #value_encoded_len_fn(2, value);
+                        _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
+                        _proto::encoding::encode_varint(len as u64, buf);
+                        #key_encode_fn(1, key, buf);
+                        #value_encode_fn(2, value, buf);
+                    }
+                }
+            },
+            ValueTy::Message => {
+                panic!("unimplemented: map field message values");
+            },
         }
     }
 
-    pub fn merge(&self, tag: &Ident, wire_type: &Ident) -> Tokens {
-        panic!("unimplemented: map merge");
+    pub fn merge(&self) -> Tokens {
+        let field = Ident::new(format!("self.{}", self.ident));
+
+        let key_default = scalar::DefaultValue::new(&self.key_ty);
+        let key_owned_default = key_default.owned();
+        let key_kind = scalar::Kind::Plain(key_default);
+        let key_merge_fn = self.key_ty.merge_fn(&key_kind);
+
+        match self.value_ty {
+            ValueTy::Scalar(ref value_ty) => {
+                let value_default = scalar::DefaultValue::new(&value_ty);
+                let value_owned_default = value_default.owned();
+                let value_kind = scalar::Kind::Plain(value_default);
+                let value_merge_fn = value_ty.merge_fn(&value_kind);
+
+                quote! {
+                    (|| {
+                        let len = _proto::encoding::decode_varint(buf)?;
+                        if len > buf.remaining() as u64 {
+                            return Err(::std::io::Error::new(::std::io::ErrorKind::InvalidData,
+                                                             "buffer underflow"));
+                        }
+                        let len = len as usize;
+                        let limit = buf.limit();
+                        buf.set_limit(len);
+
+                        let mut key = #key_owned_default;
+                        let mut value = #value_owned_default;
+
+                        while buf.has_remaining() {
+                            let (tag, wire_type) = _proto::encoding::decode_key(buf)?;
+                            match tag {
+                                1 => #key_merge_fn(wire_type, &mut key, buf)?,
+                                2 => #value_merge_fn(wire_type, &mut value, buf)?,
+                                // TODO: should we return an error here?
+                                _ => (),
+                            }
+                        }
+
+                        #field.insert(key, value);
+                        buf.set_limit(limit - len);
+                        Ok(())
+                    })()
+                }
+            },
+            ValueTy::Message => {
+                panic!("unimplemented: map field message values");
+            },
+        }
+    }
+
+    /*
+impl <K, V, EK, EV> Field<(EK, EV)> for HashMap<K, V>
+where K: default::Default + Eq + Hash + Key + Field<EK>,
+      V: default::Default + Field<EV> {
+
+    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = <u64 as ScalarField>::read_from(r, limit)?;
+        if len > usize::MAX as u64 {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "map length overflows usize"));
+        }
+        check_limit(len as usize, limit)?;
+
+        let mut key = None;
+        let mut value = None;
+
+        let mut limit = len as usize;
+        while limit > 0 {
+            let (wire_type, tag) = read_key_from(r, &mut limit)?;
+            match tag {
+                1 => {
+                    let mut k = K::default();
+                    <K as Field<EK>>::merge_from(&mut k, wire_type, r, &mut limit)?;
+                    key = Some(k);
+                },
+                2 => {
+                    let mut v = V::default();
+                    <V as Field<EV>>::merge_from(&mut v, wire_type, r, &mut limit)?;
+                    value = Some(v);
+                },
+                _ => return Err(Error::new(ErrorKind::InvalidData,
+                                           format!("map entry contains unexpected field; tag: {:?}, wire type: {:?}",
+                                                   tag, wire_type))),
+            }
+        }
+
+        match (key, value) {
+            (Some(key), Some(value)) => {
+                self.insert(key, value);
+            },
+            (Some(_), None) => return Err(Error::new(ErrorKind::InvalidData,
+                                                     "map entry is missing a key")),
+            (None, Some(_)) => return Err(Error::new(ErrorKind::InvalidData,
+                                                     "map entry is missing a value")),
+            (None, None) => return Err(Error::new(ErrorKind::InvalidData,
+                                                  "map entry is missing a key and a value")),
+        }
+
+        Ok(())
+    }
+
+    fn wire_len(&self, tag: u32) -> usize {
+        self.iter().fold(key_len(tag), |acc, (key, value)| {
+            acc + Field::<EK>::wire_len(key, 1) + Field::<EV>::wire_len(value, 2)
+        })
     }
 }
+*/
 
-/// A map field type.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
-pub enum KeyTy {
-    Int32,
-    Int64,
-    Uint32,
-    Uint64,
-    Sint32,
-    Sint64,
-    Fixed32,
-    Fixed64,
-    Sfixed32,
-    Sfixed64,
-    Bool,
-    String,
 }
 
-impl KeyTy {
-    fn from_str(s: &str) -> Result<KeyTy> {
-        Ok(match scalar::Ty::from_str(s)? {
-            scalar::Ty::Int32 => KeyTy::Int32,
-            scalar::Ty::Int64 => KeyTy::Int64,
-            scalar::Ty::Uint32 => KeyTy::Uint32,
-            scalar::Ty::Uint64 => KeyTy::Uint64,
-            scalar::Ty::Sint32 => KeyTy::Sint32,
-            scalar::Ty::Sint64 => KeyTy::Sint64,
-            scalar::Ty::Fixed32 => KeyTy::Fixed32,
-            scalar::Ty::Fixed64 => KeyTy::Fixed64,
-            scalar::Ty::Sfixed32 => KeyTy::Sfixed32,
-            scalar::Ty::Sfixed64 => KeyTy::Sfixed64,
-            scalar::Ty::Bool => KeyTy::Bool,
-            scalar::Ty::String => KeyTy::String,
-            _ => bail!("invalid map key type: {}", s),
-        })
+fn key_ty_from_str(s: &str) -> Result<scalar::Ty> {
+    let ty = scalar::Ty::from_str(s)?;
+    match ty {
+        scalar::Ty::Int32 | scalar::Ty::Int64 | scalar::Ty::Uint32 |
+            scalar::Ty::Uint64 | scalar::Ty::Sint32 | scalar::Ty::Sint64 |
+            scalar::Ty::Fixed32 | scalar::Ty::Fixed64 | scalar::Ty::Sfixed32 |
+            scalar::Ty::Sfixed64 | scalar::Ty::Bool | scalar::Ty::String  => Ok(ty),
+        _ => bail!("invalid map key type: {}", s),
     }
 }
 

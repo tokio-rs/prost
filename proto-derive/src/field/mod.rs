@@ -93,6 +93,7 @@ impl Field {
     pub fn merge(&self, tag: &Ident, wire_type: &Ident) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.merge(wire_type),
+            Field::Map(ref map) => map.merge(),
             _ => quote!(Ok(())),
         }
     }
