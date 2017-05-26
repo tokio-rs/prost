@@ -101,6 +101,7 @@ impl Field {
     pub fn encoded_len(&self) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.encoded_len(),
+            Field::Map(ref map) => map.encoded_len(),
             _ => quote!(0),
         }
     }

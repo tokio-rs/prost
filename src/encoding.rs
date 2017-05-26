@@ -678,6 +678,7 @@ pub fn merge_bytes<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B
 encode_repeated!(Vec<u8>, encode_bytes, encode_repeated_bytes);
 length_delimited!(Vec<u8>, merge_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes);
 
+// Generates methods to encode, merge, and get the encoded length of a map.
 macro_rules! map {
     ($key_ty:ty,
      $val_ty:ty,
@@ -692,18 +693,30 @@ macro_rules! map {
      $val_encoded_len:ident) => (
 
          #[inline]
-         pub fn $encode<B>(tag: u32, values: &HashMap<$key_ty, $val_ty>, buf: &mut B) where B: BufMut {
+         pub fn $encode<B>(tag: u32,
+                           values: &HashMap<$key_ty, $val_ty>,
+                           buf: &mut B) where B: BufMut {
             for (key, val) in values {
-                let len = $key_encoded_len(1, key) + $val_encoded_len(2, val);
+                let skip_key = key == &<$key_ty as Default>::default();
+                let skip_val = val == &<$val_ty as Default>::default();
+
+                let len = (if skip_key { 0 } else { $key_encoded_len(1, key) }) +
+                          (if skip_val { 0 } else { $val_encoded_len(2, val) });
+
                 encode_key(tag, WireType::LengthDelimited, buf);
                 encode_varint(len as u64, buf);
-                $key_encode(1, key, buf);
-                $val_encode(2, val, buf);
+                if !skip_key {
+                    $key_encode(1, key, buf);
+                }
+                if !skip_val {
+                    $val_encode(2, val, buf);
+                }
             }
          }
 
          #[inline]
-         pub fn $merge<B>(values: &mut HashMap<$key_ty, $val_ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+         pub fn $merge<B>(values: &mut HashMap<$key_ty, $val_ty>,
+                          buf: &mut Take<B>) -> Result<()> where B: Buf {
             let len = decode_varint(buf)?;
             if len > buf.remaining() as u64 {
                 return Err(invalid_data("buffer underflow"));
@@ -720,7 +733,6 @@ macro_rules! map {
                 match tag {
                     1 => $key_merge(wire_type, &mut key, buf)?,
                     2 => $val_merge(wire_type, &mut val, buf)?,
-                    // TODO: should we return an error here?
                     _ => (),
                 }
             }
@@ -731,9 +743,87 @@ macro_rules! map {
          }
 
          #[inline]
-         pub fn $encoded_len(tag: u32, values: &HashMap<$key_ty, $val_ty>) -> usize {
+         pub fn $encoded_len(tag: u32,
+                             values: &HashMap<$key_ty, $val_ty>) -> usize {
              key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-                 $key_encoded_len(1, key) + $val_encoded_len(2, val)
+                (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) }) +
+                (if val == &<$val_ty as Default>::default() { 0 } else { $val_encoded_len(2, val) })
+             }).sum::<usize>()
+         }
+    );
+}
+
+// This differs from map_<$key_ty>_int32 in one way: the enumeration can have
+// a default value other than 0. This is an extremely subtle edge condition that
+// only arrises with proto2.
+macro_rules! enumeration_map {
+    ($key_ty:ty,
+     $encode:ident,
+     $merge:ident,
+     $encoded_len:ident,
+     $key_encode:ident,
+     $key_merge:ident,
+     $key_encoded_len:ident) => (
+
+         #[inline]
+         pub fn $encode<B>(default_val: i32,
+                           tag: u32,
+                           values: &HashMap<$key_ty, i32>,
+                           buf: &mut B) where B: BufMut {
+            for (key, val) in values {
+                let skip_key = key == &<$key_ty as Default>::default();
+                let skip_val = val == &default_val;
+
+                let len = (if skip_key { 0 } else { $key_encoded_len(1, key) }) +
+                          (if skip_val { 0 } else { encoded_len_int32(2, val) });
+
+                encode_key(tag, WireType::LengthDelimited, buf);
+                encode_varint(len as u64, buf);
+                if !skip_key {
+                    $key_encode(1, key, buf);
+                }
+                if !skip_val {
+                    encode_int32(2, val, buf);
+                }
+            }
+         }
+
+         #[inline]
+         pub fn $merge<B>(default_val: i32,
+                          values: &mut HashMap<$key_ty, i32>,
+                          buf: &mut Take<B>) -> Result<()> where B: Buf {
+            let len = decode_varint(buf)?;
+            if len > buf.remaining() as u64 {
+                return Err(invalid_data("buffer underflow"));
+            }
+            let len = len as usize;
+            let limit = buf.limit();
+            buf.set_limit(len);
+
+            let mut key = Default::default();
+            let mut val = default_val;
+
+            while buf.has_remaining() {
+                let (tag, wire_type) = decode_key(buf)?;
+                match tag {
+                    1 => $key_merge(wire_type, &mut key, buf)?,
+                    2 => merge_int32(wire_type, &mut val, buf)?,
+                    _ => (),
+                }
+            }
+
+            values.insert(key, val);
+            buf.set_limit(limit - len);
+            Ok(())
+         }
+
+         #[inline]
+         pub fn $encoded_len(default_val: i32,
+                             tag: u32,
+                             values: &HashMap<$key_ty, i32>) -> usize {
+             key_len(tag) * values.len() + values.iter().map(|(key, val)| {
+                (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) }) +
+                (if val == &default_val { 0 } else { encoded_len_int32(2, val) })
              }).sum::<usize>()
          }
     );
@@ -1328,3 +1418,29 @@ map!(String, String, encode_map_string_string, merge_map_string_string, encoded_
 map!(String, Vec<u8>, encode_map_string_bytes, merge_map_string_bytes, encoded_len_map_string_bytes,
      encode_string, merge_string, encoded_len_string,
      encode_bytes, merge_bytes, encoded_len_bytes);
+
+enumeration_map!(i32, encode_map_int32_enumeration, merge_map_int32_enumeration, encoded_len_map_int32_enumeration,
+                 encode_int32, merge_int32, encoded_len_int32);
+enumeration_map!(i64, encode_map_int64_enumeration, merge_map_int64_enumeration, encoded_len_map_int64_enumeration,
+                 encode_int64, merge_int64, encoded_len_int64);
+enumeration_map!(u32, encode_map_uint32_enumeration, merge_map_uint32_enumeration, encoded_len_map_uint32_enumeration,
+                 encode_uint32, merge_uint32, encoded_len_uint32);
+enumeration_map!(u64, encode_map_uint64_enumeration, merge_map_uint64_enumeration, encoded_len_map_uint64_enumeration,
+                 encode_uint64, merge_uint64, encoded_len_uint64);
+enumeration_map!(i32, encode_map_sint32_enumeration, merge_map_sint32_enumeration, encoded_len_map_sint32_enumeration,
+                 encode_sint32, merge_sint32, encoded_len_sint32);
+enumeration_map!(i64, encode_map_sint64_enumeration, merge_map_sint64_enumeration, encoded_len_map_sint64_enumeration,
+                 encode_sint64, merge_sint64, encoded_len_sint64);
+enumeration_map!(u32, encode_map_fixed32_enumeration, merge_map_fixed32_enumeration, encoded_len_map_fixed32_enumeration,
+                 encode_fixed32, merge_fixed32, encoded_len_fixed32);
+enumeration_map!(u64, encode_map_fixed64_enumeration, merge_map_fixed64_enumeration, encoded_len_map_fixed64_enumeration,
+                 encode_fixed64, merge_fixed64, encoded_len_fixed64);
+enumeration_map!(i32, encode_map_sfixed32_enumeration, merge_map_sfixed32_enumeration, encoded_len_map_sfixed32_enumeration,
+                 encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
+enumeration_map!(i64, encode_map_sfixed64_enumeration, merge_map_sfixed64_enumeration, encoded_len_map_sfixed64_enumeration,
+                 encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
+enumeration_map!(bool, encode_map_bool_enumeration, merge_map_bool_enumeration, encoded_len_map_bool_enumeration,
+                 encode_bool, merge_bool, encoded_len_bool);
+
+enumeration_map!(String, encode_map_string_enumeration, merge_map_string_enumeration, encoded_len_map_string_enumeration,
+                 encode_string, merge_string, encoded_len_string);

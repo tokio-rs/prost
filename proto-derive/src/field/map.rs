@@ -81,29 +81,16 @@ impl Field {
         })
     }
 
+    /// Returns a statement which encodes the map field.
     pub fn encode(&self) -> Tokens {
         let tag = self.tag;
         let field = Ident::new(format!("self.{}", self.ident));
-
-        let key_kind = scalar::Kind::Plain(scalar::DefaultValue::new(&self.key_ty));
-        let key_encode_fn = self.key_ty.encode_fn(&key_kind);
-        let key_encoded_len_fn = self.key_ty.encoded_len_fn(&key_kind);
-
         match self.value_ty {
             ValueTy::Scalar(ref value_ty) => {
-                let value_kind = scalar::Kind::Plain(scalar::DefaultValue::new(value_ty));
-                let value_encode_fn = value_ty.encode_fn(&value_kind);
-                let value_encoded_len_fn = value_ty.encoded_len_fn(&value_kind);
-
-                quote! {
-                    for (key, value) in &#field {
-                        let len = #key_encoded_len_fn(1, key) + #value_encoded_len_fn(2, value);
-                        _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
-                        _proto::encoding::encode_varint(len as u64, buf);
-                        #key_encode_fn(1, key, buf);
-                        #value_encode_fn(2, value, buf);
-                    }
-                }
+                let encode_fn = Ident::new(format!("_proto::encoding::encode_map_{}_{}",
+                                                   self.key_ty.encode_as(),
+                                                   value_ty.encode_as()));
+                quote!(#encode_fn(#tag, &#field, buf);)
             },
             ValueTy::Message => {
                 panic!("unimplemented: map field message values");
@@ -111,50 +98,33 @@ impl Field {
         }
     }
 
+    /// Returns an expression which evaluates to the result of merging a decoded key value pair
+    /// into the map.
     pub fn merge(&self) -> Tokens {
         let field = Ident::new(format!("self.{}", self.ident));
-
-        let key_default = scalar::DefaultValue::new(&self.key_ty);
-        let key_owned_default = key_default.owned();
-        let key_kind = scalar::Kind::Plain(key_default);
-        let key_merge_fn = self.key_ty.merge_fn(&key_kind);
-
         match self.value_ty {
             ValueTy::Scalar(ref value_ty) => {
-                let value_default = scalar::DefaultValue::new(&value_ty);
-                let value_owned_default = value_default.owned();
-                let value_kind = scalar::Kind::Plain(value_default);
-                let value_merge_fn = value_ty.merge_fn(&value_kind);
+                let merge_fn = Ident::new(format!("_proto::encoding::merge_map_{}_{}",
+                                                   self.key_ty.encode_as(),
+                                                   value_ty.encode_as()));
+                quote!(#merge_fn(&mut #field, buf))
+            },
+            ValueTy::Message => {
+                panic!("unimplemented: map field message values");
+            },
+        }
+    }
 
-                quote! {
-                    (|| {
-                        let len = _proto::encoding::decode_varint(buf)?;
-                        if len > buf.remaining() as u64 {
-                            return Err(::std::io::Error::new(::std::io::ErrorKind::InvalidData,
-                                                             "buffer underflow"));
-                        }
-                        let len = len as usize;
-                        let limit = buf.limit();
-                        buf.set_limit(len);
-
-                        let mut key = #key_owned_default;
-                        let mut value = #value_owned_default;
-
-                        while buf.has_remaining() {
-                            let (tag, wire_type) = _proto::encoding::decode_key(buf)?;
-                            match tag {
-                                1 => #key_merge_fn(wire_type, &mut key, buf)?,
-                                2 => #value_merge_fn(wire_type, &mut value, buf)?,
-                                // TODO: should we return an error here?
-                                _ => (),
-                            }
-                        }
-
-                        #field.insert(key, value);
-                        buf.set_limit(limit - len);
-                        Ok(())
-                    })()
-                }
+    /// Returns an expression which evaluates to the encoded length of the map.
+    pub fn encoded_len(&self) -> Tokens {
+        let tag = self.tag;
+        let field = Ident::new(format!("self.{}", self.ident));
+        match self.value_ty {
+            ValueTy::Scalar(ref value_ty) => {
+                let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_map_{}_{}",
+                                                        self.key_ty.encode_as(),
+                                                        value_ty.encode_as()));
+                quote!(#encoded_len_fn(#tag, &#field))
             },
             ValueTy::Message => {
                 panic!("unimplemented: map field message values");
