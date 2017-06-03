@@ -116,6 +116,7 @@ impl Field {
     pub fn methods(&self) -> Option<Tokens> {
         match *self {
             Field::Scalar(ref scalar) => scalar.methods(),
+            Field::Map(ref map) => map.methods(),
             _ => None,
         }
     }

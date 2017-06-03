@@ -132,66 +132,29 @@ impl Field {
         }
     }
 
-    /*
-impl <K, V, EK, EV> Field<(EK, EV)> for HashMap<K, V>
-where K: default::Default + Eq + Hash + Key + Field<EK>,
-      V: default::Default + Field<EV> {
+    /// Returns methods to embed in the message.
+    pub fn methods(&self) -> Option<Tokens> {
+        if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {
+            let key_ty = Ident::new(self.key_ty.rust_type());
+            let key_ref_ty = Ident::new(self.key_ty.rust_ref_type());
 
-    fn merge_from(&mut self, wire_type: WireType, r: &mut Read, limit: &mut usize) -> Result<()> {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let len = <u64 as ScalarField>::read_from(r, limit)?;
-        if len > usize::MAX as u64 {
-            return Err(Error::new(ErrorKind::InvalidData,
-                                  "map length overflows usize"));
+            let ident = &self.ident;
+            let get = Ident::new(format!("get_{}", ident));
+            let insert = Ident::new(format!("insert_{}", ident));
+
+            Some(quote! {
+                fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
+                    self.#ident.get(key).cloned().and_then(#ty::from_i32)
+                }
+
+                fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
+                    self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
+                }
+            })
+        } else {
+            None
         }
-        check_limit(len as usize, limit)?;
-
-        let mut key = None;
-        let mut value = None;
-
-        let mut limit = len as usize;
-        while limit > 0 {
-            let (wire_type, tag) = read_key_from(r, &mut limit)?;
-            match tag {
-                1 => {
-                    let mut k = K::default();
-                    <K as Field<EK>>::merge_from(&mut k, wire_type, r, &mut limit)?;
-                    key = Some(k);
-                },
-                2 => {
-                    let mut v = V::default();
-                    <V as Field<EV>>::merge_from(&mut v, wire_type, r, &mut limit)?;
-                    value = Some(v);
-                },
-                _ => return Err(Error::new(ErrorKind::InvalidData,
-                                           format!("map entry contains unexpected field; tag: {:?}, wire type: {:?}",
-                                                   tag, wire_type))),
-            }
-        }
-
-        match (key, value) {
-            (Some(key), Some(value)) => {
-                self.insert(key, value);
-            },
-            (Some(_), None) => return Err(Error::new(ErrorKind::InvalidData,
-                                                     "map entry is missing a key")),
-            (None, Some(_)) => return Err(Error::new(ErrorKind::InvalidData,
-                                                     "map entry is missing a value")),
-            (None, None) => return Err(Error::new(ErrorKind::InvalidData,
-                                                  "map entry is missing a key and a value")),
-        }
-
-        Ok(())
     }
-
-    fn wire_len(&self, tag: u32) -> usize {
-        self.iter().fold(key_len(tag), |acc, (key, value)| {
-            acc + Field::<EK>::wire_len(key, 1) + Field::<EV>::wire_len(value, 2)
-        })
-    }
-}
-*/
-
 }
 
 fn key_ty_from_str(s: &str) -> Result<scalar::Ty> {

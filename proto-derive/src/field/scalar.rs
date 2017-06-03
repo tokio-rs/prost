@@ -185,11 +185,10 @@ impl Field {
 
     /// Returns methods to embed in the message.
     pub fn methods(&self) -> Option<Tokens> {
-        let ident = &self.ident;
-        let set = Ident::new(format!("set_{}", ident));
-        let push = Ident::new(format!("push_{}", ident));
-
         if let Ty::Enumeration(ref ty) = self.ty {
+            let ident = &self.ident;
+            let set = Ident::new(format!("set_{}", ident));
+            let push = Ident::new(format!("push_{}", ident));
             Some(match self.kind {
                 Kind::Plain(..) | Kind::Required(..) => {
                     quote! {
@@ -346,6 +345,35 @@ impl Ty {
             Ty::String => "string",
             Ty::Bytes => "bytes",
             Ty::Enumeration(..) => "enum",
+        }
+    }
+
+    pub fn rust_type(&self) -> &'static str {
+        match *self {
+            Ty::String => "::std::string::String",
+            Ty::Bytes => "::std::vec::Vec<u8>",
+            _ => &self.rust_ref_type()[1..],
+        }
+    }
+
+    pub fn rust_ref_type(&self) -> &'static str {
+        match *self {
+            Ty::Double => "&f64",
+            Ty::Float => "&f32",
+            Ty::Int32 => "&i32",
+            Ty::Int64 => "&i64",
+            Ty::Uint32 => "&u32",
+            Ty::Uint64 => "&u64",
+            Ty::Sint32 => "&int32",
+            Ty::Sint64 => "&int64",
+            Ty::Fixed32 => "&u32",
+            Ty::Fixed64 => "&u64",
+            Ty::Sfixed32 => "&i32",
+            Ty::Sfixed64 => "&i64",
+            Ty::Bool => "&bool",
+            Ty::String => "&str",
+            Ty::Bytes => "&[u8]",
+            Ty::Enumeration(..) => "&i32",
         }
     }
 
