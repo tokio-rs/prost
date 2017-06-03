@@ -755,7 +755,7 @@ macro_rules! map {
 
 // This differs from map_<$key_ty>_int32 in one way: the enumeration can have
 // a default value other than 0. This is an extremely subtle edge condition that
-// only arrises with proto2.
+// only happens with proto2.
 macro_rules! enumeration_map {
     ($key_ty:ty,
      $encode:ident,
@@ -874,7 +874,13 @@ macro_rules! enumeration_map {
 //      val_rust_ty=val_rust_ty,
 //      key_pb_ty=key_pb_ty,
 //      val_pb_ty=val_pb_ty);
-//     }
+//   }
+// }
+// for &(ref key_rust_ty, ref key_pb_ty) in key_types {
+//     println!("enumeration_map!({key_rust_ty}, encode_map_{key_pb_ty}_enumeration, merge_map_{key_pb_ty}_enumeration, encoded_len_map_{key_pb_ty}_enumeration,
+//              encode_{key_pb_ty}, merge_{key_pb_ty}, encoded_len_{key_pb_ty});",
+//      key_rust_ty=key_rust_ty,
+//      key_pb_ty=key_pb_ty);
 // }
 // ```
 
@@ -1441,6 +1447,5 @@ enumeration_map!(i64, encode_map_sfixed64_enumeration, merge_map_sfixed64_enumer
                  encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
 enumeration_map!(bool, encode_map_bool_enumeration, merge_map_bool_enumeration, encoded_len_map_bool_enumeration,
                  encode_bool, merge_bool, encoded_len_bool);
-
 enumeration_map!(String, encode_map_string_enumeration, merge_map_string_enumeration, encoded_len_map_string_enumeration,
                  encode_string, merge_string, encoded_len_string);
