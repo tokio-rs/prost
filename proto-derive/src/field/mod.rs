@@ -81,6 +81,7 @@ impl Field {
         }
     }
 
+    /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encode(&self) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.encode(),
@@ -90,6 +91,8 @@ impl Field {
         }
     }
 
+    /// Returns an expression which evaluates to the result of merging a decoded
+    /// value into the field.
     pub fn merge(&self, tag: &Ident, wire_type: &Ident) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.merge(wire_type),
@@ -99,11 +102,12 @@ impl Field {
         }
     }
 
+    /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.encoded_len(),
             Field::Map(ref map) => map.encoded_len(),
-
+            Field::Message(ref msg) => msg.encoded_len(),
             _ => quote!(0),
         }
     }

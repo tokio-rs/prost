@@ -31,8 +31,7 @@ fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
 }
 
 fn try_message(input: TokenStream) -> Result<TokenStream> {
-    let syn::DeriveInput { ident, generics, body, .. } =
-        syn::parse_derive_input(&input.to_string()).expect("unable to parse message type");
+    let syn::DeriveInput { ident, generics, body, .. } = syn::parse_derive_input(&input.to_string())?;
 
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
@@ -245,7 +244,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
 
                 #[doc=#from_i32_doc]
-                fn from_i32(value: i32) -> Option<#ident> {
+                fn from_i32(value: i32) -> ::std::option::Option<#ident> {
                     match value {
                         #from
                         _ => None,
@@ -272,11 +271,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     expanded.parse().unwrap()
 }
 
-/*
-#[proc_macro_derive(Oneof, attributes(proto))]
-pub fn oneof(input: TokenStream) -> TokenStream {
-    let syn::DeriveInput { ident, generics, body, .. } =
-        syn::parse_derive_input(&input.to_string()).expect("unable to parse message type");
+fn try_oneof(input: TokenStream) -> Result<TokenStream> {
+    let syn::DeriveInput { ident, generics, body, .. } = syn::parse_derive_input(&input.to_string())?;
 
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
@@ -291,30 +287,28 @@ pub fn oneof(input: TokenStream) -> TokenStream {
 
     // Map the variants into 'fields'.
     let fields = variants.into_iter().map(|variant| {
-        let ident = variant.ident;
+        let variant_ident = variant.ident;
         let attrs = variant.attrs;
         if let syn::VariantData::Tuple(mut fields) = variant.data {
             if fields.len() != 1 {
                 panic!("Oneof enum must contain only tuple variants with a single field");
             }
-            let field = fields.pop().unwrap();
-            Field::extract(syn::Field {
-                ident: Some(ident),
-                vis: field.vis,
-                attrs: attrs,
-                ty: field.ty,
-            }).expect("Oneof fields may not be ignored")
+            Field::new(variant_ident.clone(), attrs).and_then(|field| {
+                field.map_or_else(|| bail!("invalid oneof variant {}.{}: variants may not be ignored",
+                                           ident, variant_ident),
+                                  Ok)
+            })
         } else {
-            panic!("Oneof enum must contain only tuple variants with a single field");
+            bail!("Oneof enum must contain only tuple variants with a single field");
         }
-    }).collect::<Vec<_>>();
+    }).collect::<Result<Vec<_>>>()?;
 
-    let mut tags = fields.iter().flat_map(|field| {
-        if field.tags.len() > 1 {
-            panic!("proto oneof variants may only have a single tag: {}.{}",
-                   ident, field.ident);
+    let mut tags = fields.iter().flat_map(|field| -> Result<u32> {
+        if field.tags().len() > 1 {
+            bail!("proto oneof variants may only have a single tag: {}.{}",
+                  ident, field.ident());
         }
-        &field.tags
+        Ok(field.tags()[0])
     }).collect::<Vec<_>>();
     tags.sort();
     tags.dedup();
@@ -325,35 +319,30 @@ pub fn oneof(input: TokenStream) -> TokenStream {
     let dummy_const = syn::Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
 
     let encode = fields.iter().map(|field| {
-        let kind = &field.kind;
-        let name = &field.ident;
-        let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => _proto::field::Field::<#kind>::encode(value, #tag, buf), }
+        let name = &field.ident();
+        let encode = field.encode();
+        quote! { #ident::#name(ref value) => #encode, }
     }).fold(Tokens::new(), concat_tokens);
 
-    let merge = fields.iter().map(|field| {
-        let kind = &field.kind;
-        let name = &field.ident;
-        let tag = field.tags[0];
-        quote! { #tag => {
-            let mut value = ::std::default::Default::default();
-            _proto::field::Field::<#kind>::merge(&mut value, tag, wire_type, buf)?;
-            #ident::#name(value)
-        },
+    let decode = fields.iter().map(|field| {
+        let tag = field.tags()[0];
+        let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
+        quote! {
+            #tag => {
+                let mut value = ::std::default::Default::default();
+                #merge;
+                Some(value)
+            },
         }
     }).fold(Tokens::new(), concat_tokens);
 
     let encoded_len = fields.iter().map(|field| {
-        let kind = &field.kind;
-        let name = &field.ident;
-        let tag = field.tags[0];
-        quote! { #ident::#name(ref value) => _proto::field::Field::<#kind>::encoded_len(value, #tag), }
+        let name = &field.ident();
+        let encoded_len = field.encoded_len();
+        quote! {
+            #ident::#name(ref value) => #encoded_len,
+        }
     }).fold(Tokens::new(), concat_tokens);
-
-    let default = {
-        let field_ident = &fields[0].ident;
-        quote!(#ident::#field_ident(::std::default::Default::default()))
-    };
 
     let expanded = quote! {
         #[allow(
@@ -367,42 +356,38 @@ pub fn oneof(input: TokenStream) -> TokenStream {
             extern crate bytes as _bytes;
             extern crate proto as _proto;
 
-            #[automatically_derived]
-            impl _proto::field::Field<_proto::field::Oneof> for #ident {
-                #[inline]
-                fn encode<B>(&self, tag: u32, buf: &mut B) where B: _bytes::BufMut {
+            impl #ident {
+                pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
                     match *self {
                         #encode
                     }
                 }
 
-                #[inline]
-                fn merge<B>(&mut self, tag: u32, wire_type: _proto::encoding::WireType, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
-                    *self = match tag {
-                        #merge
-                        _ => panic!("unknown tag: {}", tag),
-                    };
-                    ::std::result::Result::Ok(())
+                pub fn decode<B>(&self,
+                                 tag: u32,
+                                 wire_type: _proto::encoding::WireType,
+                                 buf: &mut B)
+                                 -> ::std::io::Result<::std::option::Option<#ident>>
+                where B: _bytes::Buf {
+                    match *self {
+                        #decode
+                        _ => None,
+                    }
                 }
 
-                #[inline]
-                fn encoded_len(&self, tag: u32) -> usize {
+                pub fn encoded_len(&self) -> usize {
                     match *self {
                         #encoded_len
                     }
                 }
             }
-
-            impl ::std::default::Default for #ident {
-                fn default() -> #ident {
-                    #default
-                }
-            }
-
-            impl _proto::field::Type<_proto::field::Oneof> for #ident {}
         };
     };
 
-    expanded.parse().unwrap()
+    expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
 }
-*/
+
+#[proc_macro_derive(Oneof, attributes(proto))]
+pub fn oneof(input: TokenStream) -> TokenStream {
+    try_oneof(input).unwrap()
+}

@@ -13,7 +13,6 @@ use field::{
     tag_attr,
     set_option,
     set_bool,
-    bool_attr,
     Label,
 };
 

@@ -334,3 +334,9 @@ pub struct Compound {
     #[proto(message, repeated, tag="3")]
     pub repeated_message: Vec<Basic>,
 }
+
+#[derive(Clone, Debug, PartialEq, Oneof)]
+pub enum BasicOneof {
+    #[proto(int32, tag="1")]
+    Int(i32),
+}
