@@ -322,3 +322,15 @@ pub struct Basic {
     pub optional_enumeration: Option<BasicEnumeration>,
     */
 }
+
+#[derive(Clone, Debug, PartialEq, Message)]
+pub struct Compound {
+    #[proto(message, optional, tag="1")]
+    pub optional_message: Option<Basic>,
+
+    #[proto(message, required, tag="2")]
+    pub required_message: Basic,
+
+    #[proto(message, repeated, tag="3")]
+    pub repeated_message: Vec<Basic>,
+}

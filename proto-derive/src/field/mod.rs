@@ -93,6 +93,7 @@ impl Field {
     pub fn merge(&self, tag: &Ident, wire_type: &Ident) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.merge(wire_type),
+            Field::Message(ref message) => message.merge(),
             Field::Map(ref map) => map.merge(),
             _ => quote!(Ok(())),
         }
@@ -102,6 +103,7 @@ impl Field {
         match *self {
             Field::Scalar(ref scalar) => scalar.encoded_len(),
             Field::Map(ref map) => map.encoded_len(),
+
             _ => quote!(0),
         }
     }
@@ -206,7 +208,7 @@ fn bool_attr(key: &str, attr: &MetaItem) -> Result<Option<bool>> {
         MetaItem::List(_, ref items) => {
             // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
             if items.len() == 1 {
-                if let Some(&NestedMetaItem::Literal(Lit::Bool(value))) = items.first() {
+                if let NestedMetaItem::Literal(Lit::Bool(value)) = items[0] {
                     return Ok(Some(value))
                 }
             }
@@ -237,7 +239,7 @@ fn tag_attr(attr: &MetaItem) -> Result<Option<u32>> {
         MetaItem::List(_, ref items) => {
             // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
             if items.len() == 1 {
-                if let Some(&NestedMetaItem::Literal(Lit::Int(value, _))) = items.first() {
+                if let NestedMetaItem::Literal(Lit::Int(value, _)) = items[0] {
                     return Ok(Some(value as u32));
                 }
             }

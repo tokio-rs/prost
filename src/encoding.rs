@@ -19,6 +19,8 @@ use bytes::{
     Take,
 };
 
+use Message;
+
 /// Returns an invalid data IO error wrapping the provided cause.
 ///
 /// This should be used primarily when decoding a Protobuf type fails.
@@ -1449,3 +1451,53 @@ enumeration_map!(bool, encode_map_bool_enumeration, merge_map_bool_enumeration, 
                  encode_bool, merge_bool, encoded_len_bool);
 enumeration_map!(String, encode_map_string_enumeration, merge_map_string_enumeration, encoded_len_map_string_enumeration,
                  encode_string, merge_string, encoded_len_string);
+
+pub fn encode_message<M, B>(msg: &M, tag: u32, buf: &mut B)
+where M: Message,
+      B: BufMut {
+    encode_key(tag, WireType::LengthDelimited, buf);
+    encode_varint(msg.encoded_len() as u64, buf);
+    msg.encode_raw(buf);
+}
+
+
+pub fn merge_message<M, B>(msg: &mut M, buf: &mut Take<B>) -> Result<()>
+where M: Message,
+      B: Buf {
+    let len = decode_varint(buf)?;
+    if len > buf.remaining() as u64 {
+        return Err(invalid_data("buffer underflow"));
+    }
+
+    let len = len as usize;
+    let limit = buf.limit();
+    buf.set_limit(len);
+    msg.merge(buf)?;
+    buf.set_limit(limit - len);
+    Ok(())
+}
+
+pub fn encode_repeated_message<M, B>(tag: u32, messages: &[M], buf: &mut B)
+where M: Message,
+      B: BufMut {
+    for msg in messages {
+        encode_message(msg, tag, buf);
+    }
+}
+
+pub fn merge_repeated_message<M, B>(messages: &mut Vec<M>, buf: &mut Take<B>) -> Result<()>
+where M: Message,
+      B: Buf {
+    let mut msg = M::default();
+    merge_message(&mut msg, buf)?;
+    messages.push(msg);
+    Ok(())
+}
+
+pub fn encoded_len_message<M>(tag: u32, msg: &M) -> usize where M: Message {
+    key_len(tag) + msg.encoded_len()
+}
+
+pub fn encoded_len_repeated_message<M>(tag: u32, messages: &[M]) -> usize where M: Message {
+    key_len(tag) * messages.len() + messages.iter().map(Message::encoded_len).sum::<usize>()
+}
