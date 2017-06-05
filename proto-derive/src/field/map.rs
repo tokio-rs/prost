@@ -90,7 +90,9 @@ impl Field {
                 quote!(#encode_fn(#tag, &#ident, buf);)
             },
             ValueTy::Message => {
-                panic!("unimplemented: map field message values");
+                let encode_fn = Ident::new(format!("_proto::encoding::encode_map_{}_message",
+                                                   self.key_ty.encode_as()));
+                quote!(#encode_fn(#tag, &#ident, buf);)
             },
         }
     }
@@ -101,12 +103,14 @@ impl Field {
         match self.value_ty {
             ValueTy::Scalar(ref value_ty) => {
                 let merge_fn = Ident::new(format!("_proto::encoding::merge_map_{}_{}",
-                                                   self.key_ty.encode_as(),
-                                                   value_ty.encode_as()));
+                                                  self.key_ty.encode_as(),
+                                                  value_ty.encode_as()));
                 quote!(#merge_fn(&mut #ident, buf))
             },
             ValueTy::Message => {
-                panic!("unimplemented: map field message values");
+                let merge_fn = Ident::new(format!("_proto::encoding::merge_map_{}_message",
+                                                  self.key_ty.encode_as()));
+                quote!(#merge_fn(&mut #ident, buf))
             },
         }
     }
@@ -122,7 +126,9 @@ impl Field {
                 quote!(#encoded_len_fn(#tag, &#ident))
             },
             ValueTy::Message => {
-                panic!("unimplemented: map field message values");
+                let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_map_{}_message",
+                                                        self.key_ty.encode_as()));
+                quote!(#encoded_len_fn(#tag, &#ident))
             },
         }
     }

@@ -67,21 +67,17 @@ impl Field {
         match self.label {
             Label::Optional => quote! {
                 if let Some(ref msg) = #ident {
-                    _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
-                    _proto::encoding::encode_varint(msg.encoded_len() as u64, buf);
-                    msg.encode_raw(buf);
+                    if msg != &Default::default() {
+                        _proto::encoding::encode_message(#tag, msg, buf);
+                    }
                 }
             },
             Label::Required => quote! {
-                _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
-                _proto::encoding::encode_varint(#ident.encoded_len() as u64, buf);
-                #ident.encode_raw(buf);
+                _proto::encoding::encode_message(#tag, &#ident, buf);
             },
             Label::Repeated => quote! {
                 for msg in &#ident {
-                    _proto::encoding::encode_key(#tag, _proto::encoding::WireType::LengthDelimited, buf);
-                    _proto::encoding::encode_varint(msg.encoded_len() as u64, buf);
-                    msg.encode_raw(buf);
+                    _proto::encoding::encode_message(#tag, msg, buf);
                 }
             },
         }

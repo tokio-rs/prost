@@ -35,224 +35,198 @@ fn check_message<M>(msg: M) where M: Message + PartialEq {
     assert_eq!(msg, roundtrip);
 }
 
-/*
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct RepeatedFloats {
-    #[proto(tag="11")]
+    #[proto(float, tag="11")]
     pub single_float: f32,
-    #[proto(tag="41")]
+    #[proto(float, repeated, packed="true", tag="41")]
     pub repeated_float: Vec<f32>,
 }
 
 #[test]
 fn check_repeated_floats() {
     let _ = env_logger::init();
-    check_message(RepeatedFloats { single_float: 0.0,
-                                   repeated_float: vec![ 0.1,
-                                                         340282300000000000000000000000000000000.0,
-                                                         0.000000000000000000000000000000000000011754944 ]
+    check_message(RepeatedFloats {
+        single_float: 0.0,
+        repeated_float: vec![
+            0.1,
+            340282300000000000000000000000000000000.0,
+            0.000000000000000000000000000000000000011754944
+        ],
     });
 }
-*/
 
-/*
 #[test]
 fn check_scalar_types() {
     let _ = env_logger::init();
-    let scalar_types = ScalarTypes {
-        required_int32: 0,
-        required_int64: 0,
-        required_uint32: 0,
-        required_uint64: 0,
-        required_sint32: 0,
-        required_sint64: 0,
-        required_fixed32: 0,
-        required_fixed64: 0,
-        required_sfixed32: 0,
-        required_sfixed64: 0,
-        required_float: 0.0,
-        required_double: 0.0,
-        required_bool: false,
-        required_string: String::new(),
-        required_bytes: Vec::new(),
-
-        optional_int32: None,
-        optional_int64: None,
-        optional_uint32: None,
-        optional_uint64: None,
-        optional_sint32: None,
-        optional_sint64: None,
-        optional_fixed32: None,
-        optional_fixed64: None,
-        optional_sfixed32: None,
-        optional_sfixed64: None,
-        optional_float: None,
-        optional_double: None,
-        optional_bool: None,
-        optional_string: None,
-        optional_bytes: None,
-
-        repeated_int32: vec![],
-        repeated_int64: vec![],
-        repeated_uint32: vec![],
-        repeated_uint64: vec![],
-        repeated_sint32: vec![],
-        repeated_sint64: vec![],
-        repeated_fixed32: vec![],
-        repeated_fixed64: vec![],
-        repeated_sfixed32: vec![],
-        repeated_sfixed64: vec![],
-        repeated_float: vec![ 0.1, 340282300000000000000000000000000000000.0, 0.000000000000000000000000000000000000011754944 ],
-        repeated_double: vec![],
-        repeated_bool: vec![],
-        repeated_string: vec![],
-        repeated_bytes: vec![],
-
-        packed_int32: vec![],
-        packed_int64: vec![],
-        packed_uint32: vec![],
-        packed_uint64: vec![],
-        packed_sint32: vec![],
-        packed_sint64: vec![],
-        packed_fixed32: vec![],
-        packed_fixed64: vec![],
-        packed_sfixed32: vec![],
-        packed_sfixed64: vec![],
-        packed_float: vec![],
-        packed_double: vec![],
-        packed_bool: vec![],
-    };
+    let scalar_types = ScalarTypes::default();
     check_message(scalar_types);
 }
-*/
 
-/*
 /// A protobuf message which contains all scalar types.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct ScalarTypes {
-    #[proto(tag="1")]
+    #[proto(int32, tag="001")]
+    pub int32: i32,
+    #[proto(int64, tag="002")]
+    pub int64: i64,
+    #[proto(uint32, tag="003")]
+    pub uint32: u32,
+    #[proto(uint64, tag="004")]
+    pub uint64: u64,
+    #[proto(sint32, tag="005")]
+    pub sint32: i32,
+    #[proto(sint64, tag="006")]
+    pub sint64: i64,
+    #[proto(fixed32, tag="007")]
+    pub fixed32: u32,
+    #[proto(fixed64, tag="008")]
+    pub fixed64: u64,
+    #[proto(sfixed32, tag="009")]
+    pub sfixed32: i32,
+    #[proto(sfixed64, tag="010")]
+    pub sfixed64: i64,
+    #[proto(float, tag="011")]
+    pub float: f32,
+    #[proto(double, tag="012")]
+    pub double: f64,
+    #[proto(bool, tag="013")]
+    pub _bool: bool,
+    #[proto(string, tag="014")]
+    pub string: String,
+    #[proto(bytes, tag="015")]
+    pub bytes: Vec<u8>,
+
+    #[proto(int32, required, tag="101")]
     pub required_int32: i32,
-    #[proto(tag="2")]
+    #[proto(int64, required, tag="102")]
     pub required_int64: i64,
-    #[proto(tag="3")]
+    #[proto(uint32, required, tag="103")]
     pub required_uint32: u32,
-    #[proto(tag="4")]
+    #[proto(uint64, required, tag="104")]
     pub required_uint64: u64,
-    #[proto(signed, tag="5")]
+    #[proto(sint32, required, tag="105")]
     pub required_sint32: i32,
-    #[proto(signed, tag="6")]
+    #[proto(sint64, required, tag="106")]
     pub required_sint64: i64,
-    #[proto(fixed, tag="7")]
+    #[proto(fixed32, required, tag="107")]
     pub required_fixed32: u32,
-    #[proto(fixed, tag="8")]
+    #[proto(fixed64, required, tag="108")]
     pub required_fixed64: u64,
-    #[proto(fixed, tag="9")]
+    #[proto(sfixed32, required, tag="109")]
     pub required_sfixed32: i32,
-    #[proto(fixed, tag="10")]
+    #[proto(sfixed64, required, tag="110")]
     pub required_sfixed64: i64,
-    #[proto(tag="11")]
+    #[proto(float, required, tag="111")]
     pub required_float: f32,
-    #[proto(tag="12")]
+    #[proto(double, required, tag="112")]
     pub required_double: f64,
-    #[proto(tag="13")]
+    #[proto(bool, required, tag="113")]
     pub required_bool: bool,
-    #[proto(tag="14")]
+    #[proto(string, required, tag="114")]
     pub required_string: String,
-    #[proto(tag="15")]
+    #[proto(bytes, required, tag="115")]
     pub required_bytes: Vec<u8>,
 
-    #[proto(tag="16")]
+    #[proto(int32, optional, tag="201")]
     pub optional_int32: Option<i32>,
-    #[proto(tag="17")]
+    /*
+    #[proto(int64, optional, tag="202")]
     pub optional_int64: Option<i64>,
-    #[proto(tag="18")]
+    #[proto(uint32, optional, tag="203")]
     pub optional_uint32: Option<u32>,
-    #[proto(tag="19")]
+    #[proto(uint64, optional, tag="204")]
     pub optional_uint64: Option<u64>,
-    #[proto(signed, tag="20")]
+    #[proto(sint32, optional, tag="205")]
     pub optional_sint32: Option<i32>,
-    #[proto(signed, tag="21")]
+    #[proto(sint64, optional, tag="206")]
     pub optional_sint64: Option<i64>,
-    #[proto(fixed, tag="22")]
+    #[proto(fixed64, optional, tag="207")]
     pub optional_fixed32: Option<u32>,
-    #[proto(fixed, tag="23")]
+    #[proto(fixed64, optional, tag="208")]
     pub optional_fixed64: Option<u64>,
-    #[proto(fixed, tag="24")]
+    #[proto(sfixed32, optional, tag="209")]
     pub optional_sfixed32: Option<i32>,
-    #[proto(fixed, tag="25")]
+    #[proto(sfixed64, optional, tag="210")]
     pub optional_sfixed64: Option<i64>,
-    #[proto(tag="26")]
+    #[proto(float, optional, tag="211")]
     pub optional_float: Option<f32>,
-    #[proto(tag="27")]
+    #[proto(double, optional, tag="212")]
     pub optional_double: Option<f64>,
-    #[proto(tag="28")]
+    #[proto(bool, optional, tag="213")]
     pub optional_bool: Option<bool>,
-    #[proto(tag="29")]
+    #[proto(string, optional, tag="214")]
     pub optional_string: Option<String>,
-    #[proto(tag="30")]
+    #[proto(bytes, optional, tag="215")]
     pub optional_bytes: Option<Vec<u8>>,
+    */
 
-    #[proto(tag="31")]
+    /*
+    #[proto(int32, repeated, packed="false", tag="301")]
     pub repeated_int32: Vec<i32>,
-    #[proto(tag="32")]
+    #[proto(int64, repeated, packed="false", tag="302")]
     pub repeated_int64: Vec<i64>,
-    #[proto(tag="33")]
+    #[proto(uint32, repeated, packed="false", tag="303")]
     pub repeated_uint32: Vec<u32>,
-    #[proto(tag="34")]
+    #[proto(uint64, repeated, packed="false", tag="304")]
     pub repeated_uint64: Vec<u64>,
-    #[proto(signed, tag="35")]
+    #[proto(sint32, repeated, packed="false", tag="305")]
     pub repeated_sint32: Vec<i32>,
-    #[proto(signed, tag="36")]
+    #[proto(sint64 repeated, packed="false", tag="306")]
     pub repeated_sint64: Vec<i64>,
-    #[proto(fixed, tag="37")]
+    #[proto(fixed32, repeated, packed="false", tag="307")]
     pub repeated_fixed32: Vec<u32>,
-    #[proto(fixed, tag="38")]
+    #[proto(fixed64, repeated, packed="false", tag="308")]
     pub repeated_fixed64: Vec<u64>,
-    #[proto(fixed, tag="39")]
+    #[proto(sfixed32, repeated, packed="false", tag="309")]
     pub repeated_sfixed32: Vec<i32>,
-    #[proto(fixed, tag="40")]
+    #[proto(sfixed64, repeated, packed="false", tag="310")]
     pub repeated_sfixed64: Vec<i64>,
-    #[proto(tag="41")]
+    #[proto(float, repeated, packed="false", tag="311")]
     pub repeated_float: Vec<f32>,
-    #[proto(tag="42")]
+    #[proto(double, repeated, packed="false", tag="312")]
     pub repeated_double: Vec<f64>,
-    #[proto(tag="43")]
+    #[proto(bool, repeated, packed="false", tag="313")]
     pub repeated_bool: Vec<bool>,
-    #[proto(tag="44")]
+    #[proto(string, repeated, packed="false", tag="315")]
     pub repeated_string: Vec<String>,
-    #[proto(tag="45")]
+    #[proto(bytes, repeated, packed="false", tag="316")]
     pub repeated_bytes: Vec<Vec<u8>>,
+    */
 
-    // TODO: actually make these packed
-
-    #[proto(tag="46")]
+    /*
+    #[proto(int32, repeated, tag="401")]
     pub packed_int32: Vec<i32>,
-    #[proto(tag="47")]
+    #[proto(int64, repeated, tag="402")]
     pub packed_int64: Vec<i64>,
-    #[proto(tag="48")]
+    #[proto(uint32, repeated, tag="403")]
     pub packed_uint32: Vec<u32>,
-    #[proto(tag="49")]
+    #[proto(uint64, repeated, tag="404")]
     pub packed_uint64: Vec<u64>,
-    #[proto(signed, tag="50")]
+    #[proto(sint32, repeated, tag="405")]
     pub packed_sint32: Vec<i32>,
-    #[proto(signed, tag="51")]
+    #[proto(sint64 repeated, tag="406")]
     pub packed_sint64: Vec<i64>,
-    #[proto(fixed, tag="52")]
+    #[proto(fixed32, repeated, tag="407")]
     pub packed_fixed32: Vec<u32>,
-    #[proto(fixed, tag="53")]
+    #[proto(fixed64, repeated, tag="408")]
     pub packed_fixed64: Vec<u64>,
-    #[proto(fixed, tag="54")]
+    #[proto(sfixed32, repeated, tag="409")]
     pub packed_sfixed32: Vec<i32>,
-    #[proto(fixed, tag="55")]
+    #[proto(sfixed64, repeated, tag="410")]
     pub packed_sfixed64: Vec<i64>,
-    #[proto(tag="56")]
+    #[proto(float, repeated, tag="411")]
     pub packed_float: Vec<f32>,
-    #[proto(tag="57")]
+    #[proto(double, repeated, tag="412")]
     pub packed_double: Vec<f64>,
-    #[proto(tag="58")]
+    #[proto(bool, repeated, tag="413")]
     pub packed_bool: Vec<bool>,
+    #[proto(string, repeated, tag="415")]
+    pub packed_string: Vec<String>,
+    #[proto(bytes, repeated, tag="416")]
+    pub packed_bytes: Vec<Vec<u8>>,
+    */
 }
-*/
 
 /*
 /// A protobuf message with default value.
@@ -336,6 +310,9 @@ pub struct Compound {
 
     #[proto(message, repeated, tag="3")]
     pub repeated_message: Vec<Basic>,
+
+    #[proto(map="sint32, message", tag="4")]
+    pub message_map: ::std::collections::HashMap<i32, Basic>,
 }
 
 #[derive(Clone, Debug, PartialEq, Oneof)]

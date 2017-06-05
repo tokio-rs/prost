@@ -76,36 +76,28 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     let encoded_len = fields.iter()
                             .map(|&(ref field_ident, ref field)| {
                                 field.encoded_len(&Ident::new(format!("self.{}", field_ident)))
-                            })
-                            .fold(quote!(0), |mut sum, expr| {
-                                sum.append("+");
-                                sum.append(expr.as_str());
-                                sum
                             });
 
     let encode = fields.iter()
                        .map(|&(ref field_ident, ref field)| {
                            field.encode(&Ident::new(format!("self.{}", field_ident)))
-                       })
-                       .fold(Tokens::new(), concat_tokens);
+                       });
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
         let merge = field.merge(&Ident::new(format!("self.{}", field_ident)));
-        let tags = field.tags().iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
-        quote! { #tags => #merge.map_err(|error| map_err(stringify!(#field_ident), error))?, }
-    }).fold(Tokens::new(), concat_tokens);
+        let tags = field.tags().into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
+        quote!(#(#tags)* => #merge.map_err(|error| map_err(stringify!(#field_ident), error))?,)
+    });
 
     let default = fields.iter()
                         .map(|&(ref field_ident, ref field)| {
                             let value = field.default();
                             quote!(#field_ident: #value,)
-                        })
-                        .fold(Tokens::new(), concat_tokens);
+                        });
 
     let methods = fields.iter()
                         .flat_map(|&(ref field_ident, ref field)| field.methods(field_ident))
                         .collect::<Vec<_>>();
-
     let methods = if methods.is_empty() {
         quote!()
     } else {
@@ -133,7 +125,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
             impl _proto::Message for #ident {
                 #[inline]
                 fn encode_raw<B>(&self, buf: &mut B) where B: _bytes::BufMut {
-                    #encode
+                    #(#encode)*
                 }
 
                 #[inline]
@@ -149,7 +141,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     while _bytes::Buf::has_remaining(buf) {
                         let (tag, wire_type) = _proto::encoding::decode_key(buf)?;
                         match tag {
-                            #merge
+                            #(#merge)*
                             _ => _proto::encoding::skip_field(wire_type, buf)?,
                         }
                     }
@@ -158,7 +150,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
 
                 #[inline]
                 fn encoded_len(&self) -> usize {
-                    #encoded_len
+                    0 #(+ #encoded_len)*
                 }
             }
 
@@ -168,7 +160,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
             impl Default for #ident {
                 fn default() -> #ident {
                     #ident {
-                        #default
+                        #(#default)*
                     }
                 }
             }
@@ -218,15 +210,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     let default = variants[0].0.clone();
 
     let dummy_const = Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
-    let is_valid = variants.iter()
-                           .map(|&(_, ref value)| quote!(#value => true,))
-                           .fold(Tokens::new(), concat_tokens);
-    let from = variants.iter()
-                       .map(|&(ref variant, ref value)| quote!(#value => Some(#ident::#variant),))
-                       .fold(Tokens::new(), concat_tokens);
-    let from_str = variants.iter()
-                           .map(|&(ref variant, _)| quote!(stringify!(#variant) => Ok(#ident::#variant),))
-                           .fold(Tokens::new(), concat_tokens);
+    let is_valid = variants.iter().map(|&(_, ref value)| quote!(#value => true));
+    let from = variants.iter().map(|&(ref variant, ref value)| quote!(#value => Some(#ident::#variant)));
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!("Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.", ident);
@@ -243,7 +228,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 #[doc=#is_valid_doc]
                 fn is_valid(value: i32) -> bool {
                     match value {
-                        #is_valid
+                        #(#is_valid,)*
                         _ => false,
                     }
                 }
@@ -251,7 +236,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 #[doc=#from_i32_doc]
                 fn from_i32(value: i32) -> ::std::option::Option<#ident> {
                     match value {
-                        #from
+                        #(#from,)*
                         _ => None,
                     }
                 }
@@ -327,8 +312,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
 
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encode = field.encode(&Ident::new("*value"));
-        quote! { #ident::#variant_ident(ref value) => #encode, }
-    }).fold(Tokens::new(), concat_tokens);
+        quote!(#ident::#variant_ident(ref value) => #encode)
+    });
 
     let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
         let tag = field.tags()[0];
@@ -337,16 +322,14 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
             #tag => {
                 let mut value = ::std::default::Default::default();
                 #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(value)))
-            },
+            }
         }
-    }).fold(Tokens::new(), concat_tokens);
+    });
 
     let encoded_len = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encoded_len = field.encoded_len(&Ident::new("*value"));
-        quote! {
-            #ident::#variant_ident(ref value) => #encoded_len,
-        }
-    }).fold(Tokens::new(), concat_tokens);
+        quote!(#ident::#variant_ident(ref value) => #encoded_len)
+    });
 
     let expanded = quote! {
         #[allow(
@@ -363,7 +346,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
             impl #ident {
                 pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
                     match *self {
-                        #encode
+                        #(#encode,)*
                     }
                 }
 
@@ -374,14 +357,14 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                                 -> ::std::io::Result<()>
                 where B: _bytes::Buf {
                     match tag {
-                        #merge
+                        #(#merge,)*
                         _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
                     }
                 }
 
                 pub fn encoded_len(&self) -> usize {
                     match *self {
-                        #encoded_len
+                        #(#encoded_len,)*
                     }
                 }
             }

@@ -11,7 +11,7 @@ use bytes::{
 use encoding::*;
 
 /// A Protocol Buffers message.
-pub trait Message: Debug + Default /*+ PartialEq + PartialOrd*/ + Send + Sync {
+pub trait Message: Debug + Default + PartialEq /*+ PartialOrd*/ + Send + Sync {
 
     /// Encodes the message, and writes it to the buffer. An error will be
     /// returned if the buffer does not have sufficient capacity.
