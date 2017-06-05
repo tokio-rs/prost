@@ -85,17 +85,7 @@ impl Field {
     pub fn merge(&self, ident: &Ident) -> Tokens {
         let ty = &self.ty;
         quote! {
-            match #ty::decode(tag, wire_type) {
-                Ok(Some(value)) => {
-                    #ident = Some(value);
-                    Ok(())
-                }
-                Ok(None) => {
-                    #ident = None;
-                    _proto::encoding::skip_field(wire_type, buf)
-                },
-                Err(error) => Err(error),
-            }
+            #ty::merge(&mut #ident, tag, wire_type, buf)
         }
     }
 

@@ -336,9 +336,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
         quote! {
             #tag => {
                 let mut value = ::std::default::Default::default();
-                #merge;
-                *field = ::std::option::Option::Some(#ident::#variant_ident(value));
-                Ok(())
+                #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(value)))
             },
         }
     }).fold(Tokens::new(), concat_tokens);
@@ -377,7 +375,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                 where B: _bytes::Buf {
                     match tag {
                         #merge
-                        _ => unreachable!(concat!("illegal ", stringify!(#ident), " tag: {}"), tag),
+                        _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
                     }
                 }
 

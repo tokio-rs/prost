@@ -78,7 +78,7 @@ impl Field {
             Field::Scalar(ref scalar) => scalar.encode(ident),
             Field::Message(ref message) => message.encode(ident),
             Field::Map(ref map) => map.encode(ident),
-            Field::Oneof { .. } => quote!(();),
+            Field::Oneof(ref oneof) => oneof.encode(ident),
         }
     }
 
@@ -89,7 +89,7 @@ impl Field {
             Field::Scalar(ref scalar) => scalar.merge(ident),
             Field::Message(ref message) => message.merge(ident),
             Field::Map(ref map) => map.merge(ident),
-            _ => quote!(Ok(())),
+            Field::Oneof(ref oneof) => oneof.merge(ident),
         }
     }
 
@@ -99,7 +99,7 @@ impl Field {
             Field::Scalar(ref scalar) => scalar.encoded_len(ident),
             Field::Map(ref map) => map.encoded_len(ident),
             Field::Message(ref msg) => msg.encoded_len(ident),
-            _ => quote!(0),
+            Field::Oneof(ref oneof) => oneof.encoded_len(ident),
         }
     }
 
