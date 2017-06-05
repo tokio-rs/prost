@@ -15,7 +15,6 @@ use field::{
 };
 
 pub struct Field {
-    pub ident: Ident,
     pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
@@ -23,7 +22,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(ident: &Ident, attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
         let mut types = None;
         let mut tag = None;
 
@@ -71,7 +70,6 @@ impl Field {
         Ok(match (types, tag) {
             (Some((key_ty, val_ty)), Some(tag)) => {
                 Some(Field {
-                    ident: ident.clone(),
                     key_ty: key_ty,
                     value_ty: val_ty,
                     tag: tag
@@ -82,15 +80,14 @@ impl Field {
     }
 
     /// Returns a statement which encodes the map field.
-    pub fn encode(&self) -> Tokens {
+    pub fn encode(&self, ident: &Ident) -> Tokens {
         let tag = self.tag;
-        let field = Ident::new(format!("self.{}", self.ident));
         match self.value_ty {
             ValueTy::Scalar(ref value_ty) => {
                 let encode_fn = Ident::new(format!("_proto::encoding::encode_map_{}_{}",
                                                    self.key_ty.encode_as(),
                                                    value_ty.encode_as()));
-                quote!(#encode_fn(#tag, &#field, buf);)
+                quote!(#encode_fn(#tag, &#ident, buf);)
             },
             ValueTy::Message => {
                 panic!("unimplemented: map field message values");
@@ -100,14 +97,13 @@ impl Field {
 
     /// Returns an expression which evaluates to the result of merging a decoded key value pair
     /// into the map.
-    pub fn merge(&self) -> Tokens {
-        let field = Ident::new(format!("self.{}", self.ident));
+    pub fn merge(&self, ident: &Ident) -> Tokens {
         match self.value_ty {
             ValueTy::Scalar(ref value_ty) => {
                 let merge_fn = Ident::new(format!("_proto::encoding::merge_map_{}_{}",
                                                    self.key_ty.encode_as(),
                                                    value_ty.encode_as()));
-                quote!(#merge_fn(&mut #field, buf))
+                quote!(#merge_fn(&mut #ident, buf))
             },
             ValueTy::Message => {
                 panic!("unimplemented: map field message values");
@@ -116,15 +112,14 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the map.
-    pub fn encoded_len(&self) -> Tokens {
+    pub fn encoded_len(&self, ident: &Ident) -> Tokens {
         let tag = self.tag;
-        let field = Ident::new(format!("self.{}", self.ident));
         match self.value_ty {
             ValueTy::Scalar(ref value_ty) => {
                 let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_map_{}_{}",
                                                         self.key_ty.encode_as(),
                                                         value_ty.encode_as()));
-                quote!(#encoded_len_fn(#tag, &#field))
+                quote!(#encoded_len_fn(#tag, &#ident))
             },
             ValueTy::Message => {
                 panic!("unimplemented: map field message values");
@@ -133,12 +128,11 @@ impl Field {
     }
 
     /// Returns methods to embed in the message.
-    pub fn methods(&self) -> Option<Tokens> {
+    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {
             let key_ty = Ident::new(self.key_ty.rust_type());
             let key_ref_ty = Ident::new(self.key_ty.rust_ref_type());
 
-            let ident = &self.ident;
             let get = Ident::new(format!("get_{}", ident));
             let insert = Ident::new(format!("insert_{}", ident));
 

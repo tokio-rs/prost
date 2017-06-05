@@ -15,6 +15,7 @@ use std::str;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use quote::Tokens;
+use syn::Ident;
 
 // Proc-macro crates can't export anything, so error chain definitions go in a private module.
 mod error {
@@ -50,9 +51,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                        .enumerate()
                        .flat_map(|(idx, field)| {
                            let field_ident = field.ident
-                                                  .unwrap_or_else(|| syn::Ident::new(idx.to_string()));
-                           match Field::new(field_ident.clone(), field.attrs) {
-                               Ok(Some(field)) => Some(Ok(field)),
+                                                  .unwrap_or_else(|| Ident::new(idx.to_string()));
+                           match Field::new(field.attrs) {
+                               Ok(Some(field)) => Some(Ok((field_ident, field))),
                                Ok(None) => None,
                                Err(err) => Some(Err(err).chain_err(|| {
                                    format!("invalid message field {}.{}",
@@ -60,9 +61,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                                })),
                            }
                        })
-                       .collect::<Result<Vec<Field>>>()?;
+                       .collect::<Result<Vec<(Ident, Field)>>>()?;
 
-    let mut tags = fields.iter().flat_map(|field| field.tags()).collect::<Vec<_>>();
+    let mut tags = fields.iter().flat_map(|&(_, ref field)| field.tags()).collect::<Vec<_>>();
     let num_tags = tags.len();
     tags.sort();
     tags.dedup();
@@ -70,35 +71,39 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         bail!("message {} has fields with duplicate tags", ident);
     }
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
+    let dummy_const = Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
 
     let encoded_len = fields.iter()
-                            .map(Field::encoded_len)
+                            .map(|&(ref field_ident, ref field)| {
+                                field.encoded_len(&Ident::new(format!("self.{}", field_ident)))
+                            })
                             .fold(quote!(0), |mut sum, expr| {
                                 sum.append("+");
                                 sum.append(expr.as_str());
                                 sum
                             });
 
-    let encode = fields.iter().map(Field::encode).fold(Tokens::new(), concat_tokens);
+    let encode = fields.iter()
+                       .map(|&(ref field_ident, ref field)| {
+                           field.encode(&Ident::new(format!("self.{}", field_ident)))
+                       })
+                       .fold(Tokens::new(), concat_tokens);
 
-    let merge = fields.iter().map(|field| {
-        let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
+    let merge = fields.iter().map(|&(ref field_ident, ref field)| {
+        let merge = field.merge(&Ident::new(format!("self.{}", field_ident)));
         let tags = field.tags().iter().map(|tag| quote!(#tag)).intersperse(quote!(|)).fold(Tokens::new(), concat_tokens);
-        let field_ident = field.ident();
         quote! { #tags => #merge.map_err(|error| map_err(stringify!(#field_ident), error))?, }
     }).fold(Tokens::new(), concat_tokens);
 
     let default = fields.iter()
-                        .map(|field| {
-                            let ident = field.ident();
+                        .map(|&(ref field_ident, ref field)| {
                             let value = field.default();
-                            quote!(#ident: #value,)
+                            quote!(#field_ident: #value,)
                         })
                         .fold(Tokens::new(), concat_tokens);
 
     let methods = fields.iter()
-                        .flat_map(Field::methods)
+                        .flat_map(|&(ref field_ident, ref field)| field.methods(field_ident))
                         .collect::<Vec<_>>();
 
     let methods = if methods.is_empty() {
@@ -212,7 +217,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
     let default = variants[0].0.clone();
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
+    let dummy_const = Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
     let is_valid = variants.iter()
                            .map(|&(_, ref value)| quote!(#value => true,))
                            .fold(Tokens::new(), concat_tokens);
@@ -291,56 +296,57 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
         let attrs = variant.attrs;
         if let syn::VariantData::Tuple(mut fields) = variant.data {
             if fields.len() != 1 {
-                panic!("Oneof enum must contain only tuple variants with a single field");
+                bail!("invalid oneof variant {}::{}: oneof variants must have only one field",
+                      ident, variant_ident);
             }
-            Field::new(variant_ident.clone(), attrs).and_then(|field| {
-                field.map_or_else(|| bail!("invalid oneof variant {}.{}: variants may not be ignored",
-                                           ident, variant_ident),
-                                  Ok)
-            })
+            match Field::new(attrs) {
+                Ok(Some(field)) => Ok((variant_ident, field)),
+                Ok(None) => bail!("invalid oneof variant {}::{}: oneof variants may not be ignored",
+                                  ident, variant_ident),
+                Err(err) => bail!("invalid oneof variant {}::{}: {}", ident, variant_ident, err),
+            }
         } else {
             bail!("Oneof enum must contain only tuple variants with a single field");
         }
-    }).collect::<Result<Vec<_>>>()?;
+    }).collect::<Result<Vec<(Ident, Field)>>>()?;
 
-    let mut tags = fields.iter().flat_map(|field| -> Result<u32> {
+    let mut tags = fields.iter().flat_map(|&(ref variant_ident, ref field)| -> Result<u32> {
         if field.tags().len() > 1 {
-            bail!("proto oneof variants may only have a single tag: {}.{}",
-                  ident, field.ident());
+            bail!("invalid oneof variant {}::{}: oneof variants may only have a single tag",
+                  ident, variant_ident);
         }
         Ok(field.tags()[0])
     }).collect::<Vec<_>>();
     tags.sort();
     tags.dedup();
     if tags.len() != fields.len() {
-        panic!("proto oneof variants may not have duplicate tags: {}", ident);
+        panic!("invalid oneof {}: variants have duplicate tags", ident);
     }
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
+    let dummy_const = Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
 
-    let encode = fields.iter().map(|field| {
-        let name = &field.ident();
-        let encode = field.encode();
-        quote! { #ident::#name(ref value) => #encode, }
+    let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
+        let encode = field.encode(&Ident::new("*value"));
+        quote! { #ident::#variant_ident(ref value) => #encode, }
     }).fold(Tokens::new(), concat_tokens);
 
-    let decode = fields.iter().map(|field| {
+    let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
         let tag = field.tags()[0];
-        let merge = field.merge(&syn::Ident::new("tag"), &syn::Ident::new("wire_type"));
+        let merge = field.merge(&Ident::new("value"));
         quote! {
             #tag => {
                 let mut value = ::std::default::Default::default();
                 #merge;
-                Some(value)
+                *field = ::std::option::Option::Some(#ident::#variant_ident(value));
+                Ok(())
             },
         }
     }).fold(Tokens::new(), concat_tokens);
 
-    let encoded_len = fields.iter().map(|field| {
-        let name = &field.ident();
-        let encoded_len = field.encoded_len();
+    let encoded_len = fields.iter().map(|&(ref variant_ident, ref field)| {
+        let encoded_len = field.encoded_len(&Ident::new("*value"));
         quote! {
-            #ident::#name(ref value) => #encoded_len,
+            #ident::#variant_ident(ref value) => #encoded_len,
         }
     }).fold(Tokens::new(), concat_tokens);
 
@@ -363,15 +369,15 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                     }
                 }
 
-                pub fn decode<B>(&self,
-                                 tag: u32,
-                                 wire_type: _proto::encoding::WireType,
-                                 buf: &mut B)
-                                 -> ::std::io::Result<::std::option::Option<#ident>>
+                pub fn merge<B>(field: &mut ::std::option::Option<#ident>,
+                                tag: u32,
+                                wire_type: _proto::encoding::WireType,
+                                buf: &mut _bytes::Take<B>)
+                                -> ::std::io::Result<()>
                 where B: _bytes::Buf {
-                    match *self {
-                        #decode
-                        _ => None,
+                    match tag {
+                        #merge
+                        _ => unreachable!(concat!("illegal ", stringify!(#ident), " tag: {}"), tag),
                     }
                 }
 

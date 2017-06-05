@@ -22,7 +22,6 @@ use field::{
 
 /// A scalar protobuf field.
 pub struct Field {
-    pub ident: Ident,
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
@@ -30,7 +29,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(ident: &Ident, attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
         let mut ty = None;
         let mut label = None;
         let mut packed = None;
@@ -62,13 +61,13 @@ impl Field {
 
         match unknown_attrs.len() {
             0 => (),
-            1 => bail!("unknown attribute for {} field: {:?}", ty, unknown_attrs[0]),
-            _ => bail!("unknown attributes for {} field: {:?}", ty, unknown_attrs),
+            1 => bail!("unknown attribute: {:?}", unknown_attrs[0]),
+            _ => bail!("unknown attributes: {:?}", unknown_attrs),
         }
 
         let tag = match tag {
             Some(tag) => tag,
-            None => bail!("{} field is missing a tag attribute", ty),
+            None => bail!("missing tag attribute"),
         };
 
         let has_default = default.is_some();
@@ -80,7 +79,7 @@ impl Field {
                 bail!("packed attribute may only be applied to repeated fields");
             },
             (Some(Label::Repeated), Some(true), _) if !ty.is_numeric() => {
-                bail!("packed attribute may only be applied to numeric fields");
+                bail!("packed attribute may only be applied to numeric types");
             },
             (Some(Label::Repeated), _, true) => {
                 bail!("repeated fields may not have a default value");
@@ -94,7 +93,6 @@ impl Field {
         };
 
         Ok(Some(Field {
-            ident: ident.clone(),
             ty: ty,
             kind: kind,
             tag: tag,
@@ -102,65 +100,79 @@ impl Field {
     }
 
     /// Returns a statement which encodes the scalar field.
-    pub fn encode(&self) -> Tokens {
-        let encode_fn = self.ty.encode_fn(&self.kind);
+    pub fn encode(&self, ident: &Ident) -> Tokens {
+        let kind = match self.kind {
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+            Kind::Repeated => "repeated_",
+            Kind::Packed => "packed_",
+        };
+        let encode_fn = Ident::new(format!("_proto::encoding::encode_{}{}",
+                                           kind, self.ty.encode_as()));
         let tag = self.tag;
-        let field = Ident::new(format!("self.{}", self.ident));
 
         match self.kind {
             Kind::Plain(ref default) => quote! {
-                if #field != #default {
-                    #encode_fn(#tag, &#field, buf);
+                if #ident != #default {
+                    #encode_fn(#tag, &#ident, buf);
                 }
             },
             Kind::Optional(ref default) => quote! {
-                if let Some(ref value) = #field {
+                if let Some(ref value) = #ident {
                     if value != #default {
                         #encode_fn(#tag, &value, buf);
                     }
                 }
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
-                #encode_fn(#tag, &#field, buf);
+                #encode_fn(#tag, &#ident, buf);
             },
         }
     }
 
-    /// Returns an expression which evaluates to the result of merging a decoded scalar value into
-    /// the field.
-    pub fn merge(&self, wire_type: &Ident) -> Tokens {
-        let merge_fn = self.ty.merge_fn(&self.kind);
-        let field = Ident::new(format!("self.{}", self.ident));
+    /// Returns an expression which evaluates to the result of merging a decoded
+    /// scalar value into the field.
+    pub fn merge(&self, ident: &Ident) -> Tokens {
+        let kind = match self.kind {
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+            Kind::Repeated | Kind::Packed => "repeated_",
+        };
+        let merge_fn = Ident::new(format!("_proto::encoding::merge_{}{}",
+                                          kind, self.ty.encode_as()));
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(#wire_type, &mut #field, buf)
+                #merge_fn(wire_type, &mut #ident, buf)
             },
             Kind::Optional(..) => quote! {
                 {
-                    let mut value = #field.take().unwrap_or_default();
-                    #merge_fn(#wire_type, &mut value, buf).map(|_| #field = ::std::option::Option::Some(value))
+                    let mut value = #ident.take().unwrap_or_default();
+                    #merge_fn(wire_type, &mut value, buf).map(|_| #ident = ::std::option::Option::Some(value))
                 }
             },
         }
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
-    pub fn encoded_len(&self) -> Tokens {
-        let encoded_len_fn = self.ty.encoded_len_fn(&self.kind);
+    pub fn encoded_len(&self, ident: &Ident) -> Tokens {
+        let kind = match self.kind {
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
+            Kind::Repeated => "repeated_",
+            Kind::Packed => "packed_",
+        };
+        let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_{}{}",
+                                                kind, self.ty.encode_as()));
         let tag = self.tag;
-        let field = Ident::new(format!("self.{}", self.ident));
 
         match self.kind {
             Kind::Plain(ref default) => quote! {
-                if #field != #default {
-                    #encoded_len_fn(#tag, &#field)
+                if #ident != #default {
+                    #encoded_len_fn(#tag, &#ident)
                 } else {
                     0
                 }
             },
             Kind::Optional(ref default) => quote! {
-                #field.as_ref().map_or(0, |value| {
+                #ident.as_ref().map_or(0, |value| {
                     if value != #default {
                         #encoded_len_fn(#tag, &value)
                     } else {
@@ -169,7 +181,7 @@ impl Field {
                 })
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
-                #encoded_len_fn(#tag, &#field)
+                #encoded_len_fn(#tag, &#ident)
             },
         }
     }
@@ -184,9 +196,8 @@ impl Field {
     }
 
     /// Returns methods to embed in the message.
-    pub fn methods(&self) -> Option<Tokens> {
+    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
         if let Ty::Enumeration(ref ty) = self.ty {
-            let ident = &self.ident;
             let set = Ident::new(format!("set_{}", ident));
             let push = Ident::new(format!("push_{}", ident));
             Some(match self.kind {
@@ -382,37 +393,6 @@ impl Ty {
             Ty::Enumeration(..) => "int32",
             _ => self.as_str(),
         }
-    }
-
-    pub fn encode_fn(&self, kind: &Kind) -> Ident {
-        let kind = match *kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-            Kind::Repeated => "repeated_",
-            Kind::Packed => "packed_",
-        };
-
-
-        let ty = self.encode_as();
-        Ident::new(format!("_proto::encoding::encode_{}{}", kind, ty))
-    }
-
-    pub fn merge_fn(&self, kind: &Kind) -> Ident {
-        let kind = match *kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-            Kind::Repeated | Kind::Packed => "repeated_",
-        };
-        let ty = self.encode_as();
-        Ident::new(format!("_proto::encoding::merge_{}{}", kind, ty))
-    }
-
-    pub fn encoded_len_fn(&self, kind: &Kind) -> Ident {
-        let kind = match *kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-            Kind::Repeated => "repeated_",
-            Kind::Packed => "packed_",
-        };
-        let ty = self.encode_as();
-        Ident::new(format!("_proto::encoding::encoded_len_{}{}", kind, ty))
     }
 
     /// Returns true if the scalar type is length delimited (i.e., `string` or `bytes`).

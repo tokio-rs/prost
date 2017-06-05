@@ -16,13 +16,12 @@ use field::{
 };
 
 pub struct Field {
-    pub ident: Ident,
     pub ty: Ident,
     pub tags: Vec<u32>,
 }
 
 impl Field {
-    pub fn new(ident: &Ident, attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
         let mut ty = None;
         let mut tags = None;
         let mut unknown_attrs = Vec::new();
@@ -68,34 +67,31 @@ impl Field {
         };
 
         Ok(Some(Field {
-            ident: ident.clone(),
             ty: ty,
             tags: tags,
         }))
     }
 
     /// Returns a statement which encodes the oneof field.
-    pub fn encode(&self) -> Tokens {
-        let ident = &self.ident;
+    pub fn encode(&self, ident: &Ident) -> Tokens {
         quote! {
-            if let Some(ref oneof) = self.#ident {
+            if let Some(ref oneof) = #ident {
                 oneof.encode(buf)
             }
         }
     }
 
     /// Returns an expression which evaluates to the result of decoding the oneof field.
-    pub fn merge(&self) -> Tokens {
+    pub fn merge(&self, ident: &Ident) -> Tokens {
         let ty = &self.ty;
-        let ident = &self.ident;
         quote! {
             match #ty::decode(tag, wire_type) {
                 Ok(Some(value)) => {
-                    self.#ident = Some(value);
+                    #ident = Some(value);
                     Ok(())
                 }
                 Ok(None) => {
-                    self.#ident = None;
+                    #ident = None;
                     _proto::encoding::skip_field(wire_type, buf)
                 },
                 Err(error) => Err(error),
@@ -104,11 +100,10 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the oneof field.
-    pub fn encoded_len(&self) -> Tokens {
+    pub fn encoded_len(&self, ident: &Ident) -> Tokens {
         let ty = &self.ty;
-        let ident = &self.ident;
         quote! {
-            self.#ident.as_ref().map_or(0, #ty::encoded_len)
+            #ident.as_ref().map_or(0, #ty::encoded_len)
         }
     }
 }

@@ -34,7 +34,7 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    pub fn new(ident: Ident, attrs: Vec<Attribute>) -> Result<Option<Field>> {
+    pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>> {
         // Get the items belonging to the 'proto' list attribute (e.g. #[proto(foo, bar="baz")]).
         let attrs: Vec<MetaItem> = attrs.into_iter().flat_map(|attr| match attr.value {
             MetaItem::List(ident, items) => if ident == "proto" { items } else { Vec::new() },
@@ -48,28 +48,19 @@ impl Field {
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new(&ident, &attrs)? {
+        let field = if let Some(field) = scalar::Field::new(&attrs)? {
             Field::Scalar(field)
-        } else if let Some(field) = message::Field::new(&ident, &attrs)? {
+        } else if let Some(field) = message::Field::new(&attrs)? {
             Field::Message(field)
-        } else if let Some(field) = map::Field::new(&ident, &attrs)? {
+        } else if let Some(field) = map::Field::new(&attrs)? {
             Field::Map(field)
-        } else if let Some(field) = oneof::Field::new(&ident, &attrs)? {
+        } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
         } else {
-            bail!("field {} has no type attribute", ident);
+            bail!("no type attribute");
         };
 
         Ok(Some(field))
-    }
-
-    pub fn ident(&self) -> &Ident {
-        match *self {
-            Field::Scalar(ref scalar) => &scalar.ident,
-            Field::Message(ref message) => &message.ident,
-            Field::Map (ref map) => &map.ident,
-            Field::Oneof(ref oneof) => &oneof.ident,
-        }
     }
 
     pub fn tags(&self) -> Vec<u32> {
@@ -82,32 +73,32 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
-    pub fn encode(&self) -> Tokens {
+    pub fn encode(&self, ident: &Ident) -> Tokens {
         match *self {
-            Field::Scalar(ref scalar) => scalar.encode(),
-            Field::Message(ref message) => message.encode(),
-            Field::Map(ref map) => map.encode(),
+            Field::Scalar(ref scalar) => scalar.encode(ident),
+            Field::Message(ref message) => message.encode(ident),
+            Field::Map(ref map) => map.encode(ident),
             Field::Oneof { .. } => quote!(();),
         }
     }
 
     /// Returns an expression which evaluates to the result of merging a decoded
     /// value into the field.
-    pub fn merge(&self, tag: &Ident, wire_type: &Ident) -> Tokens {
+    pub fn merge(&self, ident: &Ident) -> Tokens {
         match *self {
-            Field::Scalar(ref scalar) => scalar.merge(wire_type),
-            Field::Message(ref message) => message.merge(),
-            Field::Map(ref map) => map.merge(),
+            Field::Scalar(ref scalar) => scalar.merge(ident),
+            Field::Message(ref message) => message.merge(ident),
+            Field::Map(ref map) => map.merge(ident),
             _ => quote!(Ok(())),
         }
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
-    pub fn encoded_len(&self) -> Tokens {
+    pub fn encoded_len(&self, ident: &Ident) -> Tokens {
         match *self {
-            Field::Scalar(ref scalar) => scalar.encoded_len(),
-            Field::Map(ref map) => map.encoded_len(),
-            Field::Message(ref msg) => msg.encoded_len(),
+            Field::Scalar(ref scalar) => scalar.encoded_len(ident),
+            Field::Map(ref map) => map.encoded_len(ident),
+            Field::Message(ref msg) => msg.encoded_len(ident),
             _ => quote!(0),
         }
     }
@@ -119,10 +110,10 @@ impl Field {
         }
     }
 
-    pub fn methods(&self) -> Option<Tokens> {
+    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
         match *self {
-            Field::Scalar(ref scalar) => scalar.methods(),
-            Field::Map(ref map) => map.methods(),
+            Field::Scalar(ref scalar) => scalar.methods(ident),
+            Field::Map(ref map) => map.methods(ident),
             _ => None,
         }
     }
@@ -276,6 +267,12 @@ fn tags_attr(attr: &MetaItem) -> Result<Option<Vec<u32>>> {
                 }
             }
             return Ok(Some(tags));
+        },
+        MetaItem::NameValue(_, Lit::Str(ref s, _)) => {
+            s.split(',')
+             .map(|s| s.trim().parse::<u32>().map_err(|e| Error::from(e.to_string())))
+             .collect::<Result<Vec<u32>>>()
+             .map(|tags| Some(tags))
         },
         _ => bail!("invalid tag attribute: {:?}", attr),
     }

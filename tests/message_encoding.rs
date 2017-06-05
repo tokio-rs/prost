@@ -314,6 +314,9 @@ pub struct Basic {
     #[proto(map="string, string", tag="7")]
     pub string_map: ::std::collections::HashMap<String, String>,
 
+    #[proto(oneof="BasicOneof", tags="8, 9")]
+    pub oneof: Option<BasicOneof>,
+
     /*
     #[proto(enumeration, tag="6", default="BasicEnumeration::TWO")]
     pub enumeration_with_default: BasicEnumeration,
@@ -337,6 +340,8 @@ pub struct Compound {
 
 #[derive(Clone, Debug, PartialEq, Oneof)]
 pub enum BasicOneof {
-    #[proto(int32, tag="1")]
+    #[proto(int32, tag="8")]
     Int(i32),
+    #[proto(string, tag="9")]
+    String(String),
 }
