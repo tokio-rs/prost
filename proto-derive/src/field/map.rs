@@ -1,5 +1,4 @@
 use syn::{
-    Attribute,
     Ident,
     Lit,
     MetaItem,

@@ -1,8 +1,8 @@
 use std::fmt;
 
-use error_chain::ChainedError;
 use quote::{self, Tokens};
 use syn::{
+    self,
     FloatTy,
     Ident,
     IntTy,
@@ -71,7 +71,8 @@ impl Field {
         };
 
         let has_default = default.is_some();
-        let default = default.unwrap_or_else(|| DefaultValue::new(&ty));
+        let default = default.map_or_else(|| Ok(DefaultValue::new(&ty)),
+                                          |lit| DefaultValue::from_lit(&ty, lit))?;
         let kind = match (label, packed, has_default) {
             (None, Some(true), _) |
             (Some(Label::Optional), Some(true), _) |
@@ -117,9 +118,9 @@ impl Field {
                 }
             },
             Kind::Optional(ref default) => quote! {
-                if let Some(ref value) = #ident {
-                    if value != #default {
-                        #encode_fn(#tag, &value, buf);
+                if let ::std::option::Option::Some(ref value) = #ident {
+                    if *value != #default {
+                        #encode_fn(#tag, value, buf);
                     }
                 }
             },
@@ -173,8 +174,8 @@ impl Field {
             },
             Kind::Optional(ref default) => quote! {
                 #ident.as_ref().map_or(0, |value| {
-                    if value != #default {
-                        #encoded_len_fn(#tag, &value)
+                    if *value != #default {
+                        #encoded_len_fn(#tag, value)
                     } else {
                         0
                     }
@@ -219,7 +220,7 @@ impl Field {
                         }
 
                         fn #set(&mut self, value: #ty) {
-                            self.#ident = ::std::option::Some(value as i32);
+                            self.#ident = ::std::option::Option::Some(value as i32);
                         }
                     }
                 },
@@ -435,62 +436,84 @@ pub enum DefaultValue {
 
 impl DefaultValue {
 
-    pub fn from_attr(attr: &MetaItem) -> Result<Option<DefaultValue>> {
+    pub fn from_attr(attr: &MetaItem) -> Result<Option<Lit>> {
         if attr.name() != "default" {
             return Ok(None);
+        } else if let MetaItem::NameValue(_, ref lit) = *attr {
+            Ok(Some(lit.clone()))
+
+        } else {
+            bail!("invalid default value attribute: {:?}", attr)
         }
-        match *attr {
-            MetaItem::List(_, ref items) => {
-                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                if items.len() == 1 {
-                    if let Some(&NestedMetaItem::Literal(ref lit)) = items.first() {
-                        return Ok(Some(DefaultValue::Lit(lit.clone())));
-                    }
+    }
+
+    pub fn from_lit(ty: &Ty, lit: Lit) -> Result<DefaultValue> {
+        let is_i32 = *ty == Ty::Int32 || *ty == Ty::Sint32 || *ty == Ty::Sfixed32;
+        let is_i64 = *ty == Ty::Int64 || *ty == Ty::Sint64 || *ty == Ty::Sfixed64;
+
+        let is_u32 = *ty == Ty::Uint32 || *ty == Ty::Fixed32;
+        let is_u64 = *ty == Ty::Uint64 || *ty == Ty::Fixed64;
+
+        let lit = match lit {
+            Lit::Int(value, IntTy::I32) if is_i32 => Lit::Int(value, IntTy::I32),
+            Lit::Int(value, IntTy::Unsuffixed) if is_i32 => Lit::Int(value, IntTy::I32),
+
+            Lit::Int(value, IntTy::I64) if is_i64 => Lit::Int(value, IntTy::I64),
+            Lit::Int(value, IntTy::Unsuffixed) if is_i64 => Lit::Int(value, IntTy::I64),
+
+            Lit::Int(value, IntTy::U32) if is_u32 => Lit::Int(value, IntTy::U32),
+            Lit::Int(value, IntTy::Unsuffixed) if is_u64  => Lit::Int(value, IntTy::U32),
+
+            Lit::Int(value, IntTy::U64) if ty.rust_type() == "u64" => Lit::Int(value, IntTy::U64),
+            Lit::Int(value, IntTy::Unsuffixed) if ty.rust_type() == "u64" => Lit::Int(value, IntTy::U64),
+
+            Lit::Float(ref value, FloatTy::F32) if *ty == Ty::Float => Lit::Float(value.clone(), FloatTy::F32),
+            Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Float => Lit::Float(value.clone(), FloatTy::F32),
+
+            Lit::Float(ref value, FloatTy::F64) if *ty == Ty::Double => Lit::Float(value.clone(), FloatTy::F64),
+            Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Double => Lit::Float(value.clone(), FloatTy::F64),
+
+            Lit::Bool(value) if *ty == Ty::Bool => Lit::Bool(value),
+            ref lit@Lit::Str(_, StrStyle::Cooked) if *ty == Ty::String => lit.clone(),
+
+            Lit::Str(s, StrStyle::Cooked) => {
+                if let Ty::Enumeration(ref ty) = *ty {
+                    return Ok(DefaultValue::Ident(Ident::new(format!("{}::{} as i32", ty, s))));
                 }
-                bail!("invalid default value attribute: {:?}", attr);
-            },
-            MetaItem::NameValue(_, ref lit) => {
-                match *lit {
-                    Lit::Str(ref s, _) => return Ok(Some(DefaultValue::Ident(Ident::new(s.as_str())))),
-                    _ => bail!("invalid default value attribute: {:?}", attr),
+                match syn::parse::lit(&s) {
+                    syn::parse::IResult::Done(rest, _) if !rest.is_empty() => (),
+                    syn::parse::IResult::Done(_, Lit::Str(..)) => (),
+                    syn::parse::IResult::Done(_, lit) => return Ok(DefaultValue::Lit(lit)),
+                    _ => (),
                 }
+                bail!("invalid default value: {}", quote!(#s));
             },
-            _ => bail!("invalid tag attribute: {:?}", attr),
-        }
+            _ => bail!("invalid default value: {}", quote!(#lit)),
+        };
+
+        Ok(DefaultValue::Lit(lit))
     }
 
     pub fn new(ty: &Ty) -> DefaultValue {
         let lit = match *ty {
-            Ty::Float => Lit::Float("0.0".to_string(), FloatTy::F32),
-            Ty::Double => Lit::Float("0.0".to_string(), FloatTy::F64),
-            Ty::Int32 => Lit::Int(0, IntTy::I32),
-            Ty::Int64 => Lit::Int(0, IntTy::I64),
-            Ty::Uint32 => Lit::Int(0, IntTy::U32),
-            Ty::Uint64 => Lit::Int(0, IntTy::U64),
-            Ty::Sint32 => Lit::Int(0, IntTy::I32),
-            Ty::Sint64 => Lit::Int(0, IntTy::I64),
-            Ty::Fixed32 => Lit::Int(0, IntTy::U32),
-            Ty::Fixed64 => Lit::Int(0, IntTy::U64),
-            Ty::Sfixed32 => Lit::Int(0, IntTy::I32),
-            Ty::Sfixed64 => Lit::Int(0, IntTy::I64),
-            Ty::Bool => Lit::Bool(false),
-            Ty::String => Lit::Str(String::new(), StrStyle::Cooked),
-            Ty::Bytes => Lit::ByteStr(Vec::new(), StrStyle::Cooked),
+            Ty::Float => Lit::from(0.0f32),
+            Ty::Double => Lit::from(0.0f64),
+            Ty::Int32 => Lit::from(0i32),
+            Ty::Int64 => Lit::from(0i64),
+            Ty::Uint32 => Lit::from(0u32),
+            Ty::Uint64 => Lit::from(0u64),
+            Ty::Sint32 => Lit::from(0i32),
+            Ty::Sint64 => Lit::from(0i64),
+            Ty::Fixed32 => Lit::from(0u32),
+            Ty::Fixed64 => Lit::from(0u64),
+            Ty::Sfixed32 => Lit::from(0i32),
+            Ty::Sfixed64 => Lit::from(0i64),
+            Ty::Bool => Lit::from(false),
+            Ty::String => Lit::from(""),
+            Ty::Bytes => Lit::from(&b""[..]),
             Ty::Enumeration(ref ty) => return DefaultValue::Ident(Ident::new(format!("{}::default() as i32", ty))),
         };
         DefaultValue::Lit(lit)
-    }
-
-    fn from_lit(ty: &Ty, lit: Lit) -> DefaultValue {
-        match lit {
-            // If the default value is a string literal, and the type isn't a
-            // string, assume the default is an expression which, when evaluated,
-            // returns a value of the correct type.
-            Lit::Str(ref value, ..) if ty != &Ty::String => DefaultValue::Ident(Ident::new(value.to_string())),
-            // Otherwise, we assume the user has provided a literal of the correct type.
-            // TODO: parse protobuf's hex encoding for bytes fields.
-            _ => DefaultValue::Lit(lit),
-        }
     }
 
     pub fn owned(&self) -> Tokens {
@@ -499,7 +522,8 @@ impl DefaultValue {
             DefaultValue::Lit(ref lit@Lit::Str(..)) => quote!(#lit.to_owned()),
             DefaultValue::Lit(Lit::ByteStr(ref value, ..)) if value.is_empty() => quote!(::std::vec::Vec::new()),
             DefaultValue::Lit(ref lit@Lit::ByteStr(..)) => quote!(#lit.to_owned()),
-            _ => quote!(#self),
+            DefaultValue::Lit(ref lit) => quote!(#lit),
+            DefaultValue::Ident(ref ident) => quote!(#ident),
         }
     }
 }

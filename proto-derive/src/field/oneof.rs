@@ -1,5 +1,4 @@
 use syn::{
-    Attribute,
     Ident,
     Lit,
     MetaItem,
@@ -9,10 +8,8 @@ use quote::Tokens;
 
 use error::*;
 use field::{
-    word_attr,
     tags_attr,
     set_option,
-    set_bool,
 };
 
 pub struct Field {
@@ -29,10 +26,10 @@ impl Field {
         for attr in attrs {
             if attr.name() == "oneof" {
                 let t = match *attr {
-                    MetaItem::NameValue(ref name, Lit::Str(ref ident, _)) => {
+                    MetaItem::NameValue(_, Lit::Str(ref ident, _)) => {
                         Ident::new(ident.as_ref())
                     },
-                    MetaItem::List(ref name, ref items) if items.len() == 1 => {
+                    MetaItem::List(_, ref items) if items.len() == 1 => {
                         // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
                         if let NestedMetaItem::MetaItem(MetaItem::Word(ref ident)) = items[0] {
                             ident.clone()

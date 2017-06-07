@@ -1,5 +1,5 @@
 // The `quote!` macro requires deep recursion.
-#![recursion_limit = "1024"]
+#![recursion_limit = "4096"]
 
 extern crate itertools;
 extern crate proc_macro;
@@ -14,7 +14,6 @@ use std::str;
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use quote::Tokens;
 use syn::Ident;
 
 // Proc-macro crates can't export anything, so error chain definitions go in a private module.
@@ -25,11 +24,6 @@ use error::*;
 
 mod field;
 use field::Field;
-
-fn concat_tokens(mut sum: Tokens, rest: Tokens) -> Tokens {
-    sum.append(rest.as_str());
-    sum
-}
 
 fn try_message(input: TokenStream) -> Result<TokenStream> {
     let syn::DeriveInput { ident, generics, body, .. } = syn::parse_derive_input(&input.to_string())?;
@@ -177,7 +171,7 @@ pub fn message(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Enumeration, attributes(proto))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
-    let syn::DeriveInput { ident, generics, attrs, body, .. } =
+    let syn::DeriveInput { ident, generics, body, .. } =
         syn::parse_derive_input(&input.to_string()).expect("unable to parse enumeration type");
 
     if !generics.lifetimes.is_empty() ||
@@ -211,7 +205,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
     let dummy_const = Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
     let is_valid = variants.iter().map(|&(_, ref value)| quote!(#value => true));
-    let from = variants.iter().map(|&(ref variant, ref value)| quote!(#value => Some(#ident::#variant)));
+    let from = variants.iter().map(|&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)));
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!("Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.", ident);
@@ -237,7 +231,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 fn from_i32(value: i32) -> ::std::option::Option<#ident> {
                     match value {
                         #(#from,)*
-                        _ => None,
+                        _ => ::std::option::Option::None,
                     }
                 }
             }
@@ -279,9 +273,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
     let fields = variants.into_iter().map(|variant| {
         let variant_ident = variant.ident;
         let attrs = variant.attrs;
-        if let syn::VariantData::Tuple(mut fields) = variant.data {
+        if let syn::VariantData::Tuple(fields) = variant.data {
             if fields.len() != 1 {
-                bail!("invalid oneof variant {}::{}: oneof variants must have only one field",
+                bail!("invalid oneof variant {}::{}: oneof variants must have a single field",
                       ident, variant_ident);
             }
             match Field::new(attrs) {
@@ -291,7 +285,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                 Err(err) => bail!("invalid oneof variant {}::{}: {}", ident, variant_ident, err),
             }
         } else {
-            bail!("Oneof enum must contain only tuple variants with a single field");
+            bail!("invalid oneof variant {}::{}: oneof variants must have a single field",
+                  ident, variant_ident);
         }
     }).collect::<Result<Vec<(Ident, Field)>>>()?;
 

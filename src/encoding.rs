@@ -335,9 +335,13 @@ macro_rules! varint {
 
          #[inline]
          pub fn $encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
-             key_len(tag) + values.iter().map(|$to_uint64_value| {
-                 encoded_len_varint($to_uint64)
-             }).sum::<usize>()
+             if values.is_empty() {
+                 0
+             } else {
+                key_len(tag) + values.iter().map(|$to_uint64_value| {
+                    encoded_len_varint($to_uint64)
+                }).sum::<usize>()
+             }
          }
     );
 }

@@ -1,9 +1,6 @@
 use syn::{
-    Attribute,
     Ident,
-    Lit,
     MetaItem,
-    NestedMetaItem,
 };
 use quote::Tokens;
 
@@ -84,7 +81,6 @@ impl Field {
     }
 
     pub fn merge(&self, ident: &Ident) -> Tokens {
-        let tag = self.tag;
         match self.label {
             // TODO(rustlang/rust#39288): Use Option::get_or_insert_with when available:
             // _proto::encoding::merge_message(#ident.get_or_insert_with(Default::default), buf)

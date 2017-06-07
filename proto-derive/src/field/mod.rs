@@ -260,7 +260,7 @@ fn tags_attr(attr: &MetaItem) -> Result<Option<Vec<u32>>> {
         MetaItem::List(_, ref items) => {
             let mut tags = Vec::with_capacity(items.len());
             for item in items {
-                if let Some(&NestedMetaItem::Literal(Lit::Int(value, _))) = items.first() {
+                if let &NestedMetaItem::Literal(Lit::Int(value, _)) = item {
                     tags.push(value as u32);
                 } else {
                     bail!("invalid tag attribute: {:?}", attr);

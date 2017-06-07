@@ -130,7 +130,6 @@ pub struct ScalarTypes {
 
     #[proto(int32, optional, tag="201")]
     pub optional_int32: Option<i32>,
-    /*
     #[proto(int64, optional, tag="202")]
     pub optional_int64: Option<i64>,
     #[proto(uint32, optional, tag="203")]
@@ -141,7 +140,8 @@ pub struct ScalarTypes {
     pub optional_sint32: Option<i32>,
     #[proto(sint64, optional, tag="206")]
     pub optional_sint64: Option<i64>,
-    #[proto(fixed64, optional, tag="207")]
+
+    #[proto(fixed32, optional, tag="207")]
     pub optional_fixed32: Option<u32>,
     #[proto(fixed64, optional, tag="208")]
     pub optional_fixed64: Option<u64>,
@@ -159,9 +159,7 @@ pub struct ScalarTypes {
     pub optional_string: Option<String>,
     #[proto(bytes, optional, tag="215")]
     pub optional_bytes: Option<Vec<u8>>,
-    */
 
-    /*
     #[proto(int32, repeated, packed="false", tag="301")]
     pub repeated_int32: Vec<i32>,
     #[proto(int64, repeated, packed="false", tag="302")]
@@ -172,7 +170,7 @@ pub struct ScalarTypes {
     pub repeated_uint64: Vec<u64>,
     #[proto(sint32, repeated, packed="false", tag="305")]
     pub repeated_sint32: Vec<i32>,
-    #[proto(sint64 repeated, packed="false", tag="306")]
+    #[proto(sint64, repeated, packed="false", tag="306")]
     pub repeated_sint64: Vec<i64>,
     #[proto(fixed32, repeated, packed="false", tag="307")]
     pub repeated_fixed32: Vec<u32>,
@@ -192,9 +190,7 @@ pub struct ScalarTypes {
     pub repeated_string: Vec<String>,
     #[proto(bytes, repeated, packed="false", tag="316")]
     pub repeated_bytes: Vec<Vec<u8>>,
-    */
 
-    /*
     #[proto(int32, repeated, tag="401")]
     pub packed_int32: Vec<i32>,
     #[proto(int64, repeated, tag="402")]
@@ -205,10 +201,11 @@ pub struct ScalarTypes {
     pub packed_uint64: Vec<u64>,
     #[proto(sint32, repeated, tag="405")]
     pub packed_sint32: Vec<i32>,
-    #[proto(sint64 repeated, tag="406")]
+    #[proto(sint64, repeated, tag="406")]
     pub packed_sint64: Vec<i64>,
     #[proto(fixed32, repeated, tag="407")]
     pub packed_fixed32: Vec<u32>,
+
     #[proto(fixed64, repeated, tag="408")]
     pub packed_fixed64: Vec<u64>,
     #[proto(sfixed32, repeated, tag="409")]
@@ -225,33 +222,41 @@ pub struct ScalarTypes {
     pub packed_string: Vec<String>,
     #[proto(bytes, repeated, tag="416")]
     pub packed_bytes: Vec<Vec<u8>>,
-    */
 }
 
-/*
 /// A protobuf message with default value.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct DefaultValues {
-    #[proto(tag="1", default="42")]
+    #[proto(int32, tag="1", default="42")]
     pub int32: i32,
 
-    //#[proto(tag="2", default="Some(42)")]
-    //pub optional_int32: Option<i32>,
+    #[proto(int32, optional, tag="2", default="88")]
+    pub optional_int32: Option<i32>,
 
-    //#[proto(tag="3", default="\"fourty two\".to_string()")]
-    //pub string: String,
+    #[proto(string, tag="3", default="fourty two")]
+    pub string: String,
 
+    #[proto(enumeration="BasicEnumeration", tag="4", default="ONE")]
+    pub enumeration: i32,
+
+    #[proto(enumeration="BasicEnumeration", optional, tag="5", default="TWO")]
+    pub optional_enumeration: Option<i32>,
+
+    #[proto(enumeration="BasicEnumeration", repeated, tag="6")]
+    pub repeated_enumeration: Vec<i32>,
 }
 
 #[test]
 fn check_default_values() {
     let default = DefaultValues::default();
     assert_eq!(default.int32, 42);
-    //assert_eq!(default.optional_int32, Some(42));
-    //assert_eq!(&default.string, "fourty two");
-    //assert_eq!(0, default.encoded_len());
+    assert_eq!(default.optional_int32, None);
+    assert_eq!(&default.string, "fourty two");
+    assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
+    assert_eq!(default.optional_enumeration, None);
+    assert_eq!(&default.repeated_enumeration, &[]);
+    assert_eq!(0, default.encoded_len());
 }
-*/
 
 
 /// A protobuf enum.
@@ -265,7 +270,6 @@ pub enum BasicEnumeration {
 
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Basic {
-    /*
     #[proto(int32, tag="1")]
     pub int32: i32,
 
@@ -274,7 +278,6 @@ pub struct Basic {
 
     #[proto(string, tag="3")]
     pub string: String,
-    */
 
     #[proto(string, optional, tag="4")]
     pub optional_string: Option<String>,
@@ -290,14 +293,6 @@ pub struct Basic {
 
     #[proto(oneof="BasicOneof", tags="8, 9")]
     pub oneof: Option<BasicOneof>,
-
-    /*
-    #[proto(enumeration, tag="6", default="BasicEnumeration::TWO")]
-    pub enumeration_with_default: BasicEnumeration,
-
-    #[proto(enumeration, optional, tag="7", default="::BasicEnumeration::THREE")]
-    pub optional_enumeration: Option<BasicEnumeration>,
-    */
 }
 
 #[derive(Clone, Debug, PartialEq, Message)]
