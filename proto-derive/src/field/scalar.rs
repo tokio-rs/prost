@@ -117,11 +117,9 @@ impl Field {
                     #encode_fn(#tag, &#ident, buf);
                 }
             },
-            Kind::Optional(ref default) => quote! {
+            Kind::Optional(..) => quote! {
                 if let ::std::option::Option::Some(ref value) = #ident {
-                    if *value != #default {
-                        #encode_fn(#tag, value, buf);
-                    }
+                    #encode_fn(#tag, value, buf);
                 }
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
@@ -172,14 +170,8 @@ impl Field {
                     0
                 }
             },
-            Kind::Optional(ref default) => quote! {
-                #ident.as_ref().map_or(0, |value| {
-                    if *value != #default {
-                        #encoded_len_fn(#tag, value)
-                    } else {
-                        0
-                    }
-                })
+            Kind::Optional(..) => quote! {
+                #ident.as_ref().map_or(0, |value| #encoded_len_fn(#tag, value))
             },
             Kind::Required(..) | Kind::Repeated | Kind::Packed => quote!{
                 #encoded_len_fn(#tag, &#ident)
@@ -235,6 +227,24 @@ impl Field {
                         }
                     }
                 },
+            })
+        } else if let Kind::Optional(ref default) = self.kind {
+            let ty = Ident::new(self.ty.rust_ref_type());
+            let default = default.owned();
+
+            Some(quote! {
+                fn #ident(&mut self) -> &mut #ty {
+                    match self.#ident {
+                        ::std::option::Option::Some(ref mut val) => val,
+                        ::std::option::Option::None => {
+                            self.#ident = Some(#default);
+                            match self.#ident {
+                                ::std::option::Option::Some(ref mut val) => val,
+                                _ => unreachable!(),
+                            }
+                        }
+                    }
+                }
             })
         } else {
             None
@@ -364,28 +374,28 @@ impl Ty {
         match *self {
             Ty::String => "::std::string::String",
             Ty::Bytes => "::std::vec::Vec<u8>",
-            _ => &self.rust_ref_type()[1..],
+            _ => self.rust_ref_type(),
         }
     }
 
     pub fn rust_ref_type(&self) -> &'static str {
         match *self {
-            Ty::Double => "&f64",
-            Ty::Float => "&f32",
-            Ty::Int32 => "&i32",
-            Ty::Int64 => "&i64",
-            Ty::Uint32 => "&u32",
-            Ty::Uint64 => "&u64",
-            Ty::Sint32 => "&int32",
-            Ty::Sint64 => "&int64",
-            Ty::Fixed32 => "&u32",
-            Ty::Fixed64 => "&u64",
-            Ty::Sfixed32 => "&i32",
-            Ty::Sfixed64 => "&i64",
-            Ty::Bool => "&bool",
-            Ty::String => "&str",
-            Ty::Bytes => "&[u8]",
-            Ty::Enumeration(..) => "&i32",
+            Ty::Double => "f64",
+            Ty::Float => "f32",
+            Ty::Int32 => "i32",
+            Ty::Int64 => "i64",
+            Ty::Uint32 => "u32",
+            Ty::Uint64 => "u64",
+            Ty::Sint32 => "i32",
+            Ty::Sint64 => "i64",
+            Ty::Fixed32 => "u32",
+            Ty::Fixed64 => "u64",
+            Ty::Sfixed32 => "i32",
+            Ty::Sfixed64 => "i64",
+            Ty::Bool => "bool",
+            Ty::String => "str",
+            Ty::Bytes => "[u8]",
+            Ty::Enumeration(..) => "i32",
         }
     }
 
