@@ -196,33 +196,33 @@ impl Field {
             Some(match self.kind {
                 Kind::Plain(..) | Kind::Required(..) => {
                     quote! {
-                        fn #ident(&self) -> ::std::option::Option<#ty> {
+                        pub fn #ident(&self) -> ::std::option::Option<#ty> {
                             #ty::from_i32(self.#ident)
                         }
 
-                        fn #set(&mut self, value: #ty) {
+                        pub fn #set(&mut self, value: #ty) {
                             self.#ident = value as i32;
                         }
                     }
                 },
                 Kind::Optional(..) => {
                     quote! {
-                        fn #ident(&self) -> ::std::option::Option<#ty> {
+                        pub fn #ident(&self) -> ::std::option::Option<#ty> {
                             self.#ident.and_then(#ty::from_i32)
                         }
 
-                        fn #set(&mut self, value: #ty) {
+                        pub fn #set(&mut self, value: #ty) {
                             self.#ident = ::std::option::Option::Some(value as i32);
                         }
                     }
                 },
                 Kind::Repeated | Kind::Packed => {
                     quote! {
-                        fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                   fn(i32) -> Option<#ty>> {
+                        pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
+                                                                       fn(i32) -> Option<#ty>> {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
-                        fn #push(&mut self, value: #ty) {
+                        pub fn #push(&mut self, value: #ty) {
                             self.#ident.push(value as i32);
                         }
                     }
@@ -233,7 +233,7 @@ impl Field {
             let default = default.owned();
 
             Some(quote! {
-                fn #ident(&mut self) -> &mut #ty {
+                pub fn #ident(&mut self) -> &mut #ty {
                     match self.#ident {
                         ::std::option::Option::Some(ref mut val) => val,
                         ::std::option::Option::None => {

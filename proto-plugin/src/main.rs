@@ -268,8 +268,8 @@ impl <'a> CodeGenerator<'a> {
         use field_descriptor_proto::Type::*;
         use field_descriptor_proto::Label::*;
 
-        let repeated = field.label == LabelRepeated;
-        let message = field.field_type == TypeMessage;
+        let repeated = field.label == LabelRepeated as i32;
+        let message = field.field_type == TypeMessage as i32;
         let ty = self.resolve_type(&field);
 
         debug!("\t\tfield: {:?}, type: {:?}", field.name, ty);
@@ -279,12 +279,12 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("#[proto(");
         self.buf.push_str(field_type_tag(field.field_type));
 
-        match field.label {
+        match field.label().expect("unknown label") {
             LabelOptional => (),
             LabelRequired => self.buf.push_str(", required"),
             LabelRepeated => {
                 self.buf.push_str(", repeated");
-                if !field.options.map_or(false, |options| options.packed) {
+                if !field.options.as_ref().map_or(false, |options| options.packed) {
                     self.buf.push_str(", packed=\"false\"");
                 }
             },
@@ -371,9 +371,10 @@ impl <'a> CodeGenerator<'a> {
                                         field.number));
 
             self.push_indent();
+            let ty = self.resolve_type(&field);
             self.buf.push_str(&format!("{}({}),\n",
                                        snake_to_upper_camel(&field.name),
-                                       self.resolve_type(&field)));
+                                       ty));
         }
         self.depth -= 1;
         self.path.pop();
@@ -484,7 +485,7 @@ impl <'a> CodeGenerator<'a> {
 
     fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
         use field_descriptor_proto::Type::*;
-        match field.field_type {
+        match field.field_type().expect("unknown field type") {
             TypeFloat => Cow::Borrowed("f32"),
             TypeDouble => Cow::Borrowed("f64"),
             TypeUint32 | TypeFixed32 => Cow::Borrowed("u32"),
@@ -522,9 +523,9 @@ impl <'a> CodeGenerator<'a> {
     }
 }
 
-fn field_type_tag(field_type: field_descriptor_proto::Type) -> &'static str {
+fn field_type_tag(field_type: i32) -> &'static str {
     use field_descriptor_proto::Type::*;
-    match field_type {
+    match field_descriptor_proto::Type::from_i32(field_type).expect("unknown field type") {
         TypeFloat => "float",
         TypeDouble => "double",
         TypeInt32 => "int32",

@@ -220,7 +220,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
             impl #ident {
 
                 #[doc=#is_valid_doc]
-                fn is_valid(value: i32) -> bool {
+                pub fn is_valid(value: i32) -> bool {
                     match value {
                         #(#is_valid,)*
                         _ => false,
@@ -228,7 +228,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
 
                 #[doc=#from_i32_doc]
-                fn from_i32(value: i32) -> ::std::option::Option<#ident> {
+                pub fn from_i32(value: i32) -> ::std::option::Option<#ident> {
                     match value {
                         #(#from,)*
                         _ => ::std::option::Option::None,
