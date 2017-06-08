@@ -1,21 +1,7 @@
-Don't encode default valued fields
-Output packed attributes
-Invert Message and Field for messages, remove Take from Message API
-See about doing a blanket impl of Field for Vec<T> where T: Field
 Simplify the module system
   - Don't output intermediate mod files that are otherwise empty
+
 Add an UnknownField API, see:
     - https://docs.google.com/document/d/1KMRX-G91Aa-Y2FkEaHeeviLRRNblgIahbsk4wA14gRk/view
 
 Reorder fields according to tag in the plugin as well as the code generator.
-
-
-* Only support optional, repeated, and packed fields. Optional and repeated
-  fields are never wrapped in Option. Support default values for each.
-    * Default value on an optional field:
-        * encoding: if the value in the struct == the default, don't send it.
-        * decoding: the field defaults to the default value if no other value is
-                    decoded.
-    * Default values on a required field:
-        * encoding: default values are always encoded.
-        * decoding: default value doesn't matter - the value must be decoded.
