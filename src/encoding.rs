@@ -238,7 +238,7 @@ macro_rules! merge_repeated_numeric {
 
                 while buf.has_remaining() {
                 let mut value = Default::default();
-                $merge(wire_type, &mut value, buf)?;
+                $merge($wire_type, &mut value, buf)?;
                 values.push(value);
                 }
                 buf.set_limit(limit - len);

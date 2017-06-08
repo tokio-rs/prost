@@ -1,16 +1,16 @@
 /// The version number of protocol compiler.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Version {
-    #[proto(int32, tag="1")]
-    pub major: i32,
-    #[proto(int32, tag="2")]
-    pub minor: i32,
-    #[proto(int32, tag="3")]
-    pub patch: i32,
+    #[proto(int32, optional, tag="1")]
+    pub major: Option<i32>,
+    #[proto(int32, optional, tag="2")]
+    pub minor: Option<i32>,
+    #[proto(int32, optional, tag="3")]
+    pub patch: Option<i32>,
     /// A suffix for alpha, beta or rc release, e.g., "alpha-1", "rc2". It should
     /// be empty for mainline stable releases.
-    #[proto(string, tag="4")]
-    pub suffix: String,
+    #[proto(string, optional, tag="4")]
+    pub suffix: Option<String>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[derive(Clone, Debug, PartialEq, Message)]
@@ -21,8 +21,8 @@ pub struct CodeGeneratorRequest {
     #[proto(string, repeated, tag="1")]
     pub file_to_generate: Vec<String>,
     /// The generator parameter passed on the command-line.
-    #[proto(string, tag="2")]
-    pub parameter: String,
+    #[proto(string, optional, tag="2")]
+    pub parameter: Option<String>,
     /// FileDescriptorProtos for all files in files_to_generate and everything
     /// they import.  The files will appear in topological order, so each file
     /// appears before any file that imports it.
@@ -34,10 +34,13 @@ pub struct CodeGeneratorRequest {
     /// the entire set into memory at once.  However, as of this writing, this
     /// is not similarly optimized on protoc's end -- it will store all fields in
     /// memory at once before sending them to the plugin.
+    ///
+    /// Type names of fields and extensions in the FileDescriptorProto are always
+    /// fully qualified.
     #[proto(message, repeated, tag="15")]
     pub proto_file: Vec<super::FileDescriptorProto>,
     /// The version number of protocol compiler.
-    #[proto(message, tag="3")]
+    #[proto(message, optional, tag="3")]
     pub compiler_version: Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
@@ -51,8 +54,8 @@ pub struct CodeGeneratorResponse {
     /// problem in protoc itself -- such as the input CodeGeneratorRequest being
     /// unparseable -- should be reported by writing a message to stderr and
     /// exiting with a non-zero status code.
-    #[proto(string, tag="1")]
-    pub error: String,
+    #[proto(string, optional, tag="1")]
+    pub error: Option<String>,
     #[proto(message, repeated, tag="15")]
     pub file: Vec<code_generator_response::File>,
 }
@@ -71,8 +74,8 @@ pub mod code_generator_response {
         /// files need not reside completely in memory at one time.  Note that as of
         /// this writing protoc does not optimize for this -- it will read the entire
         /// CodeGeneratorResponse before writing files to disk.
-        #[proto(string, tag="1")]
-        pub name: String,
+        #[proto(string, optional, tag="1")]
+        pub name: Option<String>,
         /// If non-empty, indicates that the named file should already exist, and the
         /// content here is to be inserted into that file at a defined insertion
         /// point.  This feature allows a code generator to extend the output
@@ -110,10 +113,10 @@ pub mod code_generator_response {
         /// command line.
         ///
         /// If |insertion_point| is present, |name| must also be present.
-        #[proto(string, tag="2")]
-        pub insertion_point: String,
+        #[proto(string, optional, tag="2")]
+        pub insertion_point: Option<String>,
         /// The file contents.
-        #[proto(string, tag="15")]
-        pub content: String,
+        #[proto(string, optional, tag="15")]
+        pub content: Option<String>,
     }
 }

@@ -144,8 +144,13 @@ impl Field {
             },
             Kind::Optional(..) => quote! {
                 {
-                    let mut value = #ident.take().unwrap_or_default();
-                    #merge_fn(wire_type, &mut value, buf).map(|_| #ident = ::std::option::Option::Some(value))
+                    if #ident.is_none() {
+                        #ident = Some(Default::default());
+                    }
+                    match #ident {
+                        Some(ref mut value) => #merge_fn(wire_type, value, buf),
+                        _ => unreachable!(),
+                    }
                 }
             },
         }
