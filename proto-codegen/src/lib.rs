@@ -13,21 +13,11 @@ extern crate proto;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::{
-    Cursor,
-    Read,
-    Write,
-    self,
-};
-use std::path::PathBuf;
-
-use bytes::Buf;
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
-use proto::Message;
 
-mod google;
+pub mod google;
 use google::protobuf::{
     DescriptorProto,
     EnumDescriptorProto,
@@ -39,90 +29,19 @@ use google::protobuf::{
     field_descriptor_proto,
 
 };
-use google::protobuf::compiler::{
-    CodeGeneratorRequest,
-    CodeGeneratorResponse,
-    code_generator_response,
-};
 
-fn main() {
-    env_logger::init().unwrap();
-    let mut bytes = Vec::new();
-    io::stdin().read_to_end(&mut bytes).unwrap();
+pub fn module(file: &FileDescriptorProto) -> Vec<String> {
+    file.package
+        .as_ref()
+        .unwrap()
+        .split('.')
+        .filter(|s| !s.is_empty())
+        .map(camel_to_snake)
+        .collect()
+}
 
-    let len = bytes.len();
-    assert_ne!(len, 0);
-
-    let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
-    let mut response = CodeGeneratorResponse::default();
-
-    trace!("{:#?}", request);
-
-    #[derive(Default)]
-    struct Module {
-        children: Vec<String>,
-        files: Vec<FileDescriptorProto>,
-    }
-
-    // Map from module path to module.
-    let mut modules: HashMap<Vec<String>, Module> = HashMap::new();
-
-    // Step 1: For each .proto file, add it to the module map,
-    // as well as an entry for each parent package.
-    for file in request.proto_file {
-        let path = file.package
-                       .as_ref()
-                       .unwrap()
-                       .split('.')
-                       .filter(|s| !s.is_empty())
-                       .map(camel_to_snake)
-                       .collect::<Vec<_>>();
-
-        for i in 0..path.len() {
-            modules.entry(path[..i].to_owned())
-                    .or_insert_with(Default::default)
-                    .children
-                    .push(path[i].clone());
-        }
-
-        modules.entry(path)
-               .or_insert_with(Default::default)
-               .files.push(file);
-    }
-
-    // Step 2: Create each module.
-    for (path, mut module) in modules {
-        let mut path = path.into_iter().collect::<PathBuf>();
-        module.children.sort();
-        module.children.dedup();
-
-        if !module.children.is_empty() || path.iter().count() == 0 {
-            path.push("mod");
-        }
-        path.set_extension("rs");
-
-        let mut content = String::new();
-
-        for child in module.children {
-            content.push_str("pub mod ");
-            content.push_str(&child);
-            content.push_str(";\n");
-        }
-
-        for file in module.files {
-            CodeGenerator::generate(file, &mut content);
-        }
-
-        response.file.push(code_generator_response::File {
-            name: Some(path.to_string_lossy().into_owned()),
-            content: Some(content),
-            ..Default::default()
-        });
-    }
-
-    let mut out = Vec::new();
-    response.encode(&mut out).unwrap();
-    io::stdout().write_all(&out).unwrap();
+pub fn generate(file: FileDescriptorProto, buf: &mut String) {
+    CodeGenerator::generate(file, buf);
 }
 
 #[derive(PartialEq)]

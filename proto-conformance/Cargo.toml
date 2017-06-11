@@ -10,4 +10,4 @@ proto-derive = { path = "../proto-derive" }
 
 [build-dependencies]
 proto-build = { path = "../proto-build" }
-proto-plugin = { path = "../proto-plugin" }
+proto-codegen = { path = "../proto-codegen" }

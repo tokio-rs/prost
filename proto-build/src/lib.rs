@@ -1,6 +1,7 @@
 extern crate curl;
 extern crate tempdir;
 extern crate zip;
+extern crate proto_codegen;
 
 use std::env;
 use std::fs;
