@@ -6,9 +6,9 @@ authors = ["Dan Burkert <dan@danburkert.com>"]
 [workspace]
 members = [
   "proto-build",
+  "proto-codegen",
   "proto-conformance",
   "proto-derive",
-  "proto-plugin",
 ]
 
 [dependencies]
