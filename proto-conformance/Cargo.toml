@@ -7,3 +7,7 @@ authors = ["Dan Burkert <danburkert@apache.org>"]
 bytes = "0.4"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
+
+[build-dependencies]
+proto-build = { path = "../proto-build" }
+proto-plugin = { path = "../proto-plugin" }

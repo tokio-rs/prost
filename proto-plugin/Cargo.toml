@@ -1,5 +1,5 @@
 [package]
-name = "protoc-gen-rust"
+name = "proto-plugin"
 version = "0.1.0"
 authors = ["Dan Burkert <danburkert@apache.org>"]
 

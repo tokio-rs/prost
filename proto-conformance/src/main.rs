@@ -1,3 +1,4 @@
+/*
 extern crate bytes;
 extern crate proto;
 #[macro_use]
@@ -105,4 +106,8 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     }
 
     conformance_response::Result::ProtobufPayload(buf)
+}
+*/
+
+fn main() {
 }
