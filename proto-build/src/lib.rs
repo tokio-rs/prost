@@ -1,7 +1,9 @@
+extern crate bytes;
 extern crate curl;
+extern crate proto;
+extern crate proto_codegen;
 extern crate tempdir;
 extern crate zip;
-extern crate proto_codegen;
 
 use std::env;
 use std::fs;
@@ -10,7 +12,9 @@ use std::io::{
     Cursor,
     Error,
     ErrorKind,
+    Read,
     Result,
+    Write,
 };
 use std::path::{
     Path,
@@ -18,8 +22,12 @@ use std::path::{
 };
 use std::process::Command;
 
+use bytes::Buf;
 use curl::easy::Easy;
 use zip::ZipArchive;
+
+use proto::Message;
+use proto_codegen::google::protobuf::FileDescriptorSet;
 
 pub fn compile_protos<P1, P2>(protos: &[P1], includes: &[P2]) -> Result<()>
 where P1: AsRef<Path>,
@@ -52,7 +60,7 @@ where P1: AsRef<Path>,
     cmd.arg("-I").arg(protoc_dir.join("include"))
        .arg("--include_imports")
        .arg("--include_source_info")
-       .arg("-o").arg(descriptor_set);
+       .arg("-o").arg(&descriptor_set);
 
     for include in includes {
         cmd.arg("-I").arg(include.as_ref());
@@ -78,6 +86,30 @@ where P1: AsRef<Path>,
         return Err(Error::new(ErrorKind::Other,
                               format!("protoc failed: {}",
                                       String::from_utf8_lossy(&output.stderr))));
+    }
+
+    let mut buf = Vec::new();
+    fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
+    let len = buf.len();
+    let descriptor_set = FileDescriptorSet::decode(&mut <Cursor<Vec<u8>> as Buf>::take(Cursor::new(buf), len))?;
+
+    for file in descriptor_set.file {
+        let module = proto_codegen::module(&file);
+        let mut buf = String::new();
+
+        proto_codegen::generate(file, &mut buf);
+
+        let filename = match module.last() {
+            Some(filename) => filename,
+            None => return Err(Error::new(ErrorKind::InvalidInput, ".proto must have a package")),
+        };
+
+        let mut filename = target.join(filename);
+        filename.set_extension("rs");
+
+        let mut file = fs::File::create(filename)?;
+        file.write_all(buf.as_bytes())?;
+        file.flush()?;
     }
 
     Ok(())

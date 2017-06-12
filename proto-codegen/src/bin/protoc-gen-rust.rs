@@ -71,6 +71,7 @@ fn main() {
 
     // Step 2: Create each module.
     for (path, mut module) in modules {
+        if module.files.is_empty() { continue; }
         let mut path = path.into_iter().collect::<PathBuf>();
         module.children.sort();
         module.children.dedup();
