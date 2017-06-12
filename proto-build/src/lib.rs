@@ -67,17 +67,6 @@ where P1: AsRef<Path>,
     }
 
     for proto in protos {
-        if let Some(parent) = proto.as_ref().parent() {
-            cmd.arg("-I");
-            if parent.as_os_str().is_empty() {
-                cmd.arg(".");
-            } else {
-                cmd.arg(parent);
-            }
-        }
-    }
-
-    for proto in protos {
         cmd.arg(proto.as_ref());
     }
 
