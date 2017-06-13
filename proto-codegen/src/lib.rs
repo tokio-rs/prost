@@ -12,7 +12,7 @@ extern crate multimap;
 extern crate proto;
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
@@ -378,9 +378,17 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(desc.name.as_ref().unwrap());
         self.buf.push_str(" {\n");
 
+        let mut numbers = HashSet::new();
+
         self.depth += 1;
         self.path.push(2);
         for (idx, value) in desc.value.into_iter().enumerate() {
+            // Skip duplicate enum values. Protobuf allows this when the
+            // 'allow_alias' option is set.
+            if !numbers.insert(value.number.unwrap()) {
+                continue;
+            }
+
             self.path.push(idx as i32);
             self.append_enum_value(value);
             self.path.pop();
