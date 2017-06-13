@@ -9,5 +9,10 @@ proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
 
 [build-dependencies]
+curl = "0.4"
+env_logger = "0.4"
+flate2 = "0.2"
+num_cpus = "1"
 proto-build = { path = "../proto-build" }
 proto-codegen = { path = "../proto-codegen" }
+tar = "0.4"

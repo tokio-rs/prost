@@ -268,15 +268,18 @@ impl <'a> CodeGenerator<'a> {
                           message_name: &str,
                           oneof: &OneofDescriptorProto,
                           fields: &[(FieldDescriptorProto, usize)]) {
+        let name = format!("{}::{}",
+                           camel_to_snake(message_name),
+                           snake_to_upper_camel(oneof.name.as_ref().unwrap()));
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&format!("#[proto(oneof, tags=\"{}\")]\n",
+        self.buf.push_str(&format!("#[proto(oneof=\"{}\", tags=\"{}\")]\n",
+                                   name,
                                    fields.iter().map(|&(ref field, _)| field.number.unwrap()).join(", ")));
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: Option<{}::{}>,\n",
+        self.buf.push_str(&format!("pub {}: Option<{}>,\n",
                                    camel_to_snake(oneof.name.as_ref().unwrap()),
-                                   camel_to_snake(message_name),
-                                   snake_to_upper_camel(oneof.name.as_ref().unwrap())));
+                                   name));
     }
 
     fn append_oneof(&mut self,
@@ -290,7 +293,7 @@ impl <'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, Oneof)]\n");
+        self.buf.push_str("#[derive(Clone, Debug, Oneof, PartialEq)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&snake_to_upper_camel(oneof.name.as_ref().unwrap()));
@@ -305,7 +308,7 @@ impl <'a> CodeGenerator<'a> {
 
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
-            self.buf.push_str(&format!("#[proto(\"{}\", tag=\"{}\")]\n",
+            self.buf.push_str(&format!("#[proto({}, tag=\"{}\")]\n",
                                        ty_tag,
                                        field.number.unwrap()));
 

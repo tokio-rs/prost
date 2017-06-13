@@ -1,12 +1,23 @@
-/*
 extern crate bytes;
 extern crate proto;
 #[macro_use]
 extern crate proto_derive;
 
-mod conformance;
-mod protobuf_unittest;
-mod protobuf_unittest_import;
+pub mod conformance {
+    include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
+}
+
+pub mod protobuf_unittest_import {
+    include!(concat!(env!("OUT_DIR"), "/protobuf_unittest_import.rs"));
+}
+
+pub mod protobuf_unittest {
+    include!(concat!(env!("OUT_DIR"), "/protobuf_unittest.rs"));
+}
+
+//mod conformance;
+//mod protobuf_unittest;
+//mod protobuf_unittest_import;
 
 use std::io::{
     Cursor,
@@ -22,18 +33,19 @@ use bytes::{
 };
 use proto::Message;
 
-use conformance::{
-    conformance_request,
-    conformance_response,
-    ConformanceRequest,
-    ConformanceResponse,
-    WireFormat,
-};
-use protobuf_unittest::{
-    TestAllTypes,
-};
+//use conformance::{
+    //conformance_request,
+    //conformance_response,
+    //ConformanceRequest,
+    //ConformanceResponse,
+    //WireFormat,
+//};
+//use protobuf_unittest::{
+    //TestAllTypes,
+//};
 
 fn main() {
+    /*
     let mut bytes = Vec::new();
 
     loop {
@@ -64,8 +76,10 @@ fn main() {
         stdout.lock().write_all(&bytes).unwrap();
         stdout.flush().unwrap();
     }
+    */
 }
 
+/*
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     if let WireFormat::Json = request.requested_output_format {
         return conformance_response::Result::Skipped("JSON output is not supported".to_string());
@@ -108,6 +122,3 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     conformance_response::Result::ProtobufPayload(buf)
 }
 */
-
-fn main() {
-}
