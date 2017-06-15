@@ -5,7 +5,6 @@ extern crate proto_codegen;
 extern crate tempdir;
 extern crate zip;
 
-use std::collections::hash_map;
 use std::env;
 use std::fs;
 use std::io::{
@@ -83,34 +82,16 @@ where P1: AsRef<Path>,
     let len = buf.len();
     let descriptor_set = FileDescriptorSet::decode(&mut <Cursor<Vec<u8>> as Buf>::take(Cursor::new(buf), len))?;
 
-    let mut files: hash_map::HashMap<PathBuf, fs::File> = hash_map::HashMap::new();
-
-    for file in descriptor_set.file {
-        let module = proto_codegen::module(&file);
-        let mut buf = String::new();
-
-        proto_codegen::generate(file, &mut buf);
-
-        let filename = match module.last() {
-            Some(filename) => filename,
+    let modules = proto_codegen::generate(descriptor_set.file);
+    for (module, content) in modules {
+        let mut filename = match module.last() {
+            Some(filename) => PathBuf::from(filename),
             None => return Err(Error::new(ErrorKind::InvalidInput, ".proto must have a package")),
         };
-
-        let mut filename = target.join(filename);
         filename.set_extension("rs");
-
-        match files.entry(filename) {
-            hash_map::Entry::Occupied(mut entry) => entry.get_mut().write_all(buf.as_bytes())?,
-            hash_map::Entry::Vacant(entry) => {
-                let file = fs::File::create(entry.key())?;
-                entry.insert(file).write_all(buf.as_bytes())?;
-            },
-        };
-    }
-
-    for (_, mut file) in files {
+        let mut file = fs::File::create(target.join(filename))?;
+        file.write_all(content.as_bytes())?;
         file.flush()?;
-        file.sync_all()?;
     }
 
     Ok(())

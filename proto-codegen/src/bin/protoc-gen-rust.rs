@@ -23,7 +23,6 @@ use bytes::Buf;
 
 use proto::Message;
 
-use proto_codegen::google::protobuf::FileDescriptorProto;
 use proto_codegen::google::protobuf::compiler::{
     code_generator_response,
     CodeGeneratorRequest,
@@ -41,57 +40,40 @@ fn main() {
     let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
-    trace!("{:#?}", request);
+    let modules = proto_codegen::generate(request.proto_file);
 
-    #[derive(Default)]
-    struct Module {
-        children: Vec<String>,
-        files: Vec<FileDescriptorProto>,
-    }
-
-    // Map from module path to module.
-    let mut modules: HashMap<Vec<String>, Module> = HashMap::new();
-
-    // Step 1: For each .proto file, add it to the module map,
-    // as well as an entry for each parent package.
-    for file in request.proto_file {
-        let path = proto_codegen::module(&file);
-
-        for i in 0..path.len() {
-            modules.entry(path[..i].to_owned())
+    // For each module, build up a list of its child modules.
+    let mut children: HashMap<proto_codegen::Module, Vec<String>> = HashMap::new();
+    for module in modules.keys() {
+        for i in 0..module.len() {
+            children.entry(module[..i].to_owned())
                     .or_insert_with(Default::default)
-                    .children
-                    .push(path[i].clone());
+                    .push(module[i].clone());
         }
-
-        modules.entry(path)
-               .or_insert_with(Default::default)
-               .files.push(file);
     }
 
-    // Step 2: Create each module.
-    for (path, mut module) in modules {
-        if module.files.is_empty() { continue; }
-        let mut path = path.into_iter().collect::<PathBuf>();
-        module.children.sort();
-        module.children.dedup();
+    // Create each module.
+    for (module, buf) in modules {
+        let mut children = children.remove(&module).unwrap_or_default();
 
-        if !module.children.is_empty() || path.iter().count() == 0 {
+        let mut path = module.into_iter().collect::<PathBuf>();
+        children.sort();
+        children.dedup();
+
+        if !children.is_empty() || path.iter().count() == 0 {
             path.push("mod");
         }
         path.set_extension("rs");
 
         let mut content = String::new();
 
-        for child in module.children {
+        for child in children {
             content.push_str("pub mod ");
             content.push_str(&child);
             content.push_str(";\n");
         }
 
-        for file in module.files {
-            proto_codegen::generate(file, &mut content);
-        }
+        content.push_str(&buf);
 
         response.file.push(code_generator_response::File {
             name: Some(path.to_string_lossy().into_owned()),

@@ -9,5 +9,6 @@ env_logger = "0.4"
 itertools = "0.6"
 log = "0.3"
 multimap = "0.3"
+petgraph = "0.4"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }

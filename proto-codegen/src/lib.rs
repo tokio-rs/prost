@@ -9,7 +9,10 @@ extern crate bytes;
 extern crate env_logger;
 extern crate itertools;
 extern crate multimap;
+extern crate petgraph;
 extern crate proto;
+
+mod message_graph;
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -27,10 +30,11 @@ use google::protobuf::{
     OneofDescriptorProto,
     SourceCodeInfo,
     field_descriptor_proto,
-
 };
 
-pub fn module(file: &FileDescriptorProto) -> Vec<String> {
+use message_graph::MessageGraph;
+
+pub fn module(file: &FileDescriptorProto) -> Module {
     file.package
         .as_ref()
         .unwrap()
@@ -40,8 +44,19 @@ pub fn module(file: &FileDescriptorProto) -> Vec<String> {
         .collect()
 }
 
-pub fn generate(file: FileDescriptorProto, buf: &mut String) {
-    CodeGenerator::generate(file, buf);
+pub type Module = Vec<String>;
+
+pub fn generate(files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
+    let mut modules = HashMap::new();
+
+    let message_graph = MessageGraph::new(&files);
+
+    for file in files {
+        let module = module(&file);
+        let mut buf = modules.entry(module).or_insert(String::new());
+        CodeGenerator::generate(file, &message_graph, &mut buf);
+    }
+    modules
 }
 
 #[derive(PartialEq)]
@@ -54,13 +69,16 @@ struct CodeGenerator<'a> {
     package: String,
     source_info: SourceCodeInfo,
     syntax: Syntax,
+    message_graph: &'a MessageGraph,
     depth: u8,
     path: Vec<i32>,
     buf: &'a mut String,
 }
 
 impl <'a> CodeGenerator<'a> {
-    fn generate(file: FileDescriptorProto, buf: &mut String) {
+    fn generate(file: FileDescriptorProto,
+                message_graph: &MessageGraph,
+                buf: &mut String) {
 
         let mut source_info = file.source_code_info.expect("no source code info in request");
         source_info.location.retain(|location| {
@@ -79,12 +97,13 @@ impl <'a> CodeGenerator<'a> {
             package: file.package.unwrap(),
             source_info: source_info,
             syntax: syntax,
+            message_graph: message_graph,
             depth: 0,
             path: Vec::new(),
             buf: buf,
         };
 
-        debug!("file: {:?}, package: {:?}", file.name, code_gen.package);
+        debug!("file: {:?}, package: {:?}", file.name.as_ref().unwrap(), code_gen.package);
 
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
@@ -104,12 +123,13 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_message(&mut self, message: DescriptorProto) {
-        debug!("\tmessage: {:?}", message.name);
+        debug!("\tmessage: {:?}", message.name.as_ref().unwrap());
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
         // that comments can be retrieved.
         let message_name = message.name.as_ref().expect("message name");
+        let fq_message_name = format!(".{}.{}", self.package, message_name);
         let (nested_types, map_types): (Vec<(DescriptorProto, usize)>, HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>) =
             message.nested_type.into_iter().enumerate().partition_map(|(idx, nested_type)| {
                 if nested_type.options.as_ref().and_then(|options| options.map_entry).unwrap_or(false) {
@@ -118,7 +138,9 @@ impl <'a> CodeGenerator<'a> {
                     assert_eq!("key", key.name.as_ref().expect("key name"));
                     assert_eq!("value", value.name.as_ref().expect("value name"));
 
-                    let name = format!(".{}.{}.{}", self.package, &message_name, nested_type.name.as_ref().expect("nested type name"));
+                    let name = format!("{}.{}",
+                                       fq_message_name,
+                                       nested_type.name.as_ref().expect("nested type name"));
                     Either::Right((name, (key, value)))
                 } else {
                     Either::Left((nested_type, idx))
@@ -152,7 +174,7 @@ impl <'a> CodeGenerator<'a> {
             self.path.push(idx as i32);
             match field.type_name.as_ref().and_then(|type_name| map_types.get(type_name)) {
                 Some(&(ref key, ref value)) => self.append_map_field(field, key, value),
-                None => self.append_field(field),
+                None => self.append_field(&fq_message_name, field),
             }
             self.path.pop();
         }
@@ -198,14 +220,18 @@ impl <'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_field(&mut self, field: FieldDescriptorProto) {
+    fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         use field_descriptor_proto::Label::*;
 
         let repeated = field.label == Some(LabelRepeated as i32);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
-        debug!("\t\tfield: {:?}, type: {:?}", field.name, ty);
+        let boxed = !repeated
+                 && field.type_().unwrap() == field_descriptor_proto::Type::TypeMessage
+                 && self.message_graph.is_nested(field.type_name.as_ref().unwrap(), msg_name);
+
+        debug!("\t\tfield: {:?}, type: {:?}", field.name.as_ref().unwrap(), ty);
 
         self.append_doc();
         self.push_indent();
@@ -226,6 +252,7 @@ impl <'a> CodeGenerator<'a> {
             },
         }
 
+        if boxed { self.buf.push_str(", boxed"); }
         self.buf.push_str(", tag=\"");
         self.buf.push_str(&field.number.unwrap().to_string());
         self.buf.push_str("\")]\n");
@@ -235,7 +262,9 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(": ");
         if repeated { self.buf.push_str("Vec<"); }
         else if optional { self.buf.push_str("Option<"); }
+        if boxed { self.buf.push_str("Box<"); }
         self.buf.push_str(&ty);
+        if boxed { self.buf.push_str(">"); }
         if repeated || optional { self.buf.push_str(">"); }
         self.buf.push_str(",\n");
     }
@@ -248,7 +277,7 @@ impl <'a> CodeGenerator<'a> {
         let value_ty = self.resolve_type(value);
 
         debug!("\t\tmap field: {:?}, key type: {:?}, value type: {:?}",
-               field.name, key_ty, value_ty);
+               field.name.as_ref().unwrap(), key_ty, value_ty);
 
         self.append_doc();
         self.push_indent();
