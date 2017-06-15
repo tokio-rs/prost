@@ -1,7 +1,6 @@
-Simplify the module system
-  - Don't output intermediate mod files that are otherwise empty
-
-Add an UnknownField API, see:
+- Add an UnknownField API, see:
     - https://docs.google.com/document/d/1KMRX-G91Aa-Y2FkEaHeeviLRRNblgIahbsk4wA14gRk/view
 
-Reorder fields according to tag in the plugin as well as the code generator.
+- Reorder fields according to tag in the plugin as well as the code generator.
+
+- Are nested recursive oneof fields supported?

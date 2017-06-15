@@ -1,13 +1,7 @@
-#![recursion_limit = "128"]
-
-#[macro_use]
-extern crate log;
-
 extern crate bytes;
 extern crate env_logger;
 extern crate itertools;
 extern crate proto;
-
 extern crate proto_codegen;
 
 use std::collections::HashMap;
@@ -22,7 +16,6 @@ use std::path::PathBuf;
 use bytes::Buf;
 
 use proto::Message;
-
 use proto_codegen::google::protobuf::compiler::{
     code_generator_response,
     CodeGeneratorRequest,

@@ -15,10 +15,6 @@ pub mod protobuf_unittest {
     include!(concat!(env!("OUT_DIR"), "/protobuf_unittest.rs"));
 }
 
-//mod conformance;
-//mod protobuf_unittest;
-//mod protobuf_unittest_import;
-
 use std::io::{
     Cursor,
     Read,
@@ -33,19 +29,18 @@ use bytes::{
 };
 use proto::Message;
 
-//use conformance::{
-    //conformance_request,
-    //conformance_response,
-    //ConformanceRequest,
-    //ConformanceResponse,
-    //WireFormat,
-//};
-//use protobuf_unittest::{
-    //TestAllTypes,
-//};
+use conformance::{
+    conformance_request,
+    conformance_response,
+    ConformanceRequest,
+    ConformanceResponse,
+    WireFormat,
+};
+use protobuf_unittest::{
+    TestAllTypes,
+};
 
 fn main() {
-    /*
     let mut bytes = Vec::new();
 
     loop {
@@ -76,14 +71,16 @@ fn main() {
         stdout.lock().write_all(&bytes).unwrap();
         stdout.flush().unwrap();
     }
-    */
 }
 
-/*
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
-    if let WireFormat::Json = request.requested_output_format {
-        return conformance_response::Result::Skipped("JSON output is not supported".to_string());
-    }
+    match request.requested_output_format() {
+        Some(WireFormat::Json) =>
+            return conformance_response::Result::Skipped("JSON output is not supported".to_string()),
+        None =>
+            return conformance_response::Result::ParseError("unrecognized requested output format".to_string()),
+            _ => (),
+    };
 
     let mut buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
@@ -121,4 +118,3 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
 
     conformance_response::Result::ProtobufPayload(buf)
 }
-*/
