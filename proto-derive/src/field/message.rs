@@ -23,12 +23,15 @@ impl Field {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
+        let mut boxed = false;
 
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
             if word_attr("message", attr) {
                 set_bool(&mut message, "duplicate message attribute")?;
+            } else if word_attr("boxed", attr) {
+                set_bool(&mut boxed, "duplicate boxed attribute")?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {
@@ -57,6 +60,18 @@ impl Field {
             label: label.unwrap_or(Label::Optional),
             tag: tag,
         }))
+    }
+
+    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>> {
+        if let Some(mut field) = Field::new(attrs)? {
+            if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
+                bail!("invalid atribute for oneof field: {}", attr.name());
+            }
+            field.label = Label::Required;
+            Ok(Some(field))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn encode(&self, ident: &Ident) -> Tokens {

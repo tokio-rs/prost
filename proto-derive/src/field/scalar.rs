@@ -100,7 +100,22 @@ impl Field {
         }))
     }
 
-    /// Returns a statement which encodes the scalar field.
+    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>> {
+        if let Some(mut field) = Field::new(attrs)? {
+            match field.kind {
+                Kind::Plain(default) => {
+                    field.kind = Kind::Required(default);
+                    Ok(Some(field))
+                },
+                Kind::Optional(..) => bail!("invalid optional attribute on oneof field"),
+                Kind::Required(..) => bail!("invalid required attribute on oneof field"),
+                Kind::Packed | Kind::Repeated => bail!("invalid repeated attribute on oneof field"),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn encode(&self, ident: &Ident) -> Tokens {
         let kind = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",

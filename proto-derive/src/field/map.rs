@@ -78,6 +78,10 @@ impl Field {
         })
     }
 
+    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>> {
+        Field::new(attrs)
+    }
+
     /// Returns a statement which encodes the map field.
     pub fn encode(&self, ident: &Ident) -> Tokens {
         let tag = self.tag;

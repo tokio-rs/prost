@@ -35,16 +35,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>> {
-        // Get the items belonging to the 'proto' list attribute (e.g. #[proto(foo, bar="baz")]).
-        let attrs: Vec<MetaItem> = attrs.into_iter().flat_map(|attr| match attr.value {
-            MetaItem::List(ident, items) => if ident == "proto" { items } else { Vec::new() },
-            _ => Vec::new(),
-        }).flat_map(|attr| -> Result<_> {
-            match attr {
-                NestedMetaItem::MetaItem(attr) => Ok(attr),
-                NestedMetaItem::Literal(lit) => bail!("invalid proto attribute: {:?}", lit),
-            }
-        }).collect();
+        let attrs = proto_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
@@ -63,6 +54,28 @@ impl Field {
         Ok(Some(field))
     }
 
+    /// Creates a new oneof `Field` from an iterator of field attributes.
+    ///
+    /// If the meta items are invalid, an error will be returned.
+    /// If the field should be ignored, `None` is returned.
+    pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>> {
+        let attrs = proto_attrs(attrs)?;
+
+        // TODO: check for ignore attribute.
+
+        let field = if let Some(field) = scalar::Field::new_oneof(&attrs)? {
+            Field::Scalar(field)
+        } else if let Some(field) = message::Field::new_oneof(&attrs)? {
+            Field::Message(field)
+        } else if let Some(field) = map::Field::new_oneof(&attrs)? {
+            Field::Map(field)
+        } else {
+            bail!("no type attribute for oneof field");
+        };
+
+        Ok(Some(field))
+    }
+
     pub fn tags(&self) -> Vec<u32> {
         match *self {
             Field::Scalar(ref scalar) => vec![scalar.tag],
@@ -72,7 +85,7 @@ impl Field {
         }
     }
 
-    /// Returns an expression which evaluates to the encoded length of the field.
+    /// Returns a statement which encodes the scalar field.
     pub fn encode(&self, ident: &Ident) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.encode(ident),
@@ -171,6 +184,20 @@ impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(self.as_str())
     }
+}
+
+/// Get the items belonging to the 'proto' list attribute
+/// (e.g. #[proto(foo, bar="baz")]).
+fn proto_attrs(attrs: Vec<Attribute>) -> Result<Vec<MetaItem>> {
+    Ok(attrs.into_iter().flat_map(|attr| match attr.value {
+        MetaItem::List(ident, items) => if ident == "proto" { items } else { Vec::new() },
+        _ => Vec::new(),
+    }).flat_map(|attr| -> Result<_> {
+        match attr {
+            NestedMetaItem::MetaItem(attr) => Ok(attr),
+            NestedMetaItem::Literal(lit) => bail!("invalid proto attribute: {:?}", lit),
+        }
+    }).collect())
 }
 
 pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<()>

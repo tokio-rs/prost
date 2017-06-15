@@ -278,7 +278,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                 bail!("invalid oneof variant {}::{}: oneof variants must have a single field",
                       ident, variant_ident);
             }
-            match Field::new(attrs) {
+            match Field::new_oneof(attrs) {
                 Ok(Some(field)) => Ok((variant_ident, field)),
                 Ok(None) => bail!("invalid oneof variant {}::{}: oneof variants may not be ignored",
                                   ident, variant_ident),
@@ -307,7 +307,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
 
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encode = field.encode(&Ident::new("*value"));
-        quote!(#ident::#variant_ident(ref value) => #encode)
+        quote!(#ident::#variant_ident(ref value) => { #encode })
     });
 
     let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
