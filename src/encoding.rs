@@ -359,9 +359,9 @@ macro_rules! varint {
                                              $encode, $merge, $encoded_len)
                  }
                  fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                     super::test::check_collection_type(value, tag, WireType::Varint,
-                                                        $encode_repeated, $merge_repeated,
-                                                        $encoded_len_repeated)
+                     super::test::check_repeated_type(value, tag, WireType::Varint,
+                                                      $encode_repeated, $merge_repeated,
+                                                      $encoded_len_repeated)
                  }
                  fn roundtrip_packed(value: Vec<$ty>, tag: u32) -> TestResult {
                      super::test::check_type(value, tag, WireType::LengthDelimited,
@@ -499,9 +499,9 @@ macro_rules! fixed_width {
                                              $encode, $merge, $encoded_len)
                  }
                  fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                     super::test::check_collection_type(value, tag, $wire_type,
-                                                        $encode_repeated, $merge_repeated,
-                                                        $encoded_len_repeated)
+                     super::test::check_repeated_type(value, tag, $wire_type,
+                                                      $encode_repeated, $merge_repeated,
+                                                      $encoded_len_repeated)
                  }
                  fn roundtrip_packed(value: Vec<$ty>, tag: u32) -> TestResult {
                      super::test::check_type(value, tag, WireType::LengthDelimited,
@@ -561,9 +561,9 @@ macro_rules! length_delimited {
                                              $encode, $merge, $encoded_len)
                  }
                  fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                     super::test::check_collection_type(value, tag, WireType::LengthDelimited,
-                                                        $encode_repeated, $merge_repeated,
-                                                        $encoded_len_repeated)
+                     super::test::check_repeated_type(value, tag, WireType::LengthDelimited,
+                                                      $encode_repeated, $merge_repeated,
+                                                      $encoded_len_repeated)
                  }
              }
          }
@@ -635,7 +635,8 @@ macro_rules! map {
      $key_encoded_len:ident,
      $val_encode:ident,
      $val_merge:ident,
-     $val_encoded_len:ident) => (
+     $val_encoded_len:ident,
+     $test:ident) => (
 
          #[inline]
          pub fn $encode<B>(tag: u32,
@@ -688,12 +689,30 @@ macro_rules! map {
          }
 
          #[inline]
-         pub fn $encoded_len(tag: u32,
-                             values: &HashMap<$key_ty, $val_ty>) -> usize {
+         pub fn $encoded_len(tag: u32, values: &HashMap<$key_ty, $val_ty>) -> usize {
              key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-                (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) }) +
-                (if val == &<$val_ty as Default>::default() { 0 } else { $val_encoded_len(2, val) })
+                 let len = (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) })
+                         + (if val == &<$val_ty as Default>::default() { 0 } else { $val_encoded_len(2, val) });
+                 encoded_len_varint(len as u64) + len
              }).sum::<usize>()
+         }
+
+         #[cfg(test)]
+         mod $test {
+             use quickcheck::TestResult;
+             use super::*;
+
+             quickcheck! {
+                 fn roundtrip(value: HashMap<$key_ty, $val_ty>, tag: u32) -> TestResult {
+                     super::test::check_repeated_type(value, tag, WireType::LengthDelimited,
+                                                      $encode,
+                                                      |wire_type, value, buf| {
+                                                          check_wire_type(WireType::LengthDelimited, wire_type)?;
+                                                          $merge(value, buf)
+                                                      },
+                                                      $encoded_len)
+                 }
+             }
          }
     );
 }
@@ -708,7 +727,8 @@ macro_rules! enumeration_map {
      $encoded_len:ident,
      $key_encode:ident,
      $key_merge:ident,
-     $key_encoded_len:ident) => (
+     $key_encoded_len:ident,
+     $test:ident) => (
 
          #[inline]
          pub fn $encode<B>(default_val: i32,
@@ -767,9 +787,28 @@ macro_rules! enumeration_map {
                              tag: u32,
                              values: &HashMap<$key_ty, i32>) -> usize {
              key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-                (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) }) +
-                (if val == &default_val { 0 } else { encoded_len_int32(2, val) })
+                 let len = (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) })
+                         + (if val == &default_val { 0 } else { encoded_len_int32(2, val) });
+                 encoded_len_varint(len as u64) + len
              }).sum::<usize>()
+         }
+
+         #[cfg(test)]
+         mod $test {
+             use quickcheck::TestResult;
+             use super::*;
+
+             quickcheck! {
+                 fn roundtrip(value: HashMap<$key_ty, i32>, tag: u32, default: i32) -> TestResult {
+                     super::test::check_repeated_type(value, tag, WireType::LengthDelimited,
+                                                      |tag, value, buf| $encode(default, tag, value, buf),
+                                                      |wire_type, value, buf| {
+                                                          check_wire_type(WireType::LengthDelimited, wire_type)?;
+                                                          $merge(default, value, buf)
+                                                      },
+                                                      |tag, value| $encoded_len(default, tag, value))
+                 }
+             }
          }
     );
 }
@@ -898,199 +937,199 @@ macro_rules! message_map {
 
 // The following blocks were generated with
 // https://gist.github.com/danburkert/d3b70b36d4a143af47c9bf56d5ba3ab9
-map!(i32, f32, encode_map_int32_float, merge_map_int32_float, encoded_len_map_int32_float, encode_int32, merge_int32, encoded_len_int32, encode_float, merge_float, encoded_len_float);
-map!(i32, f64, encode_map_int32_double, merge_map_int32_double, encoded_len_map_int32_double, encode_int32, merge_int32, encoded_len_int32, encode_double, merge_double, encoded_len_double);
-map!(i32, i32, encode_map_int32_int32, merge_map_int32_int32, encoded_len_map_int32_int32, encode_int32, merge_int32, encoded_len_int32, encode_int32, merge_int32, encoded_len_int32);
-map!(i32, i64, encode_map_int32_int64, merge_map_int32_int64, encoded_len_map_int32_int64, encode_int32, merge_int32, encoded_len_int32, encode_int64, merge_int64, encoded_len_int64);
-map!(i32, u32, encode_map_int32_uint32, merge_map_int32_uint32, encoded_len_map_int32_uint32, encode_int32, merge_int32, encoded_len_int32, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(i32, u64, encode_map_int32_uint64, merge_map_int32_uint64, encoded_len_map_int32_uint64, encode_int32, merge_int32, encoded_len_int32, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(i32, i32, encode_map_int32_sint32, merge_map_int32_sint32, encoded_len_map_int32_sint32, encode_int32, merge_int32, encoded_len_int32, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(i32, i64, encode_map_int32_sint64, merge_map_int32_sint64, encoded_len_map_int32_sint64, encode_int32, merge_int32, encoded_len_int32, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(i32, u32, encode_map_int32_fixed32, merge_map_int32_fixed32, encoded_len_map_int32_fixed32, encode_int32, merge_int32, encoded_len_int32, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(i32, u64, encode_map_int32_fixed64, merge_map_int32_fixed64, encoded_len_map_int32_fixed64, encode_int32, merge_int32, encoded_len_int32, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(i32, i32, encode_map_int32_sfixed32, merge_map_int32_sfixed32, encoded_len_map_int32_sfixed32, encode_int32, merge_int32, encoded_len_int32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(i32, i64, encode_map_int32_sfixed64, merge_map_int32_sfixed64, encoded_len_map_int32_sfixed64, encode_int32, merge_int32, encoded_len_int32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(i32, bool, encode_map_int32_bool, merge_map_int32_bool, encoded_len_map_int32_bool, encode_int32, merge_int32, encoded_len_int32, encode_bool, merge_bool, encoded_len_bool);
-map!(i32, String, encode_map_int32_string, merge_map_int32_string, encoded_len_map_int32_string, encode_int32, merge_int32, encoded_len_int32, encode_string, merge_string, encoded_len_string);
-map!(i32, Vec<u8>, encode_map_int32_bytes, merge_map_int32_bytes, encoded_len_map_int32_bytes, encode_int32, merge_int32, encoded_len_int32, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(i64, f32, encode_map_int64_float, merge_map_int64_float, encoded_len_map_int64_float, encode_int64, merge_int64, encoded_len_int64, encode_float, merge_float, encoded_len_float);
-map!(i64, f64, encode_map_int64_double, merge_map_int64_double, encoded_len_map_int64_double, encode_int64, merge_int64, encoded_len_int64, encode_double, merge_double, encoded_len_double);
-map!(i64, i32, encode_map_int64_int32, merge_map_int64_int32, encoded_len_map_int64_int32, encode_int64, merge_int64, encoded_len_int64, encode_int32, merge_int32, encoded_len_int32);
-map!(i64, i64, encode_map_int64_int64, merge_map_int64_int64, encoded_len_map_int64_int64, encode_int64, merge_int64, encoded_len_int64, encode_int64, merge_int64, encoded_len_int64);
-map!(i64, u32, encode_map_int64_uint32, merge_map_int64_uint32, encoded_len_map_int64_uint32, encode_int64, merge_int64, encoded_len_int64, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(i64, u64, encode_map_int64_uint64, merge_map_int64_uint64, encoded_len_map_int64_uint64, encode_int64, merge_int64, encoded_len_int64, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(i64, i32, encode_map_int64_sint32, merge_map_int64_sint32, encoded_len_map_int64_sint32, encode_int64, merge_int64, encoded_len_int64, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(i64, i64, encode_map_int64_sint64, merge_map_int64_sint64, encoded_len_map_int64_sint64, encode_int64, merge_int64, encoded_len_int64, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(i64, u32, encode_map_int64_fixed32, merge_map_int64_fixed32, encoded_len_map_int64_fixed32, encode_int64, merge_int64, encoded_len_int64, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(i64, u64, encode_map_int64_fixed64, merge_map_int64_fixed64, encoded_len_map_int64_fixed64, encode_int64, merge_int64, encoded_len_int64, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(i64, i32, encode_map_int64_sfixed32, merge_map_int64_sfixed32, encoded_len_map_int64_sfixed32, encode_int64, merge_int64, encoded_len_int64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(i64, i64, encode_map_int64_sfixed64, merge_map_int64_sfixed64, encoded_len_map_int64_sfixed64, encode_int64, merge_int64, encoded_len_int64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(i64, bool, encode_map_int64_bool, merge_map_int64_bool, encoded_len_map_int64_bool, encode_int64, merge_int64, encoded_len_int64, encode_bool, merge_bool, encoded_len_bool);
-map!(i64, String, encode_map_int64_string, merge_map_int64_string, encoded_len_map_int64_string, encode_int64, merge_int64, encoded_len_int64, encode_string, merge_string, encoded_len_string);
-map!(i64, Vec<u8>, encode_map_int64_bytes, merge_map_int64_bytes, encoded_len_map_int64_bytes, encode_int64, merge_int64, encoded_len_int64, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(u32, f32, encode_map_uint32_float, merge_map_uint32_float, encoded_len_map_uint32_float, encode_uint32, merge_uint32, encoded_len_uint32, encode_float, merge_float, encoded_len_float);
-map!(u32, f64, encode_map_uint32_double, merge_map_uint32_double, encoded_len_map_uint32_double, encode_uint32, merge_uint32, encoded_len_uint32, encode_double, merge_double, encoded_len_double);
-map!(u32, i32, encode_map_uint32_int32, merge_map_uint32_int32, encoded_len_map_uint32_int32, encode_uint32, merge_uint32, encoded_len_uint32, encode_int32, merge_int32, encoded_len_int32);
-map!(u32, i64, encode_map_uint32_int64, merge_map_uint32_int64, encoded_len_map_uint32_int64, encode_uint32, merge_uint32, encoded_len_uint32, encode_int64, merge_int64, encoded_len_int64);
-map!(u32, u32, encode_map_uint32_uint32, merge_map_uint32_uint32, encoded_len_map_uint32_uint32, encode_uint32, merge_uint32, encoded_len_uint32, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(u32, u64, encode_map_uint32_uint64, merge_map_uint32_uint64, encoded_len_map_uint32_uint64, encode_uint32, merge_uint32, encoded_len_uint32, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(u32, i32, encode_map_uint32_sint32, merge_map_uint32_sint32, encoded_len_map_uint32_sint32, encode_uint32, merge_uint32, encoded_len_uint32, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(u32, i64, encode_map_uint32_sint64, merge_map_uint32_sint64, encoded_len_map_uint32_sint64, encode_uint32, merge_uint32, encoded_len_uint32, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(u32, u32, encode_map_uint32_fixed32, merge_map_uint32_fixed32, encoded_len_map_uint32_fixed32, encode_uint32, merge_uint32, encoded_len_uint32, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(u32, u64, encode_map_uint32_fixed64, merge_map_uint32_fixed64, encoded_len_map_uint32_fixed64, encode_uint32, merge_uint32, encoded_len_uint32, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(u32, i32, encode_map_uint32_sfixed32, merge_map_uint32_sfixed32, encoded_len_map_uint32_sfixed32, encode_uint32, merge_uint32, encoded_len_uint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(u32, i64, encode_map_uint32_sfixed64, merge_map_uint32_sfixed64, encoded_len_map_uint32_sfixed64, encode_uint32, merge_uint32, encoded_len_uint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(u32, bool, encode_map_uint32_bool, merge_map_uint32_bool, encoded_len_map_uint32_bool, encode_uint32, merge_uint32, encoded_len_uint32, encode_bool, merge_bool, encoded_len_bool);
-map!(u32, String, encode_map_uint32_string, merge_map_uint32_string, encoded_len_map_uint32_string, encode_uint32, merge_uint32, encoded_len_uint32, encode_string, merge_string, encoded_len_string);
-map!(u32, Vec<u8>, encode_map_uint32_bytes, merge_map_uint32_bytes, encoded_len_map_uint32_bytes, encode_uint32, merge_uint32, encoded_len_uint32, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(u64, f32, encode_map_uint64_float, merge_map_uint64_float, encoded_len_map_uint64_float, encode_uint64, merge_uint64, encoded_len_uint64, encode_float, merge_float, encoded_len_float);
-map!(u64, f64, encode_map_uint64_double, merge_map_uint64_double, encoded_len_map_uint64_double, encode_uint64, merge_uint64, encoded_len_uint64, encode_double, merge_double, encoded_len_double);
-map!(u64, i32, encode_map_uint64_int32, merge_map_uint64_int32, encoded_len_map_uint64_int32, encode_uint64, merge_uint64, encoded_len_uint64, encode_int32, merge_int32, encoded_len_int32);
-map!(u64, i64, encode_map_uint64_int64, merge_map_uint64_int64, encoded_len_map_uint64_int64, encode_uint64, merge_uint64, encoded_len_uint64, encode_int64, merge_int64, encoded_len_int64);
-map!(u64, u32, encode_map_uint64_uint32, merge_map_uint64_uint32, encoded_len_map_uint64_uint32, encode_uint64, merge_uint64, encoded_len_uint64, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(u64, u64, encode_map_uint64_uint64, merge_map_uint64_uint64, encoded_len_map_uint64_uint64, encode_uint64, merge_uint64, encoded_len_uint64, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(u64, i32, encode_map_uint64_sint32, merge_map_uint64_sint32, encoded_len_map_uint64_sint32, encode_uint64, merge_uint64, encoded_len_uint64, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(u64, i64, encode_map_uint64_sint64, merge_map_uint64_sint64, encoded_len_map_uint64_sint64, encode_uint64, merge_uint64, encoded_len_uint64, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(u64, u32, encode_map_uint64_fixed32, merge_map_uint64_fixed32, encoded_len_map_uint64_fixed32, encode_uint64, merge_uint64, encoded_len_uint64, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(u64, u64, encode_map_uint64_fixed64, merge_map_uint64_fixed64, encoded_len_map_uint64_fixed64, encode_uint64, merge_uint64, encoded_len_uint64, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(u64, i32, encode_map_uint64_sfixed32, merge_map_uint64_sfixed32, encoded_len_map_uint64_sfixed32, encode_uint64, merge_uint64, encoded_len_uint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(u64, i64, encode_map_uint64_sfixed64, merge_map_uint64_sfixed64, encoded_len_map_uint64_sfixed64, encode_uint64, merge_uint64, encoded_len_uint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(u64, bool, encode_map_uint64_bool, merge_map_uint64_bool, encoded_len_map_uint64_bool, encode_uint64, merge_uint64, encoded_len_uint64, encode_bool, merge_bool, encoded_len_bool);
-map!(u64, String, encode_map_uint64_string, merge_map_uint64_string, encoded_len_map_uint64_string, encode_uint64, merge_uint64, encoded_len_uint64, encode_string, merge_string, encoded_len_string);
-map!(u64, Vec<u8>, encode_map_uint64_bytes, merge_map_uint64_bytes, encoded_len_map_uint64_bytes, encode_uint64, merge_uint64, encoded_len_uint64, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(i32, f32, encode_map_sint32_float, merge_map_sint32_float, encoded_len_map_sint32_float, encode_sint32, merge_sint32, encoded_len_sint32, encode_float, merge_float, encoded_len_float);
-map!(i32, f64, encode_map_sint32_double, merge_map_sint32_double, encoded_len_map_sint32_double, encode_sint32, merge_sint32, encoded_len_sint32, encode_double, merge_double, encoded_len_double);
-map!(i32, i32, encode_map_sint32_int32, merge_map_sint32_int32, encoded_len_map_sint32_int32, encode_sint32, merge_sint32, encoded_len_sint32, encode_int32, merge_int32, encoded_len_int32);
-map!(i32, i64, encode_map_sint32_int64, merge_map_sint32_int64, encoded_len_map_sint32_int64, encode_sint32, merge_sint32, encoded_len_sint32, encode_int64, merge_int64, encoded_len_int64);
-map!(i32, u32, encode_map_sint32_uint32, merge_map_sint32_uint32, encoded_len_map_sint32_uint32, encode_sint32, merge_sint32, encoded_len_sint32, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(i32, u64, encode_map_sint32_uint64, merge_map_sint32_uint64, encoded_len_map_sint32_uint64, encode_sint32, merge_sint32, encoded_len_sint32, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(i32, i32, encode_map_sint32_sint32, merge_map_sint32_sint32, encoded_len_map_sint32_sint32, encode_sint32, merge_sint32, encoded_len_sint32, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(i32, i64, encode_map_sint32_sint64, merge_map_sint32_sint64, encoded_len_map_sint32_sint64, encode_sint32, merge_sint32, encoded_len_sint32, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(i32, u32, encode_map_sint32_fixed32, merge_map_sint32_fixed32, encoded_len_map_sint32_fixed32, encode_sint32, merge_sint32, encoded_len_sint32, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(i32, u64, encode_map_sint32_fixed64, merge_map_sint32_fixed64, encoded_len_map_sint32_fixed64, encode_sint32, merge_sint32, encoded_len_sint32, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(i32, i32, encode_map_sint32_sfixed32, merge_map_sint32_sfixed32, encoded_len_map_sint32_sfixed32, encode_sint32, merge_sint32, encoded_len_sint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(i32, i64, encode_map_sint32_sfixed64, merge_map_sint32_sfixed64, encoded_len_map_sint32_sfixed64, encode_sint32, merge_sint32, encoded_len_sint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(i32, bool, encode_map_sint32_bool, merge_map_sint32_bool, encoded_len_map_sint32_bool, encode_sint32, merge_sint32, encoded_len_sint32, encode_bool, merge_bool, encoded_len_bool);
-map!(i32, String, encode_map_sint32_string, merge_map_sint32_string, encoded_len_map_sint32_string, encode_sint32, merge_sint32, encoded_len_sint32, encode_string, merge_string, encoded_len_string);
-map!(i32, Vec<u8>, encode_map_sint32_bytes, merge_map_sint32_bytes, encoded_len_map_sint32_bytes, encode_sint32, merge_sint32, encoded_len_sint32, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(i64, f32, encode_map_sint64_float, merge_map_sint64_float, encoded_len_map_sint64_float, encode_sint64, merge_sint64, encoded_len_sint64, encode_float, merge_float, encoded_len_float);
-map!(i64, f64, encode_map_sint64_double, merge_map_sint64_double, encoded_len_map_sint64_double, encode_sint64, merge_sint64, encoded_len_sint64, encode_double, merge_double, encoded_len_double);
-map!(i64, i32, encode_map_sint64_int32, merge_map_sint64_int32, encoded_len_map_sint64_int32, encode_sint64, merge_sint64, encoded_len_sint64, encode_int32, merge_int32, encoded_len_int32);
-map!(i64, i64, encode_map_sint64_int64, merge_map_sint64_int64, encoded_len_map_sint64_int64, encode_sint64, merge_sint64, encoded_len_sint64, encode_int64, merge_int64, encoded_len_int64);
-map!(i64, u32, encode_map_sint64_uint32, merge_map_sint64_uint32, encoded_len_map_sint64_uint32, encode_sint64, merge_sint64, encoded_len_sint64, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(i64, u64, encode_map_sint64_uint64, merge_map_sint64_uint64, encoded_len_map_sint64_uint64, encode_sint64, merge_sint64, encoded_len_sint64, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(i64, i32, encode_map_sint64_sint32, merge_map_sint64_sint32, encoded_len_map_sint64_sint32, encode_sint64, merge_sint64, encoded_len_sint64, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(i64, i64, encode_map_sint64_sint64, merge_map_sint64_sint64, encoded_len_map_sint64_sint64, encode_sint64, merge_sint64, encoded_len_sint64, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(i64, u32, encode_map_sint64_fixed32, merge_map_sint64_fixed32, encoded_len_map_sint64_fixed32, encode_sint64, merge_sint64, encoded_len_sint64, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(i64, u64, encode_map_sint64_fixed64, merge_map_sint64_fixed64, encoded_len_map_sint64_fixed64, encode_sint64, merge_sint64, encoded_len_sint64, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(i64, i32, encode_map_sint64_sfixed32, merge_map_sint64_sfixed32, encoded_len_map_sint64_sfixed32, encode_sint64, merge_sint64, encoded_len_sint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(i64, i64, encode_map_sint64_sfixed64, merge_map_sint64_sfixed64, encoded_len_map_sint64_sfixed64, encode_sint64, merge_sint64, encoded_len_sint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(i64, bool, encode_map_sint64_bool, merge_map_sint64_bool, encoded_len_map_sint64_bool, encode_sint64, merge_sint64, encoded_len_sint64, encode_bool, merge_bool, encoded_len_bool);
-map!(i64, String, encode_map_sint64_string, merge_map_sint64_string, encoded_len_map_sint64_string, encode_sint64, merge_sint64, encoded_len_sint64, encode_string, merge_string, encoded_len_string);
-map!(i64, Vec<u8>, encode_map_sint64_bytes, merge_map_sint64_bytes, encoded_len_map_sint64_bytes, encode_sint64, merge_sint64, encoded_len_sint64, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(u32, f32, encode_map_fixed32_float, merge_map_fixed32_float, encoded_len_map_fixed32_float, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_float, merge_float, encoded_len_float);
-map!(u32, f64, encode_map_fixed32_double, merge_map_fixed32_double, encoded_len_map_fixed32_double, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_double, merge_double, encoded_len_double);
-map!(u32, i32, encode_map_fixed32_int32, merge_map_fixed32_int32, encoded_len_map_fixed32_int32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_int32, merge_int32, encoded_len_int32);
-map!(u32, i64, encode_map_fixed32_int64, merge_map_fixed32_int64, encoded_len_map_fixed32_int64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_int64, merge_int64, encoded_len_int64);
-map!(u32, u32, encode_map_fixed32_uint32, merge_map_fixed32_uint32, encoded_len_map_fixed32_uint32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(u32, u64, encode_map_fixed32_uint64, merge_map_fixed32_uint64, encoded_len_map_fixed32_uint64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(u32, i32, encode_map_fixed32_sint32, merge_map_fixed32_sint32, encoded_len_map_fixed32_sint32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(u32, i64, encode_map_fixed32_sint64, merge_map_fixed32_sint64, encoded_len_map_fixed32_sint64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(u32, u32, encode_map_fixed32_fixed32, merge_map_fixed32_fixed32, encoded_len_map_fixed32_fixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(u32, u64, encode_map_fixed32_fixed64, merge_map_fixed32_fixed64, encoded_len_map_fixed32_fixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(u32, i32, encode_map_fixed32_sfixed32, merge_map_fixed32_sfixed32, encoded_len_map_fixed32_sfixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(u32, i64, encode_map_fixed32_sfixed64, merge_map_fixed32_sfixed64, encoded_len_map_fixed32_sfixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(u32, bool, encode_map_fixed32_bool, merge_map_fixed32_bool, encoded_len_map_fixed32_bool, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_bool, merge_bool, encoded_len_bool);
-map!(u32, String, encode_map_fixed32_string, merge_map_fixed32_string, encoded_len_map_fixed32_string, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_string, merge_string, encoded_len_string);
-map!(u32, Vec<u8>, encode_map_fixed32_bytes, merge_map_fixed32_bytes, encoded_len_map_fixed32_bytes, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(u64, f32, encode_map_fixed64_float, merge_map_fixed64_float, encoded_len_map_fixed64_float, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_float, merge_float, encoded_len_float);
-map!(u64, f64, encode_map_fixed64_double, merge_map_fixed64_double, encoded_len_map_fixed64_double, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_double, merge_double, encoded_len_double);
-map!(u64, i32, encode_map_fixed64_int32, merge_map_fixed64_int32, encoded_len_map_fixed64_int32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_int32, merge_int32, encoded_len_int32);
-map!(u64, i64, encode_map_fixed64_int64, merge_map_fixed64_int64, encoded_len_map_fixed64_int64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_int64, merge_int64, encoded_len_int64);
-map!(u64, u32, encode_map_fixed64_uint32, merge_map_fixed64_uint32, encoded_len_map_fixed64_uint32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(u64, u64, encode_map_fixed64_uint64, merge_map_fixed64_uint64, encoded_len_map_fixed64_uint64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(u64, i32, encode_map_fixed64_sint32, merge_map_fixed64_sint32, encoded_len_map_fixed64_sint32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(u64, i64, encode_map_fixed64_sint64, merge_map_fixed64_sint64, encoded_len_map_fixed64_sint64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(u64, u32, encode_map_fixed64_fixed32, merge_map_fixed64_fixed32, encoded_len_map_fixed64_fixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(u64, u64, encode_map_fixed64_fixed64, merge_map_fixed64_fixed64, encoded_len_map_fixed64_fixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(u64, i32, encode_map_fixed64_sfixed32, merge_map_fixed64_sfixed32, encoded_len_map_fixed64_sfixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(u64, i64, encode_map_fixed64_sfixed64, merge_map_fixed64_sfixed64, encoded_len_map_fixed64_sfixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(u64, bool, encode_map_fixed64_bool, merge_map_fixed64_bool, encoded_len_map_fixed64_bool, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_bool, merge_bool, encoded_len_bool);
-map!(u64, String, encode_map_fixed64_string, merge_map_fixed64_string, encoded_len_map_fixed64_string, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_string, merge_string, encoded_len_string);
-map!(u64, Vec<u8>, encode_map_fixed64_bytes, merge_map_fixed64_bytes, encoded_len_map_fixed64_bytes, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(i32, f32, encode_map_sfixed32_float, merge_map_sfixed32_float, encoded_len_map_sfixed32_float, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_float, merge_float, encoded_len_float);
-map!(i32, f64, encode_map_sfixed32_double, merge_map_sfixed32_double, encoded_len_map_sfixed32_double, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_double, merge_double, encoded_len_double);
-map!(i32, i32, encode_map_sfixed32_int32, merge_map_sfixed32_int32, encoded_len_map_sfixed32_int32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_int32, merge_int32, encoded_len_int32);
-map!(i32, i64, encode_map_sfixed32_int64, merge_map_sfixed32_int64, encoded_len_map_sfixed32_int64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_int64, merge_int64, encoded_len_int64);
-map!(i32, u32, encode_map_sfixed32_uint32, merge_map_sfixed32_uint32, encoded_len_map_sfixed32_uint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(i32, u64, encode_map_sfixed32_uint64, merge_map_sfixed32_uint64, encoded_len_map_sfixed32_uint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(i32, i32, encode_map_sfixed32_sint32, merge_map_sfixed32_sint32, encoded_len_map_sfixed32_sint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(i32, i64, encode_map_sfixed32_sint64, merge_map_sfixed32_sint64, encoded_len_map_sfixed32_sint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(i32, u32, encode_map_sfixed32_fixed32, merge_map_sfixed32_fixed32, encoded_len_map_sfixed32_fixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(i32, u64, encode_map_sfixed32_fixed64, merge_map_sfixed32_fixed64, encoded_len_map_sfixed32_fixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(i32, i32, encode_map_sfixed32_sfixed32, merge_map_sfixed32_sfixed32, encoded_len_map_sfixed32_sfixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(i32, i64, encode_map_sfixed32_sfixed64, merge_map_sfixed32_sfixed64, encoded_len_map_sfixed32_sfixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(i32, bool, encode_map_sfixed32_bool, merge_map_sfixed32_bool, encoded_len_map_sfixed32_bool, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_bool, merge_bool, encoded_len_bool);
-map!(i32, String, encode_map_sfixed32_string, merge_map_sfixed32_string, encoded_len_map_sfixed32_string, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_string, merge_string, encoded_len_string);
-map!(i32, Vec<u8>, encode_map_sfixed32_bytes, merge_map_sfixed32_bytes, encoded_len_map_sfixed32_bytes, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(i64, f32, encode_map_sfixed64_float, merge_map_sfixed64_float, encoded_len_map_sfixed64_float, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_float, merge_float, encoded_len_float);
-map!(i64, f64, encode_map_sfixed64_double, merge_map_sfixed64_double, encoded_len_map_sfixed64_double, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_double, merge_double, encoded_len_double);
-map!(i64, i32, encode_map_sfixed64_int32, merge_map_sfixed64_int32, encoded_len_map_sfixed64_int32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_int32, merge_int32, encoded_len_int32);
-map!(i64, i64, encode_map_sfixed64_int64, merge_map_sfixed64_int64, encoded_len_map_sfixed64_int64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_int64, merge_int64, encoded_len_int64);
-map!(i64, u32, encode_map_sfixed64_uint32, merge_map_sfixed64_uint32, encoded_len_map_sfixed64_uint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(i64, u64, encode_map_sfixed64_uint64, merge_map_sfixed64_uint64, encoded_len_map_sfixed64_uint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(i64, i32, encode_map_sfixed64_sint32, merge_map_sfixed64_sint32, encoded_len_map_sfixed64_sint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(i64, i64, encode_map_sfixed64_sint64, merge_map_sfixed64_sint64, encoded_len_map_sfixed64_sint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(i64, u32, encode_map_sfixed64_fixed32, merge_map_sfixed64_fixed32, encoded_len_map_sfixed64_fixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(i64, u64, encode_map_sfixed64_fixed64, merge_map_sfixed64_fixed64, encoded_len_map_sfixed64_fixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(i64, i32, encode_map_sfixed64_sfixed32, merge_map_sfixed64_sfixed32, encoded_len_map_sfixed64_sfixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(i64, i64, encode_map_sfixed64_sfixed64, merge_map_sfixed64_sfixed64, encoded_len_map_sfixed64_sfixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(i64, bool, encode_map_sfixed64_bool, merge_map_sfixed64_bool, encoded_len_map_sfixed64_bool, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_bool, merge_bool, encoded_len_bool);
-map!(i64, String, encode_map_sfixed64_string, merge_map_sfixed64_string, encoded_len_map_sfixed64_string, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_string, merge_string, encoded_len_string);
-map!(i64, Vec<u8>, encode_map_sfixed64_bytes, merge_map_sfixed64_bytes, encoded_len_map_sfixed64_bytes, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(bool, f32, encode_map_bool_float, merge_map_bool_float, encoded_len_map_bool_float, encode_bool, merge_bool, encoded_len_bool, encode_float, merge_float, encoded_len_float);
-map!(bool, f64, encode_map_bool_double, merge_map_bool_double, encoded_len_map_bool_double, encode_bool, merge_bool, encoded_len_bool, encode_double, merge_double, encoded_len_double);
-map!(bool, i32, encode_map_bool_int32, merge_map_bool_int32, encoded_len_map_bool_int32, encode_bool, merge_bool, encoded_len_bool, encode_int32, merge_int32, encoded_len_int32);
-map!(bool, i64, encode_map_bool_int64, merge_map_bool_int64, encoded_len_map_bool_int64, encode_bool, merge_bool, encoded_len_bool, encode_int64, merge_int64, encoded_len_int64);
-map!(bool, u32, encode_map_bool_uint32, merge_map_bool_uint32, encoded_len_map_bool_uint32, encode_bool, merge_bool, encoded_len_bool, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(bool, u64, encode_map_bool_uint64, merge_map_bool_uint64, encoded_len_map_bool_uint64, encode_bool, merge_bool, encoded_len_bool, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(bool, i32, encode_map_bool_sint32, merge_map_bool_sint32, encoded_len_map_bool_sint32, encode_bool, merge_bool, encoded_len_bool, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(bool, i64, encode_map_bool_sint64, merge_map_bool_sint64, encoded_len_map_bool_sint64, encode_bool, merge_bool, encoded_len_bool, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(bool, u32, encode_map_bool_fixed32, merge_map_bool_fixed32, encoded_len_map_bool_fixed32, encode_bool, merge_bool, encoded_len_bool, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(bool, u64, encode_map_bool_fixed64, merge_map_bool_fixed64, encoded_len_map_bool_fixed64, encode_bool, merge_bool, encoded_len_bool, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(bool, i32, encode_map_bool_sfixed32, merge_map_bool_sfixed32, encoded_len_map_bool_sfixed32, encode_bool, merge_bool, encoded_len_bool, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(bool, i64, encode_map_bool_sfixed64, merge_map_bool_sfixed64, encoded_len_map_bool_sfixed64, encode_bool, merge_bool, encoded_len_bool, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(bool, bool, encode_map_bool_bool, merge_map_bool_bool, encoded_len_map_bool_bool, encode_bool, merge_bool, encoded_len_bool, encode_bool, merge_bool, encoded_len_bool);
-map!(bool, String, encode_map_bool_string, merge_map_bool_string, encoded_len_map_bool_string, encode_bool, merge_bool, encoded_len_bool, encode_string, merge_string, encoded_len_string);
-map!(bool, Vec<u8>, encode_map_bool_bytes, merge_map_bool_bytes, encoded_len_map_bool_bytes, encode_bool, merge_bool, encoded_len_bool, encode_bytes, merge_bytes, encoded_len_bytes);
-map!(String, f32, encode_map_string_float, merge_map_string_float, encoded_len_map_string_float, encode_string, merge_string, encoded_len_string, encode_float, merge_float, encoded_len_float);
-map!(String, f64, encode_map_string_double, merge_map_string_double, encoded_len_map_string_double, encode_string, merge_string, encoded_len_string, encode_double, merge_double, encoded_len_double);
-map!(String, i32, encode_map_string_int32, merge_map_string_int32, encoded_len_map_string_int32, encode_string, merge_string, encoded_len_string, encode_int32, merge_int32, encoded_len_int32);
-map!(String, i64, encode_map_string_int64, merge_map_string_int64, encoded_len_map_string_int64, encode_string, merge_string, encoded_len_string, encode_int64, merge_int64, encoded_len_int64);
-map!(String, u32, encode_map_string_uint32, merge_map_string_uint32, encoded_len_map_string_uint32, encode_string, merge_string, encoded_len_string, encode_uint32, merge_uint32, encoded_len_uint32);
-map!(String, u64, encode_map_string_uint64, merge_map_string_uint64, encoded_len_map_string_uint64, encode_string, merge_string, encoded_len_string, encode_uint64, merge_uint64, encoded_len_uint64);
-map!(String, i32, encode_map_string_sint32, merge_map_string_sint32, encoded_len_map_string_sint32, encode_string, merge_string, encoded_len_string, encode_sint32, merge_sint32, encoded_len_sint32);
-map!(String, i64, encode_map_string_sint64, merge_map_string_sint64, encoded_len_map_string_sint64, encode_string, merge_string, encoded_len_string, encode_sint64, merge_sint64, encoded_len_sint64);
-map!(String, u32, encode_map_string_fixed32, merge_map_string_fixed32, encoded_len_map_string_fixed32, encode_string, merge_string, encoded_len_string, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-map!(String, u64, encode_map_string_fixed64, merge_map_string_fixed64, encoded_len_map_string_fixed64, encode_string, merge_string, encoded_len_string, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-map!(String, i32, encode_map_string_sfixed32, merge_map_string_sfixed32, encoded_len_map_string_sfixed32, encode_string, merge_string, encoded_len_string, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-map!(String, i64, encode_map_string_sfixed64, merge_map_string_sfixed64, encoded_len_map_string_sfixed64, encode_string, merge_string, encoded_len_string, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-map!(String, bool, encode_map_string_bool, merge_map_string_bool, encoded_len_map_string_bool, encode_string, merge_string, encoded_len_string, encode_bool, merge_bool, encoded_len_bool);
-map!(String, String, encode_map_string_string, merge_map_string_string, encoded_len_map_string_string, encode_string, merge_string, encoded_len_string, encode_string, merge_string, encoded_len_string);
-map!(String, Vec<u8>, encode_map_string_bytes, merge_map_string_bytes, encoded_len_map_string_bytes, encode_string, merge_string, encoded_len_string, encode_bytes, merge_bytes, encoded_len_bytes);
+map!(i32, f32, encode_map_int32_float, merge_map_int32_float, encoded_len_map_int32_float, encode_int32, merge_int32, encoded_len_int32, encode_float, merge_float, encoded_len_float, test_map_int32_float);
+map!(i32, f64, encode_map_int32_double, merge_map_int32_double, encoded_len_map_int32_double, encode_int32, merge_int32, encoded_len_int32, encode_double, merge_double, encoded_len_double, test_map_int32_double);
+map!(i32, i32, encode_map_int32_int32, merge_map_int32_int32, encoded_len_map_int32_int32, encode_int32, merge_int32, encoded_len_int32, encode_int32, merge_int32, encoded_len_int32, test_map_int32_int32);
+map!(i32, i64, encode_map_int32_int64, merge_map_int32_int64, encoded_len_map_int32_int64, encode_int32, merge_int32, encoded_len_int32, encode_int64, merge_int64, encoded_len_int64, test_map_int32_int64);
+map!(i32, u32, encode_map_int32_uint32, merge_map_int32_uint32, encoded_len_map_int32_uint32, encode_int32, merge_int32, encoded_len_int32, encode_uint32, merge_uint32, encoded_len_uint32, test_map_int32_uint32);
+map!(i32, u64, encode_map_int32_uint64, merge_map_int32_uint64, encoded_len_map_int32_uint64, encode_int32, merge_int32, encoded_len_int32, encode_uint64, merge_uint64, encoded_len_uint64, test_map_int32_uint64);
+map!(i32, i32, encode_map_int32_sint32, merge_map_int32_sint32, encoded_len_map_int32_sint32, encode_int32, merge_int32, encoded_len_int32, encode_sint32, merge_sint32, encoded_len_sint32, test_map_int32_sint32);
+map!(i32, i64, encode_map_int32_sint64, merge_map_int32_sint64, encoded_len_map_int32_sint64, encode_int32, merge_int32, encoded_len_int32, encode_sint64, merge_sint64, encoded_len_sint64, test_map_int32_sint64);
+map!(i32, u32, encode_map_int32_fixed32, merge_map_int32_fixed32, encoded_len_map_int32_fixed32, encode_int32, merge_int32, encoded_len_int32, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_int32_fixed32);
+map!(i32, u64, encode_map_int32_fixed64, merge_map_int32_fixed64, encoded_len_map_int32_fixed64, encode_int32, merge_int32, encoded_len_int32, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_int32_fixed64);
+map!(i32, i32, encode_map_int32_sfixed32, merge_map_int32_sfixed32, encoded_len_map_int32_sfixed32, encode_int32, merge_int32, encoded_len_int32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_int32_sfixed32);
+map!(i32, i64, encode_map_int32_sfixed64, merge_map_int32_sfixed64, encoded_len_map_int32_sfixed64, encode_int32, merge_int32, encoded_len_int32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_int32_sfixed64);
+map!(i32, bool, encode_map_int32_bool, merge_map_int32_bool, encoded_len_map_int32_bool, encode_int32, merge_int32, encoded_len_int32, encode_bool, merge_bool, encoded_len_bool, test_map_int32_bool);
+map!(i32, String, encode_map_int32_string, merge_map_int32_string, encoded_len_map_int32_string, encode_int32, merge_int32, encoded_len_int32, encode_string, merge_string, encoded_len_string, test_map_int32_string);
+map!(i32, Vec<u8>, encode_map_int32_bytes, merge_map_int32_bytes, encoded_len_map_int32_bytes, encode_int32, merge_int32, encoded_len_int32, encode_bytes, merge_bytes, encoded_len_bytes, test_map_int32_bytes);
+map!(i64, f32, encode_map_int64_float, merge_map_int64_float, encoded_len_map_int64_float, encode_int64, merge_int64, encoded_len_int64, encode_float, merge_float, encoded_len_float, test_map_int64_float);
+map!(i64, f64, encode_map_int64_double, merge_map_int64_double, encoded_len_map_int64_double, encode_int64, merge_int64, encoded_len_int64, encode_double, merge_double, encoded_len_double, test_map_int64_double);
+map!(i64, i32, encode_map_int64_int32, merge_map_int64_int32, encoded_len_map_int64_int32, encode_int64, merge_int64, encoded_len_int64, encode_int32, merge_int32, encoded_len_int32, test_map_int64_int32);
+map!(i64, i64, encode_map_int64_int64, merge_map_int64_int64, encoded_len_map_int64_int64, encode_int64, merge_int64, encoded_len_int64, encode_int64, merge_int64, encoded_len_int64, test_map_int64_int64);
+map!(i64, u32, encode_map_int64_uint32, merge_map_int64_uint32, encoded_len_map_int64_uint32, encode_int64, merge_int64, encoded_len_int64, encode_uint32, merge_uint32, encoded_len_uint32, test_map_int64_uint32);
+map!(i64, u64, encode_map_int64_uint64, merge_map_int64_uint64, encoded_len_map_int64_uint64, encode_int64, merge_int64, encoded_len_int64, encode_uint64, merge_uint64, encoded_len_uint64, test_map_int64_uint64);
+map!(i64, i32, encode_map_int64_sint32, merge_map_int64_sint32, encoded_len_map_int64_sint32, encode_int64, merge_int64, encoded_len_int64, encode_sint32, merge_sint32, encoded_len_sint32, test_map_int64_sint32);
+map!(i64, i64, encode_map_int64_sint64, merge_map_int64_sint64, encoded_len_map_int64_sint64, encode_int64, merge_int64, encoded_len_int64, encode_sint64, merge_sint64, encoded_len_sint64, test_map_int64_sint64);
+map!(i64, u32, encode_map_int64_fixed32, merge_map_int64_fixed32, encoded_len_map_int64_fixed32, encode_int64, merge_int64, encoded_len_int64, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_int64_fixed32);
+map!(i64, u64, encode_map_int64_fixed64, merge_map_int64_fixed64, encoded_len_map_int64_fixed64, encode_int64, merge_int64, encoded_len_int64, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_int64_fixed64);
+map!(i64, i32, encode_map_int64_sfixed32, merge_map_int64_sfixed32, encoded_len_map_int64_sfixed32, encode_int64, merge_int64, encoded_len_int64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_int64_sfixed32);
+map!(i64, i64, encode_map_int64_sfixed64, merge_map_int64_sfixed64, encoded_len_map_int64_sfixed64, encode_int64, merge_int64, encoded_len_int64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_int64_sfixed64);
+map!(i64, bool, encode_map_int64_bool, merge_map_int64_bool, encoded_len_map_int64_bool, encode_int64, merge_int64, encoded_len_int64, encode_bool, merge_bool, encoded_len_bool, test_map_int64_bool);
+map!(i64, String, encode_map_int64_string, merge_map_int64_string, encoded_len_map_int64_string, encode_int64, merge_int64, encoded_len_int64, encode_string, merge_string, encoded_len_string, test_map_int64_string);
+map!(i64, Vec<u8>, encode_map_int64_bytes, merge_map_int64_bytes, encoded_len_map_int64_bytes, encode_int64, merge_int64, encoded_len_int64, encode_bytes, merge_bytes, encoded_len_bytes, test_map_int64_bytes);
+map!(u32, f32, encode_map_uint32_float, merge_map_uint32_float, encoded_len_map_uint32_float, encode_uint32, merge_uint32, encoded_len_uint32, encode_float, merge_float, encoded_len_float, test_map_uint32_float);
+map!(u32, f64, encode_map_uint32_double, merge_map_uint32_double, encoded_len_map_uint32_double, encode_uint32, merge_uint32, encoded_len_uint32, encode_double, merge_double, encoded_len_double, test_map_uint32_double);
+map!(u32, i32, encode_map_uint32_int32, merge_map_uint32_int32, encoded_len_map_uint32_int32, encode_uint32, merge_uint32, encoded_len_uint32, encode_int32, merge_int32, encoded_len_int32, test_map_uint32_int32);
+map!(u32, i64, encode_map_uint32_int64, merge_map_uint32_int64, encoded_len_map_uint32_int64, encode_uint32, merge_uint32, encoded_len_uint32, encode_int64, merge_int64, encoded_len_int64, test_map_uint32_int64);
+map!(u32, u32, encode_map_uint32_uint32, merge_map_uint32_uint32, encoded_len_map_uint32_uint32, encode_uint32, merge_uint32, encoded_len_uint32, encode_uint32, merge_uint32, encoded_len_uint32, test_map_uint32_uint32);
+map!(u32, u64, encode_map_uint32_uint64, merge_map_uint32_uint64, encoded_len_map_uint32_uint64, encode_uint32, merge_uint32, encoded_len_uint32, encode_uint64, merge_uint64, encoded_len_uint64, test_map_uint32_uint64);
+map!(u32, i32, encode_map_uint32_sint32, merge_map_uint32_sint32, encoded_len_map_uint32_sint32, encode_uint32, merge_uint32, encoded_len_uint32, encode_sint32, merge_sint32, encoded_len_sint32, test_map_uint32_sint32);
+map!(u32, i64, encode_map_uint32_sint64, merge_map_uint32_sint64, encoded_len_map_uint32_sint64, encode_uint32, merge_uint32, encoded_len_uint32, encode_sint64, merge_sint64, encoded_len_sint64, test_map_uint32_sint64);
+map!(u32, u32, encode_map_uint32_fixed32, merge_map_uint32_fixed32, encoded_len_map_uint32_fixed32, encode_uint32, merge_uint32, encoded_len_uint32, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_uint32_fixed32);
+map!(u32, u64, encode_map_uint32_fixed64, merge_map_uint32_fixed64, encoded_len_map_uint32_fixed64, encode_uint32, merge_uint32, encoded_len_uint32, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_uint32_fixed64);
+map!(u32, i32, encode_map_uint32_sfixed32, merge_map_uint32_sfixed32, encoded_len_map_uint32_sfixed32, encode_uint32, merge_uint32, encoded_len_uint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_uint32_sfixed32);
+map!(u32, i64, encode_map_uint32_sfixed64, merge_map_uint32_sfixed64, encoded_len_map_uint32_sfixed64, encode_uint32, merge_uint32, encoded_len_uint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_uint32_sfixed64);
+map!(u32, bool, encode_map_uint32_bool, merge_map_uint32_bool, encoded_len_map_uint32_bool, encode_uint32, merge_uint32, encoded_len_uint32, encode_bool, merge_bool, encoded_len_bool, test_map_uint32_bool);
+map!(u32, String, encode_map_uint32_string, merge_map_uint32_string, encoded_len_map_uint32_string, encode_uint32, merge_uint32, encoded_len_uint32, encode_string, merge_string, encoded_len_string, test_map_uint32_string);
+map!(u32, Vec<u8>, encode_map_uint32_bytes, merge_map_uint32_bytes, encoded_len_map_uint32_bytes, encode_uint32, merge_uint32, encoded_len_uint32, encode_bytes, merge_bytes, encoded_len_bytes, test_map_uint32_bytes);
+map!(u64, f32, encode_map_uint64_float, merge_map_uint64_float, encoded_len_map_uint64_float, encode_uint64, merge_uint64, encoded_len_uint64, encode_float, merge_float, encoded_len_float, test_map_uint64_float);
+map!(u64, f64, encode_map_uint64_double, merge_map_uint64_double, encoded_len_map_uint64_double, encode_uint64, merge_uint64, encoded_len_uint64, encode_double, merge_double, encoded_len_double, test_map_uint64_double);
+map!(u64, i32, encode_map_uint64_int32, merge_map_uint64_int32, encoded_len_map_uint64_int32, encode_uint64, merge_uint64, encoded_len_uint64, encode_int32, merge_int32, encoded_len_int32, test_map_uint64_int32);
+map!(u64, i64, encode_map_uint64_int64, merge_map_uint64_int64, encoded_len_map_uint64_int64, encode_uint64, merge_uint64, encoded_len_uint64, encode_int64, merge_int64, encoded_len_int64, test_map_uint64_int64);
+map!(u64, u32, encode_map_uint64_uint32, merge_map_uint64_uint32, encoded_len_map_uint64_uint32, encode_uint64, merge_uint64, encoded_len_uint64, encode_uint32, merge_uint32, encoded_len_uint32, test_map_uint64_uint32);
+map!(u64, u64, encode_map_uint64_uint64, merge_map_uint64_uint64, encoded_len_map_uint64_uint64, encode_uint64, merge_uint64, encoded_len_uint64, encode_uint64, merge_uint64, encoded_len_uint64, test_map_uint64_uint64);
+map!(u64, i32, encode_map_uint64_sint32, merge_map_uint64_sint32, encoded_len_map_uint64_sint32, encode_uint64, merge_uint64, encoded_len_uint64, encode_sint32, merge_sint32, encoded_len_sint32, test_map_uint64_sint32);
+map!(u64, i64, encode_map_uint64_sint64, merge_map_uint64_sint64, encoded_len_map_uint64_sint64, encode_uint64, merge_uint64, encoded_len_uint64, encode_sint64, merge_sint64, encoded_len_sint64, test_map_uint64_sint64);
+map!(u64, u32, encode_map_uint64_fixed32, merge_map_uint64_fixed32, encoded_len_map_uint64_fixed32, encode_uint64, merge_uint64, encoded_len_uint64, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_uint64_fixed32);
+map!(u64, u64, encode_map_uint64_fixed64, merge_map_uint64_fixed64, encoded_len_map_uint64_fixed64, encode_uint64, merge_uint64, encoded_len_uint64, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_uint64_fixed64);
+map!(u64, i32, encode_map_uint64_sfixed32, merge_map_uint64_sfixed32, encoded_len_map_uint64_sfixed32, encode_uint64, merge_uint64, encoded_len_uint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_uint64_sfixed32);
+map!(u64, i64, encode_map_uint64_sfixed64, merge_map_uint64_sfixed64, encoded_len_map_uint64_sfixed64, encode_uint64, merge_uint64, encoded_len_uint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_uint64_sfixed64);
+map!(u64, bool, encode_map_uint64_bool, merge_map_uint64_bool, encoded_len_map_uint64_bool, encode_uint64, merge_uint64, encoded_len_uint64, encode_bool, merge_bool, encoded_len_bool, test_map_uint64_bool);
+map!(u64, String, encode_map_uint64_string, merge_map_uint64_string, encoded_len_map_uint64_string, encode_uint64, merge_uint64, encoded_len_uint64, encode_string, merge_string, encoded_len_string, test_map_uint64_string);
+map!(u64, Vec<u8>, encode_map_uint64_bytes, merge_map_uint64_bytes, encoded_len_map_uint64_bytes, encode_uint64, merge_uint64, encoded_len_uint64, encode_bytes, merge_bytes, encoded_len_bytes, test_map_uint64_bytes);
+map!(i32, f32, encode_map_sint32_float, merge_map_sint32_float, encoded_len_map_sint32_float, encode_sint32, merge_sint32, encoded_len_sint32, encode_float, merge_float, encoded_len_float, test_map_sint32_float);
+map!(i32, f64, encode_map_sint32_double, merge_map_sint32_double, encoded_len_map_sint32_double, encode_sint32, merge_sint32, encoded_len_sint32, encode_double, merge_double, encoded_len_double, test_map_sint32_double);
+map!(i32, i32, encode_map_sint32_int32, merge_map_sint32_int32, encoded_len_map_sint32_int32, encode_sint32, merge_sint32, encoded_len_sint32, encode_int32, merge_int32, encoded_len_int32, test_map_sint32_int32);
+map!(i32, i64, encode_map_sint32_int64, merge_map_sint32_int64, encoded_len_map_sint32_int64, encode_sint32, merge_sint32, encoded_len_sint32, encode_int64, merge_int64, encoded_len_int64, test_map_sint32_int64);
+map!(i32, u32, encode_map_sint32_uint32, merge_map_sint32_uint32, encoded_len_map_sint32_uint32, encode_sint32, merge_sint32, encoded_len_sint32, encode_uint32, merge_uint32, encoded_len_uint32, test_map_sint32_uint32);
+map!(i32, u64, encode_map_sint32_uint64, merge_map_sint32_uint64, encoded_len_map_sint32_uint64, encode_sint32, merge_sint32, encoded_len_sint32, encode_uint64, merge_uint64, encoded_len_uint64, test_map_sint32_uint64);
+map!(i32, i32, encode_map_sint32_sint32, merge_map_sint32_sint32, encoded_len_map_sint32_sint32, encode_sint32, merge_sint32, encoded_len_sint32, encode_sint32, merge_sint32, encoded_len_sint32, test_map_sint32_sint32);
+map!(i32, i64, encode_map_sint32_sint64, merge_map_sint32_sint64, encoded_len_map_sint32_sint64, encode_sint32, merge_sint32, encoded_len_sint32, encode_sint64, merge_sint64, encoded_len_sint64, test_map_sint32_sint64);
+map!(i32, u32, encode_map_sint32_fixed32, merge_map_sint32_fixed32, encoded_len_map_sint32_fixed32, encode_sint32, merge_sint32, encoded_len_sint32, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_sint32_fixed32);
+map!(i32, u64, encode_map_sint32_fixed64, merge_map_sint32_fixed64, encoded_len_map_sint32_fixed64, encode_sint32, merge_sint32, encoded_len_sint32, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_sint32_fixed64);
+map!(i32, i32, encode_map_sint32_sfixed32, merge_map_sint32_sfixed32, encoded_len_map_sint32_sfixed32, encode_sint32, merge_sint32, encoded_len_sint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_sint32_sfixed32);
+map!(i32, i64, encode_map_sint32_sfixed64, merge_map_sint32_sfixed64, encoded_len_map_sint32_sfixed64, encode_sint32, merge_sint32, encoded_len_sint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_sint32_sfixed64);
+map!(i32, bool, encode_map_sint32_bool, merge_map_sint32_bool, encoded_len_map_sint32_bool, encode_sint32, merge_sint32, encoded_len_sint32, encode_bool, merge_bool, encoded_len_bool, test_map_sint32_bool);
+map!(i32, String, encode_map_sint32_string, merge_map_sint32_string, encoded_len_map_sint32_string, encode_sint32, merge_sint32, encoded_len_sint32, encode_string, merge_string, encoded_len_string, test_map_sint32_string);
+map!(i32, Vec<u8>, encode_map_sint32_bytes, merge_map_sint32_bytes, encoded_len_map_sint32_bytes, encode_sint32, merge_sint32, encoded_len_sint32, encode_bytes, merge_bytes, encoded_len_bytes, test_map_sint32_bytes);
+map!(i64, f32, encode_map_sint64_float, merge_map_sint64_float, encoded_len_map_sint64_float, encode_sint64, merge_sint64, encoded_len_sint64, encode_float, merge_float, encoded_len_float, test_map_sint64_float);
+map!(i64, f64, encode_map_sint64_double, merge_map_sint64_double, encoded_len_map_sint64_double, encode_sint64, merge_sint64, encoded_len_sint64, encode_double, merge_double, encoded_len_double, test_map_sint64_double);
+map!(i64, i32, encode_map_sint64_int32, merge_map_sint64_int32, encoded_len_map_sint64_int32, encode_sint64, merge_sint64, encoded_len_sint64, encode_int32, merge_int32, encoded_len_int32, test_map_sint64_int32);
+map!(i64, i64, encode_map_sint64_int64, merge_map_sint64_int64, encoded_len_map_sint64_int64, encode_sint64, merge_sint64, encoded_len_sint64, encode_int64, merge_int64, encoded_len_int64, test_map_sint64_int64);
+map!(i64, u32, encode_map_sint64_uint32, merge_map_sint64_uint32, encoded_len_map_sint64_uint32, encode_sint64, merge_sint64, encoded_len_sint64, encode_uint32, merge_uint32, encoded_len_uint32, test_map_sint64_uint32);
+map!(i64, u64, encode_map_sint64_uint64, merge_map_sint64_uint64, encoded_len_map_sint64_uint64, encode_sint64, merge_sint64, encoded_len_sint64, encode_uint64, merge_uint64, encoded_len_uint64, test_map_sint64_uint64);
+map!(i64, i32, encode_map_sint64_sint32, merge_map_sint64_sint32, encoded_len_map_sint64_sint32, encode_sint64, merge_sint64, encoded_len_sint64, encode_sint32, merge_sint32, encoded_len_sint32, test_map_sint64_sint32);
+map!(i64, i64, encode_map_sint64_sint64, merge_map_sint64_sint64, encoded_len_map_sint64_sint64, encode_sint64, merge_sint64, encoded_len_sint64, encode_sint64, merge_sint64, encoded_len_sint64, test_map_sint64_sint64);
+map!(i64, u32, encode_map_sint64_fixed32, merge_map_sint64_fixed32, encoded_len_map_sint64_fixed32, encode_sint64, merge_sint64, encoded_len_sint64, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_sint64_fixed32);
+map!(i64, u64, encode_map_sint64_fixed64, merge_map_sint64_fixed64, encoded_len_map_sint64_fixed64, encode_sint64, merge_sint64, encoded_len_sint64, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_sint64_fixed64);
+map!(i64, i32, encode_map_sint64_sfixed32, merge_map_sint64_sfixed32, encoded_len_map_sint64_sfixed32, encode_sint64, merge_sint64, encoded_len_sint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_sint64_sfixed32);
+map!(i64, i64, encode_map_sint64_sfixed64, merge_map_sint64_sfixed64, encoded_len_map_sint64_sfixed64, encode_sint64, merge_sint64, encoded_len_sint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_sint64_sfixed64);
+map!(i64, bool, encode_map_sint64_bool, merge_map_sint64_bool, encoded_len_map_sint64_bool, encode_sint64, merge_sint64, encoded_len_sint64, encode_bool, merge_bool, encoded_len_bool, test_map_sint64_bool);
+map!(i64, String, encode_map_sint64_string, merge_map_sint64_string, encoded_len_map_sint64_string, encode_sint64, merge_sint64, encoded_len_sint64, encode_string, merge_string, encoded_len_string, test_map_sint64_string);
+map!(i64, Vec<u8>, encode_map_sint64_bytes, merge_map_sint64_bytes, encoded_len_map_sint64_bytes, encode_sint64, merge_sint64, encoded_len_sint64, encode_bytes, merge_bytes, encoded_len_bytes, test_map_sint64_bytes);
+map!(u32, f32, encode_map_fixed32_float, merge_map_fixed32_float, encoded_len_map_fixed32_float, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_float, merge_float, encoded_len_float, test_map_fixed32_float);
+map!(u32, f64, encode_map_fixed32_double, merge_map_fixed32_double, encoded_len_map_fixed32_double, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_double, merge_double, encoded_len_double, test_map_fixed32_double);
+map!(u32, i32, encode_map_fixed32_int32, merge_map_fixed32_int32, encoded_len_map_fixed32_int32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_int32, merge_int32, encoded_len_int32, test_map_fixed32_int32);
+map!(u32, i64, encode_map_fixed32_int64, merge_map_fixed32_int64, encoded_len_map_fixed32_int64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_int64, merge_int64, encoded_len_int64, test_map_fixed32_int64);
+map!(u32, u32, encode_map_fixed32_uint32, merge_map_fixed32_uint32, encoded_len_map_fixed32_uint32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_uint32, merge_uint32, encoded_len_uint32, test_map_fixed32_uint32);
+map!(u32, u64, encode_map_fixed32_uint64, merge_map_fixed32_uint64, encoded_len_map_fixed32_uint64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_uint64, merge_uint64, encoded_len_uint64, test_map_fixed32_uint64);
+map!(u32, i32, encode_map_fixed32_sint32, merge_map_fixed32_sint32, encoded_len_map_fixed32_sint32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sint32, merge_sint32, encoded_len_sint32, test_map_fixed32_sint32);
+map!(u32, i64, encode_map_fixed32_sint64, merge_map_fixed32_sint64, encoded_len_map_fixed32_sint64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sint64, merge_sint64, encoded_len_sint64, test_map_fixed32_sint64);
+map!(u32, u32, encode_map_fixed32_fixed32, merge_map_fixed32_fixed32, encoded_len_map_fixed32_fixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_fixed32_fixed32);
+map!(u32, u64, encode_map_fixed32_fixed64, merge_map_fixed32_fixed64, encoded_len_map_fixed32_fixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_fixed32_fixed64);
+map!(u32, i32, encode_map_fixed32_sfixed32, merge_map_fixed32_sfixed32, encoded_len_map_fixed32_sfixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_fixed32_sfixed32);
+map!(u32, i64, encode_map_fixed32_sfixed64, merge_map_fixed32_sfixed64, encoded_len_map_fixed32_sfixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_fixed32_sfixed64);
+map!(u32, bool, encode_map_fixed32_bool, merge_map_fixed32_bool, encoded_len_map_fixed32_bool, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_bool, merge_bool, encoded_len_bool, test_map_fixed32_bool);
+map!(u32, String, encode_map_fixed32_string, merge_map_fixed32_string, encoded_len_map_fixed32_string, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_string, merge_string, encoded_len_string, test_map_fixed32_string);
+map!(u32, Vec<u8>, encode_map_fixed32_bytes, merge_map_fixed32_bytes, encoded_len_map_fixed32_bytes, encode_fixed32, merge_fixed32, encoded_len_fixed32, encode_bytes, merge_bytes, encoded_len_bytes, test_map_fixed32_bytes);
+map!(u64, f32, encode_map_fixed64_float, merge_map_fixed64_float, encoded_len_map_fixed64_float, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_float, merge_float, encoded_len_float, test_map_fixed64_float);
+map!(u64, f64, encode_map_fixed64_double, merge_map_fixed64_double, encoded_len_map_fixed64_double, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_double, merge_double, encoded_len_double, test_map_fixed64_double);
+map!(u64, i32, encode_map_fixed64_int32, merge_map_fixed64_int32, encoded_len_map_fixed64_int32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_int32, merge_int32, encoded_len_int32, test_map_fixed64_int32);
+map!(u64, i64, encode_map_fixed64_int64, merge_map_fixed64_int64, encoded_len_map_fixed64_int64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_int64, merge_int64, encoded_len_int64, test_map_fixed64_int64);
+map!(u64, u32, encode_map_fixed64_uint32, merge_map_fixed64_uint32, encoded_len_map_fixed64_uint32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_uint32, merge_uint32, encoded_len_uint32, test_map_fixed64_uint32);
+map!(u64, u64, encode_map_fixed64_uint64, merge_map_fixed64_uint64, encoded_len_map_fixed64_uint64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_uint64, merge_uint64, encoded_len_uint64, test_map_fixed64_uint64);
+map!(u64, i32, encode_map_fixed64_sint32, merge_map_fixed64_sint32, encoded_len_map_fixed64_sint32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sint32, merge_sint32, encoded_len_sint32, test_map_fixed64_sint32);
+map!(u64, i64, encode_map_fixed64_sint64, merge_map_fixed64_sint64, encoded_len_map_fixed64_sint64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sint64, merge_sint64, encoded_len_sint64, test_map_fixed64_sint64);
+map!(u64, u32, encode_map_fixed64_fixed32, merge_map_fixed64_fixed32, encoded_len_map_fixed64_fixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_fixed64_fixed32);
+map!(u64, u64, encode_map_fixed64_fixed64, merge_map_fixed64_fixed64, encoded_len_map_fixed64_fixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_fixed64_fixed64);
+map!(u64, i32, encode_map_fixed64_sfixed32, merge_map_fixed64_sfixed32, encoded_len_map_fixed64_sfixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_fixed64_sfixed32);
+map!(u64, i64, encode_map_fixed64_sfixed64, merge_map_fixed64_sfixed64, encoded_len_map_fixed64_sfixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_fixed64_sfixed64);
+map!(u64, bool, encode_map_fixed64_bool, merge_map_fixed64_bool, encoded_len_map_fixed64_bool, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_bool, merge_bool, encoded_len_bool, test_map_fixed64_bool);
+map!(u64, String, encode_map_fixed64_string, merge_map_fixed64_string, encoded_len_map_fixed64_string, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_string, merge_string, encoded_len_string, test_map_fixed64_string);
+map!(u64, Vec<u8>, encode_map_fixed64_bytes, merge_map_fixed64_bytes, encoded_len_map_fixed64_bytes, encode_fixed64, merge_fixed64, encoded_len_fixed64, encode_bytes, merge_bytes, encoded_len_bytes, test_map_fixed64_bytes);
+map!(i32, f32, encode_map_sfixed32_float, merge_map_sfixed32_float, encoded_len_map_sfixed32_float, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_float, merge_float, encoded_len_float, test_map_sfixed32_float);
+map!(i32, f64, encode_map_sfixed32_double, merge_map_sfixed32_double, encoded_len_map_sfixed32_double, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_double, merge_double, encoded_len_double, test_map_sfixed32_double);
+map!(i32, i32, encode_map_sfixed32_int32, merge_map_sfixed32_int32, encoded_len_map_sfixed32_int32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_int32, merge_int32, encoded_len_int32, test_map_sfixed32_int32);
+map!(i32, i64, encode_map_sfixed32_int64, merge_map_sfixed32_int64, encoded_len_map_sfixed32_int64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_int64, merge_int64, encoded_len_int64, test_map_sfixed32_int64);
+map!(i32, u32, encode_map_sfixed32_uint32, merge_map_sfixed32_uint32, encoded_len_map_sfixed32_uint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_uint32, merge_uint32, encoded_len_uint32, test_map_sfixed32_uint32);
+map!(i32, u64, encode_map_sfixed32_uint64, merge_map_sfixed32_uint64, encoded_len_map_sfixed32_uint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_uint64, merge_uint64, encoded_len_uint64, test_map_sfixed32_uint64);
+map!(i32, i32, encode_map_sfixed32_sint32, merge_map_sfixed32_sint32, encoded_len_map_sfixed32_sint32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sint32, merge_sint32, encoded_len_sint32, test_map_sfixed32_sint32);
+map!(i32, i64, encode_map_sfixed32_sint64, merge_map_sfixed32_sint64, encoded_len_map_sfixed32_sint64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sint64, merge_sint64, encoded_len_sint64, test_map_sfixed32_sint64);
+map!(i32, u32, encode_map_sfixed32_fixed32, merge_map_sfixed32_fixed32, encoded_len_map_sfixed32_fixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_sfixed32_fixed32);
+map!(i32, u64, encode_map_sfixed32_fixed64, merge_map_sfixed32_fixed64, encoded_len_map_sfixed32_fixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_sfixed32_fixed64);
+map!(i32, i32, encode_map_sfixed32_sfixed32, merge_map_sfixed32_sfixed32, encoded_len_map_sfixed32_sfixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_sfixed32_sfixed32);
+map!(i32, i64, encode_map_sfixed32_sfixed64, merge_map_sfixed32_sfixed64, encoded_len_map_sfixed32_sfixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_sfixed32_sfixed64);
+map!(i32, bool, encode_map_sfixed32_bool, merge_map_sfixed32_bool, encoded_len_map_sfixed32_bool, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_bool, merge_bool, encoded_len_bool, test_map_sfixed32_bool);
+map!(i32, String, encode_map_sfixed32_string, merge_map_sfixed32_string, encoded_len_map_sfixed32_string, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_string, merge_string, encoded_len_string, test_map_sfixed32_string);
+map!(i32, Vec<u8>, encode_map_sfixed32_bytes, merge_map_sfixed32_bytes, encoded_len_map_sfixed32_bytes, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, encode_bytes, merge_bytes, encoded_len_bytes, test_map_sfixed32_bytes);
+map!(i64, f32, encode_map_sfixed64_float, merge_map_sfixed64_float, encoded_len_map_sfixed64_float, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_float, merge_float, encoded_len_float, test_map_sfixed64_float);
+map!(i64, f64, encode_map_sfixed64_double, merge_map_sfixed64_double, encoded_len_map_sfixed64_double, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_double, merge_double, encoded_len_double, test_map_sfixed64_double);
+map!(i64, i32, encode_map_sfixed64_int32, merge_map_sfixed64_int32, encoded_len_map_sfixed64_int32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_int32, merge_int32, encoded_len_int32, test_map_sfixed64_int32);
+map!(i64, i64, encode_map_sfixed64_int64, merge_map_sfixed64_int64, encoded_len_map_sfixed64_int64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_int64, merge_int64, encoded_len_int64, test_map_sfixed64_int64);
+map!(i64, u32, encode_map_sfixed64_uint32, merge_map_sfixed64_uint32, encoded_len_map_sfixed64_uint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_uint32, merge_uint32, encoded_len_uint32, test_map_sfixed64_uint32);
+map!(i64, u64, encode_map_sfixed64_uint64, merge_map_sfixed64_uint64, encoded_len_map_sfixed64_uint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_uint64, merge_uint64, encoded_len_uint64, test_map_sfixed64_uint64);
+map!(i64, i32, encode_map_sfixed64_sint32, merge_map_sfixed64_sint32, encoded_len_map_sfixed64_sint32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sint32, merge_sint32, encoded_len_sint32, test_map_sfixed64_sint32);
+map!(i64, i64, encode_map_sfixed64_sint64, merge_map_sfixed64_sint64, encoded_len_map_sfixed64_sint64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sint64, merge_sint64, encoded_len_sint64, test_map_sfixed64_sint64);
+map!(i64, u32, encode_map_sfixed64_fixed32, merge_map_sfixed64_fixed32, encoded_len_map_sfixed64_fixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_sfixed64_fixed32);
+map!(i64, u64, encode_map_sfixed64_fixed64, merge_map_sfixed64_fixed64, encoded_len_map_sfixed64_fixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_sfixed64_fixed64);
+map!(i64, i32, encode_map_sfixed64_sfixed32, merge_map_sfixed64_sfixed32, encoded_len_map_sfixed64_sfixed32, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_sfixed64_sfixed32);
+map!(i64, i64, encode_map_sfixed64_sfixed64, merge_map_sfixed64_sfixed64, encoded_len_map_sfixed64_sfixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_sfixed64_sfixed64);
+map!(i64, bool, encode_map_sfixed64_bool, merge_map_sfixed64_bool, encoded_len_map_sfixed64_bool, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_bool, merge_bool, encoded_len_bool, test_map_sfixed64_bool);
+map!(i64, String, encode_map_sfixed64_string, merge_map_sfixed64_string, encoded_len_map_sfixed64_string, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_string, merge_string, encoded_len_string, test_map_sfixed64_string);
+map!(i64, Vec<u8>, encode_map_sfixed64_bytes, merge_map_sfixed64_bytes, encoded_len_map_sfixed64_bytes, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, encode_bytes, merge_bytes, encoded_len_bytes, test_map_sfixed64_bytes);
+map!(bool, f32, encode_map_bool_float, merge_map_bool_float, encoded_len_map_bool_float, encode_bool, merge_bool, encoded_len_bool, encode_float, merge_float, encoded_len_float, test_map_bool_float);
+map!(bool, f64, encode_map_bool_double, merge_map_bool_double, encoded_len_map_bool_double, encode_bool, merge_bool, encoded_len_bool, encode_double, merge_double, encoded_len_double, test_map_bool_double);
+map!(bool, i32, encode_map_bool_int32, merge_map_bool_int32, encoded_len_map_bool_int32, encode_bool, merge_bool, encoded_len_bool, encode_int32, merge_int32, encoded_len_int32, test_map_bool_int32);
+map!(bool, i64, encode_map_bool_int64, merge_map_bool_int64, encoded_len_map_bool_int64, encode_bool, merge_bool, encoded_len_bool, encode_int64, merge_int64, encoded_len_int64, test_map_bool_int64);
+map!(bool, u32, encode_map_bool_uint32, merge_map_bool_uint32, encoded_len_map_bool_uint32, encode_bool, merge_bool, encoded_len_bool, encode_uint32, merge_uint32, encoded_len_uint32, test_map_bool_uint32);
+map!(bool, u64, encode_map_bool_uint64, merge_map_bool_uint64, encoded_len_map_bool_uint64, encode_bool, merge_bool, encoded_len_bool, encode_uint64, merge_uint64, encoded_len_uint64, test_map_bool_uint64);
+map!(bool, i32, encode_map_bool_sint32, merge_map_bool_sint32, encoded_len_map_bool_sint32, encode_bool, merge_bool, encoded_len_bool, encode_sint32, merge_sint32, encoded_len_sint32, test_map_bool_sint32);
+map!(bool, i64, encode_map_bool_sint64, merge_map_bool_sint64, encoded_len_map_bool_sint64, encode_bool, merge_bool, encoded_len_bool, encode_sint64, merge_sint64, encoded_len_sint64, test_map_bool_sint64);
+map!(bool, u32, encode_map_bool_fixed32, merge_map_bool_fixed32, encoded_len_map_bool_fixed32, encode_bool, merge_bool, encoded_len_bool, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_bool_fixed32);
+map!(bool, u64, encode_map_bool_fixed64, merge_map_bool_fixed64, encoded_len_map_bool_fixed64, encode_bool, merge_bool, encoded_len_bool, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_bool_fixed64);
+map!(bool, i32, encode_map_bool_sfixed32, merge_map_bool_sfixed32, encoded_len_map_bool_sfixed32, encode_bool, merge_bool, encoded_len_bool, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_bool_sfixed32);
+map!(bool, i64, encode_map_bool_sfixed64, merge_map_bool_sfixed64, encoded_len_map_bool_sfixed64, encode_bool, merge_bool, encoded_len_bool, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_bool_sfixed64);
+map!(bool, bool, encode_map_bool_bool, merge_map_bool_bool, encoded_len_map_bool_bool, encode_bool, merge_bool, encoded_len_bool, encode_bool, merge_bool, encoded_len_bool, test_map_bool_bool);
+map!(bool, String, encode_map_bool_string, merge_map_bool_string, encoded_len_map_bool_string, encode_bool, merge_bool, encoded_len_bool, encode_string, merge_string, encoded_len_string, test_map_bool_string);
+map!(bool, Vec<u8>, encode_map_bool_bytes, merge_map_bool_bytes, encoded_len_map_bool_bytes, encode_bool, merge_bool, encoded_len_bool, encode_bytes, merge_bytes, encoded_len_bytes, test_map_bool_bytes);
+map!(String, f32, encode_map_string_float, merge_map_string_float, encoded_len_map_string_float, encode_string, merge_string, encoded_len_string, encode_float, merge_float, encoded_len_float, test_map_string_float);
+map!(String, f64, encode_map_string_double, merge_map_string_double, encoded_len_map_string_double, encode_string, merge_string, encoded_len_string, encode_double, merge_double, encoded_len_double, test_map_string_double);
+map!(String, i32, encode_map_string_int32, merge_map_string_int32, encoded_len_map_string_int32, encode_string, merge_string, encoded_len_string, encode_int32, merge_int32, encoded_len_int32, test_map_string_int32);
+map!(String, i64, encode_map_string_int64, merge_map_string_int64, encoded_len_map_string_int64, encode_string, merge_string, encoded_len_string, encode_int64, merge_int64, encoded_len_int64, test_map_string_int64);
+map!(String, u32, encode_map_string_uint32, merge_map_string_uint32, encoded_len_map_string_uint32, encode_string, merge_string, encoded_len_string, encode_uint32, merge_uint32, encoded_len_uint32, test_map_string_uint32);
+map!(String, u64, encode_map_string_uint64, merge_map_string_uint64, encoded_len_map_string_uint64, encode_string, merge_string, encoded_len_string, encode_uint64, merge_uint64, encoded_len_uint64, test_map_string_uint64);
+map!(String, i32, encode_map_string_sint32, merge_map_string_sint32, encoded_len_map_string_sint32, encode_string, merge_string, encoded_len_string, encode_sint32, merge_sint32, encoded_len_sint32, test_map_string_sint32);
+map!(String, i64, encode_map_string_sint64, merge_map_string_sint64, encoded_len_map_string_sint64, encode_string, merge_string, encoded_len_string, encode_sint64, merge_sint64, encoded_len_sint64, test_map_string_sint64);
+map!(String, u32, encode_map_string_fixed32, merge_map_string_fixed32, encoded_len_map_string_fixed32, encode_string, merge_string, encoded_len_string, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_string_fixed32);
+map!(String, u64, encode_map_string_fixed64, merge_map_string_fixed64, encoded_len_map_string_fixed64, encode_string, merge_string, encoded_len_string, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_string_fixed64);
+map!(String, i32, encode_map_string_sfixed32, merge_map_string_sfixed32, encoded_len_map_string_sfixed32, encode_string, merge_string, encoded_len_string, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_string_sfixed32);
+map!(String, i64, encode_map_string_sfixed64, merge_map_string_sfixed64, encoded_len_map_string_sfixed64, encode_string, merge_string, encoded_len_string, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_string_sfixed64);
+map!(String, bool, encode_map_string_bool, merge_map_string_bool, encoded_len_map_string_bool, encode_string, merge_string, encoded_len_string, encode_bool, merge_bool, encoded_len_bool, test_map_string_bool);
+map!(String, String, encode_map_string_string, merge_map_string_string, encoded_len_map_string_string, encode_string, merge_string, encoded_len_string, encode_string, merge_string, encoded_len_string, test_map_string_string);
+map!(String, Vec<u8>, encode_map_string_bytes, merge_map_string_bytes, encoded_len_map_string_bytes, encode_string, merge_string, encoded_len_string, encode_bytes, merge_bytes, encoded_len_bytes, test_map_string_bytes);
 
-enumeration_map!(i32, encode_map_int32_enumeration, merge_map_int32_enumeration, encoded_len_map_int32_enumeration, encode_int32, merge_int32, encoded_len_int32);
-enumeration_map!(i64, encode_map_int64_enumeration, merge_map_int64_enumeration, encoded_len_map_int64_enumeration, encode_int64, merge_int64, encoded_len_int64);
-enumeration_map!(u32, encode_map_uint32_enumeration, merge_map_uint32_enumeration, encoded_len_map_uint32_enumeration, encode_uint32, merge_uint32, encoded_len_uint32);
-enumeration_map!(u64, encode_map_uint64_enumeration, merge_map_uint64_enumeration, encoded_len_map_uint64_enumeration, encode_uint64, merge_uint64, encoded_len_uint64);
-enumeration_map!(i32, encode_map_sint32_enumeration, merge_map_sint32_enumeration, encoded_len_map_sint32_enumeration, encode_sint32, merge_sint32, encoded_len_sint32);
-enumeration_map!(i64, encode_map_sint64_enumeration, merge_map_sint64_enumeration, encoded_len_map_sint64_enumeration, encode_sint64, merge_sint64, encoded_len_sint64);
-enumeration_map!(u32, encode_map_fixed32_enumeration, merge_map_fixed32_enumeration, encoded_len_map_fixed32_enumeration, encode_fixed32, merge_fixed32, encoded_len_fixed32);
-enumeration_map!(u64, encode_map_fixed64_enumeration, merge_map_fixed64_enumeration, encoded_len_map_fixed64_enumeration, encode_fixed64, merge_fixed64, encoded_len_fixed64);
-enumeration_map!(i32, encode_map_sfixed32_enumeration, merge_map_sfixed32_enumeration, encoded_len_map_sfixed32_enumeration, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32);
-enumeration_map!(i64, encode_map_sfixed64_enumeration, merge_map_sfixed64_enumeration, encoded_len_map_sfixed64_enumeration, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
-enumeration_map!(bool, encode_map_bool_enumeration, merge_map_bool_enumeration, encoded_len_map_bool_enumeration, encode_bool, merge_bool, encoded_len_bool);
-enumeration_map!(String, encode_map_string_enumeration, merge_map_string_enumeration, encoded_len_map_string_enumeration, encode_string, merge_string, encoded_len_string);
+enumeration_map!(i32, encode_map_int32_enumeration, merge_map_int32_enumeration, encoded_len_map_int32_enumeration, encode_int32, merge_int32, encoded_len_int32, test_map_int32_enumeration);
+enumeration_map!(i64, encode_map_int64_enumeration, merge_map_int64_enumeration, encoded_len_map_int64_enumeration, encode_int64, merge_int64, encoded_len_int64, test_map_int64_enumeration);
+enumeration_map!(u32, encode_map_uint32_enumeration, merge_map_uint32_enumeration, encoded_len_map_uint32_enumeration, encode_uint32, merge_uint32, encoded_len_uint32, test_map_uint32_enumeration);
+enumeration_map!(u64, encode_map_uint64_enumeration, merge_map_uint64_enumeration, encoded_len_map_uint64_enumeration, encode_uint64, merge_uint64, encoded_len_uint64, test_map_uint64_enumeration);
+enumeration_map!(i32, encode_map_sint32_enumeration, merge_map_sint32_enumeration, encoded_len_map_sint32_enumeration, encode_sint32, merge_sint32, encoded_len_sint32, test_map_sint32_enumeration);
+enumeration_map!(i64, encode_map_sint64_enumeration, merge_map_sint64_enumeration, encoded_len_map_sint64_enumeration, encode_sint64, merge_sint64, encoded_len_sint64, test_map_sint64_enumeration);
+enumeration_map!(u32, encode_map_fixed32_enumeration, merge_map_fixed32_enumeration, encoded_len_map_fixed32_enumeration, encode_fixed32, merge_fixed32, encoded_len_fixed32, test_map_fixed32_enumeration);
+enumeration_map!(u64, encode_map_fixed64_enumeration, merge_map_fixed64_enumeration, encoded_len_map_fixed64_enumeration, encode_fixed64, merge_fixed64, encoded_len_fixed64, test_map_fixed64_enumeration);
+enumeration_map!(i32, encode_map_sfixed32_enumeration, merge_map_sfixed32_enumeration, encoded_len_map_sfixed32_enumeration, encode_sfixed32, merge_sfixed32, encoded_len_sfixed32, test_map_sfixed32_enumeration);
+enumeration_map!(i64, encode_map_sfixed64_enumeration, merge_map_sfixed64_enumeration, encoded_len_map_sfixed64_enumeration, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64, test_map_sfixed64_enumeration);
+enumeration_map!(bool, encode_map_bool_enumeration, merge_map_bool_enumeration, encoded_len_map_bool_enumeration, encode_bool, merge_bool, encoded_len_bool, test_map_bool_enumeration);
+enumeration_map!(String, encode_map_string_enumeration, merge_map_string_enumeration, encoded_len_map_string_enumeration, encode_string, merge_string, encoded_len_string, test_map_string_enumeration);
 
 message_map!(i32, encode_map_int32_message, merge_map_int32_message, encoded_len_map_int32_message, encode_int32, merge_int32, encoded_len_int32);
 message_map!(i64, encode_map_int64_message, merge_map_int64_message, encoded_len_map_int64_message, encode_int64, merge_int64, encoded_len_int64);
@@ -1104,7 +1143,6 @@ message_map!(i32, encode_map_sfixed32_message, merge_map_sfixed32_message, encod
 message_map!(i64, encode_map_sfixed64_message, merge_map_sfixed64_message, encoded_len_map_sfixed64_message, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
 message_map!(bool, encode_map_bool_message, merge_map_bool_message, encoded_len_map_bool_message, encode_bool, merge_bool, encoded_len_bool);
 message_map!(String, encode_map_string_message, merge_map_string_message, encoded_len_map_string_message, encode_string, merge_string, encoded_len_string);
-
 
 #[cfg(test)]
 mod test {
@@ -1195,14 +1233,17 @@ mod test {
         }
     }
 
-    pub fn check_collection_type<T>(value: T,
-                                    tag: u32,
-                                    wire_type: WireType,
-                                    encode: fn(u32, &T, &mut BytesMut),
-                                    merge: fn(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<()>,
-                                    encoded_len: fn(u32, &T) -> usize)
-                                    -> TestResult
-    where T: Debug + Default + PartialEq {
+    pub fn check_repeated_type<T, E, M, L>(value: T,
+                                           tag: u32,
+                                           wire_type: WireType,
+                                           encode: E,
+                                           mut merge: M,
+                                           encoded_len: L)
+                                           -> TestResult
+    where T: Debug + Default + PartialEq,
+          E: FnOnce(u32, &T, &mut BytesMut),
+          M: FnMut(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<()>,
+          L: FnOnce(u32, &T) -> usize {
 
         if tag > MAX_TAG || tag < MIN_TAG {
             return TestResult::discard()
