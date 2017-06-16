@@ -4,3 +4,6 @@
 - Reorder fields according to tag in the plugin as well as the code generator.
 
 - Are nested recursive oneof fields supported?
+
+- Add 'plugable' service definition generators
+  - out of the box implementations for async/sync client/server interfaces.

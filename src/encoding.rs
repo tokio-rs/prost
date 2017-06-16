@@ -262,7 +262,8 @@ macro_rules! varint {
      $encode_packed:ident,
      $encoded_len:ident,
      $encoded_len_repeated:ident,
-     $encoded_len_packed:ident) => (
+     $encoded_len_packed:ident,
+     $test:ident) => (
         varint!($ty,
                 $encode,
                 $merge,
@@ -272,6 +273,7 @@ macro_rules! varint {
                 $encoded_len,
                 $encoded_len_repeated,
                 $encoded_len_packed,
+                $test,
                 to_uint64(value) { *value as u64 },
                 from_uint64(value) { value as $ty });
     );
@@ -285,6 +287,7 @@ macro_rules! varint {
      $encoded_len:ident,
      $encoded_len_repeated:ident,
      $encoded_len_packed:ident,
+     $test:ident,
      to_uint64($to_uint64_value:ident) $to_uint64:expr,
      from_uint64($from_uint64_value:ident) $from_uint64:expr) => (
 
@@ -343,70 +346,30 @@ macro_rules! varint {
                 }).sum::<usize>()
              }
          }
+
+         #[cfg(test)]
+         mod $test {
+             use quickcheck::TestResult;
+             use super::*;
+
+             quickcheck! {
+                 fn roundtrip(value: $ty, tag: u32) -> TestResult {
+                     super::test::check_type(value, tag, WireType::Varint,
+                                             $encode, $merge, $encoded_len)
+                 }
+             }
+         }
     );
 }
 
-varint!(bool,
-        encode_bool,
-        merge_bool,
-        encode_repeated_bool,
-        merge_repeated_bool,
-        encode_packed_bool,
-        encoded_len_bool,
-        encoded_len_repeated_bool,
-        encoded_len_packed_bool,
+varint!(bool, encode_bool, merge_bool, encode_repeated_bool, merge_repeated_bool, encode_packed_bool, encoded_len_bool, encoded_len_repeated_bool, encoded_len_packed_bool, test_bool,
         to_uint64(value) if *value { 1u64 } else { 0u64 },
         from_uint64(value) value != 0);
-
-varint!(i32,
-        encode_int32,
-        merge_int32,
-        encode_repeated_int32,
-        merge_repeated_int32,
-        encode_packed_int32,
-        encoded_len_int32,
-        encoded_len_repeated_int32,
-        encoded_len_packed_int32);
-
-varint!(i64,
-        encode_int64,
-        merge_int64,
-        encode_repeated_int64,
-        merge_repeated_int64,
-        encode_packed_int64,
-        encoded_len_int64,
-        encoded_len_repeated_int64,
-        encoded_len_packed_int64);
-
-varint!(u32,
-        encode_uint32,
-        merge_uint32,
-        encode_repeated_uint32,
-        merge_repeated_uint32,
-        encode_packed_uint32,
-        encoded_len_uint32,
-        encoded_len_repeated_uint32,
-        encoded_len_packed_uint32);
-
-varint!(u64,
-        encode_uint64,
-        merge_uint64,
-        encode_repeated_uint64,
-        merge_repeated_uint64,
-        encode_packed_uint64,
-        encoded_len_uint64,
-        encoded_len_repeated_uint64,
-        encoded_len_packed_uint64);
-
-varint!(i32,
-        encode_sint32,
-        merge_sint32,
-        encode_repeated_sint32,
-        merge_repeated_sint32,
-        encode_packed_sint32,
-        encoded_len_sint32,
-        encoded_len_repeated_sint32,
-        encoded_len_packed_sint32,
+varint!(i32, encode_int32,  merge_int32,  encode_repeated_int32,  merge_repeated_int32,  encode_packed_int32,  encoded_len_int32,  encoded_len_repeated_int32,  encoded_len_packed_int32, test_int32);
+varint!(i64, encode_int64,  merge_int64,  encode_repeated_int64,  merge_repeated_int64,  encode_packed_int64,  encoded_len_int64,  encoded_len_repeated_int64,  encoded_len_packed_int64, test_int64);
+varint!(u32, encode_uint32, merge_uint32, encode_repeated_uint32, merge_repeated_uint32, encode_packed_uint32, encoded_len_uint32, encoded_len_repeated_uint32, encoded_len_packed_uint32, test_uint32);
+varint!(u64, encode_uint64, merge_uint64, encode_repeated_uint64, merge_repeated_uint64, encode_packed_uint64, encoded_len_uint64, encoded_len_repeated_uint64, encoded_len_packed_uint64, test_uint64);
+varint!(i32, encode_sint32, merge_sint32, encode_repeated_sint32, merge_repeated_sint32, encode_packed_sint32, encoded_len_sint32, encoded_len_repeated_sint32, encoded_len_packed_sint32, test_sint32,
         to_uint64(value) {
             ((value << 1) ^ (value >> 31)) as u64
         },
@@ -414,16 +377,7 @@ varint!(i32,
             let value = value as u32;
             ((value >> 1) as i32) ^ (-((value & 1) as i32))
         });
-
-varint!(i64,
-        encode_sint64,
-        merge_sint64,
-        encode_repeated_sint64,
-        merge_repeated_sint64,
-        encode_packed_sint64,
-        encoded_len_sint64,
-        encoded_len_repeated_sint64,
-        encoded_len_packed_sint64,
+varint!(i64, encode_sint64, merge_sint64, encode_repeated_sint64, merge_repeated_sint64, encode_packed_sint64, encoded_len_sint64, encoded_len_repeated_sint64, encoded_len_packed_sint64, test_sint64,
         to_uint64(value) {
             ((value << 1) ^ (value >> 63)) as u64
         },
@@ -444,7 +398,8 @@ macro_rules! fixed_width {
      $encoded_len_repeated:ident,
      $encoded_len_packed:ident,
      $put:ident,
-     $get:ident) => (
+     $get:ident,
+     $test:ident) => (
 
          #[inline]
          pub fn $encode<B>(tag: u32, value: &$ty, buf: &mut B) where B: BufMut {
@@ -522,99 +477,37 @@ macro_rules! fixed_width {
                  key_len(tag) + encoded_len_varint(len as u64) + len
              }
          }
+
+         #[cfg(test)]
+         mod $test {
+             use quickcheck::TestResult;
+             use super::*;
+
+             quickcheck! {
+                 fn roundtrip(value: $ty, tag: u32) -> TestResult {
+                     super::test::check_type(value, tag, $wire_type,
+                                             $encode, $merge, $encoded_len)
+                 }
+             }
+         }
     );
 }
 
-fixed_width!(f32,
-             4,
-             WireType::ThirtyTwoBit,
-             encode_float,
-             merge_float,
-             encode_repeated_float,
-             merge_repeated_float,
-             encode_packed_float,
-             encoded_len_float,
-             encoded_len_repeated_float,
-             encoded_len_packed_float,
-             put_f32,
-             get_f32);
-
-fixed_width!(f64,
-             8,
-             WireType::SixtyFourBit,
-             encode_double,
-             merge_double,
-             encode_repeated_double,
-             merge_repeated_double,
-             encode_packed_double,
-             encoded_len_double,
-             encoded_len_repeated_double,
-             encoded_len_packed_double,
-             put_f64,
-             get_f64);
-
-fixed_width!(u32,
-             4,
-             WireType::ThirtyTwoBit,
-             encode_fixed32,
-             merge_fixed32,
-             encode_repeated_fixed32,
-             merge_repeated_fixed32,
-             encode_packed_fixed32,
-             encoded_len_fixed32,
-             encoded_len_repeated_fixed32,
-             encoded_len_packed_fixed32,
-             put_u32,
-             get_u32);
-
-fixed_width!(u64,
-             8,
-             WireType::SixtyFourBit,
-             encode_fixed64,
-             merge_fixed64,
-             encode_repeated_fixed64,
-             merge_repeated_fixed64,
-             encode_packed_fixed64,
-             encoded_len_fixed64,
-             encoded_len_repeated_fixed64,
-             encoded_len_packed_fixed64,
-             put_u64,
-             get_u64);
-
-fixed_width!(i32,
-             4,
-             WireType::ThirtyTwoBit,
-             encode_sfixed32,
-             merge_sfixed32,
-             encode_repeated_sfixed32,
-             merge_repeated_sfixed32,
-             encode_packed_sfixed32,
-             encoded_len_sfixed32,
-             encoded_len_repeated_sfixed32,
-             encoded_len_packed_sfixed32,
-             put_i32,
-             get_i32);
-
-fixed_width!(i64,
-             8,
-             WireType::SixtyFourBit,
-             encode_sfixed64,
-             merge_sfixed64,
-             encode_repeated_sfixed64,
-             merge_repeated_sfixed64,
-             encode_packed_sfixed64,
-             encoded_len_sfixed64,
-             encoded_len_repeated_sfixed64,
-             encoded_len_packed_sfixed64,
-             put_i64,
-             get_i64);
+fixed_width!(f32, 4, WireType::ThirtyTwoBit, encode_float,    merge_float,    encode_repeated_float,    merge_repeated_float,    encode_packed_float,    encoded_len_float,    encoded_len_repeated_float,    encoded_len_packed_float,    put_f32, get_f32, test_float);
+fixed_width!(f64, 8, WireType::SixtyFourBit, encode_double,   merge_double,   encode_repeated_double,   merge_repeated_double,   encode_packed_double,   encoded_len_double,   encoded_len_repeated_double,   encoded_len_packed_double,   put_f64, get_f64, test_double);
+fixed_width!(u32, 4, WireType::ThirtyTwoBit, encode_fixed32,  merge_fixed32,  encode_repeated_fixed32,  merge_repeated_fixed32,  encode_packed_fixed32,  encoded_len_fixed32,  encoded_len_repeated_fixed32,  encoded_len_packed_fixed32,  put_u32, get_u32, test_fixed32);
+fixed_width!(u64, 8, WireType::SixtyFourBit, encode_fixed64,  merge_fixed64,  encode_repeated_fixed64,  merge_repeated_fixed64,  encode_packed_fixed64,  encoded_len_fixed64,  encoded_len_repeated_fixed64,  encoded_len_packed_fixed64,  put_u64, get_u64, test_fixed64);
+fixed_width!(i32, 4, WireType::ThirtyTwoBit, encode_sfixed32, merge_sfixed32, encode_repeated_sfixed32, merge_repeated_sfixed32, encode_packed_sfixed32, encoded_len_sfixed32, encoded_len_repeated_sfixed32, encoded_len_packed_sfixed32, put_i32, get_i32, test_sfixed32);
+fixed_width!(i64, 8, WireType::SixtyFourBit, encode_sfixed64, merge_sfixed64, encode_repeated_sfixed64, merge_repeated_sfixed64, encode_packed_sfixed64, encoded_len_sfixed64, encoded_len_repeated_sfixed64, encoded_len_packed_sfixed64, put_i64, get_i64, test_sfixed64);
 
 macro_rules! length_delimited {
     ($ty:ty,
+     $encode:ident,
      $merge:ident,
      $merge_repeated:ident,
      $encoded_len:ident,
-     $encoded_len_repeated:ident) => (
+     $encoded_len_repeated:ident,
+     $test:ident) => (
          #[inline]
          pub fn $merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
@@ -634,6 +527,19 @@ macro_rules! length_delimited {
              key_len(tag) * values.len() + values.iter().map(|value| {
                  encoded_len_varint(value.len() as u64) + value.len()
              }).sum::<usize>()
+         }
+
+         #[cfg(test)]
+         mod $test {
+             use quickcheck::TestResult;
+             use super::*;
+
+             quickcheck! {
+                 fn roundtrip(value: $ty, tag: u32) -> TestResult {
+                     super::test::check_type(value, tag, WireType::LengthDelimited,
+                                             $encode, $merge, $encoded_len)
+                 }
+             }
          }
     )
 }
@@ -658,7 +564,7 @@ pub fn merge_string<B>(wire_type: WireType, value: &mut String, buf: &mut Take<B
     Ok(())
 }
 encode_repeated!(String, encode_string, encode_repeated_string);
-length_delimited!(String, merge_string, merge_repeated_string, encoded_len_string, encoded_len_repeated_string);
+length_delimited!(String, encode_string, merge_string, merge_repeated_string, encoded_len_string, encoded_len_repeated_string, test_string);
 
 #[inline]
 pub fn encode_bytes<B>(tag: u32, value: &Vec<u8>, buf: &mut B) where B: BufMut {
@@ -689,7 +595,7 @@ pub fn merge_bytes<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B
     Ok(())
 }
 encode_repeated!(Vec<u8>, encode_bytes, encode_repeated_bytes);
-length_delimited!(Vec<u8>, merge_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes);
+length_delimited!(Vec<u8>, encode_bytes, merge_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes, test_bytes);
 
 // Generates methods to encode, merge, and get the encoded length of a map.
 macro_rules! map {
@@ -1239,3 +1145,113 @@ message_map!(i32, encode_map_sfixed32_message, merge_map_sfixed32_message, encod
 message_map!(i64, encode_map_sfixed64_message, merge_map_sfixed64_message, encoded_len_map_sfixed64_message, encode_sfixed64, merge_sfixed64, encoded_len_sfixed64);
 message_map!(bool, encode_map_bool_message, merge_map_bool_message, encoded_len_map_bool_message, encode_bool, merge_bool, encoded_len_bool);
 message_map!(String, encode_map_string_message, merge_map_string_message, encoded_len_map_string_message, encode_string, merge_string, encoded_len_string);
+
+
+#[cfg(test)]
+mod test {
+
+    use std::fmt::Debug;
+    use std::io::Cursor;
+
+    use bytes::{Bytes, BytesMut, IntoBuf, Take};
+    use quickcheck::TestResult;
+
+    use super::*;
+
+    pub fn check_type<T>(value: T,
+                         tag: u32,
+                         wire_type: WireType,
+                         encode: fn(u32, &T, &mut BytesMut),
+                         merge: fn(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<()>,
+                         encoded_len: fn(u32, &T) -> usize)
+                         -> TestResult
+    where T: Debug + Default + PartialEq {
+
+        if tag > MAX_TAG || tag < MIN_TAG {
+            return TestResult::discard()
+        }
+
+        let expected_len = encoded_len(tag, &value);
+
+        let mut buf = BytesMut::with_capacity(expected_len);
+        encode(tag, &value, &mut buf);
+
+        let mut buf = buf.freeze().into_buf().take(expected_len);
+
+        if buf.remaining() != expected_len {
+            return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
+                                             expected_len, buf.remaining()));
+        }
+
+        let (decoded_tag, decoded_wire_type) = match decode_key(&mut buf) {
+            Ok(key) => key,
+            Err(error) => return TestResult::error(format!("{:?}", error)),
+        };
+
+        if tag != decoded_tag {
+            return TestResult::error(
+                format!("decoded tag does not match; expected: {}, actual: {}",
+                        tag, decoded_tag));
+        }
+
+        if wire_type != decoded_wire_type {
+            return TestResult::error(
+                format!("decoded wire type does not match; expected: {:?}, actual: {:?}",
+                        wire_type, decoded_wire_type));
+        }
+
+        match wire_type {
+            WireType::SixtyFourBit if buf.remaining() != 8 => {
+                return TestResult::error(
+                    format!("64bit wire type illegal remaining: {}, tag: {}",
+                            buf.remaining(), tag));
+            },
+            WireType::ThirtyTwoBit if buf.remaining() != 4 => {
+                return TestResult::error(
+                    format!("32bit wire type illegal remaining: {}, tag: {}",
+                            buf.remaining(), tag));
+            },
+            _ => (),
+        }
+
+        let mut roundtrip_value = T::default();
+        if let Err(error) = merge(wire_type, &mut roundtrip_value, &mut buf) {
+            return TestResult::error(format!("{:?}", error));
+        };
+
+        if buf.has_remaining() {
+            return TestResult::error(format!("expected buffer to be empty: {}", buf.remaining()));
+        }
+
+        if value == roundtrip_value {
+            TestResult::passed()
+        } else {
+            TestResult::failed()
+        }
+    }
+
+    #[test]
+    fn varint() {
+        fn check(value: u64, encoded: &[u8]) {
+            let mut buf = Vec::new();
+
+            encode_varint(value, &mut buf);
+
+            assert_eq!(buf, encoded);
+
+            let roundtrip_value = decode_varint(&mut Bytes::from(encoded).into_buf()).expect("decoding failed");
+            assert_eq!(value, roundtrip_value);
+        }
+
+        check(0, &[0b0000_0000]);
+        check(1, &[0b0000_0001]);
+
+        check(127, &[0b0111_1111]);
+        check(128, &[0b1000_0000, 0b0000_0001]);
+
+        check(300, &[0b1010_1100, 0b0000_0010]);
+
+        check(16_383, &[0b1111_1111, 0b0111_1111]);
+        check(16_384, &[0b1000_0000, 0b1000_0000, 0b0000_0001]);
+    }
+}
