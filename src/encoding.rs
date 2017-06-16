@@ -358,6 +358,14 @@ macro_rules! varint {
                                              $encode, $merge, $encoded_len)
                  }
              }
+
+             quickcheck! {
+                 fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
+                     super::test::check_collection_type(value, tag, WireType::Varint,
+                                                        $encode_repeated, $merge_repeated,
+                                                        $encoded_len_repeated)
+                 }
+             }
          }
     );
 }
@@ -450,9 +458,8 @@ macro_rules! fixed_width {
                  }
                  buf.set_limit(limit - len);
              } else {
-                 check_wire_type(WireType::Varint, wire_type)?;
                  let mut value = Default::default();
-                 $merge($wire_type, &mut value, buf)?;
+                 $merge(wire_type, &mut value, buf)?;
                  values.push(value);
              }
              Ok(())
@@ -489,6 +496,14 @@ macro_rules! fixed_width {
                                              $encode, $merge, $encoded_len)
                  }
              }
+
+             quickcheck! {
+                 fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
+                     super::test::check_collection_type(value, tag, $wire_type,
+                                                        $encode_repeated, $merge_repeated,
+                                                        $encoded_len_repeated)
+                 }
+             }
          }
     );
 }
@@ -504,6 +519,7 @@ macro_rules! length_delimited {
     ($ty:ty,
      $encode:ident,
      $merge:ident,
+     $encode_repeated:ident,
      $merge_repeated:ident,
      $encoded_len:ident,
      $encoded_len_repeated:ident,
@@ -540,6 +556,14 @@ macro_rules! length_delimited {
                                              $encode, $merge, $encoded_len)
                  }
              }
+
+             quickcheck! {
+                 fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
+                     super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                        $encode_repeated, $merge_repeated,
+                                                        $encoded_len_repeated)
+                 }
+             }
          }
     )
 }
@@ -564,7 +588,7 @@ pub fn merge_string<B>(wire_type: WireType, value: &mut String, buf: &mut Take<B
     Ok(())
 }
 encode_repeated!(String, encode_string, encode_repeated_string);
-length_delimited!(String, encode_string, merge_string, merge_repeated_string, encoded_len_string, encoded_len_repeated_string, test_string);
+length_delimited!(String, encode_string, merge_string, encode_repeated_string, merge_repeated_string, encoded_len_string, encoded_len_repeated_string, test_string);
 
 #[inline]
 pub fn encode_bytes<B>(tag: u32, value: &Vec<u8>, buf: &mut B) where B: BufMut {
@@ -595,7 +619,7 @@ pub fn merge_bytes<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B
     Ok(())
 }
 encode_repeated!(Vec<u8>, encode_bytes, encode_repeated_bytes);
-length_delimited!(Vec<u8>, encode_bytes, merge_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes, test_bytes);
+length_delimited!(Vec<u8>, encode_bytes, merge_bytes, encode_repeated_bytes, merge_repeated_bytes, encoded_len_bytes, encoded_len_repeated_bytes, test_bytes);
 
 // Generates methods to encode, merge, and get the encoded length of a map.
 macro_rules! map {
@@ -870,75 +894,8 @@ macro_rules! message_map {
     );
 }
 
-
-// The following block is generated with this snippet:
-/*
-let key_types = &[
-    ("i32", "int32"),
-    ("i64", "int64"),
-    ("u32", "uint32"),
-    ("u64", "uint64"),
-    ("i32", "sint32"),
-    ("i64", "sint64"),
-    ("u32", "fixed32"),
-    ("u64", "fixed64"),
-    ("i32", "sfixed32"),
-    ("i64", "sfixed64"),
-    ("bool", "bool"),
-    ("String", "string"),
-];
-
-let val_types = &[
-    ("f32", "float"),
-    ("f64", "double"),
-    ("i32", "int32"),
-    ("i64", "int64"),
-    ("u32", "uint32"),
-    ("u64", "uint64"),
-    ("i32", "sint32"),
-    ("i64", "sint64"),
-    ("u32", "fixed32"),
-    ("u64", "fixed64"),
-    ("i32", "sfixed32"),
-    ("i64", "sfixed64"),
-    ("bool", "bool"),
-    ("String", "string"),
-    ("Vec<u8>", "bytes"),
-];
-
-for &(ref key_rust_ty, ref key_pb_ty) in key_types {
-    for &(ref val_rust_ty, ref val_pb_ty) in val_types {
-        println!(concat!("map!({key_rust_ty}, {val_rust_ty}, encode_map_{key_pb_ty}_{val_pb_ty}, ",
-                               "merge_map_{key_pb_ty}_{val_pb_ty}, ",
-                               "encoded_len_map_{key_pb_ty}_{val_pb_ty}, ",
-                               "encode_{key_pb_ty}, merge_{key_pb_ty}, encoded_len_{key_pb_ty}, ",
-                               "encode_{val_pb_ty}, merge_{val_pb_ty}, encoded_len_{val_pb_ty});"),
-                 key_rust_ty=key_rust_ty,
-                 val_rust_ty=val_rust_ty,
-                 key_pb_ty=key_pb_ty,
-                 val_pb_ty=val_pb_ty);
-  }
-}
-for &(ref key_rust_ty, ref key_pb_ty) in key_types {
-    println!(concat!("enumeration_map!({key_rust_ty}, encode_map_{key_pb_ty}_enumeration, ",
-                                       "merge_map_{key_pb_ty}_enumeration, ",
-                                       "encoded_len_map_{key_pb_ty}_enumeration, ",
-                                       "encode_{key_pb_ty}, merge_{key_pb_ty}, ",
-                                       "encoded_len_{key_pb_ty});"),
-             key_rust_ty=key_rust_ty,
-             key_pb_ty=key_pb_ty);
-}
-for &(ref key_rust_ty, ref key_pb_ty) in key_types {
-    println!(concat!("message_map!({key_rust_ty}, encode_map_{key_pb_ty}_message, ",
-                                  "merge_map_{key_pb_ty}_message, ",
-                                  "encoded_len_map_{key_pb_ty}_message, ",
-                                  "encode_{key_pb_ty}, merge_{key_pb_ty}, ",
-                                  "encoded_len_{key_pb_ty});"),
-             key_rust_ty=key_rust_ty,
-             key_pb_ty=key_pb_ty);
-}
-*/
-
+// The following blocks were generated with
+// https://gist.github.com/danburkert/d3b70b36d4a143af47c9bf56d5ba3ab9
 map!(i32, f32, encode_map_int32_float, merge_map_int32_float, encoded_len_map_int32_float, encode_int32, merge_int32, encoded_len_int32, encode_float, merge_float, encoded_len_float);
 map!(i32, f64, encode_map_int32_double, merge_map_int32_double, encoded_len_map_int32_double, encode_int32, merge_int32, encoded_len_int32, encode_double, merge_double, encoded_len_double);
 map!(i32, i32, encode_map_int32_int32, merge_map_int32_int32, encoded_len_map_int32_int32, encode_int32, merge_int32, encoded_len_int32, encode_int32, merge_int32, encoded_len_int32);
@@ -1216,11 +1173,69 @@ mod test {
 
         let mut roundtrip_value = T::default();
         if let Err(error) = merge(wire_type, &mut roundtrip_value, &mut buf) {
-            return TestResult::error(format!("{:?}", error));
+            return TestResult::error(error.to_string());
         };
 
         if buf.has_remaining() {
-            return TestResult::error(format!("expected buffer to be empty: {}", buf.remaining()));
+            return TestResult::error(format!("expected buffer to be empty, remaining: {}",
+                                             buf.remaining()));
+        }
+
+        if value == roundtrip_value {
+            TestResult::passed()
+        } else {
+            TestResult::failed()
+        }
+    }
+
+    pub fn check_collection_type<T>(value: T,
+                                    tag: u32,
+                                    wire_type: WireType,
+                                    encode: fn(u32, &T, &mut BytesMut),
+                                    merge: fn(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<()>,
+                                    encoded_len: fn(u32, &T) -> usize)
+                                    -> TestResult
+    where T: Debug + Default + PartialEq {
+
+        if tag > MAX_TAG || tag < MIN_TAG {
+            return TestResult::discard()
+        }
+
+        let expected_len = encoded_len(tag, &value);
+
+        let mut buf = BytesMut::with_capacity(expected_len);
+        encode(tag, &value, &mut buf);
+
+        let mut buf = buf.freeze().into_buf().take(expected_len);
+
+        if buf.remaining() != expected_len {
+            return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
+                                             expected_len, buf.remaining()));
+        }
+
+        let mut roundtrip_value = Default::default();
+        while buf.has_remaining() {
+
+            let (decoded_tag, decoded_wire_type) = match decode_key(&mut buf) {
+                Ok(key) => key,
+                Err(error) => return TestResult::error(format!("{:?}", error)),
+            };
+
+            if tag != decoded_tag {
+                return TestResult::error(
+                    format!("decoded tag does not match; expected: {}, actual: {}",
+                            tag, decoded_tag));
+            }
+
+            if wire_type != decoded_wire_type {
+                return TestResult::error(
+                    format!("decoded wire type does not match; expected: {:?}, actual: {:?}",
+                            wire_type, decoded_wire_type));
+            }
+
+            if let Err(error) = merge(wire_type, &mut roundtrip_value, &mut buf) {
+                return TestResult::error(error.to_string());
+            };
         }
 
         if value == roundtrip_value {
