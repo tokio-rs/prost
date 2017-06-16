@@ -341,9 +341,10 @@ macro_rules! varint {
              if values.is_empty() {
                  0
              } else {
-                key_len(tag) + values.iter().map(|$to_uint64_value| {
-                    encoded_len_varint($to_uint64)
-                }).sum::<usize>()
+                 let len = values.iter()
+                                 .map(|$to_uint64_value| encoded_len_varint($to_uint64))
+                                 .sum::<usize>();
+                key_len(tag) + encoded_len_varint(len as u64) + len
              }
          }
 
@@ -357,13 +358,15 @@ macro_rules! varint {
                      super::test::check_type(value, tag, WireType::Varint,
                                              $encode, $merge, $encoded_len)
                  }
-             }
-
-             quickcheck! {
                  fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
                      super::test::check_collection_type(value, tag, WireType::Varint,
                                                         $encode_repeated, $merge_repeated,
                                                         $encoded_len_repeated)
+                 }
+                 fn roundtrip_packed(value: Vec<$ty>, tag: u32) -> TestResult {
+                     super::test::check_type(value, tag, WireType::LengthDelimited,
+                                             $encode_packed, $merge_repeated,
+                                             $encoded_len_packed)
                  }
              }
          }
@@ -495,13 +498,15 @@ macro_rules! fixed_width {
                      super::test::check_type(value, tag, $wire_type,
                                              $encode, $merge, $encoded_len)
                  }
-             }
-
-             quickcheck! {
                  fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
                      super::test::check_collection_type(value, tag, $wire_type,
                                                         $encode_repeated, $merge_repeated,
                                                         $encoded_len_repeated)
+                 }
+                 fn roundtrip_packed(value: Vec<$ty>, tag: u32) -> TestResult {
+                     super::test::check_type(value, tag, WireType::LengthDelimited,
+                                             $encode_packed, $merge_repeated,
+                                             $encoded_len_packed)
                  }
              }
          }
@@ -555,9 +560,6 @@ macro_rules! length_delimited {
                      super::test::check_type(value, tag, WireType::LengthDelimited,
                                              $encode, $merge, $encoded_len)
                  }
-             }
-
-             quickcheck! {
                  fn roundtrip_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
                      super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                         $encode_repeated, $merge_repeated,
@@ -1138,6 +1140,11 @@ mod test {
         if buf.remaining() != expected_len {
             return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
                                              expected_len, buf.remaining()));
+        }
+
+        if !buf.has_remaining() {
+            // Short circuit for empty packed values.
+            return TestResult::passed();
         }
 
         let (decoded_tag, decoded_wire_type) = match decode_key(&mut buf) {
