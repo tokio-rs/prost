@@ -421,7 +421,7 @@ macro_rules! fixed_width {
          #[inline]
          pub fn $merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<()> where B: Buf {
              check_wire_type($wire_type, wire_type)?;
-             if buf.remaining() < 4 {
+             if buf.remaining() < $width {
                  return Err(invalid_data("buffer underflow"));
              }
              *value = buf.$get::<LittleEndian>();
