@@ -158,6 +158,11 @@ pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType)> where B: Buf {
     }
     let wire_type = WireType::try_from(key as u8 & 0x07)?;
     let tag = key as u32 >> 3;
+
+    if tag < MIN_TAG {
+        return Err(invalid_data("invalid zero tag value"));
+    }
+
     Ok((tag, wire_type))
 }
 
