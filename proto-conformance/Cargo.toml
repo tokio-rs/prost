@@ -5,6 +5,8 @@ authors = ["Dan Burkert <dan@danburkert.com>"]
 
 [dependencies]
 bytes = "0.4"
+env_logger = "0.4"
+log = "0.3"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
 

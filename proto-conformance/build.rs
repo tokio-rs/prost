@@ -75,7 +75,7 @@ fn main() {
         assert!(conformance_rc.success(), "failed to make conformance");
     }
 
-    proto_build::compile_protos(&[dir.join("src").join("google").join("protobuf").join("unittest_proto3.proto"),
+    proto_build::compile_protos(&[dir.join("src").join("google").join("protobuf").join("test_messages_proto3.proto"),
                                   conformance_dir.join("conformance.proto")],
                                 &[dir.join("src"), conformance_dir]).unwrap();
 }

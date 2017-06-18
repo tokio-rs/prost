@@ -1,4 +1,7 @@
 extern crate bytes;
+extern crate env_logger;
+#[macro_use]
+extern crate log;
 extern crate proto;
 #[macro_use]
 extern crate proto_derive;
@@ -7,12 +10,16 @@ pub mod conformance {
     include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
 }
 
-pub mod protobuf_unittest_import {
-    include!(concat!(env!("OUT_DIR"), "/protobuf_unittest_import.rs"));
+pub mod protobuf_test_messages {
+    pub mod proto3 {
+        include!(concat!(env!("OUT_DIR"), "/proto3.rs"));
+    }
 }
 
-pub mod protobuf_unittest {
-    include!(concat!(env!("OUT_DIR"), "/protobuf_unittest.rs"));
+pub mod google {
+    pub mod protobuf {
+        include!(concat!(env!("OUT_DIR"), "/protobuf.rs"));
+    }
 }
 
 use std::io::{
@@ -36,11 +43,12 @@ use conformance::{
     ConformanceResponse,
     WireFormat,
 };
-use protobuf_unittest::{
+use protobuf_test_messages::proto3::{
     TestAllTypes,
 };
 
 fn main() {
+    env_logger::init().unwrap();
     let mut bytes = Vec::new();
 
     loop {
@@ -94,6 +102,8 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         Ok(all_types) => all_types,
         Err(error) => return conformance_response::Result::ParseError(format!("failed to parse TestAllTypes: {:?}", error)),
     };
+
+    debug!("request: {:?}", all_types);
 
     buf.clear();
     all_types.encode(&mut buf).unwrap();

@@ -283,7 +283,7 @@ impl <'a> CodeGenerator<'a> {
         self.push_indent();
 
         let key_tag = self.field_type_tag(key);
-        let value_tag = self.field_type_tag(value);
+        let value_tag = self.map_value_type_tag(value);
         self.buf.push_str(&format!("#[proto(map=\"{}, {}\", tag=\"{}\")]\n",
                                    key_tag,
                                    value_tag,
@@ -527,6 +527,14 @@ impl <'a> CodeGenerator<'a> {
             TypeGroup => Cow::Borrowed("group"),
             TypeMessage => Cow::Borrowed("message"),
             TypeEnum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name.as_ref().unwrap()))),
+        }
+    }
+
+    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+        use field_descriptor_proto::Type::*;
+        match field.type_().expect("unknown field type") {
+            TypeEnum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name.as_ref().unwrap()))),
+            _ => self.field_type_tag(field),
         }
     }
 
