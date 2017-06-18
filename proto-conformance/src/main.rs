@@ -54,7 +54,11 @@ fn main() {
     loop {
         bytes.resize(4, 0);
 
-        io::stdin().read_exact(&mut bytes[..]).expect("input closed");
+        if let Err(_) = io::stdin().read_exact(&mut bytes[..]) {
+            // No more test cases.
+            break;
+        }
+
         let len = LittleEndian::read_u32(&bytes[..]) as usize;
 
         bytes.resize(len, 0);

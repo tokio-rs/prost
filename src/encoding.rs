@@ -861,11 +861,16 @@ where M: Message,
 }
 
 pub fn encoded_len_message<M>(tag: u32, msg: &M) -> usize where M: Message {
-    key_len(tag) + msg.encoded_len()
+    let len = msg.encoded_len();
+    key_len(tag) + encoded_len_varint(len as u64) + msg.encoded_len()
 }
 
 pub fn encoded_len_repeated_message<M>(tag: u32, messages: &[M]) -> usize where M: Message {
-    key_len(tag) * messages.len() + messages.iter().map(Message::encoded_len).sum::<usize>()
+    key_len(tag) * messages.len()
+        + messages.iter()
+                  .map(Message::encoded_len)
+                  .map(|len| len + encoded_len_varint(len as u64))
+                  .sum::<usize>()
 }
 
 macro_rules! message_map {
@@ -929,12 +934,12 @@ macro_rules! message_map {
          }
 
          #[inline]
-         pub fn $encoded_len<M>(tag: u32,
-                                values: &HashMap<$key_ty, M>) -> usize
+         pub fn $encoded_len<M>(tag: u32, values: &HashMap<$key_ty, M>) -> usize
          where M: Message {
              key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-                (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) }) +
-                (if val == &M::default() { 0 } else { encoded_len_message(2, val) })
+                 let len = (if key == &<$key_ty as Default>::default() { 0 } else { $key_encoded_len(1, key) })
+                         + (if val == &M::default() { 0 } else { encoded_len_message(2, val) });
+                 encoded_len_varint(len as u64) + len
              }).sum::<usize>()
          }
     );
