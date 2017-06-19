@@ -29,9 +29,7 @@ use zip::ZipArchive;
 use proto::Message;
 use proto_codegen::google::protobuf::FileDescriptorSet;
 
-pub fn compile_protos<P1, P2>(protos: &[P1], includes: &[P2]) -> Result<()>
-where P1: AsRef<Path>,
-      P2: AsRef<Path> {
+pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
     let target = match env::var("OUT_DIR") {
         Ok(val) => PathBuf::from(val),
         Err(env::VarError::NotPresent) => return Err(Error::new(ErrorKind::Other,

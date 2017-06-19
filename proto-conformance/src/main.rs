@@ -1,25 +1,12 @@
 extern crate bytes;
 extern crate env_logger;
-#[macro_use]
-extern crate log;
+extern crate test_all_types;
 extern crate proto;
 #[macro_use]
 extern crate proto_derive;
 
 pub mod conformance {
     include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
-}
-
-pub mod protobuf_test_messages {
-    pub mod proto3 {
-        include!(concat!(env!("OUT_DIR"), "/proto3.rs"));
-    }
-}
-
-pub mod google {
-    pub mod protobuf {
-        include!(concat!(env!("OUT_DIR"), "/protobuf.rs"));
-    }
 }
 
 use std::io::{
@@ -43,8 +30,10 @@ use conformance::{
     ConformanceResponse,
     WireFormat,
 };
-use protobuf_test_messages::proto3::{
-    TestAllTypes,
+
+use test_all_types::{
+    RoundtripResult,
+    test_all_types_proto3_roundtrip,
 };
 
 fn main() {
@@ -87,48 +76,31 @@ fn main() {
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     match request.requested_output_format() {
-        Some(WireFormat::Json) =>
-            return conformance_response::Result::Skipped("JSON output is not supported".to_string()),
-        None =>
-            return conformance_response::Result::ParseError("unrecognized requested output format".to_string()),
-            _ => (),
+        Some(WireFormat::Json) => {
+            return conformance_response::Result::Skipped("JSON output is not supported".to_string());
+        },
+        None => {
+            return conformance_response::Result::ParseError("unrecognized requested output format".to_string());
+        },
+        _ => (),
     };
 
-    let mut buf = match request.payload {
+    let buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
         Some(conformance_request::Payload::JsonPayload(_)) =>
             return conformance_response::Result::Skipped("JSON input is not supported".to_string()),
         Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
     };
 
-    let len = buf.len();
-    let all_types = match TestAllTypes::decode(&mut Buf::take(Cursor::new(&mut buf), len)) {
-        Ok(all_types) => all_types,
-        Err(error) => return conformance_response::Result::ParseError(format!("failed to parse TestAllTypes: {:?}", error)),
-    };
-
-    debug!("request: {:?}", all_types);
-
-    buf.clear();
-    all_types.encode(&mut buf).unwrap();
-
-    if all_types.encoded_len() != buf.len() {
-        return conformance_response::Result::RuntimeError(
-            format!("encoded length does not match actual; encoded_len: {}, buf len: {}",
-                    all_types.encoded_len(), buf.len()));
+    match test_all_types_proto3_roundtrip(&buf) {
+        RoundtripResult::Ok(buf) => {
+            conformance_response::Result::ProtobufPayload(buf)
+        },
+        RoundtripResult::DecodeError(error) => {
+            conformance_response::Result::ParseError(error.to_string())
+        },
+        RoundtripResult::Error(error) => {
+            conformance_response::Result::RuntimeError(error.to_string())
+        },
     }
-
-    let len = buf.len();
-    let roundtrip = match TestAllTypes::decode(&mut Buf::take(Cursor::new(&mut buf), len)) {
-        Ok(roundtrip) => roundtrip,
-        Err(error) => return conformance_response::Result::ParseError(format!("failed to parse roundtrip TestAllTypes: {:?}", error)),
-    };
-
-    if all_types != roundtrip {
-        return conformance_response::Result::RuntimeError(
-            format!("roundtrip value does not match original;\n\t original: {:?}\n\troundtrip: {:?}",
-                    all_types, roundtrip));
-    }
-
-    conformance_response::Result::ProtobufPayload(buf)
 }

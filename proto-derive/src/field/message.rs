@@ -79,9 +79,7 @@ impl Field {
         match self.label {
             Label::Optional => quote! {
                 if let Some(ref msg) = #ident {
-                    if msg != &Default::default() {
-                        _proto::encoding::encode_message(#tag, msg, buf);
-                    }
+                    _proto::encoding::encode_message(#tag, msg, buf);
                 }
             },
             Label::Required => quote! {

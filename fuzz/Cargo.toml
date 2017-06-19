@@ -1,0 +1,16 @@
+[package]
+name = "fuzz"
+version = "0.1.0"
+authors = ["Dan Burkert <dan@danburkert.com>"]
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
+test-all-types = { path = "../test-all-types" }
+
+[[bin]]
+name = "proto3"
+path = "fuzzers/proto3.rs"

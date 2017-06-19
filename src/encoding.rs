@@ -73,28 +73,15 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
 #[inline]
 pub fn decode_varint<B>(buf: &mut B) -> Result<u64> where B: Buf {
     let mut value = 0;
-    let mut i = 0;
-    'outer: loop {
-        let bytes = buf.bytes();
-        let len = bytes.len();
-
-        for &byte in &bytes[..min(len, 10 - i)] {
-            value |= ((byte & 0x7F) as u64) << (i * 7);
-            i += 1;
-            if byte <= 0x7F {
-                break 'outer;
-            }
-        }
-
-        if i == 10 {
-            return Err(invalid_data("varint overflow"));
-        }
-        if !buf.has_remaining() {
-            return Err(invalid_data("buffer underflow"));
+    for count in 0..min(10, buf.remaining()) {
+        let byte = buf.get_u8();
+        value |= ((byte & 0x7F) as u64) << (count * 7);
+        if byte <= 0x7F {
+            return Ok(value);
         }
     }
-    buf.advance(i);
-    Ok(value)
+
+    Err(invalid_data("failed to decode varint"))
 }
 
 /// Returns the encoded length of the value in LEB128 variable length format.
@@ -387,7 +374,7 @@ varint!(u32, encode_uint32, merge_uint32, encode_repeated_uint32, merge_repeated
 varint!(u64, encode_uint64, merge_uint64, encode_repeated_uint64, merge_repeated_uint64, encode_packed_uint64, encoded_len_uint64, encoded_len_repeated_uint64, encoded_len_packed_uint64, test_uint64);
 varint!(i32, encode_sint32, merge_sint32, encode_repeated_sint32, merge_repeated_sint32, encode_packed_sint32, encoded_len_sint32, encoded_len_repeated_sint32, encoded_len_packed_sint32, test_sint32,
         to_uint64(value) {
-            ((value << 1) ^ (value >> 31)) as u64
+            ((value << 1) ^ (value >> 31)) as u32 as u64
         },
         from_uint64(value) {
             let value = value as u32;

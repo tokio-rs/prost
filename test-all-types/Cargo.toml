@@ -1,22 +1,16 @@
 [package]
-name = "proto-conformance"
+name = "test-all-types"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false
 
+[lib]
+doctest = false
+
 [dependencies]
 bytes = "0.4"
-env_logger = "0.4"
-log = "0.3"
 proto = { path = ".." }
 proto-derive = { path = "../proto-derive" }
-test-all-types = { path = "../test-all-types" }
 
 [build-dependencies]
-curl = "0.4"
-env_logger = "0.4"
-flate2 = "0.2"
-num_cpus = "1"
 proto-build = { path = "../proto-build" }
-proto-codegen = { path = "../proto-codegen" }
-tar = "0.4"

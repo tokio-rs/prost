@@ -9,3 +9,5 @@
   - out of the box implementations for async/sync client/server interfaces.
 
 - In proto-build, add refresh markers for .proto files
+
+- Codegen: don't output identifiers with multiple underscores in a row.
