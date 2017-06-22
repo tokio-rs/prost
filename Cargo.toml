@@ -5,10 +5,10 @@ authors = ["Dan Burkert <dan@danburkert.com>"]
 
 [workspace]
 members = [
+  "conformance",
   "fuzz",
   "proto-build",
   "proto-codegen",
-  "proto-conformance",
   "proto-derive",
   "test-all-types",
 ]

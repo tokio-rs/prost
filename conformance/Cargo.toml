@@ -1,5 +1,5 @@
 [package]
-name = "proto-conformance"
+name = "conformance"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false

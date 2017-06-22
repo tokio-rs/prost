@@ -75,6 +75,11 @@ fn main() {
         assert!(conformance_rc.success(), "failed to make conformance");
     }
 
+
+    // Emit an environment variable with the path to the conformance test runner
+    // so that it can be used in the conformance tests.
+    println!("cargo:rustc-env=CONFORMANCE_TEST_RUNNER={:?}", conformance_bin);
+
     proto_build::compile_protos(&[conformance_dir.join("conformance.proto")],
                                 &[conformance_dir]).unwrap();
 }
