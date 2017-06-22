@@ -5,6 +5,7 @@ extern crate proto;
 #[macro_use] extern crate proto_derive;
 
 pub mod protobuf_test_messages {
+    #[allow(non_snake_case)]
     pub mod proto3 {
         include!(concat!(env!("OUT_DIR"), "/proto3.rs"));
     }

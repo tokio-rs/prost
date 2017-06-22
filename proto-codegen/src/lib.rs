@@ -566,18 +566,20 @@ fn camel_to_snake(camel: &str) -> String {
     let len = camel.as_bytes().iter().skip(1).filter(|&&c| is_uppercase(c)).count() + camel.len();
     let mut snake = Vec::with_capacity(len);
 
-    let mut skip = 0;
-    for (i, &c) in camel.as_bytes().iter().enumerate() {
+    let mut break_on_cap = false;
+    for &c in camel.as_bytes().iter() {
         if is_uppercase(c) {
-            if i != skip {
-                snake.push('_' as u8);
-                skip = i + 1;
-            } else {
-                skip += 1;
+            if break_on_cap {
+                snake.push(b'_');
             }
             snake.push(to_lowercase(c));
+            break_on_cap = false;
+        } else if c == b'_' {
+            snake.push(b'_');
+            break_on_cap = false;
         } else {
             snake.push(c);
+            break_on_cap = true;
         }
     }
 
@@ -622,7 +624,7 @@ fn snake_to_upper_camel(snake: &str) -> String {
 
 #[inline]
 fn is_uppercase(c: u8) -> bool {
-    c >= 'A' as u8 && c <= 'Z' as u8
+    c >= b'A' && c <= b'Z'
 }
 
 #[inline]
@@ -641,7 +643,38 @@ mod tests {
         assert_eq!("foo_bar_baz", &camel_to_snake("FooBarBAZ"));
         assert_eq!("foo_bar_baz", &camel_to_snake("FooBArBAZ"));
         assert_eq!("foo_bar_bazle_e", &camel_to_snake("FooBArBAZleE"));
-        assert_eq!("while_", &camel_to_snake("WhiLe"));
+        assert_eq!("while_", &camel_to_snake("While"));
+        assert_eq!("fuzz_buster", &camel_to_snake("FUZZ_BUSTER"));
+        assert_eq!("foo_bar_baz", &camel_to_snake("foo_bar_baz"));
+        assert_eq!("fuzz_buster", &camel_to_snake("FUZZ_buster"));
+        assert_eq!("_fuzz", &camel_to_snake("_FUZZ"));
+        assert_eq!("_fuzz", &camel_to_snake("_fuzz"));
+        assert_eq!("_fuzz", &camel_to_snake("_Fuzz"));
+        assert_eq!("fuzz_", &camel_to_snake("FUZZ_"));
+        assert_eq!("fuzz_", &camel_to_snake("fuzz_"));
+        assert_eq!("fuzz_", &camel_to_snake("Fuzz_"));
+        assert_eq!("fuz_z_", &camel_to_snake("FuzZ_"));
+
+
+        // From test_messages_proto3.proto.
+        assert_eq!("fieldname1", &camel_to_snake("fieldname1"));
+        assert_eq!("field_name2", &camel_to_snake("field_name2"));
+        assert_eq!("_field_name3", &camel_to_snake("_field_name3"));
+        assert_eq!("field__name4_", &camel_to_snake("field__name4_"));
+        assert_eq!("field0name5", &camel_to_snake("field0name5"));
+        assert_eq!("field_0_name6", &camel_to_snake("field_0_name6"));
+        assert_eq!("field_name7", &camel_to_snake("fieldName7"));
+        assert_eq!("field_name8", &camel_to_snake("FieldName8"));
+        assert_eq!("field_name9", &camel_to_snake("field_Name9"));
+        assert_eq!("field_name10", &camel_to_snake("Field_Name10"));
+        assert_eq!("field_name11", &camel_to_snake("FIELD_NAME11"));
+        assert_eq!("field_name12", &camel_to_snake("FIELD_name12"));
+        assert_eq!("__field_name13", &camel_to_snake("__field_name13"));
+        assert_eq!("__field_name14", &camel_to_snake("__Field_name14"));
+        assert_eq!("field__name15", &camel_to_snake("field__name15"));
+        assert_eq!("field__name16", &camel_to_snake("field__Name16"));
+        assert_eq!("field_name17__", &camel_to_snake("field_name17__"));
+        assert_eq!("field_name18__", &camel_to_snake("Field_name18__"));
     }
 
     #[test]
