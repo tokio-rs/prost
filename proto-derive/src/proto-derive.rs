@@ -41,21 +41,28 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         syn::Body::Enum(..) => bail!("Message can not be derived for an enum"),
     };
 
-    let fields = fields.into_iter()
-                       .enumerate()
-                       .flat_map(|(idx, field)| {
-                           let field_ident = field.ident
-                                                  .unwrap_or_else(|| Ident::new(idx.to_string()));
-                           match Field::new(field.attrs) {
-                               Ok(Some(field)) => Some(Ok((field_ident, field))),
-                               Ok(None) => None,
-                               Err(err) => Some(Err(err).chain_err(|| {
-                                   format!("invalid message field {}.{}",
-                                           ident, field_ident)
-                               })),
-                           }
-                       })
-                       .collect::<Result<Vec<(Ident, Field)>>>()?;
+    let mut fields = fields.into_iter()
+                           .enumerate()
+                           .flat_map(|(idx, field)| {
+                               let field_ident = field.ident
+                                                       .unwrap_or_else(|| Ident::new(idx.to_string()));
+                               match Field::new(field.attrs) {
+                                   Ok(Some(field)) => Some(Ok((field_ident, field))),
+                                   Ok(None) => None,
+                                   Err(err) => Some(Err(err).chain_err(|| {
+                                       format!("invalid message field {}.{}",
+                                               ident, field_ident)
+                                   })),
+                               }
+                           })
+                           .collect::<Result<Vec<(Ident, Field)>>>()?;
+
+    // Sort the fields by tag number so that fields will be encoded in tag order.
+    // TODO: This encodes oneof fields in the position of their lowest tag,
+    // regardless of the currently occupied variant, is that consequential?
+    // See: https://developers.google.com/protocol-buffers/docs/encoding#order
+    fields.sort_by_key(|&(_, ref field)| field.tags().into_iter().min().unwrap());
+    let fields = fields;
 
     let mut tags = fields.iter().flat_map(|&(_, ref field)| field.tags()).collect::<Vec<_>>();
     let num_tags = tags.len();
