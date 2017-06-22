@@ -119,11 +119,11 @@ impl Field {
     pub fn encode(&self, ident: &Ident) -> Tokens {
         let kind = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-            Kind::Repeated => "repeated_",
-            Kind::Packed => "packed_",
+            Kind::Repeated => "_repeated",
+            Kind::Packed => "_packed",
         };
-        let encode_fn = Ident::new(format!("_proto::encoding::encode_{}{}",
-                                           kind, self.ty.encode_as()));
+        let encode_fn = Ident::new(format!("_proto::encoding::{}::encode{}",
+                                           self.ty.encode_as(), kind));
         let tag = self.tag;
 
         match self.kind {
@@ -148,10 +148,10 @@ impl Field {
     pub fn merge(&self, ident: &Ident) -> Tokens {
         let kind = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-            Kind::Repeated | Kind::Packed => "repeated_",
+            Kind::Repeated | Kind::Packed => "_repeated",
         };
-        let merge_fn = Ident::new(format!("_proto::encoding::merge_{}{}",
-                                          kind, self.ty.encode_as()));
+        let merge_fn = Ident::new(format!("_proto::encoding::{}::merge{}",
+                                          self.ty.encode_as(), kind));
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
@@ -175,11 +175,11 @@ impl Field {
     pub fn encoded_len(&self, ident: &Ident) -> Tokens {
         let kind = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
-            Kind::Repeated => "repeated_",
-            Kind::Packed => "packed_",
+            Kind::Repeated => "_repeated",
+            Kind::Packed => "_packed",
         };
-        let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_{}{}",
-                                                kind, self.ty.encode_as()));
+        let encoded_len_fn = Ident::new(format!("_proto::encoding::{}::encoded_len{}",
+                                                self.ty.encode_as(), kind));
         let tag = self.tag;
 
         match self.kind {

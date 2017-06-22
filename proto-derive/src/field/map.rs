@@ -85,17 +85,34 @@ impl Field {
     /// Returns a statement which encodes the map field.
     pub fn encode(&self, ident: &Ident) -> Tokens {
         let tag = self.tag;
+        let ke = Ident::new(format!("_proto::encoding::{}::encode", self.key_ty.encode_as()));
+        let kl = Ident::new(format!("_proto::encoding::{}::encoded_len", self.key_ty.encode_as()));
         match self.value_ty {
+            ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
+                let default = Ident::new(format!("{}::default() as i32", ty));
+                quote! {
+                    _proto::encoding::map::encode_with_default(#ke, #kl,
+                                                               _proto::encoding::int32::encode,
+                                                               _proto::encoding::int32::encoded_len,
+                                                               &(#default),
+                                                               #tag, &#ident, buf);
+                }
+            },
             ValueTy::Scalar(ref value_ty) => {
-                let encode_fn = Ident::new(format!("_proto::encoding::encode_map_{}_{}",
-                                                   self.key_ty.encode_as(),
-                                                   value_ty.encode_as()));
-                quote!(#encode_fn(#tag, &#ident, buf);)
+                let ve = Ident::new(format!("_proto::encoding::{}::encode", value_ty.encode_as()));
+                let vl = Ident::new(format!("_proto::encoding::{}::encoded_len", value_ty.encode_as()));
+                quote! {
+                    _proto::encoding::map::encode(#ke, #kl, #ve, #vl,
+                                                  #tag, &#ident, buf);
+                }
             },
             ValueTy::Message => {
-                let encode_fn = Ident::new(format!("_proto::encoding::encode_map_{}_message",
-                                                   self.key_ty.encode_as()));
-                quote!(#encode_fn(#tag, &#ident, buf);)
+                quote! {
+                    _proto::encoding::map::encode(#ke, #kl,
+                                                  _proto::encoding::message::encode,
+                                                  _proto::encoding::message::encoded_len,
+                                                  #tag, &#ident, buf);
+                }
             },
         }
     }
@@ -103,17 +120,22 @@ impl Field {
     /// Returns an expression which evaluates to the result of merging a decoded key value pair
     /// into the map.
     pub fn merge(&self, ident: &Ident) -> Tokens {
+        let km = Ident::new(format!("_proto::encoding::{}::merge", self.key_ty.encode_as()));
         match self.value_ty {
+            ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
+                let default = Ident::new(format!("{}::default() as i32", ty));
+                quote! {
+                    _proto::encoding::map::merge_with_default(#km, _proto::encoding::int32::merge,
+                                                              #default, &mut #ident, buf)
+                }
+            },
             ValueTy::Scalar(ref value_ty) => {
-                let merge_fn = Ident::new(format!("_proto::encoding::merge_map_{}_{}",
-                                                  self.key_ty.encode_as(),
-                                                  value_ty.encode_as()));
-                quote!(#merge_fn(&mut #ident, buf))
+                let vm = Ident::new(format!("_proto::encoding::{}::merge", value_ty.encode_as()));
+                quote!(_proto::encoding::map::merge(#km, #vm, &mut #ident, buf))
             },
             ValueTy::Message => {
-                let merge_fn = Ident::new(format!("_proto::encoding::merge_map_{}_message",
-                                                  self.key_ty.encode_as()));
-                quote!(#merge_fn(&mut #ident, buf))
+                quote!(_proto::encoding::map::merge(#km, _proto::encoding::message::merge,
+                                                    &mut #ident, buf))
             },
         }
     }
@@ -121,17 +143,23 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the map.
     pub fn encoded_len(&self, ident: &Ident) -> Tokens {
         let tag = self.tag;
+        let kl = Ident::new(format!("_proto::encoding::{}::encoded_len", self.key_ty.encode_as()));
         match self.value_ty {
+            ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
+                let default = Ident::new(format!("{}::default() as i32", ty));
+                quote! {
+                    _proto::encoding::map::encoded_len_with_default(
+                        #kl, _proto::encoding::int32::encoded_len,
+                        &(#default), #tag, &#ident)
+                }
+            },
             ValueTy::Scalar(ref value_ty) => {
-                let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_map_{}_{}",
-                                                        self.key_ty.encode_as(),
-                                                        value_ty.encode_as()));
-                quote!(#encoded_len_fn(#tag, &#ident))
+                let vl = Ident::new(format!("_proto::encoding::{}::encoded_len", value_ty.encode_as()));
+                quote!(_proto::encoding::map::encoded_len(#kl, #vl, #tag, &#ident))
             },
             ValueTy::Message => {
-                let encoded_len_fn = Ident::new(format!("_proto::encoding::encoded_len_map_{}_message",
-                                                        self.key_ty.encode_as()));
-                quote!(#encoded_len_fn(#tag, &#ident))
+                quote!(_proto::encoding::map::encoded_len(#kl, _proto::encoding::message::encoded_len,
+                                                          #tag, &#ident))
             },
         }
     }
