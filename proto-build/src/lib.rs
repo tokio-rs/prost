@@ -40,7 +40,14 @@ pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: As
 
     let tmp = tempdir::TempDir::new("proto-build")?;
 
-    // If the protoc directory doesn't already eixst from a previous build,
+    // TODO: We should probably emit 'rerun-if-changed=PATH' directives for
+    // cargo, however according to
+    // http://doc.crates.io/build-script.html#outputs-of-the-build-script if we
+    // output any, those paths will replace the default crate root, which we
+    // don't want. Figure out how to do it in an additive way, perhaps gcc-rs
+    // has this figured out.
+
+    // If the protoc directory doesn't already exist from a previous build,
     // create it, and extract the protoc release into it.
     let protoc_dir = target.join("protoc");
     if !protoc_dir.exists() {
