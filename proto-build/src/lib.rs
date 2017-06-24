@@ -29,7 +29,10 @@ use zip::ZipArchive;
 use proto::Message;
 use proto_codegen::google::protobuf::FileDescriptorSet;
 
-pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
+pub fn compile_protos<P>(protos: &[P],
+                         includes: &[P],
+                         service_generator: Option<&proto_codegen::ServiceGenerator>)
+                         -> Result<()> where P: AsRef<Path> {
     let target = match env::var("OUT_DIR") {
         Ok(val) => PathBuf::from(val),
         Err(env::VarError::NotPresent) => return Err(Error::new(ErrorKind::Other,
@@ -87,7 +90,7 @@ pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: As
     let len = buf.len();
     let descriptor_set = FileDescriptorSet::decode(&mut <Cursor<Vec<u8>> as Buf>::take(Cursor::new(buf), len))?;
 
-    let modules = proto_codegen::generate(descriptor_set.file);
+    let modules = proto_codegen::generate(descriptor_set.file, service_generator);
     for (module, content) in modules {
         let mut filename = match module.last() {
             Some(filename) => PathBuf::from(filename),

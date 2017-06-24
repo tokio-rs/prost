@@ -26,7 +26,7 @@ impl MessageGraph {
         };
 
         for file in files {
-            let package = format!(".{}", file.package.as_ref().unwrap());
+            let package = format!(".{}", file.package.as_ref().expect("expected a package"));
             for msg in &file.message_type {
                 msg_graph.add_message(&package, msg);
             }

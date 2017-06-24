@@ -33,7 +33,7 @@ fn main() {
     let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
-    let modules = proto_codegen::generate(request.proto_file);
+    let modules = proto_codegen::generate(request.proto_file, None);
 
     // For each module, build up a list of its child modules.
     let mut children: HashMap<proto_codegen::Module, Vec<String>> = HashMap::new();

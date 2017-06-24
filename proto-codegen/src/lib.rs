@@ -20,19 +20,27 @@ use std::collections::{HashMap, HashSet};
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
 
+mod ast;
 pub mod google;
 use google::protobuf::{
     DescriptorProto,
     EnumDescriptorProto,
     EnumValueDescriptorProto,
+    field_descriptor_proto,
     FieldDescriptorProto,
     FileDescriptorProto,
     OneofDescriptorProto,
+    ServiceDescriptorProto,
     SourceCodeInfo,
-    field_descriptor_proto,
 };
+use google::protobuf::source_code_info::Location;
 
 use message_graph::MessageGraph;
+pub use ast::{
+    Comments,
+    Method,
+    Service,
+};
 
 pub fn module(file: &FileDescriptorProto) -> Module {
     file.package
@@ -46,7 +54,12 @@ pub fn module(file: &FileDescriptorProto) -> Module {
 
 pub type Module = Vec<String>;
 
-pub fn generate(files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
+pub trait ServiceGenerator {
+    fn generate(&self, service: Service, buf: &mut String);
+}
+
+pub fn generate(files: Vec<FileDescriptorProto>,
+                service_generator: Option<&ServiceGenerator>) -> HashMap<Module, String> {
     let mut modules = HashMap::new();
 
     let message_graph = MessageGraph::new(&files);
@@ -54,7 +67,7 @@ pub fn generate(files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
     for file in files {
         let module = module(&file);
         let mut buf = modules.entry(module).or_insert(String::new());
-        CodeGenerator::generate(file, &message_graph, &mut buf);
+        CodeGenerator::generate(&service_generator, file, &message_graph, &mut buf);
     }
     modules
 }
@@ -76,7 +89,8 @@ struct CodeGenerator<'a> {
 }
 
 impl <'a> CodeGenerator<'a> {
-    fn generate(file: FileDescriptorProto,
+    fn generate(service_generator: &Option<&ServiceGenerator>,
+                file: FileDescriptorProto,
                 message_graph: &MessageGraph,
                 buf: &mut String) {
 
@@ -120,6 +134,16 @@ impl <'a> CodeGenerator<'a> {
             code_gen.path.pop();
         }
         code_gen.path.pop();
+
+        if let &Some(ref service_generator) = service_generator {
+            code_gen.path.push(6);
+            for (idx, service) in file.service.into_iter().enumerate() {
+                code_gen.path.push(idx as i32);
+                service_generator.generate(code_gen.unpack_service(service), &mut code_gen.buf);
+                code_gen.path.pop();
+            }
+            code_gen.path.pop();
+        }
     }
 
     fn append_message(&mut self, message: DescriptorProto) {
@@ -354,6 +378,15 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
+    fn location(&self) -> &Location {
+        let idx = self.source_info
+                      .location
+                      .binary_search_by_key(&&self.path[..], |location| &location.path[..])
+                      .unwrap();
+
+        &self.source_info.location[idx]
+    }
+
     fn append_doc(&mut self) {
         let idx = self.source_info
                       .location
@@ -436,6 +469,44 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(" = ");
         self.buf.push_str(&value.number.unwrap().to_string());
         self.buf.push_str(",\n");
+    }
+
+    fn unpack_service(&mut self, mut service: ServiceDescriptorProto) -> Service {
+        let name = service.name.take().unwrap();
+        debug!("\t service: {:?}", name);
+
+        let comments = Comments::from_location(self.location());
+
+        let methods = service.method
+                              .into_iter()
+                              .enumerate()
+                              .map(|(idx, mut method)| {
+                                  self.path.push(idx as i32);
+                                  let comments = Comments::from_location(self.location());
+                                  self.path.pop();
+
+                                  let name = method.name.take().unwrap();
+                                  let input_proto_type = method.input_type.take().unwrap();
+                                  let output_proto_type = method.output_type.take().unwrap();
+                                  let input_type = self.resolve_ident(&input_proto_type);
+                                  let output_type = self.resolve_ident(&output_proto_type);
+
+                                  Method {
+                                      name,
+                                      comments,
+                                      input_type,
+                                      input_proto_type,
+                                      output_type,
+                                      output_proto_type
+                                  }
+                              })
+                              .collect();
+
+        Service {
+            name,
+            comments,
+            methods
+        }
     }
 
     fn push_indent(&mut self) {
