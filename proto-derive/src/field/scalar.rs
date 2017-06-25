@@ -249,7 +249,7 @@ impl Field {
                 },
             })
         } else if let Kind::Optional(ref default) = self.kind {
-            let ty = Ident::new(self.ty.rust_ref_type());
+            let ty = Ident::new(self.ty.rust_type());
             let default = default.owned();
 
             Some(quote! {

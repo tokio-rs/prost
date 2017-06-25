@@ -5,9 +5,7 @@ extern crate proto;
 #[macro_use]
 extern crate proto_derive;
 
-pub mod conformance {
-    include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
-}
+include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
 
 use std::io::{
     Cursor,
@@ -22,14 +20,6 @@ use bytes::{
     LittleEndian,
 };
 use proto::Message;
-
-use conformance::{
-    conformance_request,
-    conformance_response,
-    ConformanceRequest,
-    ConformanceResponse,
-    WireFormat,
-};
 
 use test_all_types::{
     RoundtripResult,

@@ -155,8 +155,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 }
             }
 
-            #methods
-
             #[automatically_derived]
             impl Default for #ident {
                 fn default() -> #ident {
@@ -166,6 +164,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 }
             }
         };
+
+        #methods
     };
 
     expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))

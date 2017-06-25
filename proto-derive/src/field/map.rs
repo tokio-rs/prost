@@ -174,11 +174,11 @@ impl Field {
             let insert = Ident::new(format!("insert_{}", ident));
 
             Some(quote! {
-                fn #get(&self, key: &#key_ref_ty) -> ::std::option::Option<#ty> {
+                pub fn #get(&self, key: &#key_ref_ty) -> ::std::option::Option<#ty> {
                     self.#ident.get(key).cloned().and_then(#ty::from_i32)
                 }
 
-                fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
+                pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
                     self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
                 }
             })
