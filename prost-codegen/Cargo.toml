@@ -1,6 +1,6 @@
 [package]
 name = "prost-codegen"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -15,5 +15,5 @@ itertools = "0.6"
 log = "0.3"
 multimap = "0.3"
 petgraph = "0.4"
-prost = "0.1.0"
-prost-derive = "0.1.0"
+prost = { path = ".." }
+prost-derive = { path = "../prost-derive" }

@@ -1,6 +1,6 @@
 [package]
 name = "prost-build"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -11,7 +11,7 @@ description = "A Protocol Buffers implementation for the Rust Language."
 [dependencies]
 bytes = "0.4"
 curl = "0.4"
-prost-codegen = "0.1.0"
-prost = "0.1.0"
+prost-codegen = { path = "../prost-codegen" }
+prost = { path = ".." }
 tempdir = "0.3"
 zip = "0.2"

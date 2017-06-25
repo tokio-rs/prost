@@ -1,6 +1,6 @@
 [package]
 name = "prost"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -30,6 +30,9 @@ bytes = "0.4"
 
 [dev-dependencies]
 quickcheck = "0.4"
-prost-derive = "0.1.0"
+prost-derive = { path = "prost-derive" }
 log = "0.3"
 env_logger = "0.4"
+
+[replace]
+"bytes:0.4.4" = { git = "https://github.com/danburkert/bytes", branch = "take-bytes-index-oob" }
