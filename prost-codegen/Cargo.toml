@@ -2,6 +2,11 @@
 name = "prost-codegen"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/danburkert/prost"
+documentation = "https://docs.rs/prost-codegen"
+readme = "README.md"
+description = "A Protocol Buffers implementation for the Rust Language."
 
 [dependencies]
 bytes = "0.4"

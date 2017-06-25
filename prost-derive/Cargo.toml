@@ -2,7 +2,11 @@
 name = "prost-derive"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
-workspace = ".."
+license = "Apache-2.0"
+repository = "https://github.com/danburkert/prost"
+documentation = "https://docs.rs/prost-derive"
+readme = "README.md"
+description = "A Protocol Buffers implementation for the Rust Language."
 
 [lib]
 proc_macro = true
@@ -11,4 +15,4 @@ proc_macro = true
 error-chain = "0.10"
 itertools = "0.6"
 quote = "0.3"
-syn = { version = "0.11", features = ["aster", "visit"] }
+syn = { version = "0.11" }
