@@ -1,7 +1,7 @@
 extern crate bytes;
 extern crate curl;
-extern crate proto;
-extern crate proto_codegen;
+extern crate prost;
+extern crate prost_codegen;
 extern crate tempdir;
 extern crate zip;
 
@@ -26,12 +26,12 @@ use bytes::Buf;
 use curl::easy::Easy;
 use zip::ZipArchive;
 
-use proto::Message;
-use proto_codegen::google::protobuf::FileDescriptorSet;
+use prost::Message;
+use prost_codegen::google::protobuf::FileDescriptorSet;
 
 pub fn compile_protos<P>(protos: &[P],
                          includes: &[P],
-                         service_generator: Option<&proto_codegen::ServiceGenerator>)
+                         service_generator: Option<&prost_codegen::ServiceGenerator>)
                          -> Result<()> where P: AsRef<Path> {
     let target = match env::var("OUT_DIR") {
         Ok(val) => PathBuf::from(val),
@@ -90,7 +90,7 @@ pub fn compile_protos<P>(protos: &[P],
     let len = buf.len();
     let descriptor_set = FileDescriptorSet::decode(&mut <Cursor<Vec<u8>> as Buf>::take(Cursor::new(buf), len))?;
 
-    let modules = proto_codegen::generate(descriptor_set.file, service_generator);
+    let modules = prost_codegen::generate(descriptor_set.file, service_generator);
     for (module, content) in modules {
         let mut filename = match module.last() {
             Some(filename) => PathBuf::from(filename),

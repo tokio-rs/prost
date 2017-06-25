@@ -1,5 +1,5 @@
 [package]
-name = "proto-codegen"
+name = "prost-codegen"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 
@@ -10,5 +10,5 @@ itertools = "0.6"
 log = "0.3"
 multimap = "0.3"
 petgraph = "0.4"
-proto = { path = ".." }
-proto-derive = { path = "../proto-derive" }
+prost = { path = ".." }
+prost-derive = { path = "../prost-derive" }

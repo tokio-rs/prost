@@ -79,15 +79,15 @@ impl Field {
         match self.label {
             Label::Optional => quote! {
                 if let Some(ref msg) = #ident {
-                    _proto::encoding::message::encode(#tag, msg, buf);
+                    _prost::encoding::message::encode(#tag, msg, buf);
                 }
             },
             Label::Required => quote! {
-                _proto::encoding::message::encode(#tag, &#ident, buf);
+                _prost::encoding::message::encode(#tag, &#ident, buf);
             },
             Label::Repeated => quote! {
                 for msg in &#ident {
-                    _proto::encoding::message::encode(#tag, msg, buf);
+                    _prost::encoding::message::encode(#tag, msg, buf);
                 }
             },
         }
@@ -96,23 +96,23 @@ impl Field {
     pub fn merge(&self, ident: &Ident) -> Tokens {
         match self.label {
             // TODO(rustlang/rust#39288): Use Option::get_or_insert_with when available:
-            // _proto::encoding::message::merge(#ident.get_or_insert_with(Default::default), buf)
+            // _prost::encoding::message::merge(#ident.get_or_insert_with(Default::default), buf)
             Label::Optional => quote! {
                 {
                     if #ident.is_none() {
                         #ident = Some(Default::default());
                     }
                     match #ident {
-                        Some(ref mut msg) => _proto::encoding::message::merge(wire_type, msg, buf),
+                        Some(ref mut msg) => _prost::encoding::message::merge(wire_type, msg, buf),
                         _ => unreachable!(),
                     }
                 }
             },
             Label::Required => quote! {
-                _proto::encoding::message::merge(wire_type, &mut #ident, buf)
+                _prost::encoding::message::merge(wire_type, &mut #ident, buf)
             },
             Label::Repeated => quote! {
-                _proto::encoding::message::merge_repeated(wire_type, &mut #ident, buf)
+                _prost::encoding::message::merge_repeated(wire_type, &mut #ident, buf)
             },
         }
     }
@@ -121,13 +121,13 @@ impl Field {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
-                #ident.as_ref().map_or(0, |msg| _proto::encoding::message::encoded_len(#tag, msg))
+                #ident.as_ref().map_or(0, |msg| _prost::encoding::message::encoded_len(#tag, msg))
             },
             Label::Required => quote! {
-                _proto::encoding::message::encoded_len(#tag, &#ident)
+                _prost::encoding::message::encoded_len(#tag, &#ident)
             },
             Label::Repeated => quote! {
-                _proto::encoding::message::encoded_len_repeated(#tag, &#ident)
+                _prost::encoding::message::encoded_len_repeated(#tag, &#ident)
             },
         }
     }

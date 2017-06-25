@@ -35,7 +35,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>> {
-        let attrs = proto_attrs(attrs)?;
+        let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
@@ -59,7 +59,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>> {
-        let attrs = proto_attrs(attrs)?;
+        let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
@@ -186,16 +186,16 @@ impl fmt::Display for Label {
     }
 }
 
-/// Get the items belonging to the 'proto' list attribute
-/// (e.g. #[proto(foo, bar="baz")]).
-fn proto_attrs(attrs: Vec<Attribute>) -> Result<Vec<MetaItem>> {
+/// Get the items belonging to the 'prost' list attribute
+/// (e.g. #[prost(foo, bar="baz")]).
+fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<MetaItem>> {
     Ok(attrs.into_iter().flat_map(|attr| match attr.value {
-        MetaItem::List(ident, items) => if ident == "proto" { items } else { Vec::new() },
+        MetaItem::List(ident, items) => if ident == "prost" { items } else { Vec::new() },
         _ => Vec::new(),
     }).flat_map(|attr| -> Result<_> {
         match attr {
             NestedMetaItem::MetaItem(attr) => Ok(attr),
-            NestedMetaItem::Literal(lit) => bail!("invalid proto attribute: {:?}", lit),
+            NestedMetaItem::Literal(lit) => bail!("invalid prost attribute: {:?}", lit),
         }
     }).collect())
 }

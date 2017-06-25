@@ -2,7 +2,7 @@ extern crate curl;
 extern crate env_logger;
 extern crate flate2;
 extern crate num_cpus;
-extern crate proto_build;
+extern crate prost_build;
 extern crate tar;
 
 use std::env;
@@ -80,7 +80,7 @@ fn main() {
     // so that it can be used in the conformance tests.
     println!("cargo:rustc-env=CONFORMANCE_TEST_RUNNER={:?}", conformance_bin);
 
-    proto_build::compile_protos(&[conformance_dir.join("conformance.proto")],
+    prost_build::compile_protos(&[conformance_dir.join("conformance.proto")],
                                 &[conformance_dir],
                                 None).unwrap();
 }

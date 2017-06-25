@@ -1,7 +1,7 @@
 #![recursion_limit = "128"]
 
 #[macro_use]
-extern crate proto_derive;
+extern crate prost_derive;
 #[macro_use]
 extern crate log;
 
@@ -10,7 +10,7 @@ extern crate env_logger;
 extern crate itertools;
 extern crate multimap;
 extern crate petgraph;
-extern crate proto;
+extern crate prost;
 
 mod message_graph;
 
@@ -259,7 +259,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[proto(");
+        self.buf.push_str("#[prost(");
         let type_tag = self.field_type_tag(&field);
         self.buf.push_str(&type_tag);
 
@@ -308,7 +308,7 @@ impl <'a> CodeGenerator<'a> {
 
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
-        self.buf.push_str(&format!("#[proto(map=\"{}, {}\", tag=\"{}\")]\n",
+        self.buf.push_str(&format!("#[prost(map=\"{}, {}\", tag=\"{}\")]\n",
                                    key_tag,
                                    value_tag,
                                    field.number.unwrap()));
@@ -326,7 +326,7 @@ impl <'a> CodeGenerator<'a> {
                            snake_to_upper_camel(oneof.name.as_ref().unwrap()));
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&format!("#[proto(oneof=\"{}\", tags=\"{}\")]\n",
+        self.buf.push_str(&format!("#[prost(oneof=\"{}\", tags=\"{}\")]\n",
                                    name,
                                    fields.iter().map(|&(ref field, _)| field.number.unwrap()).join(", ")));
         self.push_indent();
@@ -361,7 +361,7 @@ impl <'a> CodeGenerator<'a> {
 
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
-            self.buf.push_str(&format!("#[proto({}, tag=\"{}\")]\n",
+            self.buf.push_str(&format!("#[prost({}, tag=\"{}\")]\n",
                                        ty_tag,
                                        field.number.unwrap()));
 

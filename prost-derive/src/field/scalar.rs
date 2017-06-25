@@ -122,7 +122,7 @@ impl Field {
             Kind::Repeated => "_repeated",
             Kind::Packed => "_packed",
         };
-        let encode_fn = Ident::new(format!("_proto::encoding::{}::encode{}",
+        let encode_fn = Ident::new(format!("_prost::encoding::{}::encode{}",
                                            self.ty.encode_as(), kind));
         let tag = self.tag;
 
@@ -150,7 +150,7 @@ impl Field {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => "",
             Kind::Repeated | Kind::Packed => "_repeated",
         };
-        let merge_fn = Ident::new(format!("_proto::encoding::{}::merge{}",
+        let merge_fn = Ident::new(format!("_prost::encoding::{}::merge{}",
                                           self.ty.encode_as(), kind));
 
         match self.kind {
@@ -178,7 +178,7 @@ impl Field {
             Kind::Repeated => "_repeated",
             Kind::Packed => "_packed",
         };
-        let encoded_len_fn = Ident::new(format!("_proto::encoding::{}::encoded_len{}",
+        let encoded_len_fn = Ident::new(format!("_prost::encoding::{}::encoded_len{}",
                                                 self.ty.encode_as(), kind));
         let tag = self.tag;
 

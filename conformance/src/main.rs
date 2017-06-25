@@ -1,9 +1,9 @@
 extern crate bytes;
 extern crate env_logger;
 extern crate test_all_types;
-extern crate proto;
+extern crate prost;
 #[macro_use]
-extern crate proto_derive;
+extern crate prost_derive;
 
 include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
 
@@ -19,7 +19,7 @@ use bytes::{
     ByteOrder,
     LittleEndian,
 };
-use proto::Message;
+use prost::Message;
 
 use test_all_types::{
     RoundtripResult,

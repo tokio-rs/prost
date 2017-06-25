@@ -1,7 +1,7 @@
-extern crate proto_build;
+extern crate prost_build;
 
 fn main() {
-    proto_build::compile_protos(&["src/test_messages_proto3.proto"],
+    prost_build::compile_protos(&["src/test_messages_proto3.proto"],
                                 &["src"],
                                 None).unwrap();
 }

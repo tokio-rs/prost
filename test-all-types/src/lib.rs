@@ -1,8 +1,8 @@
 #![feature(float_bits_conv)]
 
 extern crate bytes;
-extern crate proto;
-#[macro_use] extern crate proto_derive;
+extern crate prost;
+#[macro_use] extern crate prost_derive;
 
 pub mod protobuf_test_messages {
     #[allow(non_snake_case)]
@@ -26,18 +26,18 @@ use std::io::{
 };
 
 use bytes::Buf;
-use proto::Message;
+use prost::Message;
 
 use protobuf_test_messages::proto3;
 
 pub enum RoundtripResult {
     /// The roundtrip succeeded.
     Ok(Vec<u8>),
-    /// The data could not be decoded. This could indicate a bug in the 'proto'
-    /// library, or it could indicate that the input was bogus.
+    /// The data could not be decoded. This could indicate a bug in prost,
+    /// or it could indicate that the input was bogus.
     DecodeError(Error),
-    /// Re-encoding or validating the data failed.  This indicates a bug in the
-    /// 'proto' library.
+    /// Re-encoding or validating the data failed.  This indicates a bug in `prost` (or in the
+    /// test).
     Error(Error),
 }
 

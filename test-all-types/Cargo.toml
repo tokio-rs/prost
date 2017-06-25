@@ -9,8 +9,8 @@ doctest = false
 
 [dependencies]
 bytes = "0.4"
-proto = { path = ".." }
-proto-derive = { path = "../proto-derive" }
+prost = { path = ".." }
+prost-derive = { path = "../prost-derive" }
 
 [build-dependencies]
-proto-build = { path = "../proto-build" }
+prost-build = { path = "../prost-build" }

@@ -1,8 +1,8 @@
 extern crate bytes;
 extern crate env_logger;
 extern crate itertools;
-extern crate proto;
-extern crate proto_codegen;
+extern crate prost;
+extern crate prost_codegen;
 
 use std::collections::HashMap;
 use std::io::{
@@ -15,8 +15,8 @@ use std::path::PathBuf;
 
 use bytes::Buf;
 
-use proto::Message;
-use proto_codegen::google::protobuf::compiler::{
+use prost::Message;
+use prost_codegen::google::protobuf::compiler::{
     code_generator_response,
     CodeGeneratorRequest,
     CodeGeneratorResponse,
@@ -33,10 +33,10 @@ fn main() {
     let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
-    let modules = proto_codegen::generate(request.proto_file, None);
+    let modules = prost_codegen::generate(request.proto_file, None);
 
     // For each module, build up a list of its child modules.
-    let mut children: HashMap<proto_codegen::Module, Vec<String>> = HashMap::new();
+    let mut children: HashMap<prost_codegen::Module, Vec<String>> = HashMap::new();
     for module in modules.keys() {
         for i in 0..module.len() {
             children.entry(module[..i].to_owned())

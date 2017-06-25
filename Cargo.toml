@@ -1,5 +1,5 @@
 [package]
-name = "proto"
+name = "prost"
 version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 
@@ -7,9 +7,9 @@ authors = ["Dan Burkert <dan@danburkert.com>"]
 members = [
   "conformance",
   "fuzz",
-  "proto-build",
-  "proto-codegen",
-  "proto-derive",
+  "prost-build",
+  "prost-codegen",
+  "prost-derive",
   "test-all-types",
 ]
 
@@ -19,7 +19,7 @@ bytes = "0.4"
 
 [dev-dependencies]
 quickcheck = "0.4"
-proto-derive = { path = "proto-derive" }
+prost-derive = { path = "prost-derive" }
 log = "0.3"
 env_logger = "0.4"
 

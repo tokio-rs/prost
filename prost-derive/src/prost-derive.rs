@@ -119,11 +119,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         )]
         const #dummy_const: () = {
 
-            extern crate proto as _proto;
+            extern crate prost as _prost;
             extern crate bytes as _bytes;
 
             #[automatically_derived]
-            impl _proto::Message for #ident {
+            impl _prost::Message for #ident {
                 #[inline]
                 fn encode_raw<B>(&self, buf: &mut B) where B: _bytes::BufMut {
                     #(#encode)*
@@ -140,10 +140,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     }
 
                     while _bytes::Buf::has_remaining(buf) {
-                        let (tag, wire_type) = _proto::encoding::decode_key(buf)?;
+                        let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
                         match tag {
                             #(#merge)*
-                            _ => _proto::encoding::skip_field(wire_type, buf)?,
+                            _ => _prost::encoding::skip_field(wire_type, buf)?,
                         }
                     }
                     Ok(())
@@ -171,12 +171,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
 }
 
-#[proc_macro_derive(Message, attributes(proto))]
+#[proc_macro_derive(Message, attributes(prost))]
 pub fn message(input: TokenStream) -> TokenStream {
     try_message(input).unwrap()
 }
 
-#[proc_macro_derive(Enumeration, attributes(proto))]
+#[proc_macro_derive(Enumeration, attributes(prost))]
 pub fn enumeration(input: TokenStream) -> TokenStream {
     let syn::DeriveInput { ident, generics, body, .. } =
         syn::parse_derive_input(&input.to_string()).expect("unable to parse enumeration type");
@@ -221,7 +221,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
         const #dummy_const: () = {
             extern crate bytes as _bytes;
-            extern crate proto as _proto;
+            extern crate prost as _prost;
 
             #[automatically_derived]
             impl #ident {
@@ -343,7 +343,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
         )]
         const #dummy_const: () = {
             extern crate bytes as _bytes;
-            extern crate proto as _proto;
+            extern crate prost as _prost;
 
             impl #ident {
                 pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
@@ -354,7 +354,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
 
                 pub fn merge<B>(field: &mut ::std::option::Option<#ident>,
                                 tag: u32,
-                                wire_type: _proto::encoding::WireType,
+                                wire_type: _prost::encoding::WireType,
                                 buf: &mut _bytes::Take<B>)
                                 -> ::std::io::Result<()>
                 where B: _bytes::Buf {
@@ -376,7 +376,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
     expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
 }
 
-#[proc_macro_derive(Oneof, attributes(proto))]
+#[proc_macro_derive(Oneof, attributes(prost))]
 pub fn oneof(input: TokenStream) -> TokenStream {
     try_oneof(input).unwrap()
 }
