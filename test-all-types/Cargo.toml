@@ -9,6 +9,7 @@ doctest = false
 
 [dependencies]
 bytes = "0.4"
+ieee754 = "0.2"
 prost = { path = ".." }
 prost-derive = { path = "../prost-derive" }
 

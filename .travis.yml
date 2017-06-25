@@ -1,0 +1,19 @@
+language: rust
+dist: trusty
+sudo: false
+
+cache: cargo
+
+os:
+  - linux
+  - osx
+
+rust:
+  # Disable stable until cargo:rustc-env feature makes it into stable in Rust
+  # 1.19 / Cargo 0.20.
+  # - stable
+  - nightly
+
+script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all

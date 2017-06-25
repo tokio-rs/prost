@@ -1,0 +1,28 @@
+environment:
+  matrix:
+  - TARGET: i686-pc-windows-msvc
+  - TARGET: x86_64-pc-windows-msvc
+
+install:
+  # Install rust, x86_64-pc-windows-msvc host
+  - appveyor-retry appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  # use nightly if required until -Ctarget-feature=+crt-static is stable (expected in rust 1.19)
+  - rustup-init.exe -y --default-host x86_64-pc-windows-msvc
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+
+  # Install the target we're compiling for
+  - if NOT "%TARGET%" == "x86_64-pc-windows-msvc" rustup target add %TARGET%
+
+  # let's see what we got
+  - where gcc rustc cargo
+  - rustc -vV
+  - cargo -vV
+  - set CARGO_TARGET_DIR=%CD%\target
+
+build: false
+
+test_script:
+  - SET RUST_BACKTRACE=1
+    # The conformance test runner does not work on Windows.
+    # The -j1 is to work around https://github.com/alexcrichton/curl-rust/issues/174
+  - cargo test -j1 --target %TARGET% -p prost -p test-all-types -p prost-build -p prost-codegen

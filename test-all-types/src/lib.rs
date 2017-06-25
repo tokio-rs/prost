@@ -1,6 +1,5 @@
-#![feature(float_bits_conv)]
-
 extern crate bytes;
+extern crate ieee754;
 extern crate prost;
 #[macro_use] extern crate prost_derive;
 
@@ -26,6 +25,7 @@ use std::io::{
 };
 
 use bytes::Buf;
+use ieee754::Ieee754;
 use prost::Message;
 
 use protobuf_test_messages::proto3;
@@ -109,10 +109,10 @@ fn all_types_proto3_eq(mut a: proto3::TestAllTypes,
 
     // First, check that all floating point fields are bit-for-bit equivalent.
     fn float_eq(a: f32, b: f32) -> bool {
-        a == b || a.to_bits() == b.to_bits()
+        a == b || a.bits() == b.bits()
     }
     fn double_eq(a: f64, b: f64) -> bool {
-        a == b || a.to_bits() == b.to_bits()
+        a == b || a.bits() == b.bits()
     }
 
     // optional_[float,double]
