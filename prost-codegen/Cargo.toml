@@ -15,5 +15,5 @@ itertools = "0.6"
 log = "0.3"
 multimap = "0.3"
 petgraph = "0.4"
-prost = { path = ".." }
-prost-derive = { path = "../prost-derive" }
+prost = "0.1.0"
+prost-derive = "0.1.0"

@@ -30,9 +30,6 @@ bytes = "0.4"
 
 [dev-dependencies]
 quickcheck = "0.4"
-prost-derive = { path = "prost-derive" }
+prost-derive = "0.1.0"
 log = "0.3"
 env_logger = "0.4"
-
-[replace]
-"bytes:0.4.4" = { git = "https://github.com/danburkert/bytes", branch = "take-bytes-index-oob" }
