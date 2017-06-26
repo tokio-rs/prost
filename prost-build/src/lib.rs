@@ -1,3 +1,5 @@
+#![doc(html_root_url = "https://docs.rs/prost-build/0.1.1")]
+
 extern crate bytes;
 extern crate curl;
 extern crate prost;

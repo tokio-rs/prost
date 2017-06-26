@@ -1,5 +1,6 @@
 [package]
 name = "prost-derive"
+# NB: When modifying, also modify html_root_url in lib.rs
 version = "0.1.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"

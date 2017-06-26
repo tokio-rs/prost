@@ -1,5 +1,6 @@
 [package]
 name = "prost"
+# NB: When modifying, also modify html_root_url in lib.rs
 version = "0.1.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
@@ -9,6 +10,10 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
+
+[badges]
+travis-ci = { repository = "danburkert/prost" }
+appveyor = { repository = "danburkert/prost" }
 
 [workspace]
 members = [

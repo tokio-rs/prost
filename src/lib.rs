@@ -1,3 +1,5 @@
+#![doc(html_root_url = "https://docs.rs/prost/0.1.1")]
+
 extern crate byteorder;
 extern crate bytes;
 

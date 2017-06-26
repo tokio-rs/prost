@@ -1,3 +1,8 @@
+[![Build Status](https://travis-ci.org/danburkert/prost.svg?branch=master)](https://travis-ci.org/danburkert/prost)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/24rpba3x2vqe8lje/branch/master?svg=true)](https://ci.appveyor.com/project/danburkert/prost/branch/master)
+[![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
+[![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
+
 # *PROST!*
 
 `prost` is a [Protocol Buffers](https://developers.google.com/protocol-buffers/)
