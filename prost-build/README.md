@@ -18,10 +18,10 @@ snazzy new items in a protobuf file.
 cargo new snazzy
 ```
 
-First, add `prost`, `prost-build`, and `prost`'s public dependencies to the
-`Cargo.toml`:
+First, add `prost-build`, `prost` and its public dependencies to `Cargo.toml`
+(see [crates.io](https://crates.io/crates/prost) for the current versions):
 
-```toml
+```
 [dependencies]
 bytes = <bytes-version>
 prost = <prost-version>
