@@ -18,15 +18,15 @@ Compared to other Protocol Buffers implementations, `prost`
   and deserialized by adding attributes.
 * Uses the [`bytes::{Buf, BufMut}`](https://github.com/carllerche/bytes)
   abstractions for serialization instead of `std::io::{Read, Write}`.
-* Organizes generated code into Rust modules using the Protobuf `package`
-  declaration.
-* Preserves unrecognized enum values during deserialization.
+* Respects the Protobuf `package` declaration when organizing generated code
+  into Rust modules.
+* Preserves unknown enum values during deserialization.
 * Does not include support for runtime reflection or message descriptors.
 
 ## Using `prost` in a Cargo Project
 
 First, add `prost` and its public dependencies to your `Cargo.toml` (see
-[Cargo.toml](Cargo.toml) for the current versions):
+[crates.io](https://crates.io/crates/prost) for the current versions):
 
 ```
 [dependencies]
@@ -37,19 +37,17 @@ bytes = <bytes-version>
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
 `prost-build` library to handle compilation at build-time. See the
-[`prost-build` documentation](prost-build) for more details and
-examples.
+[`prost-build` documentation](prost-build) for more details and examples.
 
 Alternatively, the `prost-codegen` crate provides a `protoc` plugin which can be
 used to manually compile `.proto` files into Rust source files. The resulting
 Rust files can be added to a project source tree like any other. See the
-[`prost-codegen` documentation](prost-codegen) for more details and
-examples.
+[`prost-codegen` documentation](prost-codegen) for more details and examples.
 
 ## Generated Code
 
 `prost` generates Rust code from source `.proto` files using the `proto2` or
-`proto3` syntax.  `prost`'s goal is to make the generated code as simple as
+`proto3` syntax. `prost`'s goal is to make the generated code as simple as
 possible.
 
 ### Packages
@@ -71,7 +69,6 @@ Given a simple message declaration:
 ```proto
 // Sample message.
 message Foo {
-  // fields...
 }
 ```
 
@@ -81,7 +78,6 @@ message Foo {
 /// Sample message.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Foo {
-  // fields...
 }
 ```
 
@@ -122,7 +118,7 @@ values to the enum type (if possible).
 #### Field Modifiers
 
 Protobuf scalar value and enumeration message fields can have a modifier
-depending on the Protobuf version.  Modifiers change the corresponding type of
+depending on the Protobuf version. Modifiers change the corresponding type of
 the Rust field:
 
 | `.proto` Version | Modifier | Rust Type |
@@ -178,14 +174,13 @@ pub mod foo {
 
 `oneof` fields are always wrapped in an `Option`.
 
-[1] Type and field annotations have been elided for clarity. See below for a
-    full example.
+[1] Annotations have been elided for clarity. See below for a full example.
 
 ### Services
 
 `prost-build` allows a custom code-generator to be used for processing `service`
 definitions. This can be used to output Rust traits according to an
-application's needs.
+application's specific needs.
 
 ### Generated Code Example
 
@@ -272,7 +267,7 @@ generated code examples above.
 
 1. **Could `prost` be implemented as a serializer for [Serde](https://serde.rs/)?**
 
-  Probably not, however I would like to hear from a SerDe expert on the matter.
+  Probably not, however I would like to hear from a Serde expert on the matter.
   There are two complications with trying to serialize Protobuf messages with
   Serde:
 
