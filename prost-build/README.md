@@ -1,5 +1,5 @@
-[![Documentation](https://docs.rs/prost-build/badge.svg)](https://docs.rs/prost-codegen/)
-[![Crate](https://img.shields.io/crates/v/prost-build.svg)](https://crates.io/crates/prost-codegen)
+[![Documentation](https://docs.rs/prost-build/badge.svg)](https://docs.rs/prost-build/)
+[![Crate](https://img.shields.io/crates/v/prost-build.svg)](https://crates.io/crates/prost-build)
 
 # `prost-build`
 
