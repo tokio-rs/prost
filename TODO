@@ -1,5 +1,0 @@
-- Add an UnknownField API, see:
-    - https://docs.google.com/document/d/1KMRX-G91Aa-Y2FkEaHeeviLRRNblgIahbsk4wA14gRk/view
-
-- Add 'plugable' service definition generators
-  - out of the box implementations for async/sync client/server interfaces.
