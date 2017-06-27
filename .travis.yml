@@ -1,6 +1,12 @@
 language: rust
 dist: trusty
-sudo: false
+
+# Even though this build script doesn't use sudo, we enable it in order to get
+# more memory. Previously on the container infrastructure the OOM killer would
+# come in and kill either the GCC processes compiling protobuf, or rustc. See
+# https://github.com/travis-ci/travis-ci/issues/7427 for the source of this
+# workaround.
+sudo: required
 
 cache: cargo
 
