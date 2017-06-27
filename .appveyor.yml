@@ -24,5 +24,8 @@ build: false
 test_script:
   - SET RUST_BACKTRACE=1
     # The conformance test runner does not work on Windows.
-    # The -j1 is to work around https://github.com/alexcrichton/curl-rust/issues/174
-  - cargo test -j1 --target %TARGET% -p prost -p test-all-types -p prost-build -p prost-codegen
+  - cargo test --target %TARGET% -p prost -p test-all-types -p prost-build -p prost-codegen
+
+cache:
+  - C:\Users\appveyor\.cargo\registry
+  - target

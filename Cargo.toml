@@ -41,3 +41,4 @@ env_logger = "0.4"
 
 [replace]
 "bytes:0.4.4" = { git = "https://github.com/danburkert/bytes", branch = "take-bytes-index-oob" }
+"curl:0.4.7" = { git = "https://github.com/alexcrichton/curl-rust", branch = "windows-separate-dir" }
