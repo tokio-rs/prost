@@ -44,9 +44,7 @@ pub use ast::{
 };
 
 pub fn module(file: &FileDescriptorProto) -> Module {
-    file.package
-        .as_ref()
-        .unwrap()
+    file.package()
         .split('.')
         .filter(|s| !s.is_empty())
         .map(camel_to_snake)
@@ -148,7 +146,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_message(&mut self, message: DescriptorProto) {
-        debug!("\tmessage: {:?}", message.name.as_ref().unwrap());
+        debug!("\tmessage: {:?}", message.name());
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
@@ -254,9 +252,9 @@ impl <'a> CodeGenerator<'a> {
 
         let boxed = !repeated
                  && field.type_().unwrap() == field_descriptor_proto::Type::TypeMessage
-                 && self.message_graph.is_nested(field.type_name.as_ref().unwrap(), msg_name);
+                 && self.message_graph.is_nested(field.type_name(), msg_name);
 
-        debug!("\t\tfield: {:?}, type: {:?}", field.name.as_ref().unwrap(), ty);
+        debug!("\t\tfield: {:?}, type: {:?}", field.name(), ty);
 
         self.append_doc();
         self.push_indent();
@@ -271,7 +269,7 @@ impl <'a> CodeGenerator<'a> {
             LabelRequired => self.buf.push_str(", required"),
             LabelRepeated => {
                 self.buf.push_str(", repeated");
-                if can_pack(&field) && !field.options.as_ref().map_or(false, |options| options.packed.unwrap()) {
+                if can_pack(&field) && !field.options.as_ref().map_or(false, |options| options.packed()) {
                     self.buf.push_str(", packed=\"false\"");
                 }
             },
@@ -279,11 +277,11 @@ impl <'a> CodeGenerator<'a> {
 
         if boxed { self.buf.push_str(", boxed"); }
         self.buf.push_str(", tag=\"");
-        self.buf.push_str(&field.number.unwrap().to_string());
+        self.buf.push_str(&field.number().to_string());
         self.buf.push_str("\")]\n");
         self.push_indent();
         self.buf.push_str("pub ");
-        self.buf.push_str(&camel_to_snake(field.name.as_ref().unwrap()));
+        self.buf.push_str(&camel_to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated { self.buf.push_str("Vec<"); }
         else if optional { self.buf.push_str("Option<"); }
@@ -302,7 +300,7 @@ impl <'a> CodeGenerator<'a> {
         let value_ty = self.resolve_type(value);
 
         debug!("\t\tmap field: {:?}, key type: {:?}, value type: {:?}",
-               field.name.as_ref().unwrap(), key_ty, value_ty);
+               field.name(), key_ty, value_ty);
 
         self.append_doc();
         self.push_indent();
@@ -312,10 +310,10 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(&format!("#[prost(map=\"{}, {}\", tag=\"{}\")]\n",
                                    key_tag,
                                    value_tag,
-                                   field.number.unwrap()));
+                                   field.number()));
         self.push_indent();
         self.buf.push_str(&format!("pub {}: ::std::collections::HashMap<{}, {}>,\n",
-                                   camel_to_snake(field.name.as_ref().unwrap()), key_ty, value_ty));
+                                   camel_to_snake(field.name()), key_ty, value_ty));
     }
 
     fn append_oneof_field(&mut self,
@@ -324,16 +322,14 @@ impl <'a> CodeGenerator<'a> {
                           fields: &[(FieldDescriptorProto, usize)]) {
         let name = format!("{}::{}",
                            camel_to_snake(message_name),
-                           snake_to_upper_camel(oneof.name.as_ref().unwrap()));
+                           snake_to_upper_camel(oneof.name()));
         self.append_doc();
         self.push_indent();
         self.buf.push_str(&format!("#[prost(oneof=\"{}\", tags=\"{}\")]\n",
                                    name,
-                                   fields.iter().map(|&(ref field, _)| field.number.unwrap()).join(", ")));
+                                   fields.iter().map(|&(ref field, _)| field.number()).join(", ")));
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: Option<{}>,\n",
-                                   camel_to_snake(oneof.name.as_ref().unwrap()),
-                                   name));
+        self.buf.push_str(&format!("pub {}: Option<{}>,\n", camel_to_snake(oneof.name()), name));
     }
 
     fn append_oneof(&mut self,
@@ -350,7 +346,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("#[derive(Clone, Debug, Oneof, PartialEq)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(&snake_to_upper_camel(oneof.name.as_ref().unwrap()));
+        self.buf.push_str(&snake_to_upper_camel(oneof.name()));
         self.buf.push_str(" {\n");
 
         self.path.push(2);
@@ -362,15 +358,11 @@ impl <'a> CodeGenerator<'a> {
 
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
-            self.buf.push_str(&format!("#[prost({}, tag=\"{}\")]\n",
-                                       ty_tag,
-                                       field.number.unwrap()));
+            self.buf.push_str(&format!("#[prost({}, tag=\"{}\")]\n", ty_tag, field.number()));
 
             self.push_indent();
             let ty = self.resolve_type(&field);
-            self.buf.push_str(&format!("{}({}),\n",
-                                       snake_to_upper_camel(field.name.as_ref().unwrap()),
-                                       ty));
+            self.buf.push_str(&format!("{}({}),\n", snake_to_upper_camel(field.name()), ty));
         }
         self.depth -= 1;
         self.path.pop();
@@ -431,14 +423,14 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_enum(&mut self, desc: EnumDescriptorProto) {
-        debug!("\tenum: {:?}", desc.name.as_ref().unwrap());
+        debug!("\tenum: {:?}", desc.name());
 
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(desc.name.as_ref().unwrap());
+        self.buf.push_str(desc.name());
         self.buf.push_str(" {\n");
 
         let mut numbers = HashSet::new();
@@ -448,7 +440,7 @@ impl <'a> CodeGenerator<'a> {
         for (idx, value) in desc.value.into_iter().enumerate() {
             // Skip duplicate enum values. Protobuf allows this when the
             // 'allow_alias' option is set.
-            if !numbers.insert(value.number.unwrap()) {
+            if !numbers.insert(value.number()) {
                 continue;
             }
 
@@ -466,14 +458,14 @@ impl <'a> CodeGenerator<'a> {
     fn append_enum_value(&mut self, value: EnumValueDescriptorProto) {
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&snake_to_upper_camel(value.name.as_ref().unwrap()));
+        self.buf.push_str(&snake_to_upper_camel(value.name()));
         self.buf.push_str(" = ");
-        self.buf.push_str(&value.number.unwrap().to_string());
+        self.buf.push_str(&value.number().to_string());
         self.buf.push_str(",\n");
     }
 
-    fn unpack_service(&mut self, mut service: ServiceDescriptorProto) -> Service {
-        let name = service.name.take().unwrap();
+    fn unpack_service(&mut self, service: ServiceDescriptorProto) -> Service {
+        let name = service.name().to_owned();
         debug!("\t service: {:?}", name);
 
         let comments = Comments::from_location(self.location());
@@ -550,7 +542,7 @@ impl <'a> CodeGenerator<'a> {
             TypeBool => Cow::Borrowed("bool"),
             TypeString => Cow::Borrowed("String"),
             TypeBytes => Cow::Borrowed("Vec<u8>"),
-            TypeGroup | TypeMessage => Cow::Owned(self.resolve_ident(field.type_name.as_ref().unwrap())),
+            TypeGroup | TypeMessage => Cow::Owned(self.resolve_ident(field.type_name())),
             TypeEnum => Cow::Borrowed("i32"),
         }
     }
@@ -598,14 +590,14 @@ impl <'a> CodeGenerator<'a> {
             TypeBytes => Cow::Borrowed("bytes"),
             TypeGroup => Cow::Borrowed("group"),
             TypeMessage => Cow::Borrowed("message"),
-            TypeEnum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name.as_ref().unwrap()))),
+            TypeEnum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
         }
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         use field_descriptor_proto::Type::*;
         match field.type_().expect("unknown field type") {
-            TypeEnum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name.as_ref().unwrap()))),
+            TypeEnum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
             _ => self.field_type_tag(field),
         }
     }

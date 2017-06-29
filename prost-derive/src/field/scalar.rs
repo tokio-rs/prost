@@ -249,20 +249,19 @@ impl Field {
                 },
             })
         } else if let Kind::Optional(ref default) = self.kind {
-            let ty = Ident::new(self.ty.rust_type());
-            let default = default.owned();
+            let ty = Ident::new(self.ty.rust_ref_type());
+
+            let match_some = if self.ty.is_numeric() {
+                quote!(::std::option::Option::Some(val) => val,)
+            } else {
+                quote!(::std::option::Option::Some(ref val) => &val[..],)
+            };
 
             Some(quote! {
-                pub fn #ident(&mut self) -> &mut #ty {
+                pub fn #ident(&self) -> #ty {
                     match self.#ident {
-                        ::std::option::Option::Some(ref mut val) => val,
-                        ::std::option::Option::None => {
-                            self.#ident = Some(#default);
-                            match self.#ident {
-                                ::std::option::Option::Some(ref mut val) => val,
-                                _ => unreachable!(),
-                            }
-                        }
+                        #match_some
+                        ::std::option::Option::None => #default,
                     }
                 }
             })
@@ -413,8 +412,8 @@ impl Ty {
             Ty::Sfixed32 => "i32",
             Ty::Sfixed64 => "i64",
             Ty::Bool => "bool",
-            Ty::String => "str",
-            Ty::Bytes => "[u8]",
+            Ty::String => "&str",
+            Ty::Bytes => "&[u8]",
             Ty::Enumeration(..) => "i32",
         }
     }
@@ -427,7 +426,7 @@ impl Ty {
     }
 
     /// Returns true if the scalar type is length delimited (i.e., `string` or `bytes`).
-    fn is_numeric(&self) -> bool {
+    pub fn is_numeric(&self) -> bool {
         *self != Ty::String && *self != Ty::Bytes
     }
 }

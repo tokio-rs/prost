@@ -172,12 +172,12 @@ impl Field {
 
             let get = Ident::new(format!("get_{}", ident));
             let insert = Ident::new(format!("insert_{}", ident));
+            let take_ref = Ident::new(if self.key_ty.is_numeric() { "&" } else { "" });
 
             Some(quote! {
-                pub fn #get(&self, key: &#key_ref_ty) -> ::std::option::Option<#ty> {
-                    self.#ident.get(key).cloned().and_then(#ty::from_i32)
+                pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
+                    self.#ident.get(#take_ref key).cloned().and_then(#ty::from_i32)
                 }
-
                 pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
                     self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
                 }
