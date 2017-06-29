@@ -91,27 +91,27 @@ impl Field {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = Ident::new(format!("{}::default() as i32", ty));
                 quote! {
-                    _prost::encoding::map::encode_with_default(#ke, #kl,
-                                                               _prost::encoding::int32::encode,
-                                                               _prost::encoding::int32::encoded_len,
-                                                               &(#default),
-                                                               #tag, &#ident, buf);
+                    _prost::encoding::hash_map::encode_with_default(#ke, #kl,
+                                                                    _prost::encoding::int32::encode,
+                                                                    _prost::encoding::int32::encoded_len,
+                                                                    &(#default),
+                                                                    #tag, &#ident, buf);
                 }
             },
             ValueTy::Scalar(ref value_ty) => {
                 let ve = Ident::new(format!("_prost::encoding::{}::encode", value_ty.encode_as()));
                 let vl = Ident::new(format!("_prost::encoding::{}::encoded_len", value_ty.encode_as()));
                 quote! {
-                    _prost::encoding::map::encode(#ke, #kl, #ve, #vl,
-                                                  #tag, &#ident, buf);
+                    _prost::encoding::hash_map::encode(#ke, #kl, #ve, #vl,
+                                                       #tag, &#ident, buf);
                 }
             },
             ValueTy::Message => {
                 quote! {
-                    _prost::encoding::map::encode(#ke, #kl,
-                                                  _prost::encoding::message::encode,
-                                                  _prost::encoding::message::encoded_len,
-                                                  #tag, &#ident, buf);
+                    _prost::encoding::hash_map::encode(#ke, #kl,
+                                                       _prost::encoding::message::encode,
+                                                       _prost::encoding::message::encoded_len,
+                                                       #tag, &#ident, buf);
                 }
             },
         }
@@ -125,17 +125,17 @@ impl Field {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = Ident::new(format!("{}::default() as i32", ty));
                 quote! {
-                    _prost::encoding::map::merge_with_default(#km, _prost::encoding::int32::merge,
-                                                              #default, &mut #ident, buf)
+                    _prost::encoding::hash_map::merge_with_default(#km, _prost::encoding::int32::merge,
+                                                                   #default, &mut #ident, buf)
                 }
             },
             ValueTy::Scalar(ref value_ty) => {
                 let vm = Ident::new(format!("_prost::encoding::{}::merge", value_ty.encode_as()));
-                quote!(_prost::encoding::map::merge(#km, #vm, &mut #ident, buf))
+                quote!(_prost::encoding::hash_map::merge(#km, #vm, &mut #ident, buf))
             },
             ValueTy::Message => {
-                quote!(_prost::encoding::map::merge(#km, _prost::encoding::message::merge,
-                                                    &mut #ident, buf))
+                quote!(_prost::encoding::hash_map::merge(#km, _prost::encoding::message::merge,
+                                                         &mut #ident, buf))
             },
         }
     }
@@ -148,18 +148,18 @@ impl Field {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = Ident::new(format!("{}::default() as i32", ty));
                 quote! {
-                    _prost::encoding::map::encoded_len_with_default(
+                    _prost::encoding::hash_map::encoded_len_with_default(
                         #kl, _prost::encoding::int32::encoded_len,
                         &(#default), #tag, &#ident)
                 }
             },
             ValueTy::Scalar(ref value_ty) => {
                 let vl = Ident::new(format!("_prost::encoding::{}::encoded_len", value_ty.encode_as()));
-                quote!(_prost::encoding::map::encoded_len(#kl, #vl, #tag, &#ident))
+                quote!(_prost::encoding::hash_map::encoded_len(#kl, #vl, #tag, &#ident))
             },
             ValueTy::Message => {
-                quote!(_prost::encoding::map::encoded_len(#kl, _prost::encoding::message::encoded_len,
-                                                          #tag, &#ident))
+                quote!(_prost::encoding::hash_map::encoded_len(#kl, _prost::encoding::message::encoded_len,
+                                                               #tag, &#ident))
             },
         }
     }

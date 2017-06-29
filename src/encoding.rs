@@ -635,156 +635,167 @@ pub mod message {
     }
 }
 
-pub mod map {
-    use std::collections::HashMap;
-    use std::hash::Hash;
+/// Rust doesn't have a `Map` trait, so macros are currently the best way to be
+/// generic over `HashMap` and `BTreeMap`.
+macro_rules! map {
+    ($map_ty:ident) => (
+        use std::collections::$map_ty;
+        use std::hash::Hash;
 
-    use ::encoding::*;
+        use ::encoding::*;
 
-    /// Generic protobuf map encode function.
-    pub fn encode<K, V, B, KE, KL, VE, VL>(key_encode: KE,
-                                           key_encoded_len: KL,
-                                           val_encode: VE,
-                                           val_encoded_len: VL,
-                                           tag: u32,
-                                           values: &HashMap<K, V>,
-                                           buf: &mut B)
-    where K: Default + Eq + Hash,
-        V: Default + PartialEq,
-        B: BufMut,
-        KE: Fn(u32, &K, &mut B),
-        KL: Fn(u32, &K) -> usize,
-        VE: Fn(u32, &V, &mut B),
-        VL: Fn(u32, &V) -> usize {
-        encode_with_default(key_encode, key_encoded_len, val_encode, val_encoded_len, &V::default(),
-                            tag, values, buf)
-    }
-
-    /// Generic protobuf map merge function.
-    pub fn merge<K, V, B, KM, VM>(key_merge: KM,
-                                  val_merge: VM,
-                                  values: &mut HashMap<K, V>,
-                                  buf: &mut Take<B>)
-                                  -> Result<()>
-    where K: Default + Eq + Hash,
-        V: Default,
-        B: Buf,
-        KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<()>,
-        VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<()> {
-        merge_with_default(key_merge, val_merge, V::default(),
-                            values, buf)
-    }
-
-    /// Generic protobuf map encode function.
-    pub fn encoded_len<K, V, KL, VL>(key_encoded_len: KL,
-                                     val_encoded_len: VL,
-                                     tag: u32,
-                                     values: &HashMap<K, V>)
-                                     -> usize
-    where K: Default + Eq + Hash,
-        V: Default + PartialEq,
-        KL: Fn(u32, &K) -> usize,
-        VL: Fn(u32, &V) -> usize {
-        encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(),
-                                    tag, values)
-    }
-
-    /// Generic protobuf map encode function with an overriden value default.
-    ///
-    /// This is necessary because enumeration values can have a default value other
-    /// than 0 in proto2.
-    pub fn encode_with_default<K, V, B, KE, KL, VE, VL>(key_encode: KE,
-                                                        key_encoded_len: KL,
-                                                        val_encode: VE,
-                                                        val_encoded_len: VL,
-                                                        val_default: &V,
-                                                        tag: u32,
-                                                        values: &HashMap<K, V>,
-                                                        buf: &mut B)
-    where K: Default + Eq + Hash,
-        V: PartialEq,
-        B: BufMut,
-        KE: Fn(u32, &K, &mut B),
-        KL: Fn(u32, &K) -> usize,
-        VE: Fn(u32, &V, &mut B),
-        VL: Fn(u32, &V) -> usize {
-        for (key, val) in values.iter() {
-            let skip_key = key == &K::default();
-            let skip_val = val == val_default;
-
-            let len = (if skip_key { 0 } else { key_encoded_len(1, key) }) +
-                      (if skip_val { 0 } else { val_encoded_len(2, val) });
-
-            encode_key(tag, WireType::LengthDelimited, buf);
-            encode_varint(len as u64, buf);
-            if !skip_key {
-                key_encode(1, key, buf);
-            }
-            if !skip_val {
-                val_encode(2, val, buf);
-            }
+        /// Generic protobuf map encode function.
+        pub fn encode<K, V, B, KE, KL, VE, VL>(key_encode: KE,
+                                               key_encoded_len: KL,
+                                               val_encode: VE,
+                                               val_encoded_len: VL,
+                                               tag: u32,
+                                               values: &$map_ty<K, V>,
+                                               buf: &mut B)
+        where K: Default + Eq + Hash + Ord,
+              V: Default + PartialEq,
+              B: BufMut,
+              KE: Fn(u32, &K, &mut B),
+              KL: Fn(u32, &K) -> usize,
+              VE: Fn(u32, &V, &mut B),
+              VL: Fn(u32, &V) -> usize {
+            encode_with_default(key_encode, key_encoded_len, val_encode, val_encoded_len,
+                                &V::default(), tag, values, buf)
         }
-    }
 
-    /// Generic protobuf map merge function with an overriden value default.
-    ///
-    /// This is necessary because enumeration values can have a default value other
-    /// than 0 in proto2.
-    pub fn merge_with_default<K, V, B, KM, VM>(key_merge: KM,
-                                               val_merge: VM,
-                                               val_default: V,
-                                               values: &mut HashMap<K, V>,
-                                               buf: &mut Take<B>)
-                                               -> Result<()>
-    where K: Default + Eq + Hash,
-        B: Buf,
-        KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<()>,
-        VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<()> {
-        let len = decode_varint(buf)?;
-        if len > buf.remaining() as u64 {
-            return Err(invalid_data("buffer underflow"));
+        /// Generic protobuf map merge function.
+        pub fn merge<K, V, B, KM, VM>(key_merge: KM,
+                                      val_merge: VM,
+                                      values: &mut $map_ty<K, V>,
+                                      buf: &mut Take<B>)
+                                      -> Result<()>
+        where K: Default + Eq + Hash + Ord,
+              V: Default,
+              B: Buf,
+              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<()>,
+              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<()> {
+            merge_with_default(key_merge, val_merge, V::default(), values, buf)
         }
-        let len = len as usize;
-        let limit = buf.limit();
-        buf.set_limit(len);
 
-        let mut key = Default::default();
-        let mut val = val_default;
+        /// Generic protobuf map encode function.
+        pub fn encoded_len<K, V, KL, VL>(key_encoded_len: KL,
+                                         val_encoded_len: VL,
+                                         tag: u32,
+                                         values: &$map_ty<K, V>)
+                                         -> usize
+        where K: Default + Eq + Hash + Ord,
+              V: Default + PartialEq,
+              KL: Fn(u32, &K) -> usize,
+              VL: Fn(u32, &V) -> usize {
+            encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(),
+                                        tag, values)
+        }
 
-        while buf.has_remaining() {
-            let (tag, wire_type) = decode_key(buf)?;
-            match tag {
-                1 => key_merge(wire_type, &mut key, buf)?,
-                2 => val_merge(wire_type, &mut val, buf)?,
-                _ => (),
+        /// Generic protobuf map encode function with an overriden value default.
+        ///
+        /// This is necessary because enumeration values can have a default value other
+        /// than 0 in proto2.
+        pub fn encode_with_default<K, V, B, KE, KL, VE, VL>(key_encode: KE,
+                                                            key_encoded_len: KL,
+                                                            val_encode: VE,
+                                                            val_encoded_len: VL,
+                                                            val_default: &V,
+                                                            tag: u32,
+                                                            values: &$map_ty<K, V>,
+                                                            buf: &mut B)
+        where K: Default + Eq + Hash + Ord,
+              V: PartialEq,
+              B: BufMut,
+              KE: Fn(u32, &K, &mut B),
+              KL: Fn(u32, &K) -> usize,
+              VE: Fn(u32, &V, &mut B),
+              VL: Fn(u32, &V) -> usize {
+            for (key, val) in values.iter() {
+                let skip_key = key == &K::default();
+                let skip_val = val == val_default;
+
+                let len = (if skip_key { 0 } else { key_encoded_len(1, key) }) +
+                        (if skip_val { 0 } else { val_encoded_len(2, val) });
+
+                encode_key(tag, WireType::LengthDelimited, buf);
+                encode_varint(len as u64, buf);
+                if !skip_key {
+                    key_encode(1, key, buf);
+                }
+                if !skip_val {
+                    val_encode(2, val, buf);
+                }
             }
         }
 
-        values.insert(key, val);
-        buf.set_limit(limit - len);
-        Ok(())
-    }
+        /// Generic protobuf map merge function with an overriden value default.
+        ///
+        /// This is necessary because enumeration values can have a default value other
+        /// than 0 in proto2.
+        pub fn merge_with_default<K, V, B, KM, VM>(key_merge: KM,
+                                                   val_merge: VM,
+                                                   val_default: V,
+                                                   values: &mut $map_ty<K, V>,
+                                                   buf: &mut Take<B>)
+                                                   -> Result<()>
+        where K: Default + Eq + Hash + Ord,
+              B: Buf,
+              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<()>,
+              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<()> {
+            let len = decode_varint(buf)?;
+            if len > buf.remaining() as u64 {
+                return Err(invalid_data("buffer underflow"));
+            }
+            let len = len as usize;
+            let limit = buf.limit();
+            buf.set_limit(len);
 
-    /// Generic protobuf map encode function with an overriden value default.
-    ///
-    /// This is necessary because enumeration values can have a default value other
-    /// than 0 in proto2.
-    pub fn encoded_len_with_default<K, V, KL, VL>(key_encoded_len: KL,
-                                                  val_encoded_len: VL,
-                                                  val_default: &V,
-                                                  tag: u32,
-                                                  values: &HashMap<K, V>)
-                                                  -> usize
-    where K: Default + Eq + Hash,
-        V: PartialEq,
-        KL: Fn(u32, &K) -> usize,
-        VL: Fn(u32, &V) -> usize {
-        key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-            let len = (if key == &K::default() { 0 } else { key_encoded_len(1, key) })
-                    + (if val == val_default { 0 } else { val_encoded_len(2, val) });
-            encoded_len_varint(len as u64) + len
-        }).sum::<usize>()
-    }
+            let mut key = Default::default();
+            let mut val = val_default;
+
+            while buf.has_remaining() {
+                let (tag, wire_type) = decode_key(buf)?;
+                match tag {
+                    1 => key_merge(wire_type, &mut key, buf)?,
+                    2 => val_merge(wire_type, &mut val, buf)?,
+                    _ => (),
+                }
+            }
+
+            values.insert(key, val);
+            buf.set_limit(limit - len);
+            Ok(())
+        }
+
+        /// Generic protobuf map encode function with an overriden value default.
+        ///
+        /// This is necessary because enumeration values can have a default value other
+        /// than 0 in proto2.
+        pub fn encoded_len_with_default<K, V, KL, VL>(key_encoded_len: KL,
+                                                      val_encoded_len: VL,
+                                                      val_default: &V,
+                                                      tag: u32,
+                                                      values: &$map_ty<K, V>)
+                                                      -> usize
+        where K: Default + Eq + Hash + Ord,
+              V: PartialEq,
+              KL: Fn(u32, &K) -> usize,
+              VL: Fn(u32, &V) -> usize {
+            key_len(tag) * values.len() + values.iter().map(|(key, val)| {
+                let len = (if key == &K::default() { 0 } else { key_encoded_len(1, key) })
+                        + (if val == val_default { 0 } else { val_encoded_len(2, val) });
+                encoded_len_varint(len as u64) + len
+            }).sum::<usize>()
+        }
+    )
+}
+
+pub mod hash_map {
+    map!(HashMap);
+}
+
+pub mod btree_map {
+    map!(BTreeMap);
 }
 
 #[cfg(test)]
@@ -961,51 +972,65 @@ mod test {
     }
 
     /// This big bowl o' macro soup generates a quickcheck encoding test for each
-    /// combination of scalar map key and value type.
-    /// TODO: these tests take ~50 seconds to be copmiled, can this be improved?
+    /// combination of map type, scalar map key, and value type.
+    /// TODO: these tests take a long time to compile, can this be improved?
     macro_rules! map_tests {
-        (keys: [$(($key_ty:ty, $key_proto:ident)),*],
+        (keys: $keys:tt,
          vals: $vals:tt) => {
+            mod hash_map {
+                map_tests!(@private HashMap, hash_map, $keys, $vals);
+            }
+            mod btree_map {
+                map_tests!(@private BTreeMap, btree_map, $keys, $vals);
+            }
+        };
+
+        (@private $map_type:ident,
+                  $mod_name:ident,
+                  [$(($key_ty:ty, $key_proto:ident)),*],
+                  $vals:tt) => {
             $(
                 mod $key_proto {
-                    use std::collections::HashMap;
+                    use std::collections::$map_type;
                     use quickcheck::TestResult;
 
                     use ::encoding::*;
                     use ::encoding::test::check_collection_type;
 
-                    map_tests!(@private ($key_ty, $key_proto), $vals);
+                    map_tests!(@private $map_type, $mod_name, ($key_ty, $key_proto), $vals);
                 }
             )*
         };
 
-        (@private ($key_ty:ty, $key_proto:ident),
+        (@private $map_type:ident,
+                  $mod_name:ident,
+                  ($key_ty:ty, $key_proto:ident),
                   [$(($val_ty:ty, $val_proto:ident)),*]) => {
             $(
                 quickcheck! {
-                    fn $val_proto(values: HashMap<$key_ty, $val_ty>, tag: u32) -> TestResult {
+                    fn $val_proto(values: $map_type<$key_ty, $val_ty>, tag: u32) -> TestResult {
                         check_collection_type(values, tag, WireType::LengthDelimited,
                                               |tag, values, buf| {
-                                                  map::encode($key_proto::encode,
-                                                              $key_proto::encoded_len,
-                                                              $val_proto::encode,
-                                                              $val_proto::encoded_len,
-                                                              tag,
-                                                              values,
-                                                              buf)
+                                                  $mod_name::encode($key_proto::encode,
+                                                                    $key_proto::encoded_len,
+                                                                    $val_proto::encode,
+                                                                    $val_proto::encoded_len,
+                                                                    tag,
+                                                                    values,
+                                                                    buf)
                                               },
                                               |wire_type, values, buf| {
                                                   check_wire_type(WireType::LengthDelimited, wire_type)?;
-                                                  map::merge($key_proto::merge,
-                                                             $val_proto::merge,
-                                                             values,
-                                                             buf)
+                                                  $mod_name::merge($key_proto::merge,
+                                                                   $val_proto::merge,
+                                                                   values,
+                                                                   buf)
                                               },
                                               |tag, values| {
-                                                  map::encoded_len($key_proto::encoded_len,
-                                                                   $val_proto::encoded_len,
-                                                                   tag,
-                                                                   values)
+                                                  $mod_name::encoded_len($key_proto::encoded_len,
+                                                                         $val_proto::encoded_len,
+                                                                         tag,
+                                                                         values)
                                               })
                     }
                 }
