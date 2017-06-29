@@ -287,8 +287,14 @@ pub struct Basic {
     #[prost(map="int32, enumeration(BasicEnumeration)", tag="6")]
     pub enumeration_map: ::std::collections::HashMap<i32, i32>,
 
-    #[prost(map="string, string", tag="7")]
+    #[prost(hash_map="string, string", tag="7")]
     pub string_map: ::std::collections::HashMap<String, String>,
+
+    #[prost(btree_map="int32, enumeration(BasicEnumeration)", tag="10")]
+    pub enumeration_btree_map: ::std::collections::BTreeMap<i32, i32>,
+
+    #[prost(btree_map="string, string", tag="11")]
+    pub string_btree_map: ::std::collections::BTreeMap<String, String>,
 
     #[prost(oneof="BasicOneof", tags="8, 9")]
     pub oneof: Option<BasicOneof>,
@@ -307,6 +313,9 @@ pub struct Compound {
 
     #[prost(map="sint32, message", tag="4")]
     pub message_map: ::std::collections::HashMap<i32, Basic>,
+
+    #[prost(btree_map="sint32, message", tag="5")]
+    pub message_btree_map: ::std::collections::BTreeMap<i32, Basic>,
 }
 
 #[derive(Clone, Debug, PartialEq, Oneof)]

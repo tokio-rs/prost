@@ -13,7 +13,31 @@ use field::{
     set_option,
 };
 
+#[derive(Debug)]
+pub enum MapTy {
+    HashMap,
+    BTreeMap,
+}
+
+impl MapTy {
+    fn from_str(s: &str) -> Option<MapTy> {
+        match s {
+            "map" | "hash_map" => Some(MapTy::HashMap),
+            "btree_map" => Some(MapTy::BTreeMap),
+            _ => None,
+        }
+    }
+
+    fn module(&self) -> Ident {
+        match *self {
+            MapTy::HashMap => Ident::new("hash_map"),
+            MapTy::BTreeMap => Ident::new("btree_map"),
+        }
+    }
+}
+
 pub struct Field {
+    pub map_ty: MapTy,
     pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
@@ -28,7 +52,7 @@ impl Field {
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
-            } else if attr.name() == "map" {
+            } else if let Some(map_ty) = MapTy::from_str(attr.name()) {
                 let (k, v) = match *attr {
                     MetaItem::NameValue(_, Lit::Str(ref ident, _)) => {
                         let mut items = ident.split(',');
@@ -59,7 +83,7 @@ impl Field {
                     },
                     _ => return Ok(None),
                 };
-                set_option(&mut types, (key_ty_from_str(k)?, ValueTy::from_str(v)?),
+                set_option(&mut types, (map_ty, key_ty_from_str(k)?, ValueTy::from_str(v)?),
                            "duplicate map type attribute")?;
             } else {
                 return Ok(None);
@@ -67,8 +91,9 @@ impl Field {
         }
 
         Ok(match (types, tag) {
-            (Some((key_ty, val_ty)), Some(tag)) => {
+            (Some((map_ty, key_ty, val_ty)), Some(tag)) => {
                 Some(Field {
+                    map_ty: map_ty,
                     key_ty: key_ty,
                     value_ty: val_ty,
                     tag: tag
@@ -87,31 +112,32 @@ impl Field {
         let tag = self.tag;
         let ke = Ident::new(format!("_prost::encoding::{}::encode", self.key_ty.encode_as()));
         let kl = Ident::new(format!("_prost::encoding::{}::encoded_len", self.key_ty.encode_as()));
+        let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = Ident::new(format!("{}::default() as i32", ty));
                 quote! {
-                    _prost::encoding::hash_map::encode_with_default(#ke, #kl,
-                                                                    _prost::encoding::int32::encode,
-                                                                    _prost::encoding::int32::encoded_len,
-                                                                    &(#default),
-                                                                    #tag, &#ident, buf);
+                    _prost::encoding::#module::encode_with_default(#ke, #kl,
+                                                                   _prost::encoding::int32::encode,
+                                                                   _prost::encoding::int32::encoded_len,
+                                                                   &(#default),
+                                                                   #tag, &#ident, buf);
                 }
             },
             ValueTy::Scalar(ref value_ty) => {
                 let ve = Ident::new(format!("_prost::encoding::{}::encode", value_ty.encode_as()));
                 let vl = Ident::new(format!("_prost::encoding::{}::encoded_len", value_ty.encode_as()));
                 quote! {
-                    _prost::encoding::hash_map::encode(#ke, #kl, #ve, #vl,
-                                                       #tag, &#ident, buf);
+                    _prost::encoding::#module::encode(#ke, #kl, #ve, #vl,
+                                                      #tag, &#ident, buf);
                 }
             },
             ValueTy::Message => {
                 quote! {
-                    _prost::encoding::hash_map::encode(#ke, #kl,
-                                                       _prost::encoding::message::encode,
-                                                       _prost::encoding::message::encoded_len,
-                                                       #tag, &#ident, buf);
+                    _prost::encoding::#module::encode(#ke, #kl,
+                                                      _prost::encoding::message::encode,
+                                                      _prost::encoding::message::encoded_len,
+                                                      #tag, &#ident, buf);
                 }
             },
         }
@@ -121,21 +147,22 @@ impl Field {
     /// into the map.
     pub fn merge(&self, ident: &Ident) -> Tokens {
         let km = Ident::new(format!("_prost::encoding::{}::merge", self.key_ty.encode_as()));
+        let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = Ident::new(format!("{}::default() as i32", ty));
                 quote! {
-                    _prost::encoding::hash_map::merge_with_default(#km, _prost::encoding::int32::merge,
-                                                                   #default, &mut #ident, buf)
+                    _prost::encoding::#module::merge_with_default(#km, _prost::encoding::int32::merge,
+                                                                  #default, &mut #ident, buf)
                 }
             },
             ValueTy::Scalar(ref value_ty) => {
                 let vm = Ident::new(format!("_prost::encoding::{}::merge", value_ty.encode_as()));
-                quote!(_prost::encoding::hash_map::merge(#km, #vm, &mut #ident, buf))
+                quote!(_prost::encoding::#module::merge(#km, #vm, &mut #ident, buf))
             },
             ValueTy::Message => {
-                quote!(_prost::encoding::hash_map::merge(#km, _prost::encoding::message::merge,
-                                                         &mut #ident, buf))
+                quote!(_prost::encoding::#module::merge(#km, _prost::encoding::message::merge,
+                                                        &mut #ident, buf))
             },
         }
     }
@@ -144,22 +171,23 @@ impl Field {
     pub fn encoded_len(&self, ident: &Ident) -> Tokens {
         let tag = self.tag;
         let kl = Ident::new(format!("_prost::encoding::{}::encoded_len", self.key_ty.encode_as()));
+        let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = Ident::new(format!("{}::default() as i32", ty));
                 quote! {
-                    _prost::encoding::hash_map::encoded_len_with_default(
+                    _prost::encoding::#module::encoded_len_with_default(
                         #kl, _prost::encoding::int32::encoded_len,
                         &(#default), #tag, &#ident)
                 }
             },
             ValueTy::Scalar(ref value_ty) => {
                 let vl = Ident::new(format!("_prost::encoding::{}::encoded_len", value_ty.encode_as()));
-                quote!(_prost::encoding::hash_map::encoded_len(#kl, #vl, #tag, &#ident))
+                quote!(_prost::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
             },
             ValueTy::Message => {
-                quote!(_prost::encoding::hash_map::encoded_len(#kl, _prost::encoding::message::encoded_len,
-                                                               #tag, &#ident))
+                quote!(_prost::encoding::#module::encoded_len(#kl, _prost::encoding::message::encoded_len,
+                                                              #tag, &#ident))
             },
         }
     }
