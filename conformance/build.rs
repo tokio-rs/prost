@@ -81,6 +81,5 @@ fn main() {
     println!("cargo:rustc-env=CONFORMANCE_TEST_RUNNER={:?}", conformance_bin);
 
     prost_build::compile_protos(&[conformance_dir.join("conformance.proto")],
-                                &[conformance_dir],
-                                None).unwrap();
+                                &[conformance_dir]).unwrap();
 }

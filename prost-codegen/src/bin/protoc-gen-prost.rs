@@ -16,6 +16,7 @@ use std::path::PathBuf;
 use bytes::Buf;
 
 use prost::Message;
+use prost_codegen::CodeGeneratorConfig;
 use prost_codegen::google::protobuf::compiler::{
     code_generator_response,
     CodeGeneratorRequest,
@@ -33,7 +34,7 @@ fn main() {
     let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
-    let modules = prost_codegen::generate(request.proto_file, None);
+    let modules = prost_codegen::generate(&CodeGeneratorConfig::new(), request.proto_file);
 
     // For each module, build up a list of its child modules.
     let mut children: HashMap<prost_codegen::Module, Vec<String>> = HashMap::new();

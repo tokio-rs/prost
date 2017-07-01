@@ -39,8 +39,28 @@ pub trait ServiceGenerator {
     fn generate(&self, service: Service, buf: &mut String);
 }
 
-pub fn generate(files: Vec<FileDescriptorProto>,
-                service_generator: Option<&ServiceGenerator>) -> HashMap<Module, String> {
+/// Configuration options for Protobuf code generation.
+pub struct CodeGeneratorConfig {
+    service_generator: Option<Box<ServiceGenerator>>,
+}
+
+impl CodeGeneratorConfig {
+
+    /// Creates a new code generator with default options.
+    pub fn new() -> CodeGeneratorConfig {
+        CodeGeneratorConfig {
+            service_generator: None,
+        }
+    }
+
+    /// Configures the code generator to use the provided service generator.
+    pub fn service_generator(&mut self, service_generator: Box<ServiceGenerator>) -> &mut Self {
+        self.service_generator = Some(service_generator);
+        self
+    }
+}
+
+pub fn generate(config: &CodeGeneratorConfig, files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
     let mut modules = HashMap::new();
 
     let message_graph = MessageGraph::new(&files);
@@ -48,7 +68,7 @@ pub fn generate(files: Vec<FileDescriptorProto>,
     for file in files {
         let module = module(&file);
         let mut buf = modules.entry(module).or_insert(String::new());
-        CodeGenerator::generate(&service_generator, file, &message_graph, &mut buf);
+        CodeGenerator::generate(&config, &message_graph, file, &mut buf);
     }
     modules
 }

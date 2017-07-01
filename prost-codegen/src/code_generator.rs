@@ -26,8 +26,8 @@ use ident::{
     snake_to_upper_camel,
 };
 use message_graph::MessageGraph;
+use CodeGeneratorConfig;
 use Module;
-use ServiceGenerator;
 
 pub fn module(file: &FileDescriptorProto) -> Module {
     file.package()
@@ -54,9 +54,9 @@ pub struct CodeGenerator<'a> {
 }
 
 impl <'a> CodeGenerator<'a> {
-    pub fn generate(service_generator: &Option<&ServiceGenerator>,
-                    file: FileDescriptorProto,
+    pub fn generate(config: &CodeGeneratorConfig,
                     message_graph: &MessageGraph,
+                    file: FileDescriptorProto,
                     buf: &mut String) {
 
         let mut source_info = file.source_code_info.expect("no source code info in request");
@@ -100,7 +100,7 @@ impl <'a> CodeGenerator<'a> {
         }
         code_gen.path.pop();
 
-        if let &Some(ref service_generator) = service_generator {
+        if let Some(ref service_generator) = config.service_generator {
             code_gen.path.push(6);
             for (idx, service) in file.service.into_iter().enumerate() {
                 code_gen.path.push(idx as i32);
