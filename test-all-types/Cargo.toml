@@ -9,9 +9,9 @@ doctest = false
 
 [dependencies]
 bytes = "0.4"
-ieee754 = "0.2"
 prost = { path = ".." }
 prost-derive = { path = "../prost-derive" }
 
 [build-dependencies]
 prost-build = { path = "../prost-build" }
+prost-codegen = { path = "../prost-codegen" }

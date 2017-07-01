@@ -21,9 +21,10 @@ use bytes::{
 };
 use prost::Message;
 
+use test_all_types::protobuf_test_messages::proto3::TestAllTypes;
 use test_all_types::{
     RoundtripResult,
-    test_all_types_proto3_roundtrip,
+    roundtrip,
 };
 
 fn main() {
@@ -82,7 +83,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
     };
 
-    match test_all_types_proto3_roundtrip(&buf) {
+    match roundtrip::<TestAllTypes>(&buf) {
         RoundtripResult::Ok(buf) => {
             conformance_response::Result::ProtobufPayload(buf)
         },
