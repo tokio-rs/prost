@@ -1,7 +1,6 @@
 extern crate curl;
 extern crate env_logger;
 extern crate flate2;
-extern crate num_cpus;
 extern crate prost_build;
 extern crate tar;
 
@@ -54,25 +53,42 @@ fn main() {
     }
 
     if !conformance_bin.exists() {
+        let num_jobs = env::var("NUM_JOBS").expect("NUM_JOBS environment variable not set");
         let configure_rc = Command::new("./configure")
+                                   .arg("--disable-shared")
                                    .current_dir(&dir)
                                    .status()
                                    .expect("failed to execute configure");
         assert!(configure_rc.success(), "failed to configure protobuf");
 
         let make_rc = Command::new("make")
-                              .arg("-j").arg(num_cpus::get().to_string())
+                              .arg("-j").arg(&num_jobs)
                               .current_dir(&dir)
                               .status()
                               .expect("failed to execute make protobuf");
         assert!(make_rc.success(), "failed to make protobuf");
 
         let conformance_rc = Command::new("make")
-                                     .arg("-j").arg(num_cpus::get().to_string())
+                                     .arg("-j").arg(&num_jobs)
                                      .current_dir(&conformance_dir)
                                      .status()
                                      .expect("failed to execute make conformance");
         assert!(conformance_rc.success(), "failed to make conformance");
+
+        // Clean intermediate build artifacts. This saves about ~500MiB which
+        // helps a lot for CI caching.
+        let make_clean_rc = Command::new("make")
+                                    .arg("clean")
+                                    .current_dir(&dir)
+                                    .status()
+                                    .expect("failed to execute make clean");
+        assert!(make_clean_rc.success(), "failed to make clean");
+        let make_mostlyclean_rc = Command::new("make")
+                                          .arg("mostlyclean")
+                                          .current_dir(&conformance_dir)
+                                          .status()
+                                          .expect("failed to execute make mostlyclean");
+        assert!(make_mostlyclean_rc.success(), "failed to make mostlyclean");
     }
 
 

@@ -16,6 +16,5 @@ test-all-types = { path = "../test-all-types" }
 curl = "0.4"
 env_logger = "0.4"
 flate2 = "0.2"
-num_cpus = "1"
 prost-build = { path = "../prost-build" }
 tar = "0.4"
