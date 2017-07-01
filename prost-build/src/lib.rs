@@ -214,13 +214,15 @@ pub fn compile_protos_with_config<P>(config: &CodeGeneratorConfig,
 
     let target = match env::var("OUT_DIR") {
         Ok(val) => PathBuf::from(val),
-        Err(env::VarError::NotPresent) => return Err(Error::new(ErrorKind::Other,
-                                                                "OUT_DIR environment variable not set")),
-        Err(env::VarError::NotUnicode(..)) => return Err(Error::new(ErrorKind::InvalidData,
-                                                                    "OUT_DIR environment variable")),
+        Err(env::VarError::NotPresent) => {
+            return Err(Error::new(ErrorKind::Other,
+                                  "OUT_DIR environment variable is not set"));
+        },
+        Err(env::VarError::NotUnicode(..)) => {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "OUT_DIR environment variable is not valid UTF-8"));
+        },
     };
-
-    let tmp = tempdir::TempDir::new("proto-build")?;
 
     // TODO: We should probably emit 'rerun-if-changed=PATH' directives for
     // cargo, however according to
@@ -229,29 +231,41 @@ pub fn compile_protos_with_config<P>(config: &CodeGeneratorConfig,
     // don't want. Figure out how to do it in an additive way, perhaps gcc-rs
     // has this figured out.
 
-    // If the protoc directory doesn't already exist from a previous build,
-    // create it, and extract the protoc release into it.
-    let protoc_dir = target.join("protoc");
-    if !protoc_dir.exists() {
-        fs::create_dir(&protoc_dir)?;
-        download_protoc(&protoc_dir)?;
-    }
+    // Find protoc.
+    let (protoc, protoc_include) = match find_protoc()? {
+        Some(paths) => paths,
+        None => {
+            // If the protoc directory doesn't already exist from a previous build,
+            // create it, and extract the protoc release into it.
+            let protoc_dir = target.join("protoc");
+            if !protoc_dir.exists() {
+                fs::create_dir(&protoc_dir)?;
+                download_protoc(&protoc_dir)?;
+            }
 
-    let mut protoc = protoc_dir.join("bin");
-    protoc.push("protoc");
-    protoc.set_extension(env::consts::EXE_EXTENSION);
+            let mut protoc = protoc_dir.join("bin");
+            protoc.push("protoc");
+            protoc.set_extension(env::consts::EXE_EXTENSION);
 
-    let descriptor_set = tmp.path().join("proto-descriptor-set");
+            (protoc, protoc_dir.join("include"))
+        },
+    };
+
+    let tmp = tempdir::TempDir::new("prost-build")?;
+    let descriptor_set = tmp.path().join("prost-descriptor-set");
 
     let mut cmd = Command::new(protoc);
-    cmd.arg("-I").arg(protoc_dir.join("include"))
-       .arg("--include_imports")
+    cmd.arg("--include_imports")
        .arg("--include_source_info")
        .arg("-o").arg(&descriptor_set);
 
     for include in includes {
         cmd.arg("-I").arg(include.as_ref());
     }
+
+    // Set the protoc include after the user includes in case the user wants to
+    // override one of the built-in .protos.
+    cmd.arg("-I").arg(protoc_include);
 
     for proto in protos {
         cmd.arg(proto.as_ref());
@@ -284,7 +298,37 @@ pub fn compile_protos_with_config<P>(config: &CodeGeneratorConfig,
     Ok(())
 }
 
+/// Finds `protoc` and the protobuf include dir in the environment, if it is available.
+fn find_protoc() -> Result<Option<(PathBuf, PathBuf)>> {
+    let protoc = match env::var("PROTOC") {
+        Ok(val) => PathBuf::from(val),
+        Err(env::VarError::NotPresent) => return Ok(None),
+        Err(env::VarError::NotUnicode(..)) => {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "PROTOC environment variable is not valid UTF-8"));
+        },
+    };
+
+    let protoc_include = match env::var("PROTOC_INCLUDE") {
+        Ok(val) => PathBuf::from(val),
+        Err(env::VarError::NotPresent) => {
+            // We could fall back to downloading protoc here, but if PROTOC is set without
+            // PROTOC_INCLUDE, it indicates a misconfiguration, so lets bubble that back to the
+            // user.
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "PROTOC_INCLUDE environment variable not set (PROTOC is set)"));
+        }
+        Err(env::VarError::NotUnicode(..)) => {
+            return Err(Error::new(ErrorKind::InvalidData,
+                                  "PROTOC_INCLUDE environment variable is not valid UTF-8"));
+        },
+    };
+
+    Ok(Some((protoc, protoc_include)))
+}
+
 /// Downloads and unpacks the protoc package for the current architecture to the target path.
+/// Returns the paths to `protoc` and the include directory.
 fn download_protoc(target: &Path) -> Result<()> {
     let url = protoc_url()?;
     let mut data = Vec::new();
