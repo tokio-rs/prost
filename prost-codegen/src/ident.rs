@@ -70,6 +70,40 @@ pub fn snake_to_upper_camel(snake: &str) -> String {
     ident
 }
 
+/// Matches a 'matcher' against a fully qualified field name.
+pub fn match_field(matcher: &str, msg: &str, field: &str) -> bool {
+    assert_eq!(b'.', msg.as_bytes()[0]);
+
+    if matcher.is_empty() {
+        return false;
+    } else if matcher == "." {
+        return true;
+    }
+
+    let match_paths = matcher.split('.').collect::<Vec<_>>();
+    let field_paths = {
+        let mut paths = msg.split('.').collect::<Vec<_>>();
+        paths.push(field);
+        paths
+    };
+
+    if &matcher[..1] == "." {
+        // Prefix match.
+        if match_paths.len() > field_paths.len() {
+            false
+        } else {
+            &match_paths[..] == &field_paths[..match_paths.len()]
+        }
+    } else {
+        // Suffix match.
+        if match_paths.len() > field_paths.len() {
+            false
+        } else {
+            &match_paths[..] == &field_paths[field_paths.len() - match_paths.len()..]
+        }
+    }
+}
+
 /// Returns true if the character is an upper-case ASCII character.
 #[inline]
 fn is_uppercase(c: u8) -> bool {
@@ -137,5 +171,29 @@ mod tests {
         assert_eq!("_FooBar_", &snake_to_upper_camel("_FOO_BAR_"));
         assert_eq!("Fuzzbuster", &snake_to_upper_camel("fuzzBuster"));
         assert_eq!("Self_", &snake_to_upper_camel("self"));
+    }
+
+    #[test]
+    fn test_match_field() {
+        // Prefix matches
+        assert!(match_field(".", ".foo.bar.Baz", "buzz"));
+        assert!(match_field(".foo", ".foo.bar.Baz", "buzz"));
+        assert!(match_field(".foo.bar", ".foo.bar.Baz", "buzz"));
+        assert!(match_field(".foo.bar.Baz", ".foo.bar.Baz", "buzz"));
+        assert!(match_field(".foo.bar.Baz.buzz", ".foo.bar.Baz", "buzz"));
+
+        assert!(!match_field(".fo", ".foo.bar.Baz", "buzz"));
+        assert!(!match_field(".foo.", ".foo.bar.Baz", "buzz"));
+        assert!(!match_field(".buzz", ".foo.bar.Baz", "buzz"));
+        assert!(!match_field(".Baz.buzz", ".foo.bar.Baz", "buzz"));
+
+        // Suffix matches
+        assert!(match_field("buzz", ".foo.bar.Baz", "buzz"));
+        assert!(match_field("Baz.buzz", ".foo.bar.Baz", "buzz"));
+        assert!(match_field("bar.Baz.buzz", ".foo.bar.Baz", "buzz"));
+        assert!(match_field("foo.bar.Baz.buzz", ".foo.bar.Baz", "buzz"));
+
+        assert!(!match_field("buz", ".foo.bar.Baz", "buzz"));
+        assert!(!match_field("uz", ".foo.bar.Baz", "buzz"));
     }
 }

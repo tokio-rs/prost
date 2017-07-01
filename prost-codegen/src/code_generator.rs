@@ -23,6 +23,7 @@ use google::protobuf::field_descriptor_proto::{Label, Type};
 use google::protobuf::source_code_info::Location;
 use ident::{
     camel_to_snake,
+    match_field,
     snake_to_upper_camel,
 };
 use message_graph::MessageGraph;
@@ -44,6 +45,7 @@ enum Syntax {
 }
 
 pub struct CodeGenerator<'a> {
+    config: &'a CodeGeneratorConfig,
     package: String,
     source_info: SourceCodeInfo,
     syntax: Syntax,
@@ -73,6 +75,7 @@ impl <'a> CodeGenerator<'a> {
         };
 
         let mut code_gen = CodeGenerator {
+            config: config,
             package: file.package.unwrap(),
             source_info: source_info,
             syntax: syntax,
@@ -100,7 +103,7 @@ impl <'a> CodeGenerator<'a> {
         }
         code_gen.path.pop();
 
-        if let Some(ref service_generator) = config.service_generator {
+        if let Some(ref service_generator) = code_gen.config.service_generator {
             code_gen.path.push(6);
             for (idx, service) in file.service.into_iter().enumerate() {
                 code_gen.path.push(idx as i32);
@@ -162,7 +165,7 @@ impl <'a> CodeGenerator<'a> {
         for (field, idx) in fields.into_iter() {
             self.path.push(idx as i32);
             match field.type_name.as_ref().and_then(|type_name| map_types.get(type_name)) {
-                Some(&(ref key, ref value)) => self.append_map_field(field, key, value),
+                Some(&(ref key, ref value)) => self.append_map_field(&fq_message_name, field, key, value),
                 None => self.append_field(&fq_message_name, field),
             }
             self.path.pop();
@@ -257,6 +260,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_map_field(&mut self,
+                        msg_name: &str,
                         field: FieldDescriptorProto,
                         key: &FieldDescriptorProto,
                         value: &FieldDescriptorProto) {
@@ -269,15 +273,26 @@ impl <'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
 
+        let btree_map = self.config
+                            .btree_map
+                            .iter()
+                            .any(|matcher| match_field(matcher, msg_name, field.name()));
+        let (annotation_ty, rust_ty) = if btree_map {
+            ("btree_map", "BTreeMap")
+        } else {
+            ("map", "HashMap")
+        };
+
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
-        self.buf.push_str(&format!("#[prost(map=\"{}, {}\", tag=\"{}\")]\n",
+        self.buf.push_str(&format!("#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+                                   annotation_ty,
                                    key_tag,
                                    value_tag,
                                    field.number()));
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: ::std::collections::HashMap<{}, {}>,\n",
-                                   camel_to_snake(field.name()), key_ty, value_ty));
+        self.buf.push_str(&format!("pub {}: ::std::collections::{}<{}, {}>,\n",
+                                   camel_to_snake(field.name()), rust_ty, key_ty, value_ty));
     }
 
     fn append_oneof_field(&mut self,
