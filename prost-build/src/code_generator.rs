@@ -23,9 +23,9 @@ use ast::{
     Service,
 };
 use ident::{
-    camel_to_snake,
+    to_snake,
     match_field,
-    snake_to_upper_camel,
+    to_upper_camel,
 };
 use message_graph::MessageGraph;
 use Config;
@@ -35,7 +35,7 @@ pub fn module(file: &FileDescriptorProto) -> Module {
     file.package()
         .split('.')
         .filter(|s| !s.is_empty())
-        .map(camel_to_snake)
+        .map(to_snake)
         .collect()
 }
 
@@ -275,7 +275,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("\")]\n");
         self.push_indent();
         self.buf.push_str("pub ");
-        self.buf.push_str(&camel_to_snake(field.name()));
+        self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated { self.buf.push_str("::std::vec::Vec<"); }
         else if optional { self.buf.push_str("::std::option::Option<"); }
@@ -319,7 +319,7 @@ impl <'a> CodeGenerator<'a> {
                                    field.number()));
         self.push_indent();
         self.buf.push_str(&format!("pub {}: ::std::collections::{}<{}, {}>,\n",
-                                   camel_to_snake(field.name()), rust_ty, key_ty, value_ty));
+                                   to_snake(field.name()), rust_ty, key_ty, value_ty));
     }
 
     fn append_oneof_field(&mut self,
@@ -327,15 +327,15 @@ impl <'a> CodeGenerator<'a> {
                           oneof: &OneofDescriptorProto,
                           fields: &[(FieldDescriptorProto, usize)]) {
         let name = format!("{}::{}",
-                           camel_to_snake(message_name),
-                           snake_to_upper_camel(oneof.name()));
+                           to_snake(message_name),
+                           to_upper_camel(oneof.name()));
         self.append_doc();
         self.push_indent();
         self.buf.push_str(&format!("#[prost(oneof=\"{}\", tags=\"{}\")]\n",
                                    name,
                                    fields.iter().map(|&(ref field, _)| field.number()).join(", ")));
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: ::std::option::Option<{}>,\n", camel_to_snake(oneof.name()), name));
+        self.buf.push_str(&format!("pub {}: ::std::option::Option<{}>,\n", to_snake(oneof.name()), name));
     }
 
     fn append_oneof(&mut self,
@@ -352,7 +352,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("#[derive(Clone, Debug, Oneof, PartialEq)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(&snake_to_upper_camel(oneof.name()));
+        self.buf.push_str(&to_upper_camel(oneof.name()));
         self.buf.push_str(" {\n");
 
         self.path.push(2);
@@ -371,7 +371,7 @@ impl <'a> CodeGenerator<'a> {
 
             self.push_indent();
             let ty = self.resolve_type(&field);
-            self.buf.push_str(&format!("{}({}),\n", snake_to_upper_camel(field.name()), ty));
+            self.buf.push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
         }
         self.depth -= 1;
         self.path.pop();
@@ -471,7 +471,7 @@ impl <'a> CodeGenerator<'a> {
     fn append_enum_value(&mut self, value: EnumValueDescriptorProto) {
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&snake_to_upper_camel(value.name()));
+        self.buf.push_str(&to_upper_camel(value.name()));
         self.buf.push_str(" = ");
         self.buf.push_str(&value.number().to_string());
         self.buf.push_str(",\n");
@@ -524,7 +524,7 @@ impl <'a> CodeGenerator<'a> {
     fn push_mod(&mut self, module: &str) {
         self.push_indent();
         self.buf.push_str("pub mod ");
-        self.buf.push_str(&camel_to_snake(module));
+        self.buf.push_str(&to_snake(module));
         self.buf.push_str(" {\n");
 
         self.package.push_str(".");
@@ -583,7 +583,7 @@ impl <'a> CodeGenerator<'a> {
         }
 
         local_path.map(|_| "super".to_string())
-                  .chain(ident_path.map(camel_to_snake))
+                  .chain(ident_path.map(to_snake))
                   .chain(Some(ident_type.to_string()).into_iter())
                   .join("::")
     }

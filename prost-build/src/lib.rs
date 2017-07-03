@@ -107,6 +107,7 @@
 //! exist for Linux, macOS, and Windows systems.
 
 extern crate bytes;
+extern crate heck;
 extern crate itertools;
 extern crate multimap;
 extern crate petgraph;
