@@ -1,12 +1,8 @@
 //! Utility functions and types for encoding and decoding Protobuf types.
+//!
+//! Meant to be used only from `Message` implementations.
 
 use std::cmp::min;
-use std::error;
-use std::io::{
-    Result,
-    Error,
-    ErrorKind,
-};
 use std::str;
 use std::u32;
 use std::usize;
@@ -18,22 +14,8 @@ use bytes::{
     Take,
 };
 
+use DecodeError;
 use Message;
-
-/// Returns an invalid data IO error wrapping the provided cause.
-///
-/// This should be used primarily when decoding a Protobuf type fails.
-pub fn invalid_data<E>(error: E) -> Error where E: Into<Box<error::Error + Send + Sync>> {
-    Error::new(ErrorKind::InvalidData, error.into())
-}
-
-/// Returns an invalid input IO error wrapping the provided cause.
-///
-/// This should be used primarily when encoding a Protobuf type fails due to
-/// insufficient output buffer space.
-pub fn invalid_input<E>(error: E) -> Error where E: Into<Box<error::Error + Send + Sync>> {
-    Error::new(ErrorKind::InvalidInput, error.into())
-}
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -68,7 +50,7 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
 
 /// Decodes a LEB128-encoded variable length integer from the buffer.
 #[inline]
-pub fn decode_varint<B>(buf: &mut B) -> Result<u64> where B: Buf {
+pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
     let mut value = 0;
     for count in 0..min(10, buf.remaining()) {
         let byte = buf.get_u8();
@@ -78,7 +60,7 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64> where B: Buf {
         }
     }
 
-    Err(invalid_data("failed to decode varint"))
+    Err(DecodeError::new("invalid varint"))
 }
 
 /// Returns the encoded length of the value in LEB128 variable length format.
@@ -112,13 +94,13 @@ pub const MAX_TAG: u32 = (1 << 29) - 1;
 impl WireType {
     // TODO: impl TryFrom<u8> when stable.
     #[inline]
-    pub fn try_from(val: u8) -> Result<WireType> {
+    pub fn try_from(val: u8) -> Result<WireType, DecodeError> {
         match val {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
             5 => Ok(WireType::ThirtyTwoBit),
-            _ => Err(invalid_data(format!("invalid wire type value: {}", val))),
+            _ => Err(DecodeError::new(format!("invalid wire type value: {}", val))),
         }
     }
 }
@@ -135,16 +117,16 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut
 /// Decodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline]
-pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType)> where B: Buf {
+pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError> where B: Buf {
     let key = decode_varint(buf)?;
     if key > u32::MAX as u64 {
-        return Err(invalid_data("failed to decode field key: u32 overflow"));
+        return Err(DecodeError::new(format!("invalid key value: {}", key)));
     }
     let wire_type = WireType::try_from(key as u8 & 0x07)?;
     let tag = key as u32 >> 3;
 
     if tag < MIN_TAG {
-        return Err(invalid_data("invalid zero tag value"));
+        return Err(DecodeError::new("invalid tag value: 0"));
     }
 
     Ok((tag, wire_type))
@@ -160,40 +142,26 @@ pub fn key_len(tag: u32) -> usize {
 /// Checks that the expected wire type matches the actual wire type,
 /// or returns an error result.
 #[inline]
-pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<()> {
+pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), DecodeError> {
     if expected != actual {
-        return Err(invalid_data(format!("invalid wire type: {:?} (expected {:?})", actual, expected)));
+        return Err(DecodeError::new(format!("invalid wire type: {:?} (expected {:?})", actual, expected)));
     }
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<()> where B: Buf {
-    match wire_type {
-        WireType::Varint => {
-            decode_varint(buf).map_err(|error| {
-                Error::new(error.kind(), format!("failed to skip varint field: {}", error))
-            })?;
-        },
-        WireType::SixtyFourBit => {
-            if buf.remaining() < 8 {
-                return Err(invalid_data("failed to skip 64-bit field: buffer underflow"));
-            }
-            buf.advance(8);
-        },
-        WireType::ThirtyTwoBit => {
-            if buf.remaining() < 4 {
-                return Err(invalid_data("failed to skip 32-bit field: buffer underflow"));
-            }
-            buf.advance(4);
-        },
-        WireType::LengthDelimited => {
-            let len = decode_varint(buf)?;
-            if len > buf.remaining() as u64 {
-                return Err(invalid_data("failed to skip length delimited field: buffer underflow"));
-            }
-            buf.advance(len as usize);
-        },
+pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+    let len = match wire_type {
+        WireType::Varint => decode_varint(buf).map(|_| 0)?,
+        WireType::ThirtyTwoBit => 4,
+        WireType::SixtyFourBit => 8,
+        WireType::LengthDelimited => decode_varint(buf)?,
     };
+
+    if len > buf.remaining() as u64 {
+        return Err(DecodeError::new("buffer underflow"));
+    }
+
+    buf.advance(len as usize);
     Ok(())
 }
 
@@ -217,11 +185,11 @@ macro_rules! merge_repeated_numeric {
         pub fn $merge_repeated<B>(wire_type: WireType,
                                   values: &mut Vec<$ty>,
                                   buf: &mut Take<B>)
-                                  -> Result<()> where B: Buf {
+                                  -> Result<(), DecodeError> where B: Buf {
             if wire_type == WireType::LengthDelimited {
                 let len = decode_varint(buf)?;
                 if len > buf.remaining() as u64 {
-                    return Err(invalid_data("buffer underflow"));
+                    return Err(DecodeError::new("buffer underflow"));
                 }
                 let len = len as usize;
                 let limit = buf.limit();
@@ -268,7 +236,7 @@ macro_rules! varint {
                 encode_varint($to_uint64, buf);
             }
 
-            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<()> where B: Buf {
+            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
                 check_wire_type(WireType::Varint, wire_type)?;
                 let $from_uint64_value = decode_varint(buf)?;
                 *value = $from_uint64;
@@ -385,10 +353,10 @@ macro_rules! fixed_width {
                 buf.$put::<LittleEndian>(*value);
             }
 
-            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<()> where B: Buf {
+            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
                 check_wire_type($wire_type, wire_type)?;
                 if buf.remaining() < $width {
-                    return Err(invalid_data("buffer underflow"));
+                    return Err(DecodeError::new("buffer underflow"));
                 }
                 *value = buf.$get::<LittleEndian>();
                 Ok(())
@@ -470,7 +438,7 @@ macro_rules! length_delimited {
 
         encode_repeated!($ty);
 
-         pub fn merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+         pub fn merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
                 let mut value = Default::default();
                 merge(wire_type, &mut value, buf)?;
@@ -525,14 +493,14 @@ pub mod string {
     }
     pub fn merge<B>(wire_type: WireType,
                     value: &mut String,
-                    buf: &mut Take<B>) -> Result<()> where B: Buf {
+                    buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
         unsafe {
             // String::as_mut_vec is unsafe because it doesn't check that the bytes
             // inserted into it the resulting vec are valid UTF-8. We check
             // explicitly in order to ensure this is safe.
             super::bytes::merge(wire_type, value.as_mut_vec(), buf)?;
             str::from_utf8(value.as_bytes()).map_err(|_| {
-                invalid_data("failed to decode string: data is not UTF-8 encoded")
+                DecodeError::new("invalid string value: data is not UTF-8 encoded")
             })?;
         }
         Ok(())
@@ -550,11 +518,11 @@ pub mod bytes {
         buf.put_slice(value);
     }
 
-    pub fn merge<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<()> where B: Buf {
+    pub fn merge<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if (buf.remaining() as u64) < len {
-            return Err(invalid_data("buffer underflow"));
+            return Err(DecodeError::new("buffer underflow"));
         }
         let limit = buf.limit();
         buf.set_limit(len as usize);
@@ -580,19 +548,19 @@ pub mod message {
 
     pub fn encode<M, B>(tag: u32, msg: &M, buf: &mut B)
     where M: Message,
-        B: BufMut {
+          B: BufMut {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(msg.encoded_len() as u64, buf);
         msg.encode_raw(buf);
     }
 
-    pub fn merge<M, B>(wire_type: WireType, msg: &mut M, buf: &mut Take<B>) -> Result<()>
+    pub fn merge<M, B>(wire_type: WireType, msg: &mut M, buf: &mut Take<B>) -> Result<(), DecodeError>
     where M: Message,
-        B: Buf {
+          B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(invalid_data("buffer underflow"));
+            return Err(DecodeError::new("buffer underflow"));
         }
 
         let len = len as usize;
@@ -605,15 +573,15 @@ pub mod message {
 
     pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
     where M: Message,
-        B: BufMut {
+          B: BufMut {
         for msg in messages {
             encode(tag, msg, buf);
         }
     }
 
-    pub fn merge_repeated<M, B>(wire_type: WireType, messages: &mut Vec<M>, buf: &mut Take<B>) -> Result<()>
+    pub fn merge_repeated<M, B>(wire_type: WireType, messages: &mut Vec<M>, buf: &mut Take<B>) -> Result<(), DecodeError>
     where M: Message,
-        B: Buf {
+          B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut msg = M::default();
         merge(WireType::LengthDelimited, &mut msg, buf)?;
@@ -668,12 +636,12 @@ macro_rules! map {
                                       val_merge: VM,
                                       values: &mut $map_ty<K, V>,
                                       buf: &mut Take<B>)
-                                      -> Result<()>
+                                      -> Result<(), DecodeError>
         where K: Default + Eq + Hash + Ord,
               V: Default,
               B: Buf,
-              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<()>,
-              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<()> {
+              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<(), DecodeError>,
+              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<(), DecodeError> {
             merge_with_default(key_merge, val_merge, V::default(), values, buf)
         }
 
@@ -737,14 +705,14 @@ macro_rules! map {
                                                    val_default: V,
                                                    values: &mut $map_ty<K, V>,
                                                    buf: &mut Take<B>)
-                                                   -> Result<()>
+                                                   -> Result<(), DecodeError>
         where K: Default + Eq + Hash + Ord,
               B: Buf,
-              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<()>,
-              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<()> {
+              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<(), DecodeError>,
+              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<(), DecodeError> {
             let len = decode_varint(buf)?;
             if len > buf.remaining() as u64 {
-                return Err(invalid_data("buffer underflow"));
+                return Err(DecodeError::new("buffer underflow"));
             }
             let len = len as usize;
             let limit = buf.limit();
@@ -812,7 +780,7 @@ mod test {
                          tag: u32,
                          wire_type: WireType,
                          encode: fn(u32, &T, &mut BytesMut),
-                         merge: fn(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<()>,
+                         merge: fn(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<(), DecodeError>,
                          encoded_len: fn(u32, &T) -> usize)
                          -> TestResult
     where T: Debug + Default + PartialEq {
@@ -895,7 +863,7 @@ mod test {
                                              -> TestResult
     where T: Debug + Default + PartialEq,
           E: FnOnce(u32, &T, &mut BytesMut),
-          M: FnMut(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<()>,
+          M: FnMut(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<(), DecodeError>,
           L: FnOnce(u32, &T) -> usize {
 
         if tag > MAX_TAG || tag < MIN_TAG {

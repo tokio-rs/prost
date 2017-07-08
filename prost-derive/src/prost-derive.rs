@@ -88,7 +88,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
         let merge = field.merge(&Ident::new(format!("self.{}", field_ident)));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
-        quote!(#(#tags)* => #merge.map_err(|error| map_err(stringify!(#field_ident), error))?,)
+        quote!(#(#tags)* => #merge.map_err(|mut error| {
+            error.push(stringify!(#ident), stringify!(#field_ident));
+            error
+        })?,)
     });
 
     let default = fields.iter()
@@ -131,15 +134,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, buf: &mut _bytes::Take<B>) -> ::std::io::Result<()> where B: _bytes::Buf {
-                    fn map_err(field: &str, cause: ::std::io::Error) -> ::std::io::Error {
-                        ::std::io::Error::new(cause.kind(),
-                                              format!(concat!("failed to decode field ",
-                                                              stringify!(#ident),
-                                                              ".{}: {}"),
-                                                      field, cause))
-                    }
-
+                fn merge<B>(&mut self, buf: &mut _bytes::Take<B>) -> ::std::result::Result<(), _prost::DecodeError>
+                where B: _bytes::Buf {
                     while _bytes::Buf::has_remaining(buf) {
                         let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
                         match tag {
@@ -357,7 +353,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                                 tag: u32,
                                 wire_type: _prost::encoding::WireType,
                                 buf: &mut _bytes::Take<B>)
-                                -> ::std::io::Result<()>
+                                -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     match tag {
                         #(#merge,)*

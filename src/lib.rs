@@ -7,8 +7,11 @@ extern crate bytes;
 #[macro_use]
 extern crate quickcheck;
 
+mod error;
 mod message;
 
+#[doc(hidden)]
 pub mod encoding;
 
 pub use message::Message;
+pub use error::{DecodeError, EncodeError};

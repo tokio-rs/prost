@@ -15,13 +15,8 @@ pub mod google {
     }
 }
 
-use std::error;
-use std::io::{
-    Cursor,
-    Error,
-    ErrorKind,
-    Result,
-};
+use std::error::Error;
+use std::io::Cursor;
 
 use bytes::Buf;
 use prost::Message;
@@ -31,9 +26,9 @@ pub enum RoundtripResult {
     Ok(Vec<u8>),
     /// The data could not be decoded. This could indicate a bug in prost,
     /// or it could indicate that the input was bogus.
-    DecodeError(Error),
+    DecodeError(prost::DecodeError),
     /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
-    Error(Error),
+    Error(Box<Error + Send + Sync>),
 }
 
 impl RoundtripResult {
@@ -47,17 +42,12 @@ impl RoundtripResult {
     }
 
     /// Unwrap the roundtrip result. Panics if the result was a validation or re-encoding error.
-    pub fn unwrap_error(self) -> Result<Vec<u8>> {
+    pub fn unwrap_error(self) -> Result<Vec<u8>, prost::DecodeError> {
         match self {
             RoundtripResult::Ok(buf) => Ok(buf),
             RoundtripResult::DecodeError(error) => Err(error),
             RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
         }
-    }
-
-    /// Creates a new roundtrip error result.
-    pub fn error<E>(error: E) -> RoundtripResult where E: Into<Box<error::Error + Send + Sync>> {
-        RoundtripResult::Error(Error::new(ErrorKind::Other, error))
     }
 }
 
@@ -78,22 +68,22 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message {
 
     let mut buf1 = Vec::new();
     if let Err(error) = all_types.encode(&mut buf1) {
-        return RoundtripResult::Error(error);
+        return RoundtripResult::Error(error.into());
     }
     if encoded_len != buf1.len() {
-        return RoundtripResult::error(
+        return RoundtripResult::Error(
             format!("expected encoded len ({}) did not match actual encoded len ({})",
-                    encoded_len, buf1.len()));
+                    encoded_len, buf1.len()).into());
     }
 
     let roundtrip = match M::decode(&mut Buf::take(Cursor::new(&buf1), encoded_len)) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(error),
+        Err(error) => return RoundtripResult::Error(error.into()),
     };
 
     let mut buf2 = Vec::new();
     if let Err(error) = roundtrip.encode(&mut buf2) {
-        return RoundtripResult::Error(error);
+        return RoundtripResult::Error(error.into());
     }
 
     /*
@@ -104,7 +94,7 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message {
     */
 
     if buf1 != buf2 {
-        return RoundtripResult::error("roundtripped encoded buffers do not match")
+        return RoundtripResult::Error("roundtripped encoded buffers do not match".into())
     }
 
     RoundtripResult::Ok(buf1)
