@@ -91,7 +91,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         quote!(#(#tags)* => #merge.map_err(|mut error| {
             error.push(stringify!(#ident), stringify!(#field_ident));
             error
-        })?,)
+        }),)
     });
 
     let default = fields.iter()
@@ -134,16 +134,13 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 }
 
                 #[inline]
-                fn merge<B>(&mut self, buf: &mut _bytes::Take<B>) -> ::std::result::Result<(), _prost::DecodeError>
+                fn merge_field<B>(&mut self, buf: &mut B) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
-                    while _bytes::Buf::has_remaining(buf) {
-                        let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
-                        match tag {
-                            #(#merge)*
-                            _ => _prost::encoding::skip_field(wire_type, buf)?,
-                        }
+                    let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
+                    match tag {
+                        #(#merge)*
+                        _ => _prost::encoding::skip_field(wire_type, buf),
                     }
-                    Ok(())
                 }
 
                 #[inline]
@@ -352,7 +349,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                 pub fn merge<B>(field: &mut ::std::option::Option<#ident>,
                                 tag: u32,
                                 wire_type: _prost::encoding::WireType,
-                                buf: &mut _bytes::Take<B>)
+                                buf: &mut B)
                                 -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     match tag {

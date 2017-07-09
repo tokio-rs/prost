@@ -11,7 +11,6 @@ use bytes::{
     Buf,
     BufMut,
     LittleEndian,
-    Take,
 };
 
 use DecodeError;
@@ -184,23 +183,27 @@ macro_rules! merge_repeated_numeric {
      $merge_repeated:ident) => (
         pub fn $merge_repeated<B>(wire_type: WireType,
                                   values: &mut Vec<$ty>,
-                                  buf: &mut Take<B>)
+                                  buf: &mut B)
                                   -> Result<(), DecodeError> where B: Buf {
             if wire_type == WireType::LengthDelimited {
                 let len = decode_varint(buf)?;
-                if len > buf.remaining() as u64 {
+                let remaining = buf.remaining();
+                if len > remaining as u64 {
                     return Err(DecodeError::new("buffer underflow"));
                 }
                 let len = len as usize;
-                let limit = buf.limit();
-                buf.set_limit(len);
+                let limit = remaining - len as usize;
 
-                while buf.has_remaining() {
-                let mut value = Default::default();
-                $merge($wire_type, &mut value, buf)?;
-                values.push(value);
+                while buf.remaining() > limit {
+                    let mut value = Default::default();
+                    $merge($wire_type, &mut value, buf)?;
+                    values.push(value);
                 }
-                buf.set_limit(limit - len);
+
+                if buf.remaining() != limit {
+                    return Err(DecodeError::new("delimited length exceeded"))
+                }
+
             } else {
                 check_wire_type($wire_type, wire_type)?;
                 let mut value = Default::default();
@@ -438,7 +441,7 @@ macro_rules! length_delimited {
 
         encode_repeated!($ty);
 
-         pub fn merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
+         pub fn merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
                 let mut value = Default::default();
                 merge(wire_type, &mut value, buf)?;
@@ -493,7 +496,7 @@ pub mod string {
     }
     pub fn merge<B>(wire_type: WireType,
                     value: &mut String,
-                    buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
+                    buf: &mut B) -> Result<(), DecodeError> where B: Buf {
         unsafe {
             // String::as_mut_vec is unsafe because it doesn't check that the bytes
             // inserted into it the resulting vec are valid UTF-8. We check
@@ -518,25 +521,26 @@ pub mod bytes {
         buf.put_slice(value);
     }
 
-    pub fn merge<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
+    pub fn merge<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
-        if (buf.remaining() as u64) < len {
+        if len > buf.remaining() as u64 {
             return Err(DecodeError::new("buffer underflow"));
         }
-        let limit = buf.limit();
-        buf.set_limit(len as usize);
-        value.clear();
-        value.reserve_exact(len as usize);
-        while buf.has_remaining() {
+
+        let mut remaining = len as usize;
+        while remaining > 0 {
             let len = {
                 let bytes = buf.bytes();
+                debug_assert!(bytes.len() > 0, "Buf::bytes returned 0-length slice");
+                let len = min(remaining, bytes.len());
+                let bytes = &bytes[..len];
                 value.extend_from_slice(bytes);
-                bytes.len()
+                len
             };
+            remaining -= len;
             buf.advance(len);
         }
-        buf.set_limit(limit - len as usize);
         Ok(())
     }
 
@@ -554,20 +558,24 @@ pub mod message {
         msg.encode_raw(buf);
     }
 
-    pub fn merge<M, B>(wire_type: WireType, msg: &mut M, buf: &mut Take<B>) -> Result<(), DecodeError>
+    pub fn merge<M, B>(wire_type: WireType, msg: &mut M, buf: &mut B) -> Result<(), DecodeError>
     where M: Message,
           B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
-        if len > buf.remaining() as u64 {
-            return Err(DecodeError::new("buffer underflow"));
+        let remaining = buf.remaining();
+        if len > remaining as u64 {
+            return Err(DecodeError::new("buffer underflow"))
         }
 
-        let len = len as usize;
-        let limit = buf.limit();
-        buf.set_limit(len);
-        msg.merge(buf)?;
-        buf.set_limit(limit - len);
+        let limit = remaining - len as usize;
+        while buf.remaining() > limit {
+            msg.merge_field(buf)?;
+        }
+
+        if buf.remaining() != limit {
+            return Err(DecodeError::new("delimited length exceeded"))
+        }
         Ok(())
     }
 
@@ -579,7 +587,7 @@ pub mod message {
         }
     }
 
-    pub fn merge_repeated<M, B>(wire_type: WireType, messages: &mut Vec<M>, buf: &mut Take<B>) -> Result<(), DecodeError>
+    pub fn merge_repeated<M, B>(wire_type: WireType, messages: &mut Vec<M>, buf: &mut B) -> Result<(), DecodeError>
     where M: Message,
           B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
@@ -635,13 +643,13 @@ macro_rules! map {
         pub fn merge<K, V, B, KM, VM>(key_merge: KM,
                                       val_merge: VM,
                                       values: &mut $map_ty<K, V>,
-                                      buf: &mut Take<B>)
+                                      buf: &mut B)
                                       -> Result<(), DecodeError>
         where K: Default + Eq + Hash + Ord,
               V: Default,
               B: Buf,
-              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<(), DecodeError>,
-              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<(), DecodeError> {
+              KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
+              VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError> {
             merge_with_default(key_merge, val_merge, V::default(), values, buf)
         }
 
@@ -704,24 +712,23 @@ macro_rules! map {
                                                    val_merge: VM,
                                                    val_default: V,
                                                    values: &mut $map_ty<K, V>,
-                                                   buf: &mut Take<B>)
+                                                   buf: &mut B)
                                                    -> Result<(), DecodeError>
         where K: Default + Eq + Hash + Ord,
               B: Buf,
-              KM: Fn(WireType, &mut K, &mut Take<B>) -> Result<(), DecodeError>,
-              VM: Fn(WireType, &mut V, &mut Take<B>) -> Result<(), DecodeError> {
+              KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
+              VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError> {
             let len = decode_varint(buf)?;
-            if len > buf.remaining() as u64 {
+            let remaining = buf.remaining();
+            if len > remaining as u64 {
                 return Err(DecodeError::new("buffer underflow"));
             }
-            let len = len as usize;
-            let limit = buf.limit();
-            buf.set_limit(len);
 
             let mut key = Default::default();
             let mut val = val_default;
 
-            while buf.has_remaining() {
+            let limit = remaining - len as usize;
+            while buf.remaining() > limit {
                 let (tag, wire_type) = decode_key(buf)?;
                 match tag {
                     1 => key_merge(wire_type, &mut key, buf)?,
@@ -729,9 +736,12 @@ macro_rules! map {
                     _ => (),
                 }
             }
-
             values.insert(key, val);
-            buf.set_limit(limit - len);
+
+            if buf.remaining() != limit {
+                return Err(DecodeError::new("delimited length exceeded"))
+            }
+
             Ok(())
         }
 
@@ -771,7 +781,7 @@ mod test {
     use std::fmt::Debug;
     use std::io::Cursor;
 
-    use bytes::{Bytes, BytesMut, IntoBuf, Take};
+    use bytes::{Bytes, BytesMut, IntoBuf};
     use quickcheck::TestResult;
 
     use ::encoding::*;
@@ -780,7 +790,7 @@ mod test {
                          tag: u32,
                          wire_type: WireType,
                          encode: fn(u32, &T, &mut BytesMut),
-                         merge: fn(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<(), DecodeError>,
+                         merge: fn(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
                          encoded_len: fn(u32, &T) -> usize)
                          -> TestResult
     where T: Debug + Default + PartialEq {
@@ -794,7 +804,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, &value, &mut buf);
 
-        let mut buf = buf.freeze().into_buf().take(expected_len);
+        let mut buf = buf.freeze().into_buf();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
@@ -863,7 +873,7 @@ mod test {
                                              -> TestResult
     where T: Debug + Default + PartialEq,
           E: FnOnce(u32, &T, &mut BytesMut),
-          M: FnMut(WireType, &mut T, &mut Take<Cursor<Bytes>>) -> Result<(), DecodeError>,
+          M: FnMut(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
           L: FnOnce(u32, &T) -> usize {
 
         if tag > MAX_TAG || tag < MIN_TAG {
@@ -875,7 +885,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, &value, &mut buf);
 
-        let mut buf = buf.freeze().into_buf().take(expected_len);
+        let mut buf = buf.freeze().into_buf();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",

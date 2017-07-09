@@ -15,7 +15,6 @@ use std::io::{
 };
 
 use bytes::{
-    Buf,
     ByteOrder,
     LittleEndian,
 };
@@ -44,7 +43,7 @@ fn main() {
         bytes.resize(len, 0);
         io::stdin().read_exact(&mut bytes[..]).unwrap();
 
-        let result = match ConformanceRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)) {
+        let result = match ConformanceRequest::decode(&mut Cursor::new(&mut bytes)) {
             Ok(request) => handle_request(request),
             Err(error) => conformance_response::Result::ParseError(format!("{:?}", error)),
         };

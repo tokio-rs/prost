@@ -18,7 +18,6 @@ pub mod google {
 use std::error::Error;
 use std::io::Cursor;
 
-use bytes::Buf;
 use prost::Message;
 
 pub enum RoundtripResult {
@@ -55,8 +54,7 @@ impl RoundtripResult {
 /// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
 pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message {
     // Try to decode a message from the data. If decoding fails, continue.
-    let len = data.len();
-    let all_types = match M::decode(&mut Buf::take(Cursor::new(data), len)) {
+    let all_types = match M::decode(&mut Cursor::new(data)) {
         Ok(all_types) => all_types,
         Err(error) => return RoundtripResult::DecodeError(error),
     };
@@ -76,7 +74,7 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message {
                     encoded_len, buf1.len()).into());
     }
 
-    let roundtrip = match M::decode(&mut Buf::take(Cursor::new(&buf1), encoded_len)) {
+    let roundtrip = match M::decode(&mut Cursor::new(&buf1)) {
         Ok(roundtrip) => roundtrip,
         Err(error) => return RoundtripResult::Error(error.into()),
     };

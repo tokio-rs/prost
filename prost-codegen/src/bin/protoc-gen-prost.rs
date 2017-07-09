@@ -13,8 +13,6 @@ use std::io::{
 };
 use std::path::PathBuf;
 
-use bytes::Buf;
-
 use prost::Message;
 use prost_codegen::CodeGeneratorConfig;
 use prost_codegen::google::protobuf::compiler::{
@@ -27,11 +25,9 @@ fn main() {
     env_logger::init().unwrap();
     let mut bytes = Vec::new();
     io::stdin().read_to_end(&mut bytes).unwrap();
+    assert_ne!(bytes.len(), 0);
 
-    let len = bytes.len();
-    assert_ne!(len, 0);
-
-    let request = CodeGeneratorRequest::decode(&mut Buf::take(Cursor::new(&mut bytes), len)).unwrap();
+    let request = CodeGeneratorRequest::decode(&mut Cursor::new(&mut bytes)).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
     let modules = prost_codegen::generate(&CodeGeneratorConfig::new(), request.proto_file);

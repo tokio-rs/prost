@@ -20,12 +20,11 @@ fn check_message<M>(msg: M) where M: Message + PartialEq {
 
     let mut buf = Vec::with_capacity(18);
     msg.encode(&mut buf).unwrap();
-
     assert_eq!(expected_len, buf.len());
 
     info!("encoded message: {:?}", buf);
 
-    let mut buf = Cursor::new(&mut buf).take(expected_len);
+    let mut buf = Cursor::new(&mut buf);
     let roundtrip = M::decode(&mut buf).unwrap();
 
     if buf.has_remaining() {

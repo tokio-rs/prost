@@ -1,11 +1,7 @@
 use std::fmt::Debug;
 use std::usize;
 
-use bytes::{
-    Buf,
-    BufMut,
-    Take,
-};
+use bytes::{Buf, BufMut};
 
 use DecodeError;
 use EncodeError;
@@ -13,6 +9,23 @@ use encoding::*;
 
 /// A Protocol Buffers message.
 pub trait Message: Debug + Default + PartialEq + Send + Sync {
+
+    /// Encodes the message to a buffer.
+    ///
+    /// This method will panic if the buffer has insufficient capacity.
+    ///
+    /// Meant to be used only by `Message` implementations.
+    #[doc(hidden)]
+    fn encode_raw<B>(&self, buf: &mut B) where B: BufMut;
+
+    /// Decodes a field from a buffer, and merges it into `self`.
+    ///
+    /// Meant to be used only by `Message` implementations.
+    #[doc(hidden)]
+    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError> where B: Buf;
+
+    /// Returns the encoded length of the message without a length delimiter.
+    fn encoded_len(&self) -> usize;
 
     /// Encodes the message to a buffer.
     ///
@@ -43,18 +56,10 @@ pub trait Message: Debug + Default + PartialEq + Send + Sync {
         Ok(())
     }
 
-    /// Encodes the message to a buffer.
-    ///
-    /// This method will panic if the buffer has insufficient capacity.
-    ///
-    /// Meant to be used only by `Message` implementations.
-    #[doc(hidden)]
-    fn encode_raw<B>(&self, buf: &mut B) where B: BufMut;
-
     /// Decodes an instance of the message from a buffer.
     ///
     /// The entire buffer will be consumed.
-    fn decode<B>(buf: &mut Take<B>) -> Result<Self, DecodeError> where B: Buf, Self: Default {
+    fn decode<B>(buf: &mut B) -> Result<Self, DecodeError> where B: Buf, Self: Default {
         let mut message = Self::default();
         Self::merge(&mut message, buf).map(|_| message)
     }
@@ -69,32 +74,27 @@ pub trait Message: Debug + Default + PartialEq + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf;
+    fn merge<B>(&mut self, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+        while buf.has_remaining() {
+            self.merge_field(buf)?;
+        }
+        Ok(())
+    }
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
     fn merge_length_delimited<B>(&mut self, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
-        let len = decode_varint(buf)?;
-        if len > buf.remaining() as u64 {
-            return Err(DecodeError::new("buffer underflow"))
-        }
-        self.merge(&mut buf.take(len as usize))
+        message::merge(WireType::LengthDelimited, self, buf)
     }
-
-    /// Returns the encoded length of the message without a length delimiter.
-    fn encoded_len(&self) -> usize;
 }
 
 impl <M> Message for Box<M> where M: Message {
-    #[inline]
     fn encode_raw<B>(&self, buf: &mut B) where B: BufMut {
         (**self).encode_raw(buf)
     }
-    #[inline]
-    fn merge<B>(&mut self, buf: &mut Take<B>) -> Result<(), DecodeError> where B: Buf {
-        (**self).merge(buf)
+    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+        (**self).merge_field(buf)
     }
-    #[inline]
     fn encoded_len(&self) -> usize {
         (**self).encoded_len()
     }
