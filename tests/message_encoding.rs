@@ -13,7 +13,7 @@ use bytes::{Buf, IntoBuf};
 use prost::Message;
 
 // Creates a checker function for each field trait.
-fn check_message<M>(msg: M) where M: Message + PartialEq {
+fn check_message<M>(msg: M) where M: Message + Default + PartialEq {
     let expected_len = msg.encoded_len();
 
     let mut buf = Vec::with_capacity(18);

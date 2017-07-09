@@ -51,7 +51,7 @@ impl RoundtripResult {
 
 /// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
 /// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
-pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message {
+pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
     // Try to decode a message from the data. If decoding fails, continue.
     let all_types = match M::decode(data) {
         Ok(all_types) => all_types,

@@ -588,7 +588,7 @@ pub mod message {
     }
 
     pub fn merge_repeated<M, B>(wire_type: WireType, messages: &mut Vec<M>, buf: &mut B) -> Result<(), DecodeError>
-    where M: Message,
+    where M: Message + Default,
           B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut msg = M::default();
