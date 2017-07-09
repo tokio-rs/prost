@@ -104,7 +104,6 @@ use std::path::{
 };
 use std::process::Command;
 
-use bytes::Buf;
 use curl::easy::Easy;
 use zip::ZipArchive;
 
@@ -280,8 +279,7 @@ pub fn compile_protos_with_config<P>(config: &CodeGeneratorConfig,
 
     let mut buf = Vec::new();
     fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-    let len = buf.len();
-    let descriptor_set = FileDescriptorSet::decode(&mut <Cursor<Vec<u8>> as Buf>::take(Cursor::new(buf), len))?;
+    let descriptor_set = FileDescriptorSet::decode(&buf)?;
 
     let modules = prost_codegen::generate(config, descriptor_set.file);
     for (module, content) in modules {

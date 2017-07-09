@@ -8,9 +8,7 @@ extern crate bytes;
 extern crate log;
 extern crate env_logger;
 
-use std::io::Cursor;
-
-use bytes::Buf;
+use bytes::{Buf, IntoBuf};
 
 use prost::Message;
 
@@ -24,7 +22,7 @@ fn check_message<M>(msg: M) where M: Message + PartialEq {
 
     info!("encoded message: {:?}", buf);
 
-    let mut buf = Cursor::new(&mut buf);
+    let mut buf = buf.into_buf();
     let roundtrip = M::decode(&mut buf).unwrap();
 
     if buf.has_remaining() {

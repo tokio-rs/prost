@@ -6,7 +6,6 @@ extern crate prost_codegen;
 
 use std::collections::HashMap;
 use std::io::{
-    Cursor,
     Read,
     Write,
     self,
@@ -27,7 +26,7 @@ fn main() {
     io::stdin().read_to_end(&mut bytes).unwrap();
     assert_ne!(bytes.len(), 0);
 
-    let request = CodeGeneratorRequest::decode(&mut Cursor::new(&mut bytes)).unwrap();
+    let request = CodeGeneratorRequest::decode(&bytes).unwrap();
     let mut response = CodeGeneratorResponse::default();
 
     let modules = prost_codegen::generate(&CodeGeneratorConfig::new(), request.proto_file);

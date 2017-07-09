@@ -8,7 +8,6 @@ extern crate prost_derive;
 include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
 
 use std::io::{
-    Cursor,
     Read,
     Write,
     self,
@@ -43,7 +42,7 @@ fn main() {
         bytes.resize(len, 0);
         io::stdin().read_exact(&mut bytes[..]).unwrap();
 
-        let result = match ConformanceRequest::decode(&mut Cursor::new(&mut bytes)) {
+        let result = match ConformanceRequest::decode(&bytes) {
             Ok(request) => handle_request(request),
             Err(error) => conformance_response::Result::ParseError(format!("{:?}", error)),
         };

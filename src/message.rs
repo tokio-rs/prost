@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::usize;
 
-use bytes::{Buf, BufMut};
+use bytes::{Buf, BufMut, IntoBuf};
 
 use DecodeError;
 use EncodeError;
@@ -59,13 +59,13 @@ pub trait Message: Debug + Default + PartialEq + Send + Sync {
     /// Decodes an instance of the message from a buffer.
     ///
     /// The entire buffer will be consumed.
-    fn decode<B>(buf: &mut B) -> Result<Self, DecodeError> where B: Buf, Self: Default {
+    fn decode<B>(buf: B) -> Result<Self, DecodeError> where B: IntoBuf, Self: Default {
         let mut message = Self::default();
-        Self::merge(&mut message, buf).map(|_| message)
+        Self::merge(&mut message, &mut buf.into_buf()).map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
-    fn decode_length_delimited<B>(buf: &mut B) -> Result<Self, DecodeError> where B: Buf, Self: Default {
+    fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError> where B: IntoBuf, Self: Default {
         let mut message = Self::default();
         message.merge_length_delimited(buf)?;
         Ok(message)
@@ -74,17 +74,18 @@ pub trait Message: Debug + Default + PartialEq + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+    fn merge<B>(&mut self, buf: B) -> Result<(), DecodeError> where B: IntoBuf {
+        let mut buf = buf.into_buf();
         while buf.has_remaining() {
-            self.merge_field(buf)?;
+            self.merge_field(&mut buf)?;
         }
         Ok(())
     }
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
-        message::merge(WireType::LengthDelimited, self, buf)
+    fn merge_length_delimited<B>(&mut self, buf: B) -> Result<(), DecodeError> where B: IntoBuf {
+        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf())
     }
 }
 
