@@ -148,6 +148,29 @@ pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), Decod
     Ok(())
 }
 
+/// Helper function which abstracts reading a length delimiter prefix followed
+/// by decoding values until the length of bytes is exhausted.
+pub fn merge_loop<T, M, B>(value: &mut T, buf: &mut B, mut merge: M) -> Result<(), DecodeError>
+where
+    M: FnMut(&mut T, &mut B) -> Result<(), DecodeError>,
+    B: Buf {
+        let len = decode_varint(buf)?;
+        let remaining = buf.remaining();
+        if len > remaining as u64 {
+            return Err(DecodeError::new("buffer underflow"))
+        }
+
+        let limit = remaining - len as usize;
+        while buf.remaining() > limit {
+            merge(value, buf)?;
+        }
+
+        if buf.remaining() != limit {
+            return Err(DecodeError::new("delimited length exceeded"))
+        }
+        Ok(())
+}
+
 pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
     let len = match wire_type {
         WireType::Varint => decode_varint(buf).map(|_| 0)?,
@@ -186,31 +209,21 @@ macro_rules! merge_repeated_numeric {
                                   buf: &mut B)
                                   -> Result<(), DecodeError> where B: Buf {
             if wire_type == WireType::LengthDelimited {
-                let len = decode_varint(buf)?;
-                let remaining = buf.remaining();
-                if len > remaining as u64 {
-                    return Err(DecodeError::new("buffer underflow"));
-                }
-                let len = len as usize;
-                let limit = remaining - len as usize;
-
-                while buf.remaining() > limit {
+                // Packed.
+                merge_loop(values, buf, |values, buf| {
                     let mut value = Default::default();
                     $merge($wire_type, &mut value, buf)?;
                     values.push(value);
-                }
-
-                if buf.remaining() != limit {
-                    return Err(DecodeError::new("delimited length exceeded"))
-                }
-
+                    Ok(())
+                })
             } else {
+                // Unpacked.
                 check_wire_type($wire_type, wire_type)?;
                 let mut value = Default::default();
                 $merge(wire_type, &mut value, buf)?;
                 values.push(value);
+                Ok(())
             }
-            Ok(())
         }
     )
 }
@@ -562,21 +575,7 @@ pub mod message {
     where M: Message,
           B: Buf {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let len = decode_varint(buf)?;
-        let remaining = buf.remaining();
-        if len > remaining as u64 {
-            return Err(DecodeError::new("buffer underflow"))
-        }
-
-        let limit = remaining - len as usize;
-        while buf.remaining() > limit {
-            msg.merge_field(buf)?;
-        }
-
-        if buf.remaining() != limit {
-            return Err(DecodeError::new("delimited length exceeded"))
-        }
-        Ok(())
+        merge_loop(msg, buf, M::merge_field)
     }
 
     pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
@@ -718,29 +717,18 @@ macro_rules! map {
               B: Buf,
               KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
               VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError> {
-            let len = decode_varint(buf)?;
-            let remaining = buf.remaining();
-            if len > remaining as u64 {
-                return Err(DecodeError::new("buffer underflow"));
-            }
 
             let mut key = Default::default();
             let mut val = val_default;
-
-            let limit = remaining - len as usize;
-            while buf.remaining() > limit {
+            merge_loop(&mut (&mut key, &mut val), buf, |&mut (ref mut key, ref mut val), buf| {
                 let (tag, wire_type) = decode_key(buf)?;
                 match tag {
-                    1 => key_merge(wire_type, &mut key, buf)?,
-                    2 => val_merge(wire_type, &mut val, buf)?,
-                    _ => (),
+                    1 => key_merge(wire_type, key, buf),
+                    2 => val_merge(wire_type, val, buf),
+                    _ => Ok(()),
                 }
-            }
+            })?;
             values.insert(key, val);
-
-            if buf.remaining() != limit {
-                return Err(DecodeError::new("delimited length exceeded"))
-            }
 
             Ok(())
         }
