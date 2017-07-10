@@ -20,8 +20,8 @@ members = [
   "benchmarks",
   "conformance",
   "prost-build",
-  "prost-codegen",
   "prost-derive",
+  "prost-types",
   "protobuf",
   "tests",
 ]

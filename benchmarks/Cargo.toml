@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false
 
+[lib]
+doctest = false
+test = false
+
 [dependencies]
 bytes = "0.4"
 prost = { path = ".." }

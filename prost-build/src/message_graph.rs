@@ -4,7 +4,7 @@ use petgraph::algo::has_path_connecting;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 
-use google::protobuf::{
+use prost_types::{
     DescriptorProto,
     field_descriptor_proto,
     FileDescriptorProto,

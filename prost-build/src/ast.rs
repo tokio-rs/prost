@@ -1,4 +1,4 @@
-use google::protobuf::source_code_info::Location;
+use prost_types::source_code_info::Location;
 
 #[derive(Debug, Default)]
 pub struct Comments {

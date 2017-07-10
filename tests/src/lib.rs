@@ -2,6 +2,7 @@ extern crate bytes;
 extern crate prost;
 #[macro_use]
 extern crate prost_derive;
+extern crate prost_types;
 
 mod message_encoding;
 pub mod packages;

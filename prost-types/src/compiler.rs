@@ -2,15 +2,15 @@
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Version {
     #[prost(int32, optional, tag="1")]
-    pub major: Option<i32>,
+    pub major: ::std::option::Option<i32>,
     #[prost(int32, optional, tag="2")]
-    pub minor: Option<i32>,
+    pub minor: ::std::option::Option<i32>,
     #[prost(int32, optional, tag="3")]
-    pub patch: Option<i32>,
+    pub patch: ::std::option::Option<i32>,
     /// A suffix for alpha, beta or rc release, e.g., "alpha-1", "rc2". It should
     /// be empty for mainline stable releases.
     #[prost(string, optional, tag="4")]
-    pub suffix: Option<String>,
+    pub suffix: ::std::option::Option<String>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[derive(Clone, Debug, PartialEq, Message)]
@@ -19,10 +19,10 @@ pub struct CodeGeneratorRequest {
     /// code generator should generate code only for these files.  Each file's
     /// descriptor will be included in proto_file, below.
     #[prost(string, repeated, tag="1")]
-    pub file_to_generate: Vec<String>,
+    pub file_to_generate: ::std::vec::Vec<String>,
     /// The generator parameter passed on the command-line.
     #[prost(string, optional, tag="2")]
-    pub parameter: Option<String>,
+    pub parameter: ::std::option::Option<String>,
     /// FileDescriptorProtos for all files in files_to_generate and everything
     /// they import.  The files will appear in topological order, so each file
     /// appears before any file that imports it.
@@ -38,10 +38,10 @@ pub struct CodeGeneratorRequest {
     /// Type names of fields and extensions in the FileDescriptorProto are always
     /// fully qualified.
     #[prost(message, repeated, tag="15")]
-    pub proto_file: Vec<super::FileDescriptorProto>,
+    pub proto_file: ::std::vec::Vec<super::FileDescriptorProto>,
     /// The version number of protocol compiler.
     #[prost(message, optional, tag="3")]
-    pub compiler_version: Option<Version>,
+    pub compiler_version: ::std::option::Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
 #[derive(Clone, Debug, PartialEq, Message)]
@@ -55,9 +55,9 @@ pub struct CodeGeneratorResponse {
     /// unparseable -- should be reported by writing a message to stderr and
     /// exiting with a non-zero status code.
     #[prost(string, optional, tag="1")]
-    pub error: Option<String>,
+    pub error: ::std::option::Option<String>,
     #[prost(message, repeated, tag="15")]
-    pub file: Vec<code_generator_response::File>,
+    pub file: ::std::vec::Vec<code_generator_response::File>,
 }
 pub mod code_generator_response {
     /// Represents a single generated file.
@@ -75,7 +75,7 @@ pub mod code_generator_response {
         /// this writing protoc does not optimize for this -- it will read the entire
         /// CodeGeneratorResponse before writing files to disk.
         #[prost(string, optional, tag="1")]
-        pub name: Option<String>,
+        pub name: ::std::option::Option<String>,
         /// If non-empty, indicates that the named file should already exist, and the
         /// content here is to be inserted into that file at a defined insertion
         /// point.  This feature allows a code generator to extend the output
@@ -114,9 +114,9 @@ pub mod code_generator_response {
         ///
         /// If |insertion_point| is present, |name| must also be present.
         #[prost(string, optional, tag="2")]
-        pub insertion_point: Option<String>,
+        pub insertion_point: ::std::option::Option<String>,
         /// The file contents.
         #[prost(string, optional, tag="15")]
-        pub content: Option<String>,
+        pub content: ::std::option::Option<String>,
     }
 }

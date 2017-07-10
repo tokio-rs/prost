@@ -3,13 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
-
-use ast::{
-    Comments,
-    Method,
-    Service,
-};
-use google::protobuf::{
+use prost_types::{
     DescriptorProto,
     EnumDescriptorProto,
     EnumValueDescriptorProto,
@@ -19,8 +13,14 @@ use google::protobuf::{
     ServiceDescriptorProto,
     SourceCodeInfo,
 };
-use google::protobuf::field_descriptor_proto::{Label, Type};
-use google::protobuf::source_code_info::Location;
+use prost_types::field_descriptor_proto::{Label, Type};
+use prost_types::source_code_info::Location;
+
+use ast::{
+    Comments,
+    Method,
+    Service,
+};
 use ident::{
     camel_to_snake,
     match_field,
@@ -122,6 +122,10 @@ impl <'a> CodeGenerator<'a> {
         // that comments can be retrieved.
         let message_name = message.name.as_ref().expect("message name");
         let fq_message_name = format!(".{}.{}", self.package, message_name);
+
+        // Skip Protobuf well-known types.
+        if self.well_known_type(&fq_message_name).is_some() { return; }
+
         let (nested_types, map_types): (Vec<(DescriptorProto, usize)>, HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>) =
             message.nested_type.into_iter().enumerate().partition_map(|(idx, nested_type)| {
                 if nested_type.options.as_ref().and_then(|options| options.map_entry).unwrap_or(false) {
@@ -254,9 +258,9 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("pub ");
         self.buf.push_str(&camel_to_snake(field.name()));
         self.buf.push_str(": ");
-        if repeated { self.buf.push_str("Vec<"); }
-        else if optional { self.buf.push_str("Option<"); }
-        if boxed { self.buf.push_str("Box<"); }
+        if repeated { self.buf.push_str("::std::vec::Vec<"); }
+        else if optional { self.buf.push_str("::std::option::Option<"); }
+        if boxed { self.buf.push_str("::std::boxed::Box<"); }
         self.buf.push_str(&ty);
         if boxed { self.buf.push_str(">"); }
         if repeated || optional { self.buf.push_str(">"); }
@@ -312,7 +316,7 @@ impl <'a> CodeGenerator<'a> {
                                    name,
                                    fields.iter().map(|&(ref field, _)| field.number()).join(", ")));
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: Option<{}>,\n", camel_to_snake(oneof.name()), name));
+        self.buf.push_str(&format!("pub {}: ::std::option::Option<{}>,\n", camel_to_snake(oneof.name()), name));
     }
 
     fn append_oneof(&mut self,
@@ -527,7 +531,13 @@ impl <'a> CodeGenerator<'a> {
             Type::TypeBool => Cow::Borrowed("bool"),
             Type::TypeString => Cow::Borrowed("String"),
             Type::TypeBytes => Cow::Borrowed("Vec<u8>"),
-            Type::TypeGroup | Type::TypeMessage => Cow::Owned(self.resolve_ident(field.type_name())),
+            Type::TypeGroup | Type::TypeMessage => {
+                if let Some(ty) = self.well_known_type(field.type_name()) {
+                    Cow::Borrowed(ty)
+                } else {
+                    Cow::Owned(self.resolve_ident(field.type_name()))
+                }
+            },
             Type::TypeEnum => Cow::Borrowed("i32"),
         }
     }
@@ -595,8 +605,65 @@ impl <'a> CodeGenerator<'a> {
             _ => self.syntax == Syntax::Proto2,
         }
     }
+
+    /// Returns the prost_types name for a well-known Protobuf type, or `None` if the provided
+    /// message type is not a well-known type, or prost_types has been disabled.
+    fn well_known_type(&self, fq_msg_type: &str) -> Option<&'static str> {
+        if !self.config.prost_types { return None; }
+        Some(match fq_msg_type {
+            ".google.protobuf.BoolValue" => "bool",
+            ".google.protobuf.UInt32Value" => "u32",
+            ".google.protobuf.UInt64Value" => "u64",
+            ".google.protobuf.Int32Value" => "i32",
+            ".google.protobuf.Int64Value" => "i64",
+            ".google.protobuf.FloatValue" => "f32",
+            ".google.protobuf.DoubleValue" => "f64",
+            ".google.protobuf.StringValue" => "::std::string::String",
+            ".google.protobuf.BytesValue" => "::std::vec::Vec<u8>",
+            ".google.protobuf.Empty" => "()",
+            ".google.protobuf.Duration" => "::prost::types::Duration",
+            ".google.protobuf.Timestamp" => "::prost::types::Timestamp",
+
+            ".google.protobuf.Any" => "::prost_types::Any",
+            ".google.protobuf.Api" => "::prost_types::Api",
+            ".google.protobuf.DescriptorProto" => "::prost_types::DescriptorProto",
+            ".google.protobuf.Enum" => "::prost_types::Enum",
+            ".google.protobuf.EnumDescriptorProto" => "::prost_types::EnumDescriptorProt",
+            ".google.protobuf.EnumOptions" => "::prost_types::EnumOptions",
+            ".google.protobuf.EnumValue" => "::prost_types::EnumValue",
+            ".google.protobuf.EnumValueDescriptorProto" => "::prost_types::EnumValueDescriptorProto",
+            ".google.protobuf.EnumValueOptions" => "::prost_types::EnumValueOptions",
+            ".google.protobuf.Field" => "::prost_types::Field",
+            ".google.protobuf.FieldDescriptorProto" => "::prost_types::FieldDescriptorProto",
+            ".google.protobuf.FieldMask" => "::prost_types::FieldMask",
+            ".google.protobuf.FieldOptions" => "::prost_types::FieldOptions",
+            ".google.protobuf.FileDescriptorProto" => "::prost_types::FileDescriptorProto",
+            ".google.protobuf.FileDescriptorSet" => "::prost_types::FileDescriptorSet",
+            ".google.protobuf.FileOptions" => "::prost_types::FileOptions",
+            ".google.protobuf.GeneratedCodeInfo" => "::prost_types::GeneratedCodeInfo",
+            ".google.protobuf.ListValue" => "::prost_types::ListValue",
+            ".google.protobuf.MessageOptions" => "::prost_types::MessageOptions",
+            ".google.protobuf.Method" => "::prost_types::Method",
+            ".google.protobuf.MethodDescriptorProto" => "::prost_types::MethodDescriptorProto",
+            ".google.protobuf.MethodOption" => "::prost_types::MethodOption",
+            ".google.protobuf.Mixin" => "::prost_types::Mixin",
+            ".google.protobuf.OneofDescriptorProto" => "::prost_types::OneofDescriptorProto",
+            ".google.protobuf.OneofOptions" => "::prost_types::OneofOptions",
+            ".google.protobuf.Option" => "::prost_types::Option",
+            ".google.protobuf.ServiceDescriptorProto" => "::prost_types::ServiceDescriptorProto",
+            ".google.protobuf.ServiceOptions" => "::prost_types::ServiceOptions",
+            ".google.protobuf.SourceCodeInfo" => "::prost_types::SourceCodeInfo",
+            ".google.protobuf.SourceContext" => "::prost_types::SourceContext",
+            ".google.protobuf.Struct" => "::prost_types::Struct",
+            ".google.protobuf.Type" => "::prost_types::Type",
+            ".google.protobuf.UninterpretedOption" => "::prost_types::UninterpretedOption",
+            ".google.protobuf.Value" => "::prost_types::Value",
+            _ => return None,
+        })
+    }
 }
 
+/// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
         match field.type_().expect("unknown field type") {
             Type::TypeFloat   | Type::TypeDouble  | Type::TypeInt32    | Type::TypeInt64    |

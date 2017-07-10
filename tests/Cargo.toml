@@ -17,6 +17,7 @@ doctest = false
 bytes = "0.4"
 prost = { path = ".." }
 prost-derive = { path = "../prost-derive" }
+prost-types = { path = "../prost-types" }
 
 [dev-dependencies]
 diff = "0.1"
@@ -24,5 +25,4 @@ tempdir = "0.3"
 
 [build-dependencies]
 prost-build = { path = "../prost-build" }
-prost-codegen = { path = "../prost-codegen" }
 protobuf = { path = "../protobuf" }

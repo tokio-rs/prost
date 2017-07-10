@@ -32,17 +32,14 @@ First, add `prost` and its public dependencies to your `Cargo.toml` (see
 [dependencies]
 prost = <prost-version>
 prost-derive = <prost-version>
+# Only necessary if using Protobuf well-known types:
+prost-types = <prost-version>
 bytes = <bytes-version>
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
-`prost-build` library to handle compilation at build-time. See the
-[`prost-build` documentation](prost-build) for more details and examples.
-
-Alternatively, the `prost-codegen` crate provides a `protoc` plugin which can be
-used to manually compile `.proto` files into Rust source files. The resulting
-Rust files can be added to a project source tree like any other. See the
-[`prost-codegen` documentation](prost-codegen) for more details and examples.
+`prost-build` library. See the [`prost-build` documentation](prost-build) for
+more details and examples.
 
 ## Generated Code
 

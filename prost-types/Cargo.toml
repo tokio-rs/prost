@@ -1,20 +1,23 @@
 [package]
-name = "prost-codegen"
+name = "prost-types"
 # NB: When modifying, also modify html_root_url in lib.rs
 version = "0.1.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
-documentation = "https://docs.rs/prost-codegen"
+documentation = "https://docs.rs/prost-types"
 readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 
+[lib]
+doctest = false
+test = false
+
 [dependencies]
 bytes = "0.4"
-env_logger = "0.4"
-itertools = "0.6"
-log = "0.3"
-multimap = "0.3"
-petgraph = "0.4"
 prost = { path = ".." }
 prost-derive = { path = "../prost-derive" }
+
+[dev-dependencies]
+prost-build = { path = "../prost-build" }
+tempdir = "0.3"
