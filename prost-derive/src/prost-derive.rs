@@ -107,6 +107,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         quote!()
     } else {
         quote! {
+            #[allow(dead_code)]
             impl #ident {
                 #(#methods)*
             }
@@ -114,13 +115,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     };
 
     let expanded = quote! {
-        #[allow(
-            non_upper_case_globals,
-            unused_attributes,
-            unused_imports,
-            unused_qualifications,
-            unused_variables
-        )]
+        #[allow(non_upper_case_globals, unused_attributes)]
         const #dummy_const: () = {
 
             extern crate prost as _prost;
@@ -209,7 +204,7 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     let from_i32_doc = format!("Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.", ident);
 
     let expanded = quote! {
-        #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+        #[allow(non_upper_case_globals, unused_attributes)]
         const #dummy_const: () = {
             extern crate bytes as _bytes;
             extern crate prost as _prost;
@@ -325,13 +320,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
     });
 
     let expanded = quote! {
-        #[allow(
-            non_upper_case_globals,
-            unused_attributes,
-            unused_imports,
-            unused_qualifications,
-            unused_variables
-        )]
+        #[allow(non_upper_case_globals, unused_attributes)]
         const #dummy_const: () = {
             extern crate bytes as _bytes;
             extern crate prost as _prost;
