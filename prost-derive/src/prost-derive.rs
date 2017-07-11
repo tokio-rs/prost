@@ -128,12 +128,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
 
             #[automatically_derived]
             impl _prost::Message for #ident {
-                #[inline]
                 fn encode_raw<B>(&self, buf: &mut B) where B: _bytes::BufMut {
                     #(#encode)*
                 }
 
-                #[inline]
                 fn merge_field<B>(&mut self, buf: &mut B) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
@@ -143,7 +141,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     }
                 }
 
-                #[inline]
                 fn encoded_len(&self) -> usize {
                     0 #(+ #encoded_len)*
                 }
