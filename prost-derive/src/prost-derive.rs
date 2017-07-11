@@ -73,7 +73,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         bail!("message {} has fields with duplicate tags", ident);
     }
 
-    let dummy_const = Ident::new(format!("_IMPL_MESSAGE_FOR_{}", ident));
+    // Put impls in a special module, so that 'extern crate' can be used.
+    let module = Ident::new(format!("{}_MESSAGE", ident));
 
     let encoded_len = fields.iter()
                             .map(|&(ref field_ident, ref field)| {
@@ -115,13 +116,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     };
 
     let expanded = quote! {
-        #[allow(non_upper_case_globals, unused_attributes)]
-        const #dummy_const: () = {
-
+        #[allow(non_snake_case, unused_attributes)]
+        mod #module {
             extern crate prost as _prost;
             extern crate bytes as _bytes;
+            use super::*;
 
-            #[automatically_derived]
             impl _prost::Message for #ident {
                 fn encode_raw<B>(&self, buf: &mut B) where B: _bytes::BufMut {
                     #(#encode)*
@@ -141,7 +141,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 }
             }
 
-            #[automatically_derived]
             impl Default for #ident {
                 fn default() -> #ident {
                     #ident {
@@ -149,9 +148,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     }
                 }
             }
-        };
 
-        #methods
+            #methods
+        };
     };
 
     expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
@@ -196,7 +195,8 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
     let default = variants[0].0.clone();
 
-    let dummy_const = Ident::new(format!("_IMPL_ENUMERATION_FOR_{}", ident));
+    // Put impls in a special module, so that 'extern crate' can be used.
+    let module = Ident::new(format!("{}_ENUMERATION", ident));
     let is_valid = variants.iter().map(|&(_, ref value)| quote!(#value => true));
     let from = variants.iter().map(|&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)));
 
@@ -204,12 +204,12 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     let from_i32_doc = format!("Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.", ident);
 
     let expanded = quote! {
-        #[allow(non_upper_case_globals, unused_attributes)]
-        const #dummy_const: () = {
+        #[allow(non_snake_case, unused_attributes)]
+        mod #module {
             extern crate bytes as _bytes;
             extern crate prost as _prost;
+            use super::*;
 
-            #[automatically_derived]
             impl #ident {
 
                 #[doc=#is_valid_doc]
@@ -229,14 +229,12 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
                 }
             }
 
-            #[automatically_derived]
             impl ::std::default::Default for #ident {
                 fn default() -> #ident {
                     #ident::#default
                 }
             }
 
-            #[automatically_derived]
             impl ::std::convert::From<#ident> for i32 {
                 fn from(value: #ident) -> i32 {
                     value as i32
@@ -296,7 +294,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
         panic!("invalid oneof {}: variants have duplicate tags", ident);
     }
 
-    let dummy_const = Ident::new(format!("_IMPL_ONEOF_FOR_{}", ident));
+    // Put impls in a special module, so that 'extern crate' can be used.
+    let module = Ident::new(format!("{}_ONEOF", ident));
 
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encode = field.encode(&Ident::new("*value"));
@@ -320,10 +319,11 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
     });
 
     let expanded = quote! {
-        #[allow(non_upper_case_globals, unused_attributes)]
-        const #dummy_const: () = {
+        #[allow(non_snake_case, unused_attributes)]
+        mod #module {
             extern crate bytes as _bytes;
             extern crate prost as _prost;
+            use super::*;
 
             impl #ident {
                 pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
