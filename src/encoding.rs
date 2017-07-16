@@ -48,8 +48,79 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
 }
 
 /// Decodes a LEB128-encoded variable length integer from the buffer.
-#[inline]
 pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
+    // NLL hack.
+    'slow: loop {
+        // Another NLL hack.
+        let (value, advance) = {
+            let bytes = buf.bytes();
+            let len = bytes.len();
+            if len == 0 {
+                return Err(DecodeError::new("invalid varint"));
+            }
+
+            let byte = bytes[0];
+            if byte < 0x80 {
+                (byte as u64, 1)
+            } else if len > 10 || bytes[len - 1] < 0x80 {
+                decode_varint_slice(bytes)?
+            } else {
+                break 'slow;
+            }
+        };
+
+        buf.advance(advance);
+        return Ok(value);
+    }
+    decode_varint_slow(buf)
+}
+
+/// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
+/// number of bytes read.
+///
+/// Based loosely on [ReadVarint64FromArray][1].
+///
+/// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.cc#L365-L406
+#[inline]
+fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
+    // Fully unrolled varint decoding loop. Splitting into 32-bit pieces gives better performance.
+
+    let mut b: u8;
+    let mut part0: u32;
+    b = bytes[0]; part0  =  b as u32       ; if b < 0x80 { return Ok((part0 as u64, 1)) };
+    part0 -= 0x80;
+    b = bytes[1]; part0 += (b as u32) <<  7; if b < 0x80 { return Ok((part0 as u64, 2)) };
+    part0 -= 0x80 << 7;
+    b = bytes[2]; part0 += (b as u32) << 14; if b < 0x80 { return Ok((part0 as u64, 3)) };
+    part0 -= 0x80 << 14;
+    b = bytes[3]; part0 += (b as u32) << 21; if b < 0x80 { return Ok((part0 as u64, 4)) };
+    part0 -= 0x80 << 21;
+    let value = part0 as u64;
+
+    let mut part1: u32;
+    b = bytes[4]; part1  =  b as u32       ; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 5)) };
+    part1 -= 0x80;
+    b = bytes[5]; part1 += (b as u32) <<  7; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 6)) };
+    part1 -= 0x80 << 7;
+    b = bytes[6]; part1 += (b as u32) << 14; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 7)) };
+    part1 -= 0x80 << 14;
+    b = bytes[7]; part1 += (b as u32) << 21; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 8)) };
+    part1 -= 0x80 << 21;
+    let value = value + ((part1 as u64) << 28);
+
+    let mut part2: u32;
+    b = bytes[8]; part2  =  b as u32       ; if b < 0x80 { return Ok((value + ((part2 as u64) << 56), 9)) };
+    part2 -= 0x80;
+    b = bytes[9]; part2 += (b as u32) <<  7; if b < 0x80 { return Ok((value + ((part2 as u64) << 56), 10)) };
+
+    // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
+    return Err(DecodeError::new("invalid varint"));
+}
+
+/// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as
+/// necessary.
+#[inline(never)]
+fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
     let mut value = 0;
     for count in 0..min(10, buf.remaining()) {
         let byte = buf.get_u8();
@@ -768,6 +839,7 @@ pub mod btree_map {
 mod test {
     use std::fmt::Debug;
     use std::io::Cursor;
+    use std::u64;
 
     use bytes::{Bytes, BytesMut, IntoBuf};
     use quickcheck::TestResult;
@@ -916,25 +988,48 @@ mod test {
     fn varint() {
         fn check(value: u64, encoded: &[u8]) {
             let mut buf = Vec::new();
-
             encode_varint(value, &mut buf);
-
             assert_eq!(buf, encoded);
 
-            let roundtrip_value = decode_varint(&mut Bytes::from(encoded).into_buf()).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut encoded.into_buf()).expect("decoding failed");
+            assert_eq!(value, roundtrip_value);
+
+            let roundtrip_value = decode_varint_slow(&mut encoded.into_buf()).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 
-        check(0, &[0b0000_0000]);
-        check(1, &[0b0000_0001]);
+        check(2u64.pow(0) - 1, &[0x00]);
+        check(2u64.pow(0), &[0x01]);
 
-        check(127, &[0b0111_1111]);
-        check(128, &[0b1000_0000, 0b0000_0001]);
+        check(2u64.pow(7) - 1, &[0x7F]);
+        check(2u64.pow(7), &[0x80, 0x01]);
+        check(300, &[0xAC, 0x02]);
 
-        check(300, &[0b1010_1100, 0b0000_0010]);
+        check(2u64.pow(14) - 1, &[0xFF, 0x7F]);
+        check(2u64.pow(14), &[0x80, 0x80, 0x01]);
 
-        check(16_383, &[0b1111_1111, 0b0111_1111]);
-        check(16_384, &[0b1000_0000, 0b1000_0000, 0b0000_0001]);
+        check(2u64.pow(21) - 1, &[0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(21), &[0x80, 0x80, 0x80, 0x01]);
+
+        check(2u64.pow(28) - 1, &[0xFF, 0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(28), &[0x80, 0x80, 0x80, 0x80, 0x01]);
+
+        check(2u64.pow(35) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(35), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+
+        check(2u64.pow(42) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(42), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+
+        check(2u64.pow(49) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(49), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+
+        check(2u64.pow(56) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(56), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+
+        check(2u64.pow(63) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
+        check(2u64.pow(63), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+
+        check(u64::MAX, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]);
     }
 
     /// This big bowl o' macro soup generates a quickcheck encoding test for each
