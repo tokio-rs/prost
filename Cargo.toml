@@ -38,7 +38,3 @@ quickcheck = "0.4"
 prost-derive = { path = "prost-derive" }
 log = "0.3"
 env_logger = "0.4"
-
-[replace]
-# Replace is necessary until 0.4.5 is released, in order to work around bytes#138.
-"bytes:0.4.4" = { git = "https://github.com/carllerche/bytes", branch = "master" }
