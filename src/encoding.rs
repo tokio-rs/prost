@@ -20,12 +20,18 @@ use Message;
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
 pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
+    // Safety notes:
+    //
+    // - bytes_mut is unsafe because it may return an uninitialized slice.
+    //   The use here is safe because the slice is only written to, never read from.
+    //
+    // - advance_mut is unsafe because it could cause uninitialized memory to be
+    //   advanced over. The use here is safe since each byte which is advanced over
+    //   has been written to in the previous loop iteration.
     let mut i;
     'outer: loop {
         i = 0;
 
-        // bytes_mut is unsafe because it may return an uninitialized slice.
-        // This use is safe because the slice is only written to, not read from.
         for byte in unsafe { buf.bytes_mut() } {
             i += 1;
             if value < 0x80 {
@@ -38,12 +44,9 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
         }
 
         unsafe { buf.advance_mut(i); }
-        assert!(buf.has_remaining_mut());
+        debug_assert!(buf.has_remaining_mut());
     }
 
-    // advance_mut is unsafe because it could cause uninitialized memory to be
-    // advanced over. This use is safe since each byte which is advanced over
-    // has been written to in the previous loop.
     unsafe { buf.advance_mut(i); }
 }
 
@@ -987,7 +990,13 @@ mod test {
     #[test]
     fn varint() {
         fn check(value: u64, encoded: &[u8]) {
-            let mut buf = Vec::new();
+            // Small buffer.
+            let mut buf = Vec::with_capacity(1);
+            encode_varint(value, &mut buf);
+            assert_eq!(buf, encoded);
+
+            // Large buffer.
+            let mut buf = Vec::with_capacity(100);
             encode_varint(value, &mut buf);
             assert_eq!(buf, encoded);
 
