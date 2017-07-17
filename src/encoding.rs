@@ -1000,6 +1000,8 @@ mod test {
             encode_varint(value, &mut buf);
             assert_eq!(buf, encoded);
 
+            assert_eq!(encoded_len_varint(value), encoded.len());
+
             let roundtrip_value = decode_varint(&mut encoded.into_buf()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
