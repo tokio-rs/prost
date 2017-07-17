@@ -140,16 +140,9 @@ fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
 /// The returned value will be between 1 and 10, inclusive.
 #[inline]
 pub fn encoded_len_varint(value: u64) -> usize {
-         if value < 1 <<  7 { 1 }
-    else if value < 1 << 14 { 2 }
-    else if value < 1 << 21 { 3 }
-    else if value < 1 << 28 { 4 }
-    else if value < 1 << 35 { 5 }
-    else if value < 1 << 42 { 6 }
-    else if value < 1 << 49 { 7 }
-    else if value < 1 << 56 { 8 }
-    else if value < 1 << 63 { 9 }
-    else { 10 }
+    // Based on [VarintSize64][1].
+    // [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.h#L1301-L1309
+    ((((value | 1).leading_zeros() ^ 63) * 9 + 73) / 64) as usize
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
