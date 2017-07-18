@@ -41,16 +41,16 @@ pub trait ServiceGenerator {
 
 /// Configuration options for Protobuf code generation.
 #[derive(Default)]
-pub struct CodeGeneratorConfig {
+pub struct Config {
     service_generator: Option<Box<ServiceGenerator>>,
     btree_map: Vec<String>,
 }
 
-impl CodeGeneratorConfig {
+impl Config {
 
     /// Creates a new code generator with default options.
-    pub fn new() -> CodeGeneratorConfig {
-        CodeGeneratorConfig::default()
+    pub fn new() -> Config {
+        Config::default()
     }
 
     /// Configure the code generator to generate Rust [`BTreeMap`][1] fields for Protobuf
@@ -68,7 +68,7 @@ impl CodeGeneratorConfig {
     /// # Examples
     ///
     /// ```
-    /// # let mut config = prost_codegen::CodeGeneratorConfig::new();
+    /// # let mut config = prost_codegen::Config::new();
     /// // Match a specific field in a message type.
     /// config.btree_map(&[".my_messages.MyMessageType.my_map_field"]);
     ///
@@ -112,7 +112,7 @@ impl CodeGeneratorConfig {
     }
 }
 
-pub fn generate(config: &CodeGeneratorConfig,
+pub fn generate(config: &Config,
                 files: Vec<FileDescriptorProto>)
                 -> HashMap<Module, String> {
     let mut modules = HashMap::new();

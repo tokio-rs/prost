@@ -110,8 +110,6 @@ use zip::ZipArchive;
 use prost::Message;
 use prost_codegen::google::protobuf::FileDescriptorSet;
 
-use prost_codegen::CodeGeneratorConfig;
-
 /// Compile `.proto` files into Rust files during a Cargo build.
 ///
 /// The generated `.rs` files will be written to the Cargo `OUT_DIR` directory, suitable for use
@@ -170,8 +168,7 @@ use prost_codegen::CodeGeneratorConfig;
 /// extern crate prost_build;
 ///
 /// fn main() {
-///     prost_build::compile_protos(&["src/frontend.proto",
-///                                   "src/backend.proto"],
+///     prost_build::compile_protos(&["src/frontend.proto", "src/backend.proto"],
 ///                                 &["src"]).unwrap();
 /// }
 /// ```
@@ -180,33 +177,28 @@ use prost_codegen::CodeGeneratorConfig;
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
 pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
-    compile_protos_with_config(&CodeGeneratorConfig::new(),
-                               protos,
-                               includes)
+    compile_protos_with_config(&prost_codegen::Config::new(), protos, includes)
 }
 
 /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
 /// configuration options.
 ///
-/// See `CodeGeneratorConfig` for the available options. Other than providing additional control
+/// See `prost_codegen::Config` for the available options. Other than providing additional control
 /// over the generated code, this function works identically to `compile_protos`.
 ///
 /// # Example `build.rs`
 ///
-/// ```rust,ignore
+/// ```norun
 /// extern crate prost_build;
 /// extern crate prost_codegen;
 ///
 /// fn main() {
-///     let config = prost_codegen::CodeGeneratorConfig::new();
-/// #   // TODO: Add some configuration.
-///     prost_build::compile_protos(&config,
-///                                 &["src/frontend.proto",
-///                                   "src/backend.proto"],
-///                                 &["src"]).unwrap();
+///     prost_build::compile_protos_with_config(prost_codegen::Config::new().btree_map(&["."]),
+///                                             &["src/frontend.proto", "src/backend.proto"],
+///                                             &["src"]).unwrap();
 /// }
 /// ```
-pub fn compile_protos_with_config<P>(config: &CodeGeneratorConfig,
+pub fn compile_protos_with_config<P>(config: &prost_codegen::Config,
                                      protos: &[P],
                                      includes: &[P])
                                      -> Result<()> where P: AsRef<Path> {

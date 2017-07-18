@@ -27,7 +27,7 @@ use ident::{
     snake_to_upper_camel,
 };
 use message_graph::MessageGraph;
-use CodeGeneratorConfig;
+use Config;
 use Module;
 
 pub fn module(file: &FileDescriptorProto) -> Module {
@@ -45,7 +45,7 @@ enum Syntax {
 }
 
 pub struct CodeGenerator<'a> {
-    config: &'a CodeGeneratorConfig,
+    config: &'a Config,
     package: String,
     source_info: SourceCodeInfo,
     syntax: Syntax,
@@ -56,7 +56,7 @@ pub struct CodeGenerator<'a> {
 }
 
 impl <'a> CodeGenerator<'a> {
-    pub fn generate(config: &CodeGeneratorConfig,
+    pub fn generate(config: &Config,
                     message_graph: &MessageGraph,
                     file: FileDescriptorProto,
                     buf: &mut String) {
