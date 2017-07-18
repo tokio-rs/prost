@@ -17,6 +17,7 @@ appveyor = { repository = "danburkert/prost" }
 
 [workspace]
 members = [
+  "benchmarks",
   "conformance",
   "prost-build",
   "prost-codegen",
@@ -34,7 +35,7 @@ byteorder = "1"
 bytes = "0.4"
 
 [dev-dependencies]
-quickcheck = "0.4"
-prost-derive = { path = "prost-derive" }
-log = "0.3"
 env_logger = "0.4"
+log = "0.3"
+prost-derive = { path = "prost-derive" }
+quickcheck = "0.4"

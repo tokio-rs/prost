@@ -1,0 +1,13 @@
+[package]
+name = "benchmarks"
+version = "0.1.0"
+authors = ["Dan Burkert <dan@danburkert.com>"]
+publish = false
+
+[dependencies]
+bytes = "0.4"
+prost = { path = ".." }
+prost-derive = { path = "../prost-derive" }
+
+[build-dependencies]
+prost-build = { path = "../prost-build" }

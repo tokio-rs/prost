@@ -1,10 +1,4 @@
-#![feature(test)]
-
-extern crate prost;
-extern crate test;
-extern crate bytes;
-
-use test::Bencher;
+use test;
 
 use bytes::IntoBuf;
 
@@ -17,7 +11,7 @@ use prost::encoding::{
 macro_rules! varint_bench {
     ($encode_name:ident, $decode_name:ident, $encoded_len_name: ident, $encode:expr) => {
         #[bench]
-        fn $encode_name(b: &mut Bencher) {
+        fn $encode_name(b: &mut test::Bencher) {
             let mut buf = Vec::with_capacity(100 * 10);
             b.iter(|| {
                 buf.clear();
@@ -27,7 +21,7 @@ macro_rules! varint_bench {
             b.bytes = 100 * 8;
         }
         #[bench]
-        fn $decode_name(b: &mut Bencher) {
+        fn $decode_name(b: &mut test::Bencher) {
             let mut buf = Vec::with_capacity(100 * 10);
             $encode(&mut buf);
             let buf = &buf[..];
@@ -44,7 +38,7 @@ macro_rules! varint_bench {
             b.bytes = 100 * 8;
         }
         #[bench]
-        fn $encoded_len_name(b: &mut Bencher) {
+        fn $encoded_len_name(b: &mut test::Bencher) {
             let mut values = [0u64; 100];
             {
                 let mut buf = Vec::with_capacity(100 * 10);
