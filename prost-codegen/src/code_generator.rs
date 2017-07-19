@@ -236,7 +236,8 @@ impl <'a> CodeGenerator<'a> {
             Label::LabelRequired => self.buf.push_str(", required"),
             Label::LabelRepeated => {
                 self.buf.push_str(", repeated");
-                if can_pack(&field) && !field.options.as_ref().map_or(false, |options| options.packed()) {
+                if can_pack(&field) && !field.options.as_ref().map_or(self.syntax == Syntax::Proto3,
+                                                                      |options| options.packed()) {
                     self.buf.push_str(", packed=\"false\"");
                 }
             },
