@@ -136,6 +136,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     }
                 }
 
+                #[inline]
                 fn encoded_len(&self) -> usize {
                     0 #(+ #encoded_len)*
                 }
@@ -344,6 +345,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                     }
                 }
 
+                #[inline]
                 pub fn encoded_len(&self) -> usize {
                     match *self {
                         #(#encoded_len,)*

@@ -344,16 +344,19 @@ macro_rules! varint {
 
             merge_repeated_numeric!($ty, WireType::Varint, merge, merge_repeated);
 
+            #[inline]
             pub fn encoded_len(tag: u32, $to_uint64_value: &$ty) -> usize {
                 key_len(tag) + encoded_len_varint($to_uint64)
             }
 
+            #[inline]
             pub fn encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
                 key_len(tag) * values.len() + values.iter().map(|$to_uint64_value| {
                     encoded_len_varint($to_uint64)
                 }).sum::<usize>()
             }
 
+            #[inline]
             pub fn encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
                 if values.is_empty() {
                     0
@@ -461,14 +464,17 @@ macro_rules! fixed_width {
 
             merge_repeated_numeric!($ty, $wire_type, merge, merge_repeated);
 
+            #[inline]
             pub fn encoded_len(tag: u32, _: &$ty) -> usize {
                 key_len(tag) + $width
             }
 
+            #[inline]
             pub fn encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
                 (key_len(tag) + $width) * values.len()
             }
 
+            #[inline]
             pub fn encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
                 if values.is_empty() {
                     0
@@ -529,10 +535,12 @@ macro_rules! length_delimited {
                 Ok(())
          }
 
+         #[inline]
          pub fn encoded_len(tag: u32, value: &$ty) -> usize {
              key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
          }
 
+         #[inline]
          pub fn encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
              key_len(tag) * values.len() + values.iter().map(|value| {
                  encoded_len_varint(value.len() as u64) + value.len()
@@ -663,11 +671,13 @@ pub mod message {
         Ok(())
     }
 
+    #[inline]
     pub fn encoded_len<M>(tag: u32, msg: &M) -> usize where M: Message {
         let len = msg.encoded_len();
         key_len(tag) + encoded_len_varint(len as u64) + msg.encoded_len()
     }
 
+    #[inline]
     pub fn encoded_len_repeated<M>(tag: u32, messages: &[M]) -> usize where M: Message {
         key_len(tag) * messages.len()
             + messages.iter()
