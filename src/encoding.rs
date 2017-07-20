@@ -2,10 +2,13 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-use std::cmp::min;
-use std::str;
-use std::u32;
-use std::usize;
+use core::cmp::min;
+use core::str;
+use core::u32;
+use core::usize;
+
+#[allow(unused_imports)]
+use prelude::*;
 
 use bytes::{
     Buf,
@@ -691,9 +694,7 @@ pub mod message {
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
     ($map_ty:ident) => (
-        use std::collections::$map_ty;
-        use std::hash::Hash;
-
+        use core::hash::Hash;
         use ::encoding::*;
 
         /// Generic protobuf map encode function.
@@ -833,11 +834,19 @@ macro_rules! map {
     )
 }
 
+#[cfg(feature = "std")]
 pub mod hash_map {
+    use std::collections::HashMap;
+
     map!(HashMap);
 }
 
 pub mod btree_map {
+    #[cfg(feature = "alloc")]
+    use alloc::btree_map::BTreeMap;
+    #[cfg(feature = "std")]
+    use std::collections::BTreeMap;
+
     map!(BTreeMap);
 }
 
