@@ -1,5 +1,13 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.1.1")]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(feature = "alloc", feature(alloc))]
+
+#[cfg(feature = "alloc")]
+#[macro_use] extern crate alloc;
+#[cfg(feature = "std")]
+extern crate core;
+
 extern crate byteorder;
 extern crate bytes;
 
@@ -15,3 +23,15 @@ pub mod encoding;
 
 pub use message::Message;
 pub use error::{DecodeError, EncodeError};
+
+/// Custom (internal-only) prelude for this module
+mod prelude {
+    #[cfg(feature = "alloc")]
+    pub use alloc::boxed::Box;
+
+    #[cfg(feature = "alloc")]
+    pub use alloc::string::String;
+
+    #[cfg(feature = "alloc")]
+    pub use alloc::vec::Vec;
+}

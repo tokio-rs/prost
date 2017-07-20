@@ -31,10 +31,19 @@ exclude = [
 
 [dependencies]
 byteorder = "1"
-bytes = "0.4"
+
+[dependencies.bytes]
+git = "https://github.com/chain/bytes.git"
+branch = "alloc"
+default-features = false
 
 [dev-dependencies]
 quickcheck = "0.4"
 prost-derive = { path = "prost-derive" }
 log = "0.3"
 env_logger = "0.4"
+
+[features]
+default = ["std"]
+alloc = ["bytes/nightly"]
+std = ["bytes/std"]
