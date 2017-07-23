@@ -9,4 +9,8 @@ fn main() {
     prost_build::compile_protos_with_config(prost_codegen::Config::new().btree_map(&["."]),
                                             &["src/test_messages_proto3.proto"],
                                             &["src"]).unwrap();
+
+    prost_build::compile_protos_with_config(prost_codegen::Config::new().btree_map(&["."]),
+                                            &["src/packages/widget_factory.proto"],
+                                            &["src/packages"]).unwrap();
 }

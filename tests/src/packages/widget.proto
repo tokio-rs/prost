@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-message Root {
+package packages.widget;
+
+message Widget {
   message Inner {
   }
 }

@@ -123,10 +123,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
             use super::*;
 
             impl _prost::Message for #ident {
+                #[allow(unused_variables)]
                 fn encode_raw<B>(&self, buf: &mut B) where B: _bytes::BufMut {
                     #(#encode)*
                 }
 
+                #[allow(unused_variables)]
                 fn merge_field<B>(&mut self, buf: &mut B) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     let (tag, wire_type) = _prost::encoding::decode_key(buf)?;

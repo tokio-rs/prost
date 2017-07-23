@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-package widget.factory;
+package packages.widget.factory;
 
 import "root.proto";
 import "gizmo.proto";
-import "gizmo_factory.proto";
 import "widget.proto";
 
 message WidgetFactory {
@@ -21,7 +20,4 @@ message WidgetFactory {
 
   gizmo.Gizmo gizmo = 6;
   gizmo.Gizmo.Inner gizmo_inner = 7;
-
-  gizmo.factory.GizmoFactory gizmo_factory = 8;
-  gizmo.factory.GizmoFactory.Inner gizmo_factory_inner = 9;
 }
