@@ -110,10 +110,11 @@ Scalar value types are converted as follows:
 
 #### Enumerations
 
-All `.proto` enumeration types convert to the Rust `i32` type, so that unknown
-values may be decoded. Additionally, each `.proto` enumeration type gets a
-corresponding Rust `enum` type, with helper methods to convert `i32` field
-values to the enum type (if possible).
+All `.proto` enumeration types convert to the Rust `i32` type. Additionally,
+each enumeration type gets a corresponding Rust `enum` type, with helper methods
+to convert `i32` values to the enum type. The `enum` type isn't used directly as
+a field, because the Protobuf spec mandates that enumerations values are 'open',
+and decoding unrecognized enumeration values must be possible.
 
 #### Field Modifiers
 
