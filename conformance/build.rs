@@ -1,5 +1,4 @@
 extern crate curl;
-extern crate env_logger;
 extern crate flate2;
 extern crate prost_build;
 extern crate tar;
@@ -16,7 +15,6 @@ use tar::Archive;
 const VERSION: &'static str = "3.3.0";
 
 fn main() {
-    env_logger::init().unwrap();
     let target = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
     let dir = target.join(format!("protobuf-{}", VERSION));
     let conformance_dir = dir.join("conformance");

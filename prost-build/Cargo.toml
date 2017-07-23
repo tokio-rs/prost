@@ -11,8 +11,11 @@ description = "A Protocol Buffers implementation for the Rust Language."
 
 [dependencies]
 bytes = "0.4"
-curl = "0.4"
 prost-codegen = { path = "../prost-codegen" }
 prost = { path = ".." }
+tempdir = "0.3"
+
+[build-dependencies]
+curl = "0.4"
 tempdir = "0.3"
 zip = "0.2"

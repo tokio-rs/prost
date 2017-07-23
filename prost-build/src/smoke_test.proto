@@ -1,0 +1,4 @@
+package smoke_test;
+
+message SmokeTest {
+}

@@ -81,17 +81,13 @@
 #![doc(html_root_url = "https://docs.rs/prost-build/0.1.1")]
 
 extern crate bytes;
-extern crate curl;
 extern crate prost;
 extern crate prost_codegen;
 extern crate tempdir;
-extern crate zip;
 
 use std::env;
 use std::fs;
 use std::io::{
-    self,
-    Cursor,
     Error,
     ErrorKind,
     Read,
@@ -104,11 +100,11 @@ use std::path::{
 };
 use std::process::Command;
 
-use curl::easy::Easy;
-use zip::ZipArchive;
-
 use prost::Message;
 use prost_codegen::google::protobuf::FileDescriptorSet;
+
+pub const PROTOC: &'static str = env!("PROTOC");
+pub const PROTOC_INCLUDE: &'static str = env!("PROTOC_INCLUDE");
 
 /// Compile `.proto` files into Rust files during a Cargo build.
 ///
@@ -222,34 +218,11 @@ pub fn compile_protos_with_config<P>(config: &prost_codegen::Config,
     // don't want. Figure out how to do it in an additive way, perhaps gcc-rs
     // has this figured out.
 
-    // Find protoc.
-    let (protoc, protoc_include) = match find_protoc()? {
-        Some(paths) => paths,
-        None => {
-            // If the protoc directory doesn't already exist from a previous build,
-            // create it, and extract the protoc release into it.
-            let protoc_dir = target.join("protoc");
-            if !protoc_dir.exists() {
-                fs::create_dir(&protoc_dir)?;
-            }
-            let mut protoc = protoc_dir.join("bin");
-            protoc.push("protoc");
-            if !protoc.exists() {
-                download_protoc(&protoc_dir)?;
-            }
-
-            let mut protoc = protoc_dir.join("bin");
-            protoc.push("protoc");
-            protoc.set_extension(env::consts::EXE_EXTENSION);
-
-            (protoc, protoc_dir.join("include"))
-        },
-    };
 
     let tmp = tempdir::TempDir::new("prost-build")?;
     let descriptor_set = tmp.path().join("prost-descriptor-set");
 
-    let mut cmd = Command::new(protoc);
+    let mut cmd = Command::new(PROTOC);
     cmd.arg("--include_imports")
        .arg("--include_source_info")
        .arg("-o").arg(&descriptor_set);
@@ -260,7 +233,7 @@ pub fn compile_protos_with_config<P>(config: &prost_codegen::Config,
 
     // Set the protoc include after the user includes in case the user wants to
     // override one of the built-in .protos.
-    cmd.arg("-I").arg(protoc_include);
+    cmd.arg("-I").arg(PROTOC_INCLUDE);
 
     for proto in protos {
         cmd.arg(proto.as_ref());
@@ -292,106 +265,12 @@ pub fn compile_protos_with_config<P>(config: &prost_codegen::Config,
     Ok(())
 }
 
-/// Finds `protoc` and the protobuf include dir in the environment, if it is available.
-fn find_protoc() -> Result<Option<(PathBuf, PathBuf)>> {
-    let protoc = match env::var("PROTOC") {
-        Ok(val) => PathBuf::from(val),
-        Err(env::VarError::NotPresent) => return Ok(None),
-        Err(env::VarError::NotUnicode(..)) => {
-            return Err(Error::new(ErrorKind::InvalidData,
-                                  "PROTOC environment variable is not valid UTF-8"));
-        },
-    };
-
-    let protoc_include = match env::var("PROTOC_INCLUDE") {
-        Ok(val) => PathBuf::from(val),
-        Err(env::VarError::NotPresent) => {
-            // We could fall back to downloading protoc here, but if PROTOC is set without
-            // PROTOC_INCLUDE, it indicates a misconfiguration, so lets bubble that back to the
-            // user.
-            return Err(Error::new(ErrorKind::InvalidInput,
-                                  "PROTOC_INCLUDE environment variable not set (PROTOC is set)"));
-        }
-        Err(env::VarError::NotUnicode(..)) => {
-            return Err(Error::new(ErrorKind::InvalidData,
-                                  "PROTOC_INCLUDE environment variable is not valid UTF-8"));
-        },
-    };
-
-    Ok(Some((protoc, protoc_include)))
-}
-
-/// Downloads and unpacks the protoc package for the current architecture to the target path.
-/// Returns the paths to `protoc` and the include directory.
-fn download_protoc(target: &Path) -> Result<()> {
-    let url = protoc_url()?;
-    let mut data = Vec::new();
-    let mut handle = Easy::new();
-
-    handle.url(url)?;
-    handle.follow_location(true)?;
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|new_data| {
-            data.extend_from_slice(new_data);
-            Ok(new_data.len())
-        })?;
-        transfer.perform()?;
-    }
-
-    let mut archive = ZipArchive::new(Cursor::new(data))?;
-
-    for i in 0..archive.len()
-    {
-        let mut src = archive.by_index(i)?;
-
-        let mut path = target.to_owned();
-        path.push(src.name());
-
-        if src.name().ends_with('/') {
-            fs::create_dir(&path)?;
-        } else {
-            let mut dest = &mut fs::File::create(&path)?;
-            io::copy(&mut src, &mut dest)?;
-
-            #[cfg(unix)]
-            fn convert_permissions(mode: u32) -> Option<fs::Permissions> {
-                use std::os::unix::fs::PermissionsExt;
-                Some(fs::Permissions::from_mode(mode))
-            }
-            #[cfg(not(unix))]
-            fn convert_permissions(_mode: u32) -> Option<fs::Permissions> {
-                None
-            }
-            if let Some(permissions) = src.unix_mode().and_then(convert_permissions) {
-                fs::set_permissions(&path, permissions)?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn protoc_url() -> Result<&'static str> {
-    match (env::consts::OS, env::consts::ARCH) {
-        ("linux", "x86")    => Ok("https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_32.zip"),
-        ("linux", "x86_64") => Ok("https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip"),
-        ("macos", "x86")    => Ok("https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-osx-x86_32.zip"),
-        ("macos", "x86_64") => Ok("https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-osx-x86_64.zip"),
-        ("windows", _)      => Ok("https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-win32.zip"),
-        _ => Err(Error::new(ErrorKind::NotFound,
-                            format!("no precompiled protoc binary for current the platform: {}-{}",
-                                    env::consts::OS, env::consts::ARCH))),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_download_protoc() {
-        let dir = tempdir::TempDir::new("protoc").unwrap();
-        download_protoc(dir.path()).unwrap();
+    fn smoke_test() {
+        compile_protos(&["src/smoke_test.proto"], &["src"]).unwrap();
     }
 }
