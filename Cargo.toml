@@ -22,7 +22,7 @@ members = [
   "prost-build",
   "prost-codegen",
   "prost-derive",
-  "test-all-types",
+  "tests",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,

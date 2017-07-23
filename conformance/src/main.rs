@@ -1,7 +1,8 @@
 extern crate bytes;
 extern crate env_logger;
-extern crate test_all_types;
 extern crate prost;
+extern crate tests;
+
 #[macro_use]
 extern crate prost_derive;
 
@@ -19,8 +20,8 @@ use bytes::{
 };
 use prost::Message;
 
-use test_all_types::protobuf_test_messages::proto3::TestAllTypes;
-use test_all_types::{
+use tests::protobuf_test_messages::proto3::TestAllTypes;
+use tests::{
     RoundtripResult,
     roundtrip,
 };

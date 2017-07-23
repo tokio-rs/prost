@@ -1,13 +1,3 @@
-#[macro_use]
-extern crate prost_derive;
-
-extern crate prost;
-extern crate bytes;
-
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-
 use bytes::{Buf, IntoBuf};
 
 use prost::Message;
@@ -19,8 +9,6 @@ fn check_message<M>(msg: M) where M: Message + Default + PartialEq {
     let mut buf = Vec::with_capacity(18);
     msg.encode(&mut buf).unwrap();
     assert_eq!(expected_len, buf.len());
-
-    info!("encoded message: {:?}", buf);
 
     let mut buf = buf.into_buf();
     let roundtrip = M::decode(&mut buf).unwrap();
@@ -42,7 +30,6 @@ pub struct RepeatedFloats {
 
 #[test]
 fn check_repeated_floats() {
-    let _ = env_logger::init();
     check_message(RepeatedFloats {
         single_float: 0.0,
         repeated_float: vec![
@@ -55,7 +42,6 @@ fn check_repeated_floats() {
 
 #[test]
 fn check_scalar_types() {
-    let _ = env_logger::init();
     let scalar_types = ScalarTypes::default();
     check_message(scalar_types);
 }

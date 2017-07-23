@@ -10,7 +10,7 @@ env_logger = "0.4"
 log = "0.3"
 prost = { path = ".." }
 prost-derive = { path = "../prost-derive" }
-test-all-types = { path = "../test-all-types" }
+tests = { path = "../tests" }
 
 [build-dependencies]
 curl = "0.4"

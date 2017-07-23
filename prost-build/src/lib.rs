@@ -231,6 +231,10 @@ pub fn compile_protos_with_config<P>(config: &prost_codegen::Config,
             let protoc_dir = target.join("protoc");
             if !protoc_dir.exists() {
                 fs::create_dir(&protoc_dir)?;
+            }
+            let mut protoc = protoc_dir.join("bin");
+            protoc.push("protoc");
+            if !protoc.exists() {
                 download_protoc(&protoc_dir)?;
             }
 

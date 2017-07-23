@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
-test-all-types = { path = "../test-all-types" }
+test = { path = "../tests" }
 
 [[bin]]
 name = "proto3"
