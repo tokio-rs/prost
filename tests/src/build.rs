@@ -13,4 +13,8 @@ fn main() {
     prost_build::compile_protos_with_config(prost_codegen::Config::new().btree_map(&["."]),
                                             &["src/packages/widget_factory.proto"],
                                             &["src/packages"]).unwrap();
+
+    prost_build::compile_protos_with_config(prost_codegen::Config::new().btree_map(&["."]),
+                                            &["src/google/protobuf/unittest.proto"],
+                                            &["src"]).unwrap();
 }

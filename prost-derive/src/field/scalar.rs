@@ -216,22 +216,22 @@ impl Field {
             Some(match self.kind {
                 Kind::Plain(..) | Kind::Required(..) => {
                     quote! {
-                        pub fn #ident(&self) -> ::std::option::Option<#ty> {
-                            #ty::from_i32(self.#ident)
+                        pub fn #ident(&self) -> ::std::option::Option<super::#ty> {
+                            super::#ty::from_i32(self.#ident)
                         }
 
-                        pub fn #set(&mut self, value: #ty) {
+                        pub fn #set(&mut self, value: super::#ty) {
                             self.#ident = value as i32;
                         }
                     }
                 },
                 Kind::Optional(..) => {
                     quote! {
-                        pub fn #ident(&self) -> ::std::option::Option<#ty> {
-                            self.#ident.and_then(#ty::from_i32)
+                        pub fn #ident(&self) -> ::std::option::Option<super::#ty> {
+                            self.#ident.and_then(super::#ty::from_i32)
                         }
 
-                        pub fn #set(&mut self, value: #ty) {
+                        pub fn #set(&mut self, value: super::#ty) {
                             self.#ident = ::std::option::Option::Some(value as i32);
                         }
                     }
@@ -239,10 +239,10 @@ impl Field {
                 Kind::Repeated | Kind::Packed => {
                     quote! {
                         pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                       fn(i32) -> Option<#ty>> {
-                            self.#ident.iter().cloned().filter_map(#ty::from_i32)
+                                                                       fn(i32) -> Option<super::#ty>> {
+                            self.#ident.iter().cloned().filter_map(super::#ty::from_i32)
                         }
-                        pub fn #push(&mut self, value: #ty) {
+                        pub fn #push(&mut self, value: super::#ty) {
                             self.#ident.push(value as i32);
                         }
                     }

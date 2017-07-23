@@ -15,6 +15,8 @@ pub mod widget {
 
 #[test]
 fn test() {
+    use prost::Message;
+
     let mut widget_factory = widget::factory::WidgetFactory::default();
     assert_eq!(0, widget_factory.encoded_len());
 

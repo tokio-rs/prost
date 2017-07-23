@@ -4,7 +4,8 @@ extern crate prost;
 extern crate prost_derive;
 
 mod message_encoding;
-mod packages;
+pub mod packages;
+pub mod unittest;
 
 pub mod protobuf_test_messages {
     #[allow(non_snake_case)]
