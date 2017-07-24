@@ -8,6 +8,7 @@ extern crate log;
 
 extern crate bytes;
 extern crate env_logger;
+extern crate heck;
 extern crate itertools;
 extern crate multimap;
 extern crate petgraph;

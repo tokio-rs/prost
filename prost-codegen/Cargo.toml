@@ -12,6 +12,7 @@ description = "A Protocol Buffers implementation for the Rust Language."
 [dependencies]
 bytes = "0.4"
 env_logger = "0.4"
+heck = "0.2"
 itertools = "0.6"
 log = "0.3"
 multimap = "0.3"
