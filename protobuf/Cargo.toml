@@ -1,0 +1,12 @@
+[package]
+name = "protobuf"
+version = "0.1.0"
+authors = ["Dan Burkert <dan@danburkert.com>"]
+publish = false
+
+[build-dependencies]
+cfg-if = "0.1"
+curl = "0.4"
+flate2 = "0.2"
+tar = "0.4"
+tempdir = "0.3"

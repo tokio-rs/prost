@@ -14,9 +14,8 @@ fn test_conformance() {
         }
         path.join("conformance")
     }).unwrap();
-    let conformance_test_runner = env!("CONFORMANCE_TEST_RUNNER");
 
-    let status = Command::new(&conformance_test_runner[1..conformance_test_runner.len() - 1])
+    let status = Command::new(env!("CONFORMANCE_TEST_RUNNER"))
                          .arg("--enforce_recommended")
                          .arg(proto_conformance)
                          .status()

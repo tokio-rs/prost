@@ -11,3 +11,4 @@ prost-derive = { path = "../prost-derive" }
 
 [build-dependencies]
 prost-build = { path = "../prost-build" }
+protobuf = { path = "../protobuf" }

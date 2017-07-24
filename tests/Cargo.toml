@@ -25,3 +25,4 @@ tempdir = "0.3"
 [build-dependencies]
 prost-build = { path = "../prost-build" }
 prost-codegen = { path = "../prost-codegen" }
+protobuf = { path = "../protobuf" }

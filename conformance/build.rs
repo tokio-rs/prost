@@ -1,99 +1,13 @@
-extern crate curl;
-extern crate flate2;
 extern crate prost_build;
-extern crate tar;
-
-use std::env;
-use std::io::Cursor;
-use std::path::PathBuf;
-use std::process::Command;
-
-use curl::easy::Easy;
-use flate2::bufread::GzDecoder;
-use tar::Archive;
-
-const VERSION: &'static str = "3.3.0";
+extern crate protobuf;
 
 fn main() {
-    let target = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
-    let dir = target.join(format!("protobuf-{}", VERSION));
-    let conformance_dir = dir.join("conformance");
-    let conformance_bin = conformance_dir.join("conformance-test-runner");
+    // Emit an environment variable with the path to the conformance test runner so that it can be
+    // used in the conformance tests.
+    println!("cargo:rustc-env=CONFORMANCE_TEST_RUNNER={}",
+             protobuf::bin().join("conformance-test-runner").display());
 
-    // Download the protobuf source tarball.
-    if !dir.exists() {
-        let mut data = Vec::new();
-        let mut handle = Easy::new();
-
-        handle.url(&format!("https://github.com/google/protobuf/archive/v{}.tar.gz", VERSION))
-              .expect("failed to configure protobuf tarball URL");
-        handle.follow_location(true)
-              .expect("failed to configure follow location");
-        {
-            let mut transfer = handle.transfer();
-            transfer.write_function(|new_data| {
-                data.extend_from_slice(new_data);
-                Ok(new_data.len())
-            }).expect("failed to write download data");
-            transfer.perform().expect("failed to download protobuf");
-        }
-
-        Archive::new(GzDecoder::new(Cursor::new(data)).expect("failed to create gzip decoder"))
-                .unpack(target).expect("failed to unpack protobuf tarball");
-    }
-
-    if !dir.join("configure").exists() {
-        let autogen_rc = Command::new("./autogen.sh")
-                                 .current_dir(&dir)
-                                 .status()
-                                 .expect("failed to execute autogen.sh");
-        assert!(autogen_rc.success(), "protobuf autogen.sh failed");
-    }
-
-    if !conformance_bin.exists() {
-        let num_jobs = env::var("NUM_JOBS").expect("NUM_JOBS environment variable not set");
-        let configure_rc = Command::new("./configure")
-                                   .arg("--disable-shared")
-                                   .current_dir(&dir)
-                                   .status()
-                                   .expect("failed to execute configure");
-        assert!(configure_rc.success(), "failed to configure protobuf");
-
-        let make_rc = Command::new("make")
-                              .arg("-j").arg(&num_jobs)
-                              .current_dir(&dir)
-                              .status()
-                              .expect("failed to execute make protobuf");
-        assert!(make_rc.success(), "failed to make protobuf");
-
-        let conformance_rc = Command::new("make")
-                                     .arg("-j").arg(&num_jobs)
-                                     .current_dir(&conformance_dir)
-                                     .status()
-                                     .expect("failed to execute make conformance");
-        assert!(conformance_rc.success(), "failed to make conformance");
-
-        // Clean intermediate build artifacts. This saves about ~500MiB which
-        // helps a lot for CI caching.
-        let make_clean_rc = Command::new("make")
-                                    .arg("clean")
-                                    .current_dir(&dir)
-                                    .status()
-                                    .expect("failed to execute make clean");
-        assert!(make_clean_rc.success(), "failed to make clean");
-        let make_mostlyclean_rc = Command::new("make")
-                                          .arg("mostlyclean")
-                                          .current_dir(&conformance_dir)
-                                          .status()
-                                          .expect("failed to execute make mostlyclean");
-        assert!(make_mostlyclean_rc.success(), "failed to make mostlyclean");
-    }
-
-
-    // Emit an environment variable with the path to the conformance test runner
-    // so that it can be used in the conformance tests.
-    println!("cargo:rustc-env=CONFORMANCE_TEST_RUNNER={:?}", conformance_bin);
-
-    prost_build::compile_protos(&[conformance_dir.join("conformance.proto")],
-                                &[conformance_dir]).unwrap();
+    let conformance = protobuf::include().join("conformance");
+    prost_build::compile_protos(&[conformance.join("conformance.proto")],
+                                &[conformance]).unwrap();
 }

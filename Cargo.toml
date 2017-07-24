@@ -22,6 +22,7 @@ members = [
   "prost-build",
   "prost-codegen",
   "prost-derive",
+  "protobuf",
   "tests",
 ]
 exclude = [

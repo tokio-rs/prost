@@ -13,7 +13,5 @@ prost-derive = { path = "../prost-derive" }
 tests = { path = "../tests" }
 
 [build-dependencies]
-curl = "0.4"
-flate2 = "0.2"
+protobuf = { path = "../protobuf" }
 prost-build = { path = "../prost-build" }
-tar = "0.4"
