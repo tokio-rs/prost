@@ -122,6 +122,7 @@ mod code_generator;
 mod ident;
 mod message_graph;
 
+use std::default;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -164,7 +165,6 @@ pub trait ServiceGenerator {
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
-#[derive(Default)]
 pub struct Config {
     service_generator: Option<Box<ServiceGenerator>>,
     btree_map: Vec<String>,
@@ -336,6 +336,16 @@ impl Config {
             CodeGenerator::generate(self, &message_graph, file, &mut buf);
         }
         modules
+    }
+}
+
+impl default::Default for Config {
+    fn default() -> Config {
+        Config {
+            service_generator: None,
+            btree_map: Vec::new(),
+            prost_types: true,
+        }
     }
 }
 

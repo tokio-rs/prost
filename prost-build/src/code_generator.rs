@@ -434,6 +434,10 @@ impl <'a> CodeGenerator<'a> {
     fn append_enum(&mut self, desc: EnumDescriptorProto) {
         debug!("\tenum: {:?}", desc.name());
 
+        // Skip Protobuf well-known types.
+        let fq_enum_name = format!(".{}.{}", self.package, desc.name());
+        if self.well_known_type(&fq_enum_name).is_some() { return; }
+
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
@@ -631,21 +635,20 @@ impl <'a> CodeGenerator<'a> {
         if !self.config.prost_types { return None; }
         Some(match fq_msg_type {
             ".google.protobuf.BoolValue" => "bool",
-            ".google.protobuf.UInt32Value" => "u32",
-            ".google.protobuf.UInt64Value" => "u64",
+            ".google.protobuf.BytesValue" => "::std::vec::Vec<u8>",
+            ".google.protobuf.DoubleValue" => "f64",
+            ".google.protobuf.Empty" => "()",
+            ".google.protobuf.FloatValue" => "f32",
             ".google.protobuf.Int32Value" => "i32",
             ".google.protobuf.Int64Value" => "i64",
-            ".google.protobuf.FloatValue" => "f32",
-            ".google.protobuf.DoubleValue" => "f64",
             ".google.protobuf.StringValue" => "::std::string::String",
-            ".google.protobuf.BytesValue" => "::std::vec::Vec<u8>",
-            ".google.protobuf.Empty" => "()",
-            ".google.protobuf.Duration" => "::prost::types::Duration",
-            ".google.protobuf.Timestamp" => "::prost::types::Timestamp",
+            ".google.protobuf.UInt32Value" => "u32",
+            ".google.protobuf.UInt64Value" => "u64",
 
             ".google.protobuf.Any" => "::prost_types::Any",
             ".google.protobuf.Api" => "::prost_types::Api",
             ".google.protobuf.DescriptorProto" => "::prost_types::DescriptorProto",
+            ".google.protobuf.Duration" => "::prost_types::Duration",
             ".google.protobuf.Enum" => "::prost_types::Enum",
             ".google.protobuf.EnumDescriptorProto" => "::prost_types::EnumDescriptorProt",
             ".google.protobuf.EnumOptions" => "::prost_types::EnumOptions",
@@ -660,6 +663,7 @@ impl <'a> CodeGenerator<'a> {
             ".google.protobuf.FileDescriptorSet" => "::prost_types::FileDescriptorSet",
             ".google.protobuf.FileOptions" => "::prost_types::FileOptions",
             ".google.protobuf.GeneratedCodeInfo" => "::prost_types::GeneratedCodeInfo",
+            ".google.protobuf.NullValue" => "::prost_types::NullValue",
             ".google.protobuf.ListValue" => "::prost_types::ListValue",
             ".google.protobuf.MessageOptions" => "::prost_types::MessageOptions",
             ".google.protobuf.Method" => "::prost_types::Method",
@@ -674,6 +678,7 @@ impl <'a> CodeGenerator<'a> {
             ".google.protobuf.SourceCodeInfo" => "::prost_types::SourceCodeInfo",
             ".google.protobuf.SourceContext" => "::prost_types::SourceContext",
             ".google.protobuf.Struct" => "::prost_types::Struct",
+            ".google.protobuf.Timestamp" => "::prost_types::Timestamp",
             ".google.protobuf.Type" => "::prost_types::Type",
             ".google.protobuf.UninterpretedOption" => "::prost_types::UninterpretedOption",
             ".google.protobuf.Value" => "::prost_types::Value",
