@@ -314,11 +314,9 @@ impl Config {
 
         let modules = self.generate(descriptor_set.file);
         for (module, content) in modules {
-            let mut filename = match module.last() {
-                Some(filename) => PathBuf::from(filename),
-                None => return Err(Error::new(ErrorKind::InvalidInput, ".proto must have a package")),
-            };
-            filename.set_extension("rs");
+            let mut filename = module.join(".");
+            filename.push_str(".rs");
+            eprintln!("writing: {:?}", filename);
             let mut file = fs::File::create(target.join(filename))?;
             file.write_all(content.as_bytes())?;
             file.flush()?;

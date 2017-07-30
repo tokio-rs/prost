@@ -35,11 +35,11 @@ fn bootstrap() {
                           ], &[]).unwrap();
 
     let mut bootstrapped_protobuf = String::new();
-    fs::File::open(tempdir.path().join("protobuf.rs")).unwrap()
+    fs::File::open(tempdir.path().join("google.protobuf.rs")).unwrap()
              .read_to_string(&mut bootstrapped_protobuf).unwrap();
 
     let mut bootstrapped_compiler = String::new();
-    fs::File::open(tempdir.path().join("compiler.rs")).unwrap()
+    fs::File::open(tempdir.path().join("google.protobuf.compiler.rs")).unwrap()
              .read_to_string(&mut bootstrapped_compiler).unwrap();
 
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");

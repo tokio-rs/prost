@@ -3,13 +3,13 @@
 include!(concat!(env!("OUT_DIR"), "/packages.rs"));
 
 pub mod gizmo {
-    include!(concat!(env!("OUT_DIR"), "/gizmo.rs"));
+    include!(concat!(env!("OUT_DIR"), "/packages.gizmo.rs"));
 }
 
 pub mod widget {
-    include!(concat!(env!("OUT_DIR"), "/widget.rs"));
+    include!(concat!(env!("OUT_DIR"), "/packages.widget.rs"));
     pub mod factory {
-        include!(concat!(env!("OUT_DIR"), "/factory.rs"));
+        include!(concat!(env!("OUT_DIR"), "/packages.widget.factory.rs"));
     }
 }
 

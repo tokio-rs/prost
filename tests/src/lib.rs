@@ -11,13 +11,13 @@ pub mod unittest;
 pub mod protobuf_test_messages {
     #[allow(non_snake_case)]
     pub mod proto3 {
-        include!(concat!(env!("OUT_DIR"), "/proto3.rs"));
+        include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto3.rs"));
     }
 }
 
 pub mod google {
     pub mod protobuf {
-        include!(concat!(env!("OUT_DIR"), "/protobuf.rs"));
+        include!(concat!(env!("OUT_DIR"), "/google.protobuf.rs"));
     }
 }
 

@@ -52,7 +52,7 @@ pub mod proto2 {
 
     use super::*;
 
-    include!(concat!(env!("OUT_DIR"), "/proto2.rs"));
+    include!(concat!(env!("OUT_DIR"), "/benchmarks.proto2.rs"));
 
     #[bench]
     fn google_message1_encode(b: &mut test::Bencher) {
@@ -79,7 +79,7 @@ pub mod proto3 {
 
     use super::*;
 
-    include!(concat!(env!("OUT_DIR"), "/proto3.rs"));
+    include!(concat!(env!("OUT_DIR"), "/benchmarks.proto3.rs"));
 
     #[bench]
     fn google_message1_encode(b: &mut test::Bencher) {
