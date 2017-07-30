@@ -73,6 +73,7 @@ impl Field {
         let has_default = default.is_some();
         let default = default.map_or_else(|| Ok(DefaultValue::new(&ty)),
                                           |lit| DefaultValue::from_lit(&ty, lit))?;
+
         let kind = match (label, packed, has_default) {
             (None, Some(true), _) |
             (Some(Label::Optional), Some(true), _) |
@@ -470,7 +471,6 @@ impl DefaultValue {
             return Ok(None);
         } else if let MetaItem::NameValue(_, ref lit) = *attr {
             Ok(Some(lit.clone()))
-
         } else {
             bail!("invalid default value attribute: {:?}", attr)
         }
@@ -491,28 +491,87 @@ impl DefaultValue {
             Lit::Int(value, IntTy::Unsuffixed) if is_i64 => Lit::Int(value, IntTy::I64),
 
             Lit::Int(value, IntTy::U32) if is_u32 => Lit::Int(value, IntTy::U32),
-            Lit::Int(value, IntTy::Unsuffixed) if is_u64  => Lit::Int(value, IntTy::U32),
+            Lit::Int(value, IntTy::Unsuffixed) if is_u32  => Lit::Int(value, IntTy::U32),
 
-            Lit::Int(value, IntTy::U64) if ty.rust_type() == "u64" => Lit::Int(value, IntTy::U64),
-            Lit::Int(value, IntTy::Unsuffixed) if ty.rust_type() == "u64" => Lit::Int(value, IntTy::U64),
+            Lit::Int(value, IntTy::U64) if is_u64 => Lit::Int(value, IntTy::U64),
+            Lit::Int(value, IntTy::Unsuffixed) if is_u64 => Lit::Int(value, IntTy::U64),
 
             Lit::Float(ref value, FloatTy::F32) if *ty == Ty::Float => Lit::Float(value.clone(), FloatTy::F32),
             Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Float => Lit::Float(value.clone(), FloatTy::F32),
+            Lit::Int(ref value, IntTy::Unsuffixed) if *ty == Ty::Float => Lit::Float(format!("{}.0", value), FloatTy::F32),
 
             Lit::Float(ref value, FloatTy::F64) if *ty == Ty::Double => Lit::Float(value.clone(), FloatTy::F64),
             Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Double => Lit::Float(value.clone(), FloatTy::F64),
+            Lit::Int(ref value, IntTy::Unsuffixed) if *ty == Ty::Double => Lit::Float(format!("{}.0", value), FloatTy::F64),
 
             Lit::Bool(value) if *ty == Ty::Bool => Lit::Bool(value),
-            ref lit@Lit::Str(_, StrStyle::Cooked) if *ty == Ty::String => lit.clone(),
+            ref lit@Lit::Str(_, _) if *ty == Ty::String => lit.clone(),
+            ref lit@Lit::ByteStr(_, _) if *ty == Ty::Bytes => lit.clone(),
 
             Lit::Str(s, StrStyle::Cooked) => {
+                let s = s.trim();
                 if let Ty::Enumeration(ref ty) = *ty {
                     return Ok(DefaultValue::Ident(Ident::new(format!("{}::{} as i32", ty, s))));
+                }
+
+                // Parse special floating point values.
+                if *ty == Ty::Float {
+                    match s {
+                        "inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f32::INFINITY"))),
+                        "-inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f32::NEG_INFINITY"))),
+                        "nan" => return Ok(DefaultValue::Ident(Ident::new("::std::f32::NAN"))),
+                        _ => (),
+                    }
+                }
+                if *ty == Ty::Double {
+                    match s {
+                        "inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f64::INFINITY"))),
+                        "-inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f64::NEG_INFINITY"))),
+                        "nan" => return Ok(DefaultValue::Ident(Ident::new("::std::f64::NAN"))),
+                        _ => (),
+                    }
+                }
+
+                // Rust doesn't have a negative literals, so they have to be parsed specially.
+                if s.chars().next() == Some('-') {
+                    match syn::parse::lit(&s[1..]) {
+                        syn::parse::IResult::Done(rest, _) if !rest.is_empty() => (),
+
+                        syn::parse::IResult::Done(_, Lit::Int(value, IntTy::I32))
+                        | syn::parse::IResult::Done(_, Lit::Int(value, IntTy::Unsuffixed)) if is_i32 => {
+                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}i32", value))));
+                        },
+
+                        syn::parse::IResult::Done(_, Lit::Int(ref value, IntTy::I64))
+                        | syn::parse::IResult::Done(_, Lit::Int(ref value, IntTy::Unsuffixed)) if is_i64 => {
+                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}i64", value))));
+                        },
+
+                        syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::F32))
+                        | syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::Unsuffixed)) if *ty == Ty::Float => {
+                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f32", value))));
+                        },
+
+                        syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::F64))
+                        | syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::Unsuffixed)) if *ty == Ty::Double => {
+                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f64", value))));
+                        },
+
+                        syn::parse::IResult::Done(_, Lit::Int(value, IntTy::Unsuffixed)) if *ty == Ty::Float => {
+                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f32", value))));
+                        },
+
+                        syn::parse::IResult::Done(_, Lit::Int(ref value, IntTy::Unsuffixed)) if *ty == Ty::Double => {
+                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f64", value))));
+                        },
+
+                        _ => (),
+                    }
                 }
                 match syn::parse::lit(&s) {
                     syn::parse::IResult::Done(rest, _) if !rest.is_empty() => (),
                     syn::parse::IResult::Done(_, Lit::Str(..)) => (),
-                    syn::parse::IResult::Done(_, lit) => return Ok(DefaultValue::Lit(lit)),
+                    syn::parse::IResult::Done(_, lit) => return DefaultValue::from_lit(ty, lit),
                     _ => (),
                 }
                 bail!("invalid default value: {}", quote!(#s));

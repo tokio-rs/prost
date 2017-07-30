@@ -1,3 +1,4 @@
+use std::ascii;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -218,14 +219,15 @@ impl <'a> CodeGenerator<'a> {
 
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
-        if field.type_().unwrap() == Type::TypeGroup { return; }
+        let type_ = field.type_().unwrap();
+        if type_ == Type::TypeGroup { return; }
 
         let repeated = field.label == Some(Label::LabelRepeated as i32);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
         let boxed = !repeated
-                 && field.type_().unwrap() == Type::TypeMessage
+                 && type_ == Type::TypeMessage
                  && self.message_graph.is_nested(field.type_name(), msg_name);
 
         debug!("\t\tfield: {:?}, type: {:?}", field.name(), ty);
@@ -253,6 +255,23 @@ impl <'a> CodeGenerator<'a> {
         if boxed { self.buf.push_str(", boxed"); }
         self.buf.push_str(", tag=\"");
         self.buf.push_str(&field.number().to_string());
+
+        if let Some(ref default) = field.default_value {
+            self.buf.push_str("\", default=\"");
+            if type_ == Type::TypeBytes {
+                self.buf.push_str("b\\\"");
+                for b in unescape_c_escape_string(default) {
+                    self.buf.extend(ascii::escape_default(b).flat_map(|c| (c as char).escape_default()));
+                }
+                self.buf.push_str("\\\"");
+            } else {
+                // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
+                // safer, we should unescape the Protobuf string and re-escape it with the Rust
+                // escaping mechanisms.
+                self.buf.push_str(default);
+            }
+        }
+
         self.buf.push_str("\")]\n");
         self.push_indent();
         self.buf.push_str("pub ");
@@ -672,4 +691,78 @@ fn can_pack(field: &FieldDescriptorProto) -> bool {
             Type::TypeBool    | Type::TypeEnum => true,
             _ => false,
         }
+}
+
+/// Based on [`google::protobuf::UnescapeCEscapeString`][1]
+/// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/stubs/strutil.cc#L312-L322
+fn unescape_c_escape_string(s: &str) -> Vec<u8> {
+    let src = s.as_bytes();
+    let len = src.len();
+    let mut dst = Vec::new();
+
+    let mut p = 0;
+
+    while p < len {
+        if src[p] != b'\\' {
+            dst.push(src[p]);
+            p += 1;
+        } else {
+            p += 1;
+            if p == len {
+                panic!("invalid c-escaped default binary value ({}): ends with '\'", s)
+            }
+            match src[p] {
+                b'a' => dst.push(0x07),
+                b'b' => dst.push(0x08),
+                b'f' => dst.push(0x0C),
+                b'n' => dst.push(0x0A),
+                b'r' => dst.push(0x0D),
+                b't' => dst.push(0x09),
+                b'v' => dst.push(0x0B),
+                b'\\' => dst.push(0x5C),
+                b'?' => dst.push(0x3F),
+                b'\'' => dst.push(0x27),
+                b'"' => dst.push(0x22),
+                b'0'...b'7' => {
+                    if p + 3 > len {
+                        eprintln!("p: {}, len: {}, src[p..]: {}", p, len, &s[p..]);
+                        panic!("invalid c-escaped default binary value ({}): incomplete octal value", s)
+                    }
+                    match u8::from_str_radix(&s[p..p+3], 8) {
+                        Ok(b) => dst.push(b),
+                        Err(_) => {
+                            panic!("invalid c-escaped default binary value ({}): invalid octal value", s)
+                        },
+                    }
+                    p += 3;
+                },
+                b'x' | b'X' => {
+                    if p + 2 > len {
+                        panic!("invalid c-escaped default binary value ({}): incomplete hex value", s)
+                    }
+                    match u8::from_str_radix(&s[p..p+2], 16) {
+                        Ok(b) => dst.push(b),
+                        Err(_) => {
+                            panic!("invalid c-escaped default binary value ({}): invalid hex value", s)
+                        },
+                    }
+                    p += 2;
+                },
+                _ => {
+                    panic!("invalid c-escaped default binary value ({}): invalid escape", s)
+                },
+            }
+        }
+    }
+    dst
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unescape_c_escape_string() {
+        assert_eq!(&b"hello world"[..], &unescape_c_escape_string("hello world")[..]);
+    }
 }

@@ -233,10 +233,10 @@ pub struct MethodDescriptorProto {
     #[prost(message, optional, tag="4")]
     pub options: ::std::option::Option<MethodOptions>,
     /// Identifies if client streams multiple client messages
-    #[prost(bool, optional, tag="5")]
+    #[prost(bool, optional, tag="5", default="false")]
     pub client_streaming: ::std::option::Option<bool>,
     /// Identifies if server streams multiple server messages
-    #[prost(bool, optional, tag="6")]
+    #[prost(bool, optional, tag="6", default="false")]
     pub server_streaming: ::std::option::Option<bool>,
 }
 // ===================================================================
@@ -292,7 +292,7 @@ pub struct FileOptions {
     /// named by java_outer_classname.  However, the outer class will still be
     /// generated to contain the file's getDescriptor() method as well as any
     /// top-level extensions defined in the file.
-    #[prost(bool, optional, tag="10")]
+    #[prost(bool, optional, tag="10", default="false")]
     pub java_multiple_files: ::std::option::Option<bool>,
     /// This option does nothing.
     #[prost(bool, optional, tag="20")]
@@ -303,9 +303,9 @@ pub struct FileOptions {
     /// Message reflection will do the same.
     /// However, an extension field still accepts non-UTF-8 byte sequences.
     /// This option has no effect on when used with the lite runtime.
-    #[prost(bool, optional, tag="27")]
+    #[prost(bool, optional, tag="27", default="false")]
     pub java_string_check_utf8: ::std::option::Option<bool>,
-    #[prost(enumeration="file_options::OptimizeMode", optional, tag="9")]
+    #[prost(enumeration="file_options::OptimizeMode", optional, tag="9", default="SPEED")]
     pub optimize_for: ::std::option::Option<i32>,
     /// Sets the Go package where structs generated from this .proto will be
     /// placed. If omitted, the Go package will be derived from the following:
@@ -324,21 +324,21 @@ pub struct FileOptions {
     /// that generate code specific to your particular RPC system.  Therefore,
     /// these default to false.  Old code which depends on generic services should
     /// explicitly set them to true.
-    #[prost(bool, optional, tag="16")]
+    #[prost(bool, optional, tag="16", default="false")]
     pub cc_generic_services: ::std::option::Option<bool>,
-    #[prost(bool, optional, tag="17")]
+    #[prost(bool, optional, tag="17", default="false")]
     pub java_generic_services: ::std::option::Option<bool>,
-    #[prost(bool, optional, tag="18")]
+    #[prost(bool, optional, tag="18", default="false")]
     pub py_generic_services: ::std::option::Option<bool>,
     /// Is this file deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for everything in the file, or it will be completely ignored; in the very
     /// least, this is a formalization for deprecating files.
-    #[prost(bool, optional, tag="23")]
+    #[prost(bool, optional, tag="23", default="false")]
     pub deprecated: ::std::option::Option<bool>,
     /// Enables the use of arenas for the proto messages in this file. This applies
     /// only to generated classes for C++.
-    #[prost(bool, optional, tag="31")]
+    #[prost(bool, optional, tag="31", default="false")]
     pub cc_enable_arenas: ::std::option::Option<bool>,
     /// Sets the objective c class prefix which is prepended to all objective c
     /// generated classes from this .proto. There is no default.
@@ -394,18 +394,18 @@ pub struct MessageOptions {
     ///
     /// Because this is an option, the above two restrictions are not enforced by
     /// the protocol compiler.
-    #[prost(bool, optional, tag="1")]
+    #[prost(bool, optional, tag="1", default="false")]
     pub message_set_wire_format: ::std::option::Option<bool>,
     /// Disables the generation of the standard "descriptor()" accessor, which can
     /// conflict with a field of the same name.  This is meant to make migration
     /// from proto1 easier; new code should avoid fields named "descriptor".
-    #[prost(bool, optional, tag="2")]
+    #[prost(bool, optional, tag="2", default="false")]
     pub no_standard_descriptor_accessor: ::std::option::Option<bool>,
     /// Is this message deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the message, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating messages.
-    #[prost(bool, optional, tag="3")]
+    #[prost(bool, optional, tag="3", default="false")]
     pub deprecated: ::std::option::Option<bool>,
     /// Whether the message is an automatically generated map entry type for the
     /// maps field.
@@ -440,7 +440,7 @@ pub struct FieldOptions {
     /// representation of the field than it normally would.  See the specific
     /// options below.  This option is not yet implemented in the open source
     /// release -- sorry, we'll try to include it in a future version!
-    #[prost(enumeration="field_options::CType", optional, tag="1")]
+    #[prost(enumeration="field_options::CType", optional, tag="1", default="STRING")]
     pub ctype: ::std::option::Option<i32>,
     /// The packed option can be enabled for repeated primitive fields to enable
     /// a more efficient representation on the wire. Rather than repeatedly
@@ -458,7 +458,7 @@ pub struct FieldOptions {
     /// JavaScript code to use the JavaScript "number" type instead of strings.
     /// This option is an enum to permit additional types to be added,
     /// e.g. goog.math.Integer.
-    #[prost(enumeration="field_options::JSType", optional, tag="6")]
+    #[prost(enumeration="field_options::JSType", optional, tag="6", default="JS_NORMAL")]
     pub jstype: ::std::option::Option<i32>,
     /// Should this field be parsed lazily?  Lazy applies only to message-type
     /// fields.  It means that when the outer message is initially parsed, the
@@ -488,16 +488,16 @@ pub struct FieldOptions {
     /// implementation must either *always* check its required fields, or *never*
     /// check its required fields, regardless of whether or not the message has
     /// been parsed.
-    #[prost(bool, optional, tag="5")]
+    #[prost(bool, optional, tag="5", default="false")]
     pub lazy: ::std::option::Option<bool>,
     /// Is this field deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for accessors, or it will be completely ignored; in the very least, this
     /// is a formalization for deprecating fields.
-    #[prost(bool, optional, tag="3")]
+    #[prost(bool, optional, tag="3", default="false")]
     pub deprecated: ::std::option::Option<bool>,
     /// For Google-internal migration only. Do not use.
-    #[prost(bool, optional, tag="10")]
+    #[prost(bool, optional, tag="10", default="false")]
     pub weak: ::std::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
@@ -537,7 +537,7 @@ pub struct EnumOptions {
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the enum, or it will be completely ignored; in the very least, this
     /// is a formalization for deprecating enums.
-    #[prost(bool, optional, tag="3")]
+    #[prost(bool, optional, tag="3", default="false")]
     pub deprecated: ::std::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
@@ -549,7 +549,7 @@ pub struct EnumValueOptions {
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the enum value, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating enum values.
-    #[prost(bool, optional, tag="1")]
+    #[prost(bool, optional, tag="1", default="false")]
     pub deprecated: ::std::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
@@ -566,7 +566,7 @@ pub struct ServiceOptions {
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the service, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating services.
-    #[prost(bool, optional, tag="33")]
+    #[prost(bool, optional, tag="33", default="false")]
     pub deprecated: ::std::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
@@ -583,9 +583,9 @@ pub struct MethodOptions {
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the method, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating methods.
-    #[prost(bool, optional, tag="33")]
+    #[prost(bool, optional, tag="33", default="false")]
     pub deprecated: ::std::option::Option<bool>,
-    #[prost(enumeration="method_options::IdempotencyLevel", optional, tag="34")]
+    #[prost(enumeration="method_options::IdempotencyLevel", optional, tag="34", default="IDEMPOTENCY_UNKNOWN")]
     pub idempotency_level: ::std::option::Option<i32>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
