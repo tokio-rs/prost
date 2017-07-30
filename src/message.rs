@@ -87,6 +87,9 @@ pub trait Message: Debug + Send + Sync {
     fn merge_length_delimited<B>(&mut self, buf: B) -> Result<(), DecodeError> where B: IntoBuf, Self: Sized {
         message::merge(WireType::LengthDelimited, self, &mut buf.into_buf())
     }
+
+    /// Clears the message, resetting all fields to their default.
+    fn clear(&mut self);
 }
 
 impl <M> Message for Box<M> where M: Message {
@@ -98,5 +101,8 @@ impl <M> Message for Box<M> where M: Message {
     }
     fn encoded_len(&self) -> usize {
         (**self).encoded_len()
+    }
+    fn clear(&mut self) {
+        (**self).clear()
     }
 }

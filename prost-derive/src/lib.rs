@@ -95,6 +95,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         }),)
     });
 
+    let clear = fields.iter()
+                       .map(|&(ref field_ident, ref field)| {
+                           field.clear(&Ident::new(format!("self.{}", field_ident)))
+                       });
+
     let default = fields.iter()
                         .map(|&(ref field_ident, ref field)| {
                             let value = field.default();
@@ -141,6 +146,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 #[inline]
                 fn encoded_len(&self) -> usize {
                     0 #(+ #encoded_len)*
+                }
+
+                fn clear(&mut self) {
+                    #(#clear;)*
                 }
             }
 

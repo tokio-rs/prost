@@ -131,4 +131,12 @@ impl Field {
             },
         }
     }
+
+    pub fn clear(&self, ident: &Ident) -> Tokens {
+        match self.label {
+            Label::Optional => quote!(#ident = ::std::option::Option::None),
+            Label::Required => quote!(#ident.clear()),
+            Label::Repeated => quote!(#ident.clear()),
+        }
+    }
 }

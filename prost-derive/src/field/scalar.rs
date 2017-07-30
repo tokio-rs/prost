@@ -200,6 +200,19 @@ impl Field {
         }
     }
 
+    pub fn clear(&self, ident: &Ident) -> Tokens {
+        match self.kind {
+            Kind::Plain(ref value) | Kind::Required(ref value) => {
+                match self.ty {
+                    Ty::String | Ty::Bytes => quote!(#ident.clear()),
+                    _ => quote!(#ident = #value),
+                }
+            },
+            Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
+            Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
+        }
+    }
+
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> Tokens {
         match self.kind {

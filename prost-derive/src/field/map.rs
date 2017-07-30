@@ -192,6 +192,10 @@ impl Field {
         }
     }
 
+    pub fn clear(&self, ident: &Ident) -> Tokens {
+        quote!(#ident.clear())
+    }
+
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {

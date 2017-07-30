@@ -85,7 +85,7 @@ impl Field {
         }
     }
 
-    /// Returns a statement which encodes the scalar field.
+    /// Returns a statement which encodes the field.
     pub fn encode(&self, ident: &Ident) -> Tokens {
         match *self {
             Field::Scalar(ref scalar) => scalar.encode(ident),
@@ -113,6 +113,16 @@ impl Field {
             Field::Map(ref map) => map.encoded_len(ident),
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
+        }
+    }
+
+    /// Returns a statement which clears the field.
+    pub fn clear(&self, ident: &Ident) -> Tokens {
+        match *self {
+            Field::Scalar(ref scalar) => scalar.clear(ident),
+            Field::Message(ref message) => message.clear(ident),
+            Field::Map(ref map) => map.clear(ident),
+            Field::Oneof(ref oneof) => oneof.clear(ident),
         }
     }
 

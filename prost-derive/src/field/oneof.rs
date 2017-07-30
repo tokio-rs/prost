@@ -93,4 +93,8 @@ impl Field {
             #ident.as_ref().map_or(0, #ty::encoded_len)
         }
     }
+
+    pub fn clear(&self, ident: &Ident) -> Tokens {
+        quote!(#ident = ::std::option::Option::None)
+    }
 }

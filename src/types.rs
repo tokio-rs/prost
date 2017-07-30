@@ -29,6 +29,9 @@ impl Message for bool {
     fn encoded_len(&self) -> usize {
         if *self { 2 } else { 0 }
     }
+    fn clear(&mut self) {
+        *self = false;
+    }
 }
 
 /// UInt32Value
@@ -48,6 +51,9 @@ impl Message for u32 {
     }
     fn encoded_len(&self) -> usize {
         if *self != 0 { uint32::encoded_len(1, self) } else { 0 }
+    }
+    fn clear(&mut self) {
+        *self = 0;
     }
 }
 
@@ -69,6 +75,9 @@ impl Message for u64 {
     fn encoded_len(&self) -> usize {
         if *self != 0 { uint64::encoded_len(1, self) } else { 0 }
     }
+    fn clear(&mut self) {
+        *self = 0;
+    }
 }
 
 /// Int32Value
@@ -88,6 +97,9 @@ impl Message for i32 {
     }
     fn encoded_len(&self) -> usize {
         if *self != 0 { int32::encoded_len(1, self) } else { 0 }
+    }
+    fn clear(&mut self) {
+        *self = 0;
     }
 }
 
@@ -109,6 +121,9 @@ impl Message for i64 {
     fn encoded_len(&self) -> usize {
         if *self != 0 { int64::encoded_len(1, self) } else { 0 }
     }
+    fn clear(&mut self) {
+        *self = 0;
+    }
 }
 
 /// FloatValue
@@ -128,6 +143,9 @@ impl Message for f32 {
     }
     fn encoded_len(&self) -> usize {
         if *self != 0.0 { float::encoded_len(1, self) } else { 0 }
+    }
+    fn clear(&mut self) {
+        *self = 0.0;
     }
 }
 
@@ -149,6 +167,9 @@ impl Message for f64 {
     fn encoded_len(&self) -> usize {
         if *self != 0.0 { double::encoded_len(1, self) } else { 0 }
     }
+    fn clear(&mut self) {
+        *self = 0.0;
+    }
 }
 
 /// StringValue
@@ -168,6 +189,9 @@ impl Message for String {
     }
     fn encoded_len(&self) -> usize {
         if !self.is_empty() { string::encoded_len(1, self) } else { 0 }
+    }
+    fn clear(&mut self) {
+        self.clear();
     }
 }
 
@@ -189,6 +213,9 @@ impl Message for Vec<u8> {
     fn encoded_len(&self) -> usize {
         if !self.is_empty() { bytes::encoded_len(1, self) } else { 0 }
     }
+    fn clear(&mut self) {
+        self.clear();
+    }
 }
 
 /// Empty
@@ -199,4 +226,5 @@ impl Message for () {
         skip_field(wire_type, buf)
     }
     fn encoded_len(&self) -> usize { 0 }
+    fn clear(&mut self) { }
 }
