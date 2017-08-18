@@ -26,3 +26,4 @@ tempdir = "0.3"
 [build-dependencies]
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }
+env_logger = "0.4"

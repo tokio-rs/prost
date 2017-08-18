@@ -317,7 +317,7 @@ impl Config {
         for (module, content) in modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
-            eprintln!("writing: {:?}", filename);
+            trace!("writing: {:?}", filename);
             let mut file = fs::File::create(target.join(filename))?;
             file.write_all(content.as_bytes())?;
             file.flush()?;

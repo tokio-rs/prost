@@ -1,7 +1,9 @@
+extern crate env_logger;
 extern crate prost_build;
 extern crate protobuf;
 
 fn main() {
+    let _ = env_logger::init();
     let proto_includes = protobuf::include().join("google").join("protobuf");
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
