@@ -217,7 +217,7 @@ impl <'a> CodeGenerator<'a> {
 
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
-        let type_ = field.type_().unwrap();
+        let type_ = field.type_();
         if type_ == Type::TypeGroup { return; }
 
         let repeated = field.label == Some(Label::LabelRepeated as i32);
@@ -236,7 +236,7 @@ impl <'a> CodeGenerator<'a> {
         let type_tag = self.field_type_tag(&field);
         self.buf.push_str(&type_tag);
 
-        match field.label().expect("unknown label") {
+        match field.label() {
             Label::LabelOptional => if optional {
                 self.buf.push_str(", optional");
             },
@@ -262,6 +262,8 @@ impl <'a> CodeGenerator<'a> {
                     self.buf.extend(ascii::escape_default(b).flat_map(|c| (c as char).escape_default()));
                 }
                 self.buf.push_str("\\\"");
+            } else if type_ == Type::TypeEnum {
+                self.buf.push_str(&to_upper_camel(default));
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
                 // safer, we should unescape the Protobuf string and re-escape it with the Rust
@@ -357,7 +359,7 @@ impl <'a> CodeGenerator<'a> {
         self.depth += 1;
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
-            if field.type_().unwrap() == Type::TypeGroup { continue; }
+            if field.type_() == Type::TypeGroup { continue; }
 
             self.path.push(idx as i32);
             self.append_doc();
@@ -542,7 +544,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
-        match field.type_().expect("unknown field type") {
+        match field.type_() {
             Type::TypeFloat => Cow::Borrowed("f32"),
             Type::TypeDouble => Cow::Borrowed("f64"),
             Type::TypeUint32 | Type::TypeFixed32 => Cow::Borrowed("u32"),
@@ -587,7 +589,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.type_().expect("unknown field type") {
+        match field.type_() {
             Type::TypeFloat => Cow::Borrowed("float"),
             Type::TypeDouble => Cow::Borrowed("double"),
             Type::TypeInt32 => Cow::Borrowed("int32"),
@@ -610,18 +612,18 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.type_().expect("unknown field type") {
+        match field.type_() {
             Type::TypeEnum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
             _ => self.field_type_tag(field),
         }
     }
 
     fn optional(&self, field: &FieldDescriptorProto) -> bool {
-        if field.label().expect("unknown label") != Label::LabelOptional {
+        if field.label() != Label::LabelOptional {
             return false;
         }
 
-        match field.type_().expect("unknown field type") {
+        match field.type_() {
             Type::TypeMessage => true,
             _ => self.syntax == Syntax::Proto2,
         }
@@ -687,7 +689,7 @@ impl <'a> CodeGenerator<'a> {
 
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
-        match field.type_().expect("unknown field type") {
+        match field.type_() {
             Type::TypeFloat   | Type::TypeDouble  | Type::TypeInt32    | Type::TypeInt64    |
             Type::TypeUint32  | Type::TypeUint64  | Type::TypeSint32   | Type::TypeSint64   |
             Type::TypeFixed32 | Type::TypeFixed64 | Type::TypeSfixed32 | Type::TypeSfixed64 |

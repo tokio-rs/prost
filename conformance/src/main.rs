@@ -66,13 +66,13 @@ fn main() {
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     match request.requested_output_format() {
-        Some(WireFormat::Json) => {
+        WireFormat::Unspecified => {
+            return conformance_response::Result::ParseError("output format unspecified".to_string());
+        },
+        WireFormat::Json => {
             return conformance_response::Result::Skipped("JSON output is not supported".to_string());
         },
-        None => {
-            return conformance_response::Result::ParseError("unrecognized requested output format".to_string());
-        },
-        _ => (),
+        WireFormat::Protobuf => (),
     };
 
     let buf = match request.payload {

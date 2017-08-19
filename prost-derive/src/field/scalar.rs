@@ -128,9 +128,12 @@ impl Field {
         let tag = self.tag;
 
         match self.kind {
-            Kind::Plain(ref default) => quote! {
-                if #ident != #default {
-                    #encode_fn(#tag, &#ident, buf);
+            Kind::Plain(ref default) => {
+                let default = default.typed(&self.ty);
+                quote! {
+                    if #ident != #default {
+                        #encode_fn(#tag, &#ident, buf);
+                    }
                 }
             },
             Kind::Optional(..) => quote! {
@@ -184,11 +187,14 @@ impl Field {
         let tag = self.tag;
 
         match self.kind {
-            Kind::Plain(ref default) => quote! {
-                if #ident != #default {
-                    #encoded_len_fn(#tag, &#ident)
-                } else {
-                    0
+            Kind::Plain(ref default) => {
+                let default = default.typed(&self.ty);
+                quote! {
+                    if #ident != #default {
+                        #encoded_len_fn(#tag, &#ident)
+                    } else {
+                        0
+                    }
                 }
             },
             Kind::Optional(..) => quote! {
@@ -202,10 +208,11 @@ impl Field {
 
     pub fn clear(&self, ident: &Ident) -> Tokens {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => {
+            Kind::Plain(ref default) | Kind::Required(ref default) => {
+                let default = default.typed(&self.ty);
                 match self.ty {
                     Ty::String | Ty::Bytes => quote!(#ident.clear()),
-                    _ => quote!(#ident = #value),
+                    _ => quote!(#ident = #default),
                 }
             },
             Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
@@ -216,7 +223,7 @@ impl Field {
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> Tokens {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
+            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(&self.ty),
             Kind::Optional(_) => quote!(::std::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
         }
@@ -228,10 +235,10 @@ impl Field {
             let set = Ident::new(format!("set_{}", ident));
             let push = Ident::new(format!("push_{}", ident));
             Some(match self.kind {
-                Kind::Plain(..) | Kind::Required(..) => {
+                Kind::Plain(ref default) | Kind::Required(ref default) => {
                     quote! {
-                        pub fn #ident(&self) -> ::std::option::Option<super::#ty> {
-                            super::#ty::from_i32(self.#ident)
+                        pub fn #ident(&self) -> super::#ty {
+                            super::#ty::from_i32(self.#ident).unwrap_or(super::#default)
                         }
 
                         pub fn #set(&mut self, value: super::#ty) {
@@ -239,10 +246,10 @@ impl Field {
                         }
                     }
                 },
-                Kind::Optional(..) => {
+                Kind::Optional(ref default) => {
                     quote! {
-                        pub fn #ident(&self) -> ::std::option::Option<super::#ty> {
-                            self.#ident.and_then(super::#ty::from_i32)
+                        pub fn #ident(&self) -> super::#ty {
+                            self.#ident.and_then(super::#ty::from_i32).unwrap_or(super::#default)
                         }
 
                         pub fn #set(&mut self, value: super::#ty) {
@@ -524,7 +531,7 @@ impl DefaultValue {
             Lit::Str(s, StrStyle::Cooked) => {
                 let s = s.trim();
                 if let Ty::Enumeration(ref ty) = *ty {
-                    return Ok(DefaultValue::Ident(Ident::new(format!("{}::{} as i32", ty, s))));
+                    return Ok(DefaultValue::Ident(Ident::new(format!("{}::{}", ty, s))));
                 }
 
                 // Parse special floating point values.
@@ -612,19 +619,27 @@ impl DefaultValue {
             Ty::Bool => Lit::from(false),
             Ty::String => Lit::from(""),
             Ty::Bytes => Lit::from(&b""[..]),
-            Ty::Enumeration(ref ty) => return DefaultValue::Ident(Ident::new(format!("{}::default() as i32", ty))),
+            Ty::Enumeration(ref ty) => return DefaultValue::Ident(Ident::new(format!("{}::default()", ty))),
         };
         DefaultValue::Lit(lit)
     }
 
-    pub fn owned(&self) -> Tokens {
+    pub fn owned(&self, ty: &Ty) -> Tokens {
         match *self {
             DefaultValue::Lit(Lit::Str(ref value, ..)) if value.is_empty() => quote!(::std::string::String::new()),
             DefaultValue::Lit(ref lit@Lit::Str(..)) => quote!(#lit.to_owned()),
             DefaultValue::Lit(Lit::ByteStr(ref value, ..)) if value.is_empty() => quote!(::std::vec::Vec::new()),
             DefaultValue::Lit(ref lit@Lit::ByteStr(..)) => quote!(#lit.to_owned()),
             DefaultValue::Lit(ref lit) => quote!(#lit),
-            DefaultValue::Ident(ref ident) => quote!(#ident),
+            DefaultValue::Ident(..) => self.typed(ty),
+        }
+    }
+
+    pub fn typed(&self, ty: &Ty) -> Tokens {
+        if let Ty::Enumeration(..) = *ty {
+            quote!(#self as i32)
+        } else {
+            quote!(#self)
         }
     }
 }
