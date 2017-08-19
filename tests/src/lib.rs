@@ -21,6 +21,12 @@ pub mod google {
     }
 }
 
+pub mod foo {
+    pub mod bar_baz {
+        include!(concat!(env!("OUT_DIR"), "/foo.bar_baz.rs"));
+    }
+}
+
 use std::error::Error;
 
 use prost::Message;
@@ -106,6 +112,8 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::BTreeMap;
+
     use protobuf_test_messages::proto3::TestAllTypes;
     use super::*;
 
@@ -139,5 +147,30 @@ mod tests {
         for msg in msgs {
             roundtrip::<TestAllTypes>(msg).unwrap();
         }
+    }
+
+    #[test]
+    fn test_ident_conversions() {
+        let msg = foo::bar_baz::FooBarBaz {
+            foo_bar_baz: 42,
+            fuzz_busters: vec![
+                foo::bar_baz::foo_bar_baz::FuzzBuster {
+                    t: BTreeMap::<i32, foo::bar_baz::FooBarBaz>::new(),
+                    nested_self: None,
+                },
+            ],
+            p_i_e: 0,
+        };
+
+        // Test enum ident conversion.
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Foo;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Bar;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FooBar;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FuzzBuster;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::NormalRustEnumCase;
+
+        let mut buf = Vec::new();
+        msg.encode(&mut buf).expect("encode");
+        roundtrip::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
     }
 }

@@ -4,6 +4,7 @@ extern crate protobuf;
 
 fn main() {
     let _ = env_logger::init();
+
     let proto_includes = protobuf::include().join("google").join("protobuf");
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
@@ -21,4 +22,7 @@ fn main() {
 
     prost_build.compile_protos(&["src/packages/widget_factory.proto"],
                                &["src/packages"]).unwrap();
+
+    prost_build.compile_protos(&["src/ident_conversion.proto"],
+                               &["src"]).unwrap();
 }

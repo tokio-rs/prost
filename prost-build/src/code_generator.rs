@@ -116,28 +116,26 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_message(&mut self, message: DescriptorProto) {
-        debug!("\tmessage: {:?}", message.name());
+        debug!("  message: {:?}", message.name());
 
-        // Split the nested message types into a vector of normal nested message types, and a map
-        // of the map field entry types. The path index of the nested message types is preserved so
-        // that comments can be retrieved.
-        let message_name = message.name.as_ref().expect("message name");
-        let fq_message_name = format!(".{}.{}", self.package, message_name);
+        let message_name = message.name().to_string();
+        let fq_message_name = format!(".{}.{}", self.package, message.name());
 
         // Skip Protobuf well-known types.
         if self.well_known_type(&fq_message_name).is_some() { return; }
 
+        // Split the nested message types into a vector of normal nested message types, and a map
+        // of the map field entry types. The path index of the nested message types is preserved so
+        // that comments can be retrieved.
         let (nested_types, map_types): (Vec<(DescriptorProto, usize)>, HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>) =
             message.nested_type.into_iter().enumerate().partition_map(|(idx, nested_type)| {
                 if nested_type.options.as_ref().and_then(|options| options.map_entry).unwrap_or(false) {
                     let key = nested_type.field[0].clone();
                     let value = nested_type.field[1].clone();
-                    assert_eq!("key", key.name.as_ref().expect("key name"));
-                    assert_eq!("value", value.name.as_ref().expect("value name"));
+                    assert_eq!("key", key.name());
+                    assert_eq!("value", value.name());
 
-                    let name = format!("{}.{}",
-                                       fq_message_name,
-                                       nested_type.name.as_ref().expect("nested type name"));
+                    let name = format!("{}.{}", &fq_message_name, nested_type.name());
                     Either::Right((name, (key, value)))
                 } else {
                     Either::Left((nested_type, idx))
@@ -162,7 +160,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("#[derive(Clone, Debug, PartialEq, Message)]\n");
         self.push_indent();
         self.buf.push_str("pub struct ");
-        self.buf.push_str(&message_name);
+        self.buf.push_str(&to_upper_camel(&message_name));
         self.buf.push_str(" {\n");
 
         self.depth += 1;
@@ -230,7 +228,7 @@ impl <'a> CodeGenerator<'a> {
                  && type_ == Type::TypeMessage
                  && self.message_graph.is_nested(field.type_name(), msg_name);
 
-        debug!("\t\tfield: {:?}, type: {:?}", field.name(), ty);
+        debug!("    field: {:?}, type: {:?}", field.name(), ty);
 
         self.append_doc();
         self.push_indent();
@@ -294,7 +292,7 @@ impl <'a> CodeGenerator<'a> {
         let key_ty = self.resolve_type(key);
         let value_ty = self.resolve_type(value);
 
-        debug!("\t\tmap field: {:?}, key type: {:?}, value type: {:?}",
+        debug!("    map field: {:?}, key type: {:?}, value type: {:?}",
                field.name(), key_ty, value_ty);
 
         self.append_doc();
@@ -432,7 +430,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_enum(&mut self, desc: EnumDescriptorProto) {
-        debug!("\tenum: {:?}", desc.name());
+        debug!("  enum: {:?}", desc.name());
 
         // Skip Protobuf well-known types.
         let fq_enum_name = format!(".{}.{}", self.package, desc.name());
@@ -443,7 +441,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(desc.name());
+        self.buf.push_str(&to_upper_camel(desc.name()));
         self.buf.push_str(" {\n");
 
         let mut numbers = HashSet::new();
@@ -479,7 +477,7 @@ impl <'a> CodeGenerator<'a> {
 
     fn unpack_service(&mut self, service: ServiceDescriptorProto) -> Service {
         let name = service.name().to_owned();
-        debug!("\t service: {:?}", name);
+        debug!("  service: {:?}", name);
 
         let comments = Comments::from_location(self.location());
 
@@ -584,7 +582,7 @@ impl <'a> CodeGenerator<'a> {
 
         local_path.map(|_| "super".to_string())
                   .chain(ident_path.map(to_snake))
-                  .chain(Some(ident_type.to_string()).into_iter())
+                  .chain(Some(to_upper_camel(ident_type)).into_iter())
                   .join("::")
     }
 

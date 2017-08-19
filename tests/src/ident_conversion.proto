@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package Foo.Bar_Baz;
+
+// Test that ident conversion works correctly on message and field names.
+message Foo_barBaz {
+
+  int32 fooBar_baz = 1;
+
+  repeated fuzz_buster fuzz_busters = 2;
+
+  StrawberryRhubarbPIE p_iE = 3;
+
+  message fuzz_buster {
+    map<int32, Foo_barBaz> t = 1;
+    fuzz_buster NestedSelf = 2;
+  }
+
+  enum StrawberryRhubarbPIE {
+    foo = 0;
+    BAR = 1;
+    foo_bar = 2;
+    fuzzBUSTER = 3;
+    NormalRustEnumCase = 4;
+  }
+}
