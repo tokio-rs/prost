@@ -368,6 +368,7 @@ pub mod file_options {
         /// Generate complete code for parsing, serialization,
         Speed = 1,
         /// etc.
+        ///
         /// Use ReflectionOps to implement these methods.
         CodeSize = 2,
         /// Generate code using MessageLite and the lite runtime.

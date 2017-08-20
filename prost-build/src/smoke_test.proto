@@ -10,6 +10,9 @@ message SmokeResponse {
 
 // Just a smoke test service.
 service SmokeService {
+
+    // A detached comment block.
+
     // Blow some smoke.
     rpc BlowSmoke(SmokeRequest) returns (SmokeResponse);
 }

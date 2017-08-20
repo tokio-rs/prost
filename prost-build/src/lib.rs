@@ -417,36 +417,20 @@ mod tests {
     struct ServiceTraitGenerator;
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&self, service: Service, buf: &mut String) {
-
-            // Service comments.
-            for comment in service.comments
-                                  .leading
-                                  .into_iter()
-                                  .chain(service.comments.trailing.into_iter()) {
-                buf.push_str(&format!("/// {}\n", comment));
-            }
-
             // Generate a trait for the service.
+            service.comments.append_with_indent(0, buf);
             buf.push_str(&format!("trait {} {{\n", &service.name));
 
             // Generate the service methods.
             for method in service.methods {
-
-                // Method comments.
-                for comment in method.comments
-                                     .leading
-                                     .into_iter()
-                                     .chain(method.comments.trailing.into_iter()) {
-                    buf.push_str(&format!("    /// {}\n", comment));
-                }
-
-
+                method.comments.append_with_indent(1, buf);
                 buf.push_str(&format!("    fn {}({}) -> {};\n",
                                       method.name,
                                       method.input_type,
                                       method.output_type));
             }
 
+            // Close out the trait.
             buf.push_str("}\n");
         }
     }

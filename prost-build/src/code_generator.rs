@@ -390,45 +390,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_doc(&mut self) {
-        let idx = self.source_info
-                      .location
-                      .binary_search_by_key(&&self.path[..], |location| &location.path[..])
-                      .unwrap();
-
-        let location = &self.source_info.location[idx];
-
-        for comment in &location.leading_detached_comments {
-            for line in comment.lines() {
-                for _ in 0..self.depth {
-                    self.buf.push_str("    ");
-                }
-                self.buf.push_str("//");
-                self.buf.push_str(line);
-                self.buf.push_str("\n");
-            }
-            self.buf.push_str("\n");
-        }
-
-        if let Some(ref comments) = location.leading_comments {
-            for line in comments.lines() {
-                for _ in 0..self.depth {
-                    self.buf.push_str("    ");
-                }
-                self.buf.push_str("///");
-                self.buf.push_str(line);
-                self.buf.push_str("\n");
-            }
-        }
-        if let Some(ref comments) = location.trailing_comments {
-            for line in comments.lines() {
-                for _ in 0..self.depth {
-                    self.buf.push_str("    ");
-                }
-                self.buf.push_str("///");
-                self.buf.push_str(line);
-                self.buf.push_str("\n");
-            }
-        }
+        Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf);
     }
 
     fn append_enum(&mut self, desc: EnumDescriptorProto) {

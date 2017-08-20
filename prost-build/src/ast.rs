@@ -29,6 +29,52 @@ impl Comments {
             trailing: trailing,
         }
     }
+
+    /// Appends the comments to a buffer with indentation.
+    ///
+    /// Each level of indentation corresponds to four space (' ') characters.
+    pub fn append_with_indent(&self, indent_level: u8, buf: &mut String) {
+        // Append blocks of detached comments.
+        for detached_block in &self.leading_detached {
+            for line in detached_block {
+                for _ in 0..indent_level {
+                    buf.push_str("    ");
+                }
+                buf.push_str("//");
+                buf.push_str(line);
+                buf.push_str("\n");
+            }
+            buf.push_str("\n");
+        }
+
+        // Append leading comments.
+        for line in &self.leading {
+            for _ in 0..indent_level {
+                buf.push_str("    ");
+            }
+            buf.push_str("///");
+            buf.push_str(&line);
+            buf.push_str("\n");
+        }
+
+        // Append an empty comment line if there are leading and trailing comments.
+        if !self.leading.is_empty() && !self.trailing.is_empty() {
+            for _ in 0..indent_level {
+                buf.push_str("    ");
+            }
+            buf.push_str("///\n");
+        }
+
+        // Append trailing comments.
+        for line in &self.trailing {
+            for _ in 0..indent_level {
+                buf.push_str("    ");
+            }
+            buf.push_str("///");
+            buf.push_str(&line);
+            buf.push_str("\n");
+        }
+    }
 }
 
 /// A service descriptor.
