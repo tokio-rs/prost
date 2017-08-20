@@ -483,35 +483,44 @@ impl <'a> CodeGenerator<'a> {
 
         let comments = Comments::from_location(self.location());
 
+        self.path.push(2);
         let methods = service.method
-                              .into_iter()
-                              .enumerate()
-                              .map(|(idx, mut method)| {
-                                  self.path.push(idx as i32);
-                                  let comments = Comments::from_location(self.location());
-                                  self.path.pop();
+                             .into_iter()
+                             .enumerate()
+                             .map(|(idx, mut method)| {
+                                 debug!("  method: {:?}", method.name());
+                                 self.path.push(idx as i32);
+                                 let comments = Comments::from_location(self.location());
+                                 self.path.pop();
 
-                                  let name = method.name.take().unwrap();
-                                  let input_proto_type = method.input_type.take().unwrap();
-                                  let output_proto_type = method.output_type.take().unwrap();
-                                  let input_type = self.resolve_ident(&input_proto_type);
-                                  let output_type = self.resolve_ident(&output_proto_type);
+                                 let name = method.name.take().unwrap();
+                                 let input_proto_type = method.input_type.take().unwrap();
+                                 let output_proto_type = method.output_type.take().unwrap();
+                                 let input_type = self.resolve_ident(&input_proto_type);
+                                 let output_type = self.resolve_ident(&output_proto_type);
+                                 let client_streaming = method.client_streaming();
+                                 let server_streaming = method.server_streaming();
 
-                                  Method {
-                                      name,
-                                      comments,
-                                      input_type,
-                                      input_proto_type,
-                                      output_type,
-                                      output_proto_type
-                                  }
-                              })
-                              .collect();
+                                 Method {
+                                     name,
+                                     comments,
+                                     input_type,
+                                     output_type,
+                                     input_proto_type,
+                                     output_proto_type,
+                                     options: method.options.unwrap_or_default(),
+                                     client_streaming,
+                                     server_streaming,
+                                 }
+                             })
+                             .collect();
+        self.path.pop();
 
         Service {
             name,
             comments,
-            methods
+            methods,
+            options: service.options.unwrap_or_default(),
         }
     }
 

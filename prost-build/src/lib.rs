@@ -143,7 +143,9 @@ use std::process::Command;
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
+/// Path to the `protoc` binary.
 pub const PROTOC: &'static str = env!("PROTOC");
+/// Path to the Protobuf include directory.
 pub const PROTOC_INCLUDE: &'static str = env!("PROTOC_INCLUDE");
 
 pub use ast::{
@@ -159,7 +161,16 @@ use message_graph::MessageGraph;
 
 type Module = Vec<String>;
 
+/// A service generator takes a service descriptor and generates Rust code.
+///
+/// `ServiceGenerator` can be used to generate application-specific interfaces
+/// or implementations for Protobuf service definitions.
+///
+/// Service generators are registered with a code generator using the
+/// `Config::service_generator` method.
 pub trait ServiceGenerator {
+    /// Generates a Rust interface or implementation for a service, writing the
+    /// result to `buf`.
     fn generate(&self, service: Service, buf: &mut String);
 }
 
@@ -398,10 +409,54 @@ pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: As
 
 #[cfg(test)]
 mod tests {
+    extern crate env_logger;
     use super::*;
+
+    /// An example service generator that generates a trait with methods corresponding to the
+    /// service methods.
+    struct ServiceTraitGenerator;
+    impl ServiceGenerator for ServiceTraitGenerator {
+        fn generate(&self, service: Service, buf: &mut String) {
+
+            // Service comments.
+            for comment in service.comments
+                                  .leading
+                                  .into_iter()
+                                  .chain(service.comments.trailing.into_iter()) {
+                buf.push_str(&format!("/// {}\n", comment));
+            }
+
+            // Generate a trait for the service.
+            buf.push_str(&format!("trait {} {{\n", &service.name));
+
+            // Generate the service methods.
+            for method in service.methods {
+
+                // Method comments.
+                for comment in method.comments
+                                     .leading
+                                     .into_iter()
+                                     .chain(method.comments.trailing.into_iter()) {
+                    buf.push_str(&format!("    /// {}\n", comment));
+                }
+
+
+                buf.push_str(&format!("    fn {}({}) -> {};\n",
+                                      method.name,
+                                      method.input_type,
+                                      method.output_type));
+            }
+
+            buf.push_str("}\n");
+        }
+    }
 
     #[test]
     fn smoke_test() {
-        Config::new().compile_protos(&["src/smoke_test.proto"], &["src"]).unwrap();
+        let _ = env_logger::init();
+        Config::new()
+               .service_generator(Box::new(ServiceTraitGenerator))
+               .compile_protos(&["src/smoke_test.proto"], &["src"])
+               .unwrap();
     }
 }
