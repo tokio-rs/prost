@@ -69,6 +69,7 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
         Ok(all_types) => all_types,
         Err(error) => return RoundtripResult::DecodeError(error),
     };
+
     let encoded_len = all_types.encoded_len();
 
     // TODO: Reenable this once sign-extension in negative int32s is figured out.
@@ -98,7 +99,7 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
     /*
     // Useful for debugging:
     eprintln!(" data: {:?}", data.iter().map(|x| format!("0x{:x}", x)).collect::<Vec<_>>());
-    eprintln!(" buf1: {:?}", buf.iter().map(|x| format!("0x{:x}", x)).collect::<Vec<_>>());
+    eprintln!(" buf1: {:?}", buf1.iter().map(|x| format!("0x{:x}", x)).collect::<Vec<_>>());
     eprintln!("a: {:?}\nb: {:?}", all_types, roundtrip);
     */
 
@@ -133,10 +134,10 @@ mod tests {
             &[0xDA, 0x02, 0x02, 0x2A, 0x03],
 
             // oneof_double: nan
-            &[0xb1,0x7,0xf6,0x3d,0xf5,0xff,0x27,0x3d,0xf5,0xff],
+            &[0xb1, 0x07, 0xf6, 0x3d, 0xf5, 0xff, 0x27, 0x3d, 0xf5, 0xff],
 
             // optional_float: -0.0
-            &[0xdd,0x0,0x0,0x0,0x0,0x80],
+            &[0xdd, 0x00, 0x00, 0x00, 0x00, 0x80],
 
             // optional_value: nan
             &[0xE2, 0x13, 0x1B, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,

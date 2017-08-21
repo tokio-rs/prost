@@ -18,6 +18,7 @@ fn bootstrap() {
 
     let mut config = prost_build::Config::new();
     config.compile_well_known_types();
+    config.btree_map(&["."]);
     config.compile_protos(&[
                             // Protobuf Plugins.
                             protobuf.join("descriptor.proto"),

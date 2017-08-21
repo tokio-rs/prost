@@ -1552,8 +1552,8 @@ pub struct FieldMask {
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Struct {
     /// Unordered map of dynamically typed values.
-    #[prost(map="string, message", tag="1")]
-    pub fields: ::std::collections::HashMap<String, Value>,
+    #[prost(btree_map="string, message", tag="1")]
+    pub fields: ::std::collections::BTreeMap<String, Value>,
 }
 /// `Value` represents a dynamically typed value which can be either
 /// null, a number, a string, a boolean, a recursive struct value, or a

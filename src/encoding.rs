@@ -802,7 +802,7 @@ macro_rules! map {
                 match tag {
                     1 => key_merge(wire_type, key, buf),
                     2 => val_merge(wire_type, val, buf),
-                    _ => Ok(()),
+                    _ => skip_field(wire_type, buf),
                 }
             })?;
             values.insert(key, val);
