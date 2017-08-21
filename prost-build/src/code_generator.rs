@@ -639,7 +639,7 @@ impl <'a> CodeGenerator<'a> {
             ".google.protobuf.MessageOptions" => "::prost_types::MessageOptions",
             ".google.protobuf.Method" => "::prost_types::Method",
             ".google.protobuf.MethodDescriptorProto" => "::prost_types::MethodDescriptorProto",
-            ".google.protobuf.MethodOption" => "::prost_types::MethodOption",
+            ".google.protobuf.MethodOptions" => "::prost_types::MethodOptions",
             ".google.protobuf.Mixin" => "::prost_types::Mixin",
             ".google.protobuf.OneofDescriptorProto" => "::prost_types::OneofDescriptorProto",
             ".google.protobuf.OneofOptions" => "::prost_types::OneofOptions",
