@@ -180,6 +180,7 @@ pub trait ServiceGenerator {
 pub struct Config {
     service_generator: Option<Box<ServiceGenerator>>,
     btree_map: Vec<String>,
+    type_substitutions: HashMap<String, String>,
     prost_types: bool,
 }
 
@@ -252,6 +253,20 @@ impl Config {
     /// types, and instead generate Protobuf well-known types from their `.proto` definitions.
     pub fn compile_well_known_types(&mut self) -> &mut Self {
         self.prost_types = false;
+        self
+    }
+
+    /// Configure the code generator to skip the provided set of Protobuf types, and replace usages
+    /// in fields with a substitute Rust type.
+    ///
+    /// The first entry in each substition pair is the fully-qualified Protobuf type to skip, and
+    /// the second is the Rust type to substitute it with.
+    pub fn type_substitutions<I, S>(&mut self, substitutions: I) -> &mut Self
+    where I: IntoIterator<Item = (S, S)>,
+          S: ToString {
+        self.type_substitutions = substitutions.into_iter()
+                                               .map(|(pb, rs)| (pb.to_string(), rs.to_string()))
+                                               .collect();
         self
     }
 
@@ -356,6 +371,7 @@ impl default::Default for Config {
         Config {
             service_generator: None,
             btree_map: Vec::new(),
+            type_substitutions: HashMap::new(),
             prost_types: true,
         }
     }

@@ -514,7 +514,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
+    fn resolve_type(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
             Type::TypeFloat => Cow::Borrowed("f32"),
             Type::TypeDouble => Cow::Borrowed("f64"),
@@ -527,7 +527,7 @@ impl <'a> CodeGenerator<'a> {
             Type::TypeBytes => Cow::Borrowed("Vec<u8>"),
             Type::TypeGroup | Type::TypeMessage => {
                 if let Some(ty) = self.well_known_type(field.type_name()) {
-                    Cow::Borrowed(ty)
+                    ty
                 } else {
                     Cow::Owned(self.resolve_ident(field.type_name()))
                 }
@@ -602,9 +602,13 @@ impl <'a> CodeGenerator<'a> {
 
     /// Returns the prost_types name for a well-known Protobuf type, or `None` if the provided
     /// message type is not a well-known type, or prost_types has been disabled.
-    fn well_known_type(&self, fq_msg_type: &str) -> Option<&'static str> {
+    fn well_known_type(&self, fq_msg_type: &str) -> Option<Cow<'static, str>> {
+        if let Some(ty) = self.config.type_substitutions.get(fq_msg_type) {
+            return Some(Cow::Owned(ty.clone()));
+        }
+
         if !self.config.prost_types { return None; }
-        Some(match fq_msg_type {
+        Some(Cow::Borrowed(match fq_msg_type {
             ".google.protobuf.BoolValue" => "bool",
             ".google.protobuf.BytesValue" => "::std::vec::Vec<u8>",
             ".google.protobuf.DoubleValue" => "f64",
@@ -654,7 +658,7 @@ impl <'a> CodeGenerator<'a> {
             ".google.protobuf.UninterpretedOption" => "::prost_types::UninterpretedOption",
             ".google.protobuf.Value" => "::prost_types::Value",
             _ => return None,
-        })
+        }))
     }
 }
 
