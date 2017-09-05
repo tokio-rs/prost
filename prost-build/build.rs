@@ -1,4 +1,4 @@
-extern crate curl;
+extern crate reqwest;
 extern crate tempdir;
 extern crate zip;
 
@@ -13,7 +13,7 @@ use std::path::{
     PathBuf,
 };
 
-use curl::easy::Easy;
+use std::io::Read;
 use tempdir::TempDir;
 use zip::ZipArchive;
 
@@ -74,18 +74,12 @@ fn env_contains_protoc() -> bool {
 fn download_protoc(target: &Path) {
     let url = protoc_url();
     let mut data = Vec::new();
-    let mut handle = Easy::new();
 
-    handle.url(&url).expect("failed to set URL");
-    handle.follow_location(true).expect("failed to configure follow location");
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|new_data| {
-            data.extend_from_slice(new_data);
-            Ok(new_data.len())
-        }).expect("failed to transfer data");
-        transfer.perform().expect("failed to perform transfer");
+    let mut resp = reqwest::get(&url).expect("failed to download");
+    if !resp.status().is_success() {
+        panic!("failed to download, status code: {}", resp.status())
     }
+    let _ = resp.read_to_end(&mut data).expect("failed to read data");
 
     let mut archive = ZipArchive::new(Cursor::new(data)).expect("failed to open zip archive");
 

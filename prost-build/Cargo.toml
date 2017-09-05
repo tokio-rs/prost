@@ -22,7 +22,7 @@ prost-types = { path = "../prost-types" }
 tempdir = "0.3"
 
 [build-dependencies]
-curl = "0.4"
+reqwest = "0.7.3"
 tempdir = "0.3"
 zip = "0.2"
 
