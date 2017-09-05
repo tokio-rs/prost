@@ -464,7 +464,8 @@ impl <'a> CodeGenerator<'a> {
                                  let server_streaming = method.server_streaming();
 
                                  Method {
-                                     name,
+                                     name: to_snake(&name),
+                                     proto_name: name,
                                      comments,
                                      input_type,
                                      output_type,
@@ -479,7 +480,8 @@ impl <'a> CodeGenerator<'a> {
         self.path.pop();
 
         Service {
-            name,
+            name: to_upper_camel(&name),
+            proto_name: name,
             comments,
             methods,
             options: service.options.unwrap_or_default(),

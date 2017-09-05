@@ -80,8 +80,10 @@ impl Comments {
 /// A service descriptor.
 #[derive(Debug)]
 pub struct Service {
-    /// The service name.
+    /// The service name in Rust style.
     pub name: String,
+    /// The service name as it appears in the .proto file.
+    pub proto_name: String,
     /// The service comments.
     pub comments: Comments,
     /// The service methods.
@@ -93,8 +95,10 @@ pub struct Service {
 /// A service method descriptor.
 #[derive(Debug)]
 pub struct Method {
-    /// The name of the method.
+    /// The name of the method in Rust style.
     pub name: String,
+    /// The name of the method as it appears in the .proto file.
+    pub proto_name: String,
     /// The method comments.
     pub comments: Comments,
     /// The input Rust type.
