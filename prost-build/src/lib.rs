@@ -343,7 +343,7 @@ impl Config {
 
         for file in files {
             let module = module(&file);
-            let mut buf = modules.entry(module).or_insert(String::new());
+            let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, file, &mut buf);
         }
         modules

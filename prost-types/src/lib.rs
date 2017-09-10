@@ -36,7 +36,7 @@ impl Duration {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
             self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
-            self.nanos = self.nanos % NANOS_PER_SECOND;
+            self.nanos %= NANOS_PER_SECOND;
         }
 
         // nanos should have the same sign as seconds.
@@ -90,7 +90,7 @@ impl Timestamp {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
             self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
-            self.nanos = self.nanos % NANOS_PER_SECOND;
+            self.nanos %= NANOS_PER_SECOND;
         }
 
         // For Timestamp nanos should be in the range [0, 999999999].

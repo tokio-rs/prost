@@ -117,7 +117,7 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     b = bytes[9]; part2 += (b as u32) <<  7; if b < 0x80 { return Ok((value + ((part2 as u64) << 56), 10)) };
 
     // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
-    return Err(DecodeError::new("invalid varint"));
+    Err(DecodeError::new("invalid varint"))
 }
 
 /// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as

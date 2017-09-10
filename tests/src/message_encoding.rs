@@ -2,8 +2,9 @@ use bytes::{Buf, IntoBuf};
 
 use prost::Message;
 
-// Creates a checker function for each field trait.
-fn check_message<M>(msg: M) where M: Message + Default + PartialEq {
+/// Generic rountrip serialization check for messages.
+#[allow(dead_code)]
+fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
     let expected_len = msg.encoded_len();
 
     let mut buf = Vec::with_capacity(18);
@@ -17,7 +18,7 @@ fn check_message<M>(msg: M) where M: Message + Default + PartialEq {
         panic!(format!("expected buffer to be empty: {}", buf.remaining()));
     }
 
-    assert_eq!(msg, roundtrip);
+    assert_eq!(msg, &roundtrip);
 }
 
 #[derive(Clone, Debug, PartialEq, Message)]
@@ -30,7 +31,7 @@ pub struct RepeatedFloats {
 
 #[test]
 fn check_repeated_floats() {
-    check_message(RepeatedFloats {
+    check_message(&RepeatedFloats {
         single_float: 0.0,
         repeated_float: vec![
             0.1,
@@ -42,8 +43,7 @@ fn check_repeated_floats() {
 
 #[test]
 fn check_scalar_types() {
-    let scalar_types = ScalarTypes::default();
-    check_message(scalar_types);
+    check_message(&ScalarTypes::default());
 }
 
 /// A protobuf message which contains all scalar types.

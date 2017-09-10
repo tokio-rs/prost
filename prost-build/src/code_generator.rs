@@ -127,7 +127,9 @@ impl <'a> CodeGenerator<'a> {
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
         // that comments can be retrieved.
-        let (nested_types, map_types): (Vec<(DescriptorProto, usize)>, HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>) =
+        type NestedTypes = Vec<(DescriptorProto, usize)>;
+        type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
+        let (nested_types, map_types): (NestedTypes, MapTypes) =
             message.nested_type.into_iter().enumerate().partition_map(|(idx, nested_type)| {
                 if nested_type.options.as_ref().and_then(|options| options.map_entry).unwrap_or(false) {
                     let key = nested_type.field[0].clone();
@@ -144,7 +146,9 @@ impl <'a> CodeGenerator<'a> {
 
         // Split the fields into a vector of the normal fields, and oneof fields.
         // Path indexes are preserved so that comments can be retrieved.
-        let (fields, mut oneof_fields): (Vec<(FieldDescriptorProto, usize)>, MultiMap<i32, (FieldDescriptorProto, usize)>) =
+        type Fields = Vec<(FieldDescriptorProto, usize)>;
+        type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
+        let (fields, mut oneof_fields): (Fields, OneofFields) =
             message.field.into_iter().enumerate().partition_map(|(idx, field)| {
                 if let Some(oneof_index) = field.oneof_index {
                     Either::Right((oneof_index, (field, idx)))
@@ -165,7 +169,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (field, idx) in fields.into_iter() {
+        for (field, idx) in fields {
             self.path.push(idx as i32);
             match field.type_name.as_ref().and_then(|type_name| map_types.get(type_name)) {
                 Some(&(ref key, ref value)) => self.append_map_field(&fq_message_name, field, key, value),
@@ -179,7 +183,7 @@ impl <'a> CodeGenerator<'a> {
         for (idx, oneof) in message.oneof_decl.iter().enumerate() {
             let idx = idx as i32;
             self.path.push(idx);
-            self.append_oneof_field(&message_name, oneof, &oneof_fields.get_vec(&idx).unwrap());
+            self.append_oneof_field(&message_name, oneof, oneof_fields.get_vec(&idx).unwrap());
             self.path.pop();
         }
         self.path.pop();
@@ -191,7 +195,7 @@ impl <'a> CodeGenerator<'a> {
         if !message.enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
             self.push_mod(&message_name);
             self.path.push(3);
-            for (nested_type, idx) in nested_types.into_iter() {
+            for (nested_type, idx) in nested_types {
                 self.path.push(idx as i32);
                 self.append_message(nested_type);
                 self.path.pop();
@@ -522,7 +526,7 @@ impl <'a> CodeGenerator<'a> {
             Type::TypeDouble => Cow::Borrowed("f64"),
             Type::TypeUint32 | Type::TypeFixed32 => Cow::Borrowed("u32"),
             Type::TypeUint64 | Type::TypeFixed64 => Cow::Borrowed("u64"),
-            Type::TypeInt32 | Type::TypeSfixed32 | Type::TypeSint32 => Cow::Borrowed("i32"),
+            Type::TypeInt32 | Type::TypeSfixed32 | Type::TypeSint32 | Type::TypeEnum => Cow::Borrowed("i32"),
             Type::TypeInt64 | Type::TypeSfixed64 | Type::TypeSint64 => Cow::Borrowed("i64"),
             Type::TypeBool => Cow::Borrowed("bool"),
             Type::TypeString => Cow::Borrowed("String"),
@@ -534,7 +538,6 @@ impl <'a> CodeGenerator<'a> {
                     Cow::Owned(self.resolve_ident(field.type_name()))
                 }
             },
-            Type::TypeEnum => Cow::Borrowed("i32"),
         }
     }
 
@@ -708,9 +711,7 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     }
                     match u8::from_str_radix(&s[p..p+3], 8) {
                         Ok(b) => dst.push(b),
-                        Err(_) => {
-                            panic!("invalid c-escaped default binary value ({}): invalid octal value", s)
-                        },
+                        _ => panic!("invalid c-escaped default binary value ({}): invalid octal value", s),
                     }
                     p += 3;
                 },
@@ -720,9 +721,7 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     }
                     match u8::from_str_radix(&s[p..p+2], 16) {
                         Ok(b) => dst.push(b),
-                        Err(_) => {
-                            panic!("invalid c-escaped default binary value ({}): invalid hex value", s)
-                        },
+                        _ => panic!("invalid c-escaped default binary value ({}): invalid hex value", s),
                     }
                     p += 2;
                 },

@@ -38,9 +38,9 @@ impl MessageGraph {
     fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {
         let MessageGraph { ref mut index, ref mut graph } = *self;
         assert_eq!(b'.', msg_name.as_bytes()[0]);
-        index.entry(msg_name.clone()).or_insert_with(|| {
+        *index.entry(msg_name.clone()).or_insert_with(|| {
             graph.add_node(msg_name)
-        }).clone()
+        })
     }
 
     fn add_message(&mut self, package: &str, msg: &DescriptorProto) {
@@ -62,11 +62,11 @@ impl MessageGraph {
     /// Returns true if message type `inner` is nested in message type `outer`.
     pub fn is_nested(&self, outer: &str, inner: &str) -> bool {
         let outer = match self.index.get(outer) {
-            Some(outer) => outer.clone(),
+            Some(outer) => *outer,
             None => return false,
         };
         let inner = match self.index.get(inner) {
-            Some(inner) => inner.clone(),
+            Some(inner) => *inner,
             None => return false,
         };
 

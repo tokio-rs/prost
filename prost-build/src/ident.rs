@@ -2,8 +2,8 @@
 
 use heck::{CamelCase, SnakeCase};
 
-/// Converts a camelCase or SCREAMING_SNAKE_CASE identifier to lower_snake case
-/// Rust field identifier.
+/// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
+/// identifier.
 pub fn to_snake(s: &str) -> String {
     let mut ident = s.to_snake_case();
 
@@ -25,7 +25,7 @@ pub fn to_snake(s: &str) -> String {
     ident
 }
 
-/// Converts a snake_case identifier to UpperCamel case Rust type identifier.
+/// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
 pub fn to_upper_camel(s: &str) -> String {
     let mut ident = s.to_camel_case();
 
@@ -59,15 +59,13 @@ pub fn match_field(matcher: &str, msg: &str, field: &str) -> bool {
         if match_paths.len() > field_paths.len() {
             false
         } else {
-            &match_paths[..] == &field_paths[..match_paths.len()]
+            match_paths[..] == field_paths[..match_paths.len()]
         }
+    // Suffix match.
+    } else if match_paths.len() > field_paths.len() {
+        false
     } else {
-        // Suffix match.
-        if match_paths.len() > field_paths.len() {
-            false
-        } else {
-            &match_paths[..] == &field_paths[field_paths.len() - match_paths.len()..]
-        }
+        match_paths[..] == field_paths[field_paths.len() - match_paths.len()..]
     }
 }
 

@@ -16,8 +16,8 @@ pub struct Comments {
 
 impl Comments {
     pub(crate) fn from_location(location: &Location) -> Comments {
-        fn get_lines(comments: &String) -> Vec<String> {
-            comments.lines().map(str::to_owned).collect()
+        fn get_lines<S>(comments: S) -> Vec<String> where S: AsRef<str> {
+            comments.as_ref().lines().map(str::to_owned).collect()
         }
 
         let leading_detached = location.leading_detached_comments.iter().map(get_lines).collect();
@@ -53,7 +53,7 @@ impl Comments {
                 buf.push_str("    ");
             }
             buf.push_str("///");
-            buf.push_str(&line);
+            buf.push_str(line);
             buf.push_str("\n");
         }
 
@@ -71,7 +71,7 @@ impl Comments {
                 buf.push_str("    ");
             }
             buf.push_str("///");
-            buf.push_str(&line);
+            buf.push_str(line);
             buf.push_str("\n");
         }
     }
