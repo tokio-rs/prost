@@ -8,11 +8,10 @@ extern crate quickcheck;
 
 mod error;
 mod message;
+mod types;
 
 #[doc(hidden)]
 pub mod encoding;
-
-pub mod types;
 
 pub use message::Message;
 pub use error::{DecodeError, EncodeError};
