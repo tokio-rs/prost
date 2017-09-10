@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.2.0")]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
@@ -68,7 +68,7 @@
 //!
 //! // Include the `items` module, which is generated from items.proto.
 //! pub mod items {
-//!     include!(concat!(env!("OUT_DIR"), "/items.rs"));
+//!     include!(concat!(env!("OUT_DIR"), "/snazzy.items.rs"));
 //! }
 //!
 //! pub fn create_large_shirt(color: String) -> items::Shirt {

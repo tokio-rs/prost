@@ -1,7 +1,7 @@
 [package]
 name = "prost-types"
 # NB: When modifying, also modify html_root_url in lib.rs
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -15,9 +15,5 @@ test = false
 
 [dependencies]
 bytes = "0.4"
-prost = { path = ".." }
-prost-derive = { path = "../prost-derive" }
-
-[dev-dependencies]
-prost-build = { path = "../prost-build" }
-tempdir = "0.3"
+prost = { version = "0.2", path = ".." }
+prost-derive = { version = "0.2", path = "../prost-derive" }
