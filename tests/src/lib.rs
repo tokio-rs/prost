@@ -1,12 +1,17 @@
 extern crate bytes;
 extern crate prost;
-#[macro_use]
-extern crate prost_derive;
 extern crate prost_types;
 
-mod message_encoding;
+#[macro_use] extern crate prost_derive;
+
+#[cfg(test)] extern crate tempdir;
+#[cfg(test)] extern crate prost_build;
+
 pub mod packages;
 pub mod unittest;
+
+#[cfg(test)] mod bootstrap;
+#[cfg(test)] mod message_encoding;
 
 pub mod protobuf_test_messages {
     #[allow(non_snake_case)]
@@ -28,6 +33,8 @@ pub mod foo {
 }
 
 use std::error::Error;
+
+use bytes::{Buf, IntoBuf};
 
 use prost::Message;
 
@@ -108,6 +115,24 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
     }
 
     RoundtripResult::Ok(buf1)
+}
+
+/// Generic rountrip serialization check for messages.
+pub fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
+    let expected_len = msg.encoded_len();
+
+    let mut buf = Vec::with_capacity(18);
+    msg.encode(&mut buf).unwrap();
+    assert_eq!(expected_len, buf.len());
+
+    let mut buf = buf.into_buf();
+    let roundtrip = M::decode(&mut buf).unwrap();
+
+    if buf.has_remaining() {
+        panic!(format!("expected buffer to be empty: {}", buf.remaining()));
+    }
+
+    assert_eq!(msg, &roundtrip);
 }
 
 #[cfg(test)]

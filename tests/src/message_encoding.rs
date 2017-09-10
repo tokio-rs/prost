@@ -1,25 +1,6 @@
-use bytes::{Buf, IntoBuf};
-
 use prost::Message;
 
-/// Generic rountrip serialization check for messages.
-#[allow(dead_code)]
-fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
-    let expected_len = msg.encoded_len();
-
-    let mut buf = Vec::with_capacity(18);
-    msg.encode(&mut buf).unwrap();
-    assert_eq!(expected_len, buf.len());
-
-    let mut buf = buf.into_buf();
-    let roundtrip = M::decode(&mut buf).unwrap();
-
-    if buf.has_remaining() {
-        panic!(format!("expected buffer to be empty: {}", buf.remaining()));
-    }
-
-    assert_eq!(msg, &roundtrip);
-}
+use check_message;
 
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct RepeatedFloats {

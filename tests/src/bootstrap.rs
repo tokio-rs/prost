@@ -1,11 +1,11 @@
-extern crate prost_build;
-extern crate tempdir;
-
 use std::env;
 use std::fs;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
+
+use tempdir;
+use prost_build;
 
 /// Test which bootstraps protobuf.rs and compiler.rs from the .proto definitions in the Protobuf
 /// repo. Ensures that the checked-in compiled versions are up-to-date.
@@ -43,7 +43,7 @@ fn bootstrap() {
     fs::File::open(tempdir.path().join("google.protobuf.compiler.rs")).unwrap()
              .read_to_string(&mut bootstrapped_compiler).unwrap();
 
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("no parent").join("prost-types").join("src");
 
     let mut protobuf = String::new();
     fs::File::open(src.join("protobuf.rs")).unwrap()
