@@ -9,9 +9,6 @@
 //!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
-extern crate bytes;
-extern crate prost;
-
 #[macro_use]
 extern crate prost_derive;
 

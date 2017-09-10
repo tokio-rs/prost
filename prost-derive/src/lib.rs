@@ -19,6 +19,7 @@ use syn::Ident;
 
 // Proc-macro crates can't export anything, so error chain definitions go in a private module.
 mod error {
+    #![allow(unknown_lints, unused_doc_comment)]
     error_chain!();
 }
 use error::*;
@@ -218,8 +219,6 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
         mod #module {
-            extern crate bytes as _bytes;
-            extern crate prost as _prost;
             use super::*;
 
             impl #ident {

@@ -106,7 +106,6 @@
 //! binary will be downloaded and cached in the target directory. Pre-compiled `protoc` binaries
 //! exist for Linux, macOS, and Windows systems.
 
-extern crate bytes;
 extern crate heck;
 extern crate itertools;
 extern crate multimap;
