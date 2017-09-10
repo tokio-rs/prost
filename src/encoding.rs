@@ -81,7 +81,7 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
 /// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
 /// number of bytes read.
 ///
-/// Based loosely on [ReadVarint64FromArray][1].
+/// Based loosely on [`ReadVarint64FromArray`][1].
 ///
 /// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.cc#L365-L406
 #[inline]
@@ -620,7 +620,7 @@ pub mod bytes {
         while remaining > 0 {
             let len = {
                 let bytes = buf.bytes();
-                debug_assert!(bytes.len() > 0, "Buf::bytes returned 0-length slice");
+                debug_assert!(!bytes.is_empty(), "Buf::bytes returned empty slice");
                 let len = min(remaining, bytes.len());
                 let bytes = &bytes[..len];
                 value.extend_from_slice(bytes);
