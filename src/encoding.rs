@@ -257,7 +257,7 @@ pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError
 /// Helper macro which emits an `encode_repeated` function for the type.
 macro_rules! encode_repeated {
     ($ty:ty) => (
-         pub fn encode_repeated<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+         pub fn encode_repeated<B>(tag: u32, values: &[$ty], buf: &mut B) where B: BufMut {
              for value in values {
                  encode(tag, value, buf);
              }
@@ -328,7 +328,7 @@ macro_rules! varint {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+            pub fn encode_packed<B>(tag: u32, values: &[$ty], buf: &mut B) where B: BufMut {
                 if values.is_empty() { return; }
 
                 encode_key(tag, WireType::LengthDelimited, buf);
@@ -350,14 +350,14 @@ macro_rules! varint {
             }
 
             #[inline]
-            pub fn encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+            pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
                 key_len(tag) * values.len() + values.iter().map(|$to_uint64_value| {
                     encoded_len_varint($to_uint64)
                 }).sum::<usize>()
             }
 
             #[inline]
-            pub fn encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
+            pub fn encoded_len_packed(tag: u32, values: &[$ty]) -> usize {
                 if values.is_empty() {
                     0
                 } else {
@@ -450,7 +450,7 @@ macro_rules! fixed_width {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed<B>(tag: u32, values: &Vec<$ty>, buf: &mut B) where B: BufMut {
+            pub fn encode_packed<B>(tag: u32, values: &[$ty], buf: &mut B) where B: BufMut {
                 if values.is_empty() { return; }
 
                 encode_key(tag, WireType::LengthDelimited, buf);
@@ -470,12 +470,12 @@ macro_rules! fixed_width {
             }
 
             #[inline]
-            pub fn encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+            pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
                 (key_len(tag) + $width) * values.len()
             }
 
             #[inline]
-            pub fn encoded_len_packed(tag: u32, values: &Vec<$ty>) -> usize {
+            pub fn encoded_len_packed(tag: u32, values: &[$ty]) -> usize {
                 if values.is_empty() {
                     0
                 } else {
@@ -541,7 +541,7 @@ macro_rules! length_delimited {
          }
 
          #[inline]
-         pub fn encoded_len_repeated(tag: u32, values: &Vec<$ty>) -> usize {
+         pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
              key_len(tag) * values.len() + values.iter().map(|value| {
                  encoded_len_varint(value.len() as u64) + value.len()
              }).sum::<usize>()
@@ -843,6 +843,7 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
+    use std::borrow::Borrow;
     use std::fmt::Debug;
     use std::io::Cursor;
     use std::u64;
@@ -852,23 +853,24 @@ mod test {
 
     use ::encoding::*;
 
-    pub fn check_type<T>(value: T,
-                         tag: u32,
-                         wire_type: WireType,
-                         encode: fn(u32, &T, &mut BytesMut),
-                         merge: fn(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
-                         encoded_len: fn(u32, &T) -> usize)
-                         -> TestResult
-    where T: Debug + Default + PartialEq {
+    pub fn check_type<T, B>(value: T,
+                            tag: u32,
+                            wire_type: WireType,
+                            encode: fn(u32, &B, &mut BytesMut),
+                            merge: fn(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
+                            encoded_len: fn(u32, &B) -> usize)
+                            -> TestResult
+    where T: Debug + Default + PartialEq + Borrow<B>,
+          B: ?Sized {
 
         if tag > MAX_TAG || tag < MIN_TAG {
             return TestResult::discard()
         }
 
-        let expected_len = encoded_len(tag, &value);
+        let expected_len = encoded_len(tag, value.borrow());
 
         let mut buf = BytesMut::with_capacity(expected_len);
-        encode(tag, &value, &mut buf);
+        encode(tag, value.borrow(), &mut buf);
 
         let mut buf = buf.freeze().into_buf();
 
@@ -930,26 +932,27 @@ mod test {
         }
     }
 
-    pub fn check_collection_type<T, E, M, L>(value: T,
-                                             tag: u32,
-                                             wire_type: WireType,
-                                             encode: E,
-                                             mut merge: M,
-                                             encoded_len: L)
-                                             -> TestResult
-    where T: Debug + Default + PartialEq,
-          E: FnOnce(u32, &T, &mut BytesMut),
+    pub fn check_collection_type<T, B, E, M, L>(value: T,
+                                                tag: u32,
+                                                wire_type: WireType,
+                                                encode: E,
+                                                mut merge: M,
+                                                encoded_len: L)
+                                                -> TestResult
+    where T: Debug + Default + PartialEq + Borrow<B>,
+          B: ?Sized,
+          E: FnOnce(u32, &B, &mut BytesMut),
           M: FnMut(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
-          L: FnOnce(u32, &T) -> usize {
+          L: FnOnce(u32, &B) -> usize {
 
         if tag > MAX_TAG || tag < MIN_TAG {
             return TestResult::discard()
         }
 
-        let expected_len = encoded_len(tag, &value);
+        let expected_len = encoded_len(tag, value.borrow());
 
         let mut buf = BytesMut::with_capacity(expected_len);
-        encode(tag, &value, &mut buf);
+        encode(tag, value.borrow(), &mut buf);
 
         let mut buf = buf.freeze().into_buf();
 
