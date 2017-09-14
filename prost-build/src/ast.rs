@@ -84,6 +84,8 @@ pub struct Service {
     pub name: String,
     /// The service name as it appears in the .proto file.
     pub proto_name: String,
+    /// The package name as it appears in the .proto file.
+    pub package: String,
     /// The service comments.
     pub comments: Comments,
     /// The service methods.

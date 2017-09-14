@@ -486,6 +486,7 @@ impl <'a> CodeGenerator<'a> {
         Service {
             name: to_upper_camel(&name),
             proto_name: name,
+            package: self.package.clone(),
             comments,
             methods,
             options: service.options.unwrap_or_default(),

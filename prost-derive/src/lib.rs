@@ -11,8 +11,6 @@ extern crate error_chain;
 #[macro_use]
 extern crate quote;
 
-use std::str;
-
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use syn::Ident;
