@@ -20,7 +20,8 @@ use bytes::{
 };
 use prost::Message;
 
-use tests::protobuf_test_messages::proto3::TestAllTypes;
+use tests::protobuf_test_messages::proto2::TestAllTypesProto2;
+use tests::protobuf_test_messages::proto3::TestAllTypesProto3;
 use tests::{
     RoundtripResult,
     roundtrip,
@@ -82,7 +83,14 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
     };
 
-    match roundtrip::<TestAllTypes>(&buf) {
+    let roundtrip = match &*request.message_type {
+        "protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip::<TestAllTypesProto2>(&buf),
+        "protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip::<TestAllTypesProto3>(&buf),
+         _ => return conformance_response::Result::ParseError(
+             format!("unknown message type: {}", request.message_type)),
+    };
+
+    match roundtrip {
         RoundtripResult::Ok(buf) => {
             conformance_response::Result::ProtobufPayload(buf)
         },

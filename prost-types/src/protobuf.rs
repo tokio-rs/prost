@@ -79,6 +79,8 @@ pub mod descriptor_proto {
         pub start: ::std::option::Option<i32>,
         #[prost(int32, optional, tag="2")]
         pub end: ::std::option::Option<i32>,
+        #[prost(message, optional, tag="3")]
+        pub options: ::std::option::Option<super::ExtensionRangeOptions>,
     }
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
     /// fields or extension ranges in the same message. Reserved ranges may
@@ -92,6 +94,12 @@ pub mod descriptor_proto {
         #[prost(int32, optional, tag="2")]
         pub end: ::std::option::Option<i32>,
     }
+}
+#[derive(Clone, Debug, PartialEq, Message)]
+pub struct ExtensionRangeOptions {
+    /// The parser stores options it doesn't recognize here. See above.
+    #[prost(message, repeated, tag="999")]
+    pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
 }
 /// Describes a field within a message.
 #[derive(Clone, Debug, PartialEq, Message)]
@@ -330,6 +338,8 @@ pub struct FileOptions {
     pub java_generic_services: ::std::option::Option<bool>,
     #[prost(bool, optional, tag="18", default="false")]
     pub py_generic_services: ::std::option::Option<bool>,
+    #[prost(bool, optional, tag="19", default="false")]
+    pub php_generic_services: ::std::option::Option<bool>,
     /// Is this file deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for everything in the file, or it will be completely ignored; in the very
@@ -357,6 +367,11 @@ pub struct FileOptions {
     /// from this .proto. Default is empty.
     #[prost(string, optional, tag="40")]
     pub php_class_prefix: ::std::option::Option<String>,
+    /// Use this option to change the namespace of php generated classes. Default
+    /// is empty. When this option is empty, the package name will be used for
+    /// determining the namespace.
+    #[prost(string, optional, tag="41")]
+    pub php_namespace: ::std::option::Option<String>,
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
@@ -452,13 +467,15 @@ pub struct FieldOptions {
     pub packed: ::std::option::Option<bool>,
     /// The jstype option determines the JavaScript type used for values of the
     /// field.  The option is permitted only for 64 bit integral and fixed types
-    /// (int64, uint64, sint64, fixed64, sfixed64).  By default these types are
-    /// represented as JavaScript strings.  This avoids loss of precision that can
-    /// happen when a large value is converted to a floating point JavaScript
-    /// numbers.  Specifying JS_NUMBER for the jstype causes the generated
-    /// JavaScript code to use the JavaScript "number" type instead of strings.
-    /// This option is an enum to permit additional types to be added,
-    /// e.g. goog.math.Integer.
+    /// (int64, uint64, sint64, fixed64, sfixed64).  A field with jstype JS_STRING
+    /// is represented as JavaScript string, which avoids loss of precision that
+    /// can happen when a large value is converted to a floating point JavaScript.
+    /// Specifying JS_NUMBER for the jstype causes the generated JavaScript code to
+    /// use the JavaScript "number" type.  The behavior of the default option
+    /// JS_NORMAL is implementation dependent.
+    ///
+    /// This option is an enum to permit additional types to be added, e.g.
+    /// goog.math.Integer.
     #[prost(enumeration="field_options::JsType", optional, tag="6", default="JsNormal")]
     pub jstype: ::std::option::Option<i32>,
     /// Should this field be parsed lazily?  Lazy applies only to message-type
@@ -853,6 +870,16 @@ pub mod generated_code_info {
 ///       any.Unpack(foo)
 ///       ...
 ///
+///  Example 4: Pack and unpack a message in Go
+///
+///      foo := &pb.Foo{...}
+///      any, err := ptypes.MarshalAny(foo)
+///      ...
+///      foo := &pb.Foo{}
+///      if err := ptypes.UnmarshalAny(any, foo); err != nil {
+///        ...
+///      }
+///
 /// The pack methods provided by protobuf library will by default use
 /// 'type.googleapis.com/full.type.name' as the type URL and the unpack
 /// methods only use the fully qualified type name after the last '/'
@@ -1098,26 +1125,33 @@ pub enum Syntax {
     /// Syntax `proto3`.
     SyntaxProto3 = 1,
 }
-/// Api is a light-weight descriptor for a protocol buffer service.
+/// Api is a light-weight descriptor for an API Interface.
+///
+/// Interfaces are also described as "protocol buffer services" in some contexts,
+/// such as by the "service" keyword in a .proto file, but they are different
+/// from API Services, which represent a concrete implementation of an interface
+/// as opposed to simply a description of methods and bindings. They are also
+/// sometimes simply referred to as "APIs" in other contexts, such as the name of
+/// this message itself. See https://cloud.google.com/apis/design/glossary for
+/// detailed terminology.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Api {
-    /// The fully qualified name of this api, including package name
-    /// followed by the api's simple name.
+    /// The fully qualified name of this interface, including package name
+    /// followed by the interface's simple name.
     #[prost(string, tag="1")]
     pub name: String,
-    /// The methods of this api, in unspecified order.
+    /// The methods of this interface, in unspecified order.
     #[prost(message, repeated, tag="2")]
     pub methods: ::std::vec::Vec<Method>,
-    /// Any metadata attached to the API.
+    /// Any metadata attached to the interface.
     #[prost(message, repeated, tag="3")]
     pub options: ::std::vec::Vec<Option>,
-    /// A version string for this api. If specified, must have the form
-    /// `major-version.minor-version`, as in `1.10`. If the minor version
-    /// is omitted, it defaults to zero. If the entire version field is
-    /// empty, the major version is derived from the package name, as
-    /// outlined below. If the field is not empty, the version in the
-    /// package name will be verified to be consistent with what is
-    /// provided here.
+    /// A version string for this interface. If specified, must have the form
+    /// `major-version.minor-version`, as in `1.10`. If the minor version is
+    /// omitted, it defaults to zero. If the entire version field is empty, the
+    /// major version is derived from the package name, as outlined below. If the
+    /// field is not empty, the version in the package name will be verified to be
+    /// consistent with what is provided here.
     ///
     /// The versioning schema uses [semantic
     /// versioning](http://semver.org) where the major version number
@@ -1127,10 +1161,10 @@ pub struct Api {
     /// chosen based on the product plan.
     ///
     /// The major version is also reflected in the package name of the
-    /// API, which must end in `v<major-version>`, as in
+    /// interface, which must end in `v<major-version>`, as in
     /// `google.feature.v1`. For major versions 0 and 1, the suffix can
     /// be omitted. Zero major versions must only be used for
-    /// experimental, none-GA apis.
+    /// experimental, non-GA interfaces.
     ///
     ///
     #[prost(string, tag="4")]
@@ -1139,14 +1173,14 @@ pub struct Api {
     /// message.
     #[prost(message, optional, tag="5")]
     pub source_context: ::std::option::Option<SourceContext>,
-    /// Included APIs. See [Mixin][].
+    /// Included interfaces. See [Mixin][].
     #[prost(message, repeated, tag="6")]
     pub mixins: ::std::vec::Vec<Mixin>,
     /// The source syntax of the service.
     #[prost(enumeration="Syntax", tag="7")]
     pub syntax: i32,
 }
-/// Method represents a method of an api.
+/// Method represents a method of an API interface.
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Method {
     /// The simple name of this method.
@@ -1171,9 +1205,9 @@ pub struct Method {
     #[prost(enumeration="Syntax", tag="7")]
     pub syntax: i32,
 }
-/// Declares an API to be included in this API. The including API must
-/// redeclare all the methods from the included API, but documentation
-/// and options are inherited as follows:
+/// Declares an API Interface to be included in this interface. The including
+/// interface must redeclare all the methods from the included interface, but
+/// documentation and options are inherited as follows:
 ///
 /// - If after comment and whitespace stripping, the documentation
 ///   string of the redeclared method is empty, it will be inherited
@@ -1185,7 +1219,8 @@ pub struct Method {
 ///
 /// - If an http annotation is inherited, the path pattern will be
 ///   modified as follows. Any version prefix will be replaced by the
-///   version of the including API plus the [root][] path if specified.
+///   version of the including interface plus the [root][] path if
+///   specified.
 ///
 /// Example of a simple mixin:
 ///
@@ -1250,7 +1285,7 @@ pub struct Method {
 ///     }
 #[derive(Clone, Debug, PartialEq, Message)]
 pub struct Mixin {
-    /// The fully qualified name of the API which is included.
+    /// The fully qualified name of the interface which is included.
     #[prost(string, tag="1")]
     pub name: String,
     /// If non-empty specifies a path under which inherited HTTP paths
