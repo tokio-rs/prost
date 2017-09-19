@@ -14,7 +14,9 @@ pub mod unittest;
 #[cfg(test)] mod message_encoding;
 
 pub mod protobuf_test_messages {
-    #[allow(non_snake_case)]
+    pub mod proto2 {
+        include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto2.rs"));
+    }
     pub mod proto3 {
         include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto3.rs"));
     }
@@ -140,7 +142,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use protobuf_test_messages::proto3::TestAllTypes;
+    use protobuf_test_messages::proto3::TestAllTypesProto3;
     use super::*;
 
     #[test]
@@ -171,7 +173,7 @@ mod tests {
         ];
 
         for msg in msgs {
-            roundtrip::<TestAllTypes>(msg).unwrap();
+            roundtrip::<TestAllTypesProto3>(msg).unwrap();
         }
     }
 

@@ -14,7 +14,7 @@ use flate2::bufread::GzDecoder;
 use tar::Archive;
 use tempdir::TempDir;
 
-const VERSION: &'static str = "3.3.0";
+const VERSION: &'static str = "3.4.1";
 
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
@@ -29,7 +29,6 @@ fn main() {
         let src_dir = tempdir.path().join(format!("protobuf-{}", VERSION));
         let prefix_dir = tempdir.path().join("prefix");
         fs::create_dir(&prefix_dir).expect("failed to create temporary build directory");
-
 
         // Build and install protoc, the protobuf libraries, and the conformance test runner.
         let rc = Command::new("./autogen.sh")
@@ -80,6 +79,7 @@ fn main() {
                .expect(&format!("failed to move {}", proto));
         }
         for proto in &[
+            "google/protobuf/test_messages_proto2.proto",
             "google/protobuf/test_messages_proto3.proto",
             "google/protobuf/unittest.proto",
             "google/protobuf/unittest_import.proto",
