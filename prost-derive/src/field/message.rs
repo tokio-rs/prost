@@ -95,18 +95,10 @@ impl Field {
 
     pub fn merge(&self, ident: &Ident) -> Tokens {
         match self.label {
-            // TODO(rustlang/rust#39288): Use Option::get_or_insert_with when available:
-            // _prost::encoding::message::merge(#ident.get_or_insert_with(Default::default), buf)
             Label::Optional => quote! {
-                {
-                    if #ident.is_none() {
-                        #ident = Some(Default::default());
-                    }
-                    match #ident {
-                        Some(ref mut msg) => _prost::encoding::message::merge(wire_type, msg, buf),
-                        _ => unreachable!(),
-                    }
-                }
+                _prost::encoding::message::merge(wire_type,
+                                                 #ident.get_or_insert_with(Default::default),
+                                                 buf)
             },
             Label::Required => quote! {
                 _prost::encoding::message::merge(wire_type, &mut #ident, buf)

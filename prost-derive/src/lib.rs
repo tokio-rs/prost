@@ -89,10 +89,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         let merge = field.merge(&Ident::new(format!("self.{}", field_ident)));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
         quote!(#(#tags)* => #merge.map_err(|mut error| {
-            error.push(stringify!(#ident), stringify!(#field_ident));
+            error.push(STRUCT_NAME, stringify!(#field_ident));
             error
         }),)
     });
+
+    let struct_name = if fields.is_empty() {
+        quote!()
+    } else {
+        quote!(const STRUCT_NAME: &'static str = stringify!(#ident);)
+    };
 
     let clear = fields.iter()
                        .map(|&(ref field_ident, ref field)| {
@@ -135,6 +141,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                 #[allow(unused_variables)]
                 fn merge_field<B>(&mut self, buf: &mut B) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
+                    #struct_name
                     let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
                     match tag {
                         #(#merge)*
