@@ -33,7 +33,7 @@ fn main() {
     loop {
         bytes.resize(4, 0);
 
-        if let Err(_) = io::stdin().read_exact(&mut bytes[..]) {
+        if io::stdin().read_exact(&mut bytes[..]).is_err() {
             // No more test cases.
             break;
         }

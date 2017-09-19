@@ -162,15 +162,9 @@ impl Field {
                 #merge_fn(wire_type, &mut #ident, buf)
             },
             Kind::Optional(..) => quote! {
-                {
-                    if #ident.is_none() {
-                        #ident = Some(Default::default());
-                    }
-                    match #ident {
-                        Some(ref mut value) => #merge_fn(wire_type, value, buf),
-                        _ => unreachable!(),
-                    }
-                }
+                #merge_fn(wire_type,
+                          #ident.get_or_insert_with(Default::default),
+                          buf)
             },
         }
     }
