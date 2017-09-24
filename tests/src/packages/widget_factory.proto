@@ -17,6 +17,7 @@ message WidgetFactory {
 
   Widget widget = 4;
   Widget.Inner widget_inner = 5;
+  Widget.Type widget_type = 8;
 
   gizmo.Gizmo gizmo = 6;
   gizmo.Gizmo.Inner gizmo_inner = 7;

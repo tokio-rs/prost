@@ -5,4 +5,10 @@ package packages.widget;
 message Widget {
   message Inner {
   }
+
+  enum Type {
+    A = 0;
+    B = 1;
+    C = 2;
+  }
 }

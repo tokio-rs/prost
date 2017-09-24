@@ -631,7 +631,7 @@ impl DefaultValue {
 
     pub fn typed(&self, ty: &Ty) -> Tokens {
         if let Ty::Enumeration(..) = *ty {
-            quote!(#self as i32)
+            quote!(super::#self as i32)
         } else {
             quote!(#self)
         }
