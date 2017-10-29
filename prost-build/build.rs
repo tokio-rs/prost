@@ -39,6 +39,8 @@ fn main() {
 
     println!("cargo:rustc-env=PROTOC={}", protoc.display());
     println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_dir.join("include").display());
+    println!("cargo:rerun-if-env-changed=PROTOC");
+    println!("cargo:rerun-if-env-changed=PROTOC_INCLUDE");
 }
 
 /// Returns `true` if the environment already contains the `PROTOC` and `PROTOC_INCLUDE` variables.
@@ -66,6 +68,8 @@ fn env_contains_protoc() -> bool {
     // Even if PROTOC and PROTOC_INCLUDE are set in the environment, still 
     println!("cargo:rustc-env=PROTOC={}", protoc.display());
     println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_include.display());
+    println!("cargo:rerun-if-env-changed=PROTOC");
+    println!("cargo:rerun-if-env-changed=PROTOC_INCLUDE");
     true
 }
 
