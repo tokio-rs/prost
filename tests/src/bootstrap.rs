@@ -11,7 +11,7 @@ use prost_build;
 /// repo. Ensures that the checked-in compiled versions are up-to-date.
 #[test]
 fn bootstrap() {
-    let protobuf = Path::new(prost_build::PROTOC_INCLUDE).join("google").join("protobuf");
+    let protobuf = Path::new(prost_build::protoc_include()).join("google").join("protobuf");
 
     let tempdir = tempdir::TempDir::new("prost-types-bootstrap").unwrap();
     env::set_var("OUT_DIR", tempdir.path());

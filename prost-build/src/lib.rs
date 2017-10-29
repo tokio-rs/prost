@@ -142,11 +142,6 @@ use std::process::Command;
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
-/// Path to the `protoc` binary.
-pub const PROTOC: &'static str = env!("PROTOC");
-/// Path to the Protobuf include directory.
-pub const PROTOC_INCLUDE: &'static str = env!("PROTOC_INCLUDE");
-
 pub use ast::{
     Comments,
     Method,
@@ -295,7 +290,7 @@ impl Config {
         let tmp = tempdir::TempDir::new("prost-build")?;
         let descriptor_set = tmp.path().join("prost-descriptor-set");
 
-        let mut cmd = Command::new(PROTOC);
+        let mut cmd = Command::new(protoc());
         cmd.arg("--include_imports")
         .arg("--include_source_info")
         .arg("-o").arg(&descriptor_set);
@@ -306,7 +301,7 @@ impl Config {
 
         // Set the protoc include after the user includes in case the user wants to
         // override one of the built-in .protos.
-        cmd.arg("-I").arg(PROTOC_INCLUDE);
+        cmd.arg("-I").arg(protoc_include());
 
         for proto in protos {
             cmd.arg(proto.as_ref());
@@ -404,6 +399,16 @@ impl default::Default for Config {
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
 pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
     Config::new().compile_protos(protos, includes)
+}
+
+/// Returns the path to the `protoc` binary.
+pub fn protoc() -> &'static Path {
+    Path::new(env!("PROTOC"))
+}
+
+/// Returns the path to the Protobuf include directory.
+pub fn protoc_include() -> &'static Path {
+    Path::new(env!("PROTOC_INCLUDE"))
 }
 
 #[cfg(test)]
