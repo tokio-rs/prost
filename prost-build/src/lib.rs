@@ -105,6 +105,33 @@
 //! If `PROTOC` and `PROTOC_INCLUDE` are not found in the environment, then a pre-compiled `protoc`
 //! binary will be downloaded and cached in the target directory. Pre-compiled `protoc` binaries
 //! exist for Linux, macOS, and Windows systems.
+//! 
+//! ## Using `serde` derives
+//! 
+//! If you wish to use `serde` to serialize structs containing `prost`-generated structs, you may activate
+//! the `serde-1` feature like so:
+//! 
+//! ```toml
+//! [build-dependencies]
+//! prost-build = {version=<prost-version>, features=["serde-1"]}
+//! ```
+//! 
+//! This will automatically `#[derive(Serialize,Deserialize)]` on all `prost`-generated structs and enums.
+//! 
+//! Like all uses of these `serde` features, this assumes that 
+//! 
+//! ```rust,ignore
+//! extern crate serde;
+//! #[macro_use]
+//! extern crate serde_derive;
+//! ```
+//! 
+//! Is in your crate root, and requires a dependency (**not** a `build-dependency`) on version 
+//! `^1` of those crates.
+//! 
+//! Note that this does **not** allow serializing into or deserializing from the Protobuf wire 
+//! format with `serde`, it merely allows you to use `serde` to (de)serialize the generated types
+//! in alternate formats.
 
 extern crate heck;
 extern crate itertools;

@@ -161,7 +161,14 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, PartialEq, Message)]\n");
+
+        self.buf.push_str("#[derive(Clone, Debug, PartialEq, Message");
+        #[cfg(feature="serde-1")]
+        {
+            self.buf.push_str(", Serialize, Deserialize");
+        }
+        self.buf.push_str(")]\n");
+
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -353,7 +360,14 @@ impl <'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, Oneof, PartialEq)]\n");
+        
+        self.buf.push_str("#[derive(Clone, Debug, Oneof, PartialEq");
+        #[cfg(feature="serde-1")]
+        {
+            self.buf.push_str(", Serialize, Deserialize");
+        }
+        self.buf.push_str(")]\n");
+
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -406,7 +420,14 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
+
+        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration");
+        #[cfg(feature="serde-1")]
+        {
+            self.buf.push_str(", Serialize, Deserialize");
+        }
+        self.buf.push_str(")]\n");
+
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(desc.name()));
