@@ -1620,10 +1620,10 @@ pub mod value {
         BoolValue(bool),
         /// Represents a structured value.
         #[prost(message, tag="5")]
-        StructValue(super::Struct),
+        StructValue(Box<super::Struct>),
         /// Represents a repeated `Value`.
         #[prost(message, tag="6")]
-        ListValue(super::ListValue),
+        ListValue(Box<super::ListValue>),
     }
 }
 /// `ListValue` is a wrapper around a repeated field of values.
