@@ -378,11 +378,12 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field);
 
-            let boxed = field.label == Some(Label::LabelRepeated as i32)
+            let repeated = field.label == Some(Label::LabelRepeated as i32);
+            let boxed = !repeated
                     && type_ == Type::TypeMessage
                     && self.message_graph.is_nested(field.type_name(), msg_name);
 
-            debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
+            debug!("    oneof: {:?}, type: {:?}:{:?}, boxed: {}", field.name(), ty, type_, boxed);
 
             if boxed {
                 self.buf.push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
