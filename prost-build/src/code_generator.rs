@@ -232,7 +232,7 @@ impl <'a> CodeGenerator<'a> {
                  && type_ == Type::TypeMessage
                  && self.message_graph.is_nested(field.type_name(), msg_name);
 
-        debug!("    field: {:?}, type: {:?}", field.name(), ty);
+        debug!("    field: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
 
         self.append_doc();
         self.push_indent();
@@ -378,10 +378,11 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field);
 
-            let boxed = type_ == Type::TypeMessage
+            let boxed = field.label == Some(Label::LabelRepeated as i32)
+                    && type_ == Type::TypeMessage
                     && self.message_graph.is_nested(field.type_name(), msg_name);
 
-            debug!("    oneof: {:?}, type: {:?}", field.name(), ty);
+            debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
 
             if boxed {
                 self.buf.push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
