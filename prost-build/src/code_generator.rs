@@ -378,15 +378,12 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field);
 
-            // NOTE: Unfortunately, `is_nested` doesn't know whether the reference is
-            // through a list or a map, so this may box variants when not strictly
-            // necessary to ensure that the size of the enum can be known at compile-time.
-            let nested = type_ == Type::TypeMessage
-                && self.message_graph.is_nested(field.type_name(), msg_name);
+            let boxed = type_ == Type::TypeMessage
+                     && self.message_graph.is_nested(field.type_name(), msg_name);
 
-            debug!("    oneof: {:?}, type: {:?}, nested: {}", field.name(), ty, nested);
+            debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
 
-            if nested {
+            if boxed {
                 self.buf.push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
             } else {
                 self.buf.push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));

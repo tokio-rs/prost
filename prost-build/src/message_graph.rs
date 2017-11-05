@@ -48,7 +48,8 @@ impl MessageGraph {
         let msg_index = self.get_or_insert_index(msg_name.clone());
 
         for field in &msg.field {
-            if field.type_() == field_descriptor_proto::Type::TypeMessage {
+            if field.type_() == field_descriptor_proto::Type::TypeMessage
+                && field.label() != field_descriptor_proto::Label::LabelRepeated {
                 let field_index = self.get_or_insert_index(field.type_name.clone().unwrap());
                 self.graph.add_edge(msg_index, field_index, ());
             }
