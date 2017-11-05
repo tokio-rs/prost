@@ -34,6 +34,10 @@ pub mod foo {
     }
 }
 
+pub mod nesting {
+    include!(concat!(env!("OUT_DIR"), "/nesting.rs"));
+}
+
 use std::error::Error;
 
 use bytes::{Buf, IntoBuf};
@@ -200,5 +204,18 @@ mod tests {
         let mut buf = Vec::new();
         msg.encode(&mut buf).expect("encode");
         roundtrip::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
+    }
+
+    #[test]
+    fn test_nesting() {
+        use nesting::{A, B};
+        let _ = A {
+            a: Some(Box::new(A::default())),
+            repeated_a: Vec::<A>::new(),
+            map_a: BTreeMap::<i32, A>::new(),
+            b: Some(Box::new(B::default())),
+            repeated_b: Vec::<B>::new(),
+            map_b: BTreeMap::<i32, B>::new(),
+        };
     }
 }

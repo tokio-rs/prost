@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package nesting;
+
+message A {
+    A a = 1;
+    repeated A repeated_a = 2;
+    map<int32, A> map_a = 3;
+
+    B b = 4;
+    repeated B repeated_b = 5;
+    map<int32, B> map_b = 6;
+}
+
+message B {
+    A a = 1;
+}
