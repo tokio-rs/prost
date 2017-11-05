@@ -31,4 +31,7 @@ fn main() {
 
     prost_build.compile_protos(&["src/nesting.proto"],
                                &["src"]).unwrap();
+
+    prost_build.compile_protos(&["src/recursive_oneof.proto"],
+                               &["src"]).unwrap();
 }

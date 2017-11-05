@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package recursive_oneof;
+
+message A {
+    oneof kind {
+        A a = 1;
+        B b = 2;
+        C c = 3;
+    }
+}
+
+message B {
+    A a = 1;
+}
+
+message C {}
