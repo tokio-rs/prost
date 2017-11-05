@@ -38,6 +38,10 @@ pub mod nesting {
     include!(concat!(env!("OUT_DIR"), "/nesting.rs"));
 }
 
+pub mod recursive_oneof {
+    include!(concat!(env!("OUT_DIR"), "/recursive_oneof.rs"));
+}
+
 use std::error::Error;
 
 use bytes::{Buf, IntoBuf};
@@ -216,6 +220,18 @@ mod tests {
             b: Some(Box::new(B::default())),
             repeated_b: Vec::<B>::new(),
             map_b: BTreeMap::<i32, B>::new(),
+        };
+    }
+
+    #[test]
+    fn test_recursive_oneof() {
+        use recursive_oneof::{a, A, B, C};
+        let _ = A {
+            kind: Some(a::Kind::B(Box::new(B {
+                a: Some(Box::new(A {
+                    kind: Some(a::Kind::C(C {}))
+                }))
+            })))
         };
     }
 }

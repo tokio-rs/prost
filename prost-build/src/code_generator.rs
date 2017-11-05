@@ -212,7 +212,7 @@ impl <'a> CodeGenerator<'a> {
 
             for (idx, oneof) in message.oneof_decl.into_iter().enumerate() {
                 let idx = idx as i32;
-                self.append_oneof(oneof, idx, oneof_fields.remove(&idx).unwrap());
+                self.append_oneof(&fq_message_name, oneof, idx, oneof_fields.remove(&idx).unwrap());
             }
 
             self.pop_mod();
@@ -232,7 +232,7 @@ impl <'a> CodeGenerator<'a> {
                  && type_ == Type::TypeMessage
                  && self.message_graph.is_nested(field.type_name(), msg_name);
 
-        debug!("    field: {:?}, type: {:?}", field.name(), ty);
+        debug!("    field: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
 
         self.append_doc();
         self.push_indent();
@@ -343,6 +343,7 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn append_oneof(&mut self,
+                    msg_name: &str,
                     oneof: OneofDescriptorProto,
                     idx: i32,
                     fields: Vec<(FieldDescriptorProto, usize)>) {
@@ -363,7 +364,8 @@ impl <'a> CodeGenerator<'a> {
         self.depth += 1;
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
-            if field.type_() == Type::TypeGroup { continue; }
+            let type_ = field.type_();
+            if type_ == Type::TypeGroup { continue; }
 
             self.path.push(idx as i32);
             self.append_doc();
@@ -375,7 +377,17 @@ impl <'a> CodeGenerator<'a> {
 
             self.push_indent();
             let ty = self.resolve_type(&field);
-            self.buf.push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
+
+            let boxed = type_ == Type::TypeMessage
+                     && self.message_graph.is_nested(field.type_name(), msg_name);
+
+            debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
+
+            if boxed {
+                self.buf.push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
+            } else {
+                self.buf.push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
+            }
         }
         self.depth -= 1;
         self.path.pop();
