@@ -14,6 +14,6 @@ proc_macro = true
 
 [dependencies]
 error-chain = "0.11"
-itertools = "0.6"
+itertools = "0.7"
 quote = "0.3"
 syn = "0.11"
