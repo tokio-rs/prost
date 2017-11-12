@@ -125,6 +125,15 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         }
     };
 
+    let debugs = fields.iter()
+                       .map(|&(ref field_ident, ref field)| {
+                           match *field {
+                                Field::Scalar(ref sc) => sc.debug(field_ident),
+                                _ => quote!(builder.field(stringify!(#field_ident),
+                                                          &self.#field_ident)),
+                           }
+                       });
+
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
         mod #module {
@@ -164,6 +173,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                     #ident {
                         #(#default)*
                     }
+                }
+            }
+
+            impl ::std::fmt::Debug for #ident {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    let mut builder = f.debug_struct(stringify!(#ident));
+                    #(#debugs;)*
+                    builder.finish()
                 }
             }
 

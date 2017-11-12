@@ -161,7 +161,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, PartialEq, Message)]\n");
+        self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));

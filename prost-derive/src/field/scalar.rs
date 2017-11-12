@@ -223,6 +223,50 @@ impl Field {
         }
     }
 
+    /// Returns a fragment for formatting the field `ident` in `Debug`.
+    pub fn debug(&self, ident: &Ident) -> Tokens {
+        if let Ty::Enumeration(ref ty) = self.ty {
+            match self.kind {
+                Kind::Plain(_) |
+                Kind::Required(_) => quote! {
+                    match super::#ty::from_i32(self.#ident) {
+                        None => builder.field(stringify!(#ident), &self.#ident),
+                        Some(en) => builder.field(stringify!(#ident), &en),
+                    }
+                },
+                Kind::Optional(_) => quote! {
+                    match self.#ident.and_then(super::#ty::from_i32) {
+                        None => builder.field(stringify!(#ident), &self.#ident),
+                        Some(en) => builder.field(stringify!(#ident), &Some(en)),
+                    }
+                },
+                Kind::Repeated |
+                Kind::Packed => quote! {
+                    {
+                        // We need a single thing to plug into the struct builder, but we need to
+                        // hijack that one too, so we create our own wrapper.
+                        struct Wrapper<'a>(&'a Vec<i32>);
+                        impl<'a> ::std::fmt::Debug for Wrapper<'a> {
+                            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                                let mut builder = f.debug_list();
+                                for &v in self.0 {
+                                    match super::#ty::from_i32(v) {
+                                        None => builder.entry(&v),
+                                        Some(en) => builder.entry(&en),
+                                    };
+                                }
+                                builder.finish()
+                            }
+                        }
+                        builder.field(stringify!(#ident), &Wrapper(&self.#ident));
+                    }
+                }
+            }
+        } else {
+            quote!(builder.field(stringify!(#ident), &self.#ident))
+        }
+    }
+
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
         if let Ty::Enumeration(ref ty) = self.ty {
