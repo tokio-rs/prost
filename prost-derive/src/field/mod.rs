@@ -17,6 +17,7 @@ use syn::{
 
 use error::*;
 
+#[derive(Clone)]
 pub enum Field {
     /// A scalar field.
     Scalar(scalar::Field),
@@ -130,6 +131,31 @@ impl Field {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
             _ => quote!(::std::default::Default::default()),
+        }
+    }
+
+    /// Produces the fragment implementing debug for the given field.
+    pub fn debug(&self, ident: Tokens) -> Tokens {
+        match *self {
+            Field::Scalar(ref scalar) => {
+                let wrapper = scalar.debug(&Ident::new("ScalarWrapper"));
+                quote! {
+                    {
+                        #wrapper
+                        ScalarWrapper(&#ident)
+                    }
+                }
+            },
+            Field::Map(ref map) => {
+                let wrapper = map.debug(&Ident::new("MapWrapper"));
+                quote! {
+                    {
+                        #wrapper
+                        MapWrapper(&#ident)
+                    }
+                }
+            },
+            _ => quote!(&#ident),
         }
     }
 

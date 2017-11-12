@@ -21,6 +21,7 @@ use field::{
 };
 
 /// A scalar protobuf field.
+#[derive(Clone)]
 pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
@@ -220,6 +221,62 @@ impl Field {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(&self.ty),
             Kind::Optional(_) => quote!(::std::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
+        }
+    }
+
+    /// An inner debug wrapper, around the base type.
+    fn debug_inner(&self, wrap_name: &Ident) -> Tokens {
+        if let Ty::Enumeration(ref ty) = self.ty {
+            quote! {
+                struct #wrap_name<'a>(&'a i32);
+                impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        match super::#ty::from_i32(*self.0) {
+                            None => ::std::fmt::Debug::fmt(&self.0, f),
+                            Some(en) => ::std::fmt::Debug::fmt(&en, f),
+                        }
+                    }
+                }
+            }
+        } else {
+            quote! {
+                fn #wrap_name<T>(v: T) -> T { v }
+            }
+        }
+    }
+
+    /// Returns a fragment for formatting the field `ident` in `Debug`.
+    pub fn debug(&self, wrapper_name: &Ident) -> Tokens {
+        let wrapper = self.debug_inner(&Ident::new("Inner"));
+        let inner_ty = Ident::new(self.ty.rust_type());
+        match self.kind {
+            Kind::Plain(_) |
+            Kind::Required(_) => self.debug_inner(wrapper_name),
+            Kind::Optional(_) => quote! {
+                struct #wrapper_name<'a>(&'a ::std::option::Option<#inner_ty>);
+                impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        #wrapper
+                        ::std::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                    }
+                }
+            },
+            Kind::Repeated |
+            Kind::Packed => {
+                quote! {
+                    struct #wrapper_name<'a>(&'a ::std::vec::Vec<#inner_ty>);
+                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            let mut vec_builder = f.debug_list();
+                            for v in self.0 {
+                                #wrapper
+                                vec_builder.entry(&Inner(v));
+                            }
+                            vec_builder.finish()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -459,6 +516,7 @@ impl fmt::Display for Ty {
 }
 
 /// Scalar protobuf field types.
+#[derive(Clone)]
 pub enum Kind {
     /// A plain proto3 scalar field.
     Plain(DefaultValue),
@@ -472,7 +530,7 @@ pub enum Kind {
     Packed,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum DefaultValue {
     Lit(Lit),
     Ident(Ident),

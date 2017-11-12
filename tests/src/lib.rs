@@ -11,6 +11,7 @@ pub mod packages;
 pub mod unittest;
 
 #[cfg(test)] mod bootstrap;
+#[cfg(test)] mod debug;
 #[cfg(test)] mod message_encoding;
 
 pub mod protobuf_test_messages {

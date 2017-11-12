@@ -12,6 +12,7 @@ use field::{
     set_option,
 };
 
+#[derive(Clone)]
 pub struct Field {
     pub ty: Ident,
     pub tags: Vec<u32>,
