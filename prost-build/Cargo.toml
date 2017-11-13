@@ -21,6 +21,10 @@ prost = { version = "0.2", path = ".." }
 prost-types = { version = "0.2", path = "../prost-types" }
 tempdir = "0.3"
 
+[features]
+# We don't actually need serde because it's just text generation
+serde-1 = []
+
 [build-dependencies]
 curl = "0.4"
 tempdir = "0.3"
