@@ -1,8 +1,5 @@
 //! Protobuf encoding and decoding errors.
 
-#[cfg(feature = "alloc")]
-use alloc::borrow::Cow;
-
 #[cfg(feature = "std")]
 use std::borrow::Cow;
 

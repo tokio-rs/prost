@@ -25,10 +25,16 @@ pub mod encoding;
 pub use message::Message;
 pub use error::{DecodeError, EncodeError};
 
-/// Custom (internal-only) prelude for this module
+/// Custom (internal-only) prelude for this crate.
 mod prelude {
     #[cfg(feature = "alloc")]
     pub use alloc::boxed::Box;
+
+    #[cfg(feature = "alloc")]
+    pub use alloc::btree_map::BTreeMap;
+
+    #[cfg(feature = "alloc")]
+    pub use alloc::borrow::Cow;
 
     #[cfg(feature = "alloc")]
     pub use alloc::string::String;
