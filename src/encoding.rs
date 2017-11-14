@@ -832,8 +832,6 @@ pub mod hash_map {
 }
 
 pub mod btree_map {
-    #[cfg(feature = "alloc")]
-    use alloc::btree_map::BTreeMap;
     #[cfg(feature = "std")]
     use std::collections::BTreeMap;
 
