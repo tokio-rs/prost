@@ -133,6 +133,14 @@ impl Field {
         }
     }
 
+    /// Produces the fragment implementing debug for the given field.
+    pub fn debug(&self, ident: &Ident) -> Tokens {
+        match *self {
+            Field::Scalar(ref scalar) => scalar.debug(ident),
+            _ => quote!(builder.field(stringify!(#ident), &self.#ident)),
+        }
+    }
+
     pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
         match *self {
             Field::Scalar(ref scalar) => scalar.methods(ident),

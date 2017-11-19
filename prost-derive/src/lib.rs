@@ -127,11 +127,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
 
     let debugs = fields.iter()
                        .map(|&(ref field_ident, ref field)| {
-                           match *field {
-                                Field::Scalar(ref sc) => sc.debug(field_ident),
-                                _ => quote!(builder.field(stringify!(#field_ident),
-                                                          &self.#field_ident)),
-                           }
+                           field.debug(field_ident)
                        });
 
     let expanded = quote! {
