@@ -224,20 +224,20 @@ impl Field {
     }
 
     /// Returns a fragment for formatting the field `ident` in `Debug`.
-    pub fn debug(&self, ident: &Ident) -> Tokens {
+    pub fn debug(&self, name: &Ident, ident: Tokens) -> Tokens {
         if let Ty::Enumeration(ref ty) = self.ty {
             match self.kind {
                 Kind::Plain(_) |
                 Kind::Required(_) => quote! {
-                    match super::#ty::from_i32(self.#ident) {
-                        None => builder.field(stringify!(#ident), &self.#ident),
-                        Some(en) => builder.field(stringify!(#ident), &en),
+                    match super::#ty::from_i32(#ident) {
+                        None => builder.field(stringify!(#name), &#ident),
+                        Some(en) => builder.field(stringify!(#name), &en),
                     }
                 },
                 Kind::Optional(_) => quote! {
-                    match self.#ident.and_then(super::#ty::from_i32) {
-                        None => builder.field(stringify!(#ident), &self.#ident),
-                        Some(en) => builder.field(stringify!(#ident), &Some(en)),
+                    match #ident.and_then(super::#ty::from_i32) {
+                        None => builder.field(stringify!(#name), &#ident),
+                        Some(en) => builder.field(stringify!(#name), &Some(en)),
                     }
                 },
                 Kind::Repeated |
@@ -258,12 +258,12 @@ impl Field {
                                 builder.finish()
                             }
                         }
-                        builder.field(stringify!(#ident), &Wrapper(&self.#ident));
+                        builder.field(stringify!(#name), &Wrapper(&#ident))
                     }
                 }
             }
         } else {
-            quote!(builder.field(stringify!(#ident), &self.#ident))
+            quote!(builder.field(stringify!(#name), &#ident))
         }
     }
 

@@ -127,7 +127,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
 
     let debugs = fields.iter()
                        .map(|&(ref field_ident, ref field)| {
-                           field.debug(field_ident)
+                           field.debug(field_ident, quote!(self.#field_ident))
                        });
 
     let expanded = quote! {
@@ -347,6 +347,11 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
         quote!(#ident::#variant_ident(ref value) => #encoded_len)
     });
 
+    let debug = fields.iter().map(|&(ref variant_ident, ref field)| {
+        let debug = field.debug(variant_ident, quote!(*value));
+        quote!(#ident::#variant_ident(ref value) => #debug)
+    });
+
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
         mod #module {
@@ -377,6 +382,27 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
                 pub fn encoded_len(&self) -> usize {
                     match *self {
                         #(#encoded_len,)*
+                    }
+                }
+            }
+
+            impl ::std::fmt::Debug for #ident {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    struct BuilderWrapper<'a, 'b: 'a>(&'a mut ::std::fmt::Formatter<'b>);
+                    impl<'a, 'b: 'a> BuilderWrapper<'a, 'b> {
+                        fn field<D>(&mut self, name: &str, d: &D) -> ::std::fmt::Result
+                        where
+                            D: ::std::fmt::Debug,
+                        {
+                            self.0
+                                .debug_tuple(name)
+                                .field(d)
+                                .finish()
+                        }
+                    }
+                    let mut builder = BuilderWrapper(f);
+                    match *self {
+                        #(#debug,)*
                     }
                 }
             }

@@ -354,7 +354,7 @@ impl <'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Debug, Oneof, PartialEq)]\n");
+        self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));

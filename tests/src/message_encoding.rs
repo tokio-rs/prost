@@ -282,7 +282,7 @@ pub struct Compound {
     pub message_btree_map: ::std::collections::BTreeMap<i32, Basic>,
 }
 
-#[derive(Clone, Debug, PartialEq, Oneof)]
+#[derive(Clone, PartialEq, Oneof)]
 pub enum BasicOneof {
     #[prost(int32, tag="8")]
     Int(i32),

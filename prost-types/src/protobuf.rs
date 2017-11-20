@@ -1604,7 +1604,7 @@ pub struct Value {
 }
 pub mod value {
     /// The kind of value.
-    #[derive(Clone, Debug, Oneof, PartialEq)]
+    #[derive(Clone, Oneof, PartialEq)]
     pub enum Kind {
         /// Represents a null value.
         #[prost(enumeration="super::NullValue", tag="1")]
