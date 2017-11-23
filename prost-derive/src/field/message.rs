@@ -13,6 +13,7 @@ use field::{
     Label,
 };
 
+#[derive(Clone)]
 pub struct Field {
     pub label: Label,
     pub tag: u32,

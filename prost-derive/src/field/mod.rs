@@ -17,6 +17,7 @@ use syn::{
 
 use error::*;
 
+#[derive(Clone)]
 pub enum Field {
     /// A scalar field.
     Scalar(scalar::Field),

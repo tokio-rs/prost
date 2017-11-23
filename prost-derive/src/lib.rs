@@ -57,6 +57,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                            })
                            .collect::<Result<Vec<(Ident, Field)>>>()?;
 
+    // We want Debug to be in declaration order
+    let unsorted_fields = fields.clone();
+
     // Sort the fields by tag number so that fields will be encoded in tag order.
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
@@ -125,16 +128,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         }
     };
 
-    let debugs = fields.iter()
-                       .map(|&(ref field_ident, ref field)| {
-                           let wrapper = field.debug(quote!(self.#field_ident));
-                           quote! {
-                                {
-                                    let wrapper = #wrapper;
-                                    builder.field(stringify!(#field_ident), &wrapper);
-                                }
-                           }
-                       });
+    let debugs = unsorted_fields.iter()
+                                .map(|&(ref field_ident, ref field)| {
+                                    let wrapper = field.debug(quote!(self.#field_ident));
+                                    quote! {
+                                         {
+                                             let wrapper = #wrapper;
+                                             builder.field(stringify!(#field_ident), &wrapper);
+                                         }
+                                    }
+                                });
 
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]

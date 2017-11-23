@@ -21,6 +21,7 @@ use field::{
 };
 
 /// A scalar protobuf field.
+#[derive(Clone)]
 pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
@@ -515,6 +516,7 @@ impl fmt::Display for Ty {
 }
 
 /// Scalar protobuf field types.
+#[derive(Clone)]
 pub enum Kind {
     /// A plain proto3 scalar field.
     Plain(DefaultValue),
@@ -528,7 +530,7 @@ pub enum Kind {
     Packed,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum DefaultValue {
     Lit(Lit),
     Ident(Ident),

@@ -13,7 +13,7 @@ use field::{
     set_option,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum MapTy {
     HashMap,
     BTreeMap,
@@ -45,6 +45,7 @@ fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
     }
 }
 
+#[derive(Clone)]
 pub struct Field {
     pub map_ty: MapTy,
     pub key_ty: scalar::Ty,
