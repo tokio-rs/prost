@@ -223,47 +223,59 @@ impl Field {
         }
     }
 
-    /// Returns a fragment for formatting the field `ident` in `Debug`.
-    pub fn debug(&self, name: &Ident, ident: Tokens) -> Tokens {
+    /// An inner debug wrapper, around the base type.
+    fn debug_inner(&self, wrap_name: &Ident) -> Tokens {
         if let Ty::Enumeration(ref ty) = self.ty {
-            match self.kind {
-                Kind::Plain(_) |
-                Kind::Required(_) => quote! {
-                    match super::#ty::from_i32(#ident) {
-                        None => builder.field(stringify!(#name), &#ident),
-                        Some(en) => builder.field(stringify!(#name), &en),
-                    }
-                },
-                Kind::Optional(_) => quote! {
-                    match #ident.and_then(super::#ty::from_i32) {
-                        None => builder.field(stringify!(#name), &#ident),
-                        Some(en) => builder.field(stringify!(#name), &Some(en)),
-                    }
-                },
-                Kind::Repeated |
-                Kind::Packed => quote! {
-                    {
-                        // We need a single thing to plug into the struct builder, but we need to
-                        // hijack that one too, so we create our own wrapper.
-                        struct Wrapper<'a>(&'a Vec<i32>);
-                        impl<'a> ::std::fmt::Debug for Wrapper<'a> {
-                            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                                let mut builder = f.debug_list();
-                                for &v in self.0 {
-                                    match super::#ty::from_i32(v) {
-                                        None => builder.entry(&v),
-                                        Some(en) => builder.entry(&en),
-                                    };
-                                }
-                                builder.finish()
-                            }
+            quote! {
+                struct #wrap_name<'a>(&'a i32);
+                impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        match super::#ty::from_i32(*self.0) {
+                            None => ::std::fmt::Debug::fmt(&self.0, f),
+                            Some(en) => ::std::fmt::Debug::fmt(&en, f),
                         }
-                        builder.field(stringify!(#name), &Wrapper(&#ident))
                     }
                 }
             }
         } else {
-            quote!(builder.field(stringify!(#name), &#ident))
+            quote! {
+                fn #wrap_name<T>(v: T) -> T { v }
+            }
+        }
+    }
+
+    /// Returns a fragment for formatting the field `ident` in `Debug`.
+    pub fn debug(&self, wrapper_name: &Ident) -> Tokens {
+        let wrapper = self.debug_inner(&Ident::new("Inner"));
+        let inner_ty = Ident::new(self.ty.rust_type());
+        match self.kind {
+            Kind::Plain(_) |
+            Kind::Required(_) => self.debug_inner(wrapper_name),
+            Kind::Optional(_) => quote! {
+                struct #wrapper_name<'a>(&'a ::std::option::Option<#inner_ty>);
+                impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        #wrapper
+                        ::std::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                    }
+                }
+            },
+            Kind::Repeated |
+            Kind::Packed => {
+                quote! {
+                    struct #wrapper_name<'a>(&'a ::std::vec::Vec<#inner_ty>);
+                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            let mut vec_builder = f.debug_list();
+                            for v in self.0 {
+                                #wrapper
+                                vec_builder.entry(&Inner(v));
+                            }
+                            vec_builder.finish()
+                        }
+                    }
+                }
+            }
         }
     }
 

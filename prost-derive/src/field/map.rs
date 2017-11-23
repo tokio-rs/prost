@@ -36,6 +36,15 @@ impl MapTy {
     }
 }
 
+fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
+    let kind = scalar::Kind::Plain(scalar::DefaultValue::new(&ty));
+    scalar::Field {
+        ty,
+        kind,
+        tag: 0, // Not used here
+    }
+}
+
 pub struct Field {
     pub map_ty: MapTy,
     pub key_ty: scalar::Ty,
@@ -218,6 +227,52 @@ impl Field {
             None
         }
     }
+
+    /// Returns a newtype wrapper around the map, implementing nicer Debug
+    ///
+    /// The Debug tries to convert any enumerations met into the variants if possible, instead of
+    /// outputting the raw numbers.
+    pub fn debug(&self, wrapper_name: &Ident) -> Tokens {
+        let type_name = match self.map_ty {
+            MapTy::HashMap => Ident::new("HashMap"),
+            MapTy::BTreeMap => Ident::new("BTreeMap"),
+        };
+        // A fake field for generating the debug wrapper
+        let key_wrapper = fake_scalar(self.key_ty.clone()).debug(&Ident::new("KeyWrapper"));
+        let key = Ident::new(self.key_ty.rust_type());
+        let value_wrapper = self.value_ty.debug();
+        let fmt = quote! {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                #key_wrapper
+                #value_wrapper
+                let mut builder = f.debug_map();
+                for (k, v) in self.0 {
+                    builder.entry(&KeyWrapper(k), &ValueWrapper(v));
+                }
+                builder.finish()
+            }
+        };
+        match self.value_ty {
+            ValueTy::Scalar(ref ty) => {
+                let value = Ident::new(ty.rust_type());
+                quote! {
+                    struct #wrapper_name<'a>(&'a ::std::collections::#type_name<#key, #value>);
+                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
+                        #fmt
+                    }
+                }
+            },
+            ValueTy::Message => quote! {
+                struct #wrapper_name<'a, V: 'a>(&'a ::std::collections::#type_name<#key, V>);
+                impl<'a, V> ::std::fmt::Debug for #wrapper_name<'a, V>
+                where
+                    V: ::std::fmt::Debug + 'a,
+                {
+                    #fmt
+                }
+            }
+        }
+    }
 }
 
 fn key_ty_from_str(s: &str) -> Result<scalar::Ty> {
@@ -246,6 +301,17 @@ impl ValueTy {
             Ok(ValueTy::Message)
         } else {
             bail!("invalid map value type: {}", s);
+        }
+    }
+
+    /// Returns a newtype wrapper around the ValueTy for nicer debug.
+    ///
+    /// If the contained value is enumeration, it tries to convert it to the variant. If not, it
+    /// just forwards the implementation.
+    fn debug(&self) -> Tokens {
+        match *self {
+            ValueTy::Scalar(ref ty) => fake_scalar(ty.clone()).debug(&Ident::new("ValueWrapper")),
+            ValueTy::Message => quote!(fn ValueWrapper<T>(v: T) -> T { v }),
         }
     }
 }
