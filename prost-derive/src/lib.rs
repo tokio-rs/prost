@@ -34,6 +34,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         bail!("Message may not be derived for generic type");
     }
 
+    let is_struct = if let syn::Body::Struct(syn::VariantData::Struct(_)) = body {
+        true
+    } else {
+        false
+    };
+
     let fields = match body {
         syn::Body::Struct(syn::VariantData::Struct(fields)) => fields,
         syn::Body::Struct(syn::VariantData::Tuple(fields)) => fields,
@@ -131,13 +137,23 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
     let debugs = unsorted_fields.iter()
                                 .map(|&(ref field_ident, ref field)| {
                                     let wrapper = field.debug(quote!(self.#field_ident));
+                                    let call = if is_struct {
+                                        quote!(builder.field(stringify!(#field_ident), &wrapper))
+                                    } else {
+                                        quote!(builder.field(&wrapper))
+                                    };
                                     quote! {
                                          {
                                              let wrapper = #wrapper;
-                                             builder.field(stringify!(#field_ident), &wrapper);
+                                             #call;
                                          }
                                     }
                                 });
+    let debug_builder = if is_struct {
+        quote!(f.debug_struct(stringify!(#ident)))
+    } else {
+        quote!(f.debug_tuple(stringify!(#ident)))
+    };
 
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
@@ -183,7 +199,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
 
             impl ::std::fmt::Debug for #ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    let mut builder = f.debug_struct(stringify!(#ident));
+                    let mut builder = #debug_builder;
                     #(#debugs;)*
                     builder.finish()
                 }
