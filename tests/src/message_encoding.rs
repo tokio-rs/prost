@@ -2,7 +2,7 @@ use prost::Message;
 
 use check_message;
 
-#[derive(Clone, Debug, PartialEq, Message)]
+#[derive(Clone, PartialEq, Message)]
 pub struct RepeatedFloats {
     #[prost(float, tag="11")]
     pub single_float: f32,
@@ -28,7 +28,7 @@ fn check_scalar_types() {
 }
 
 /// A protobuf message which contains all scalar types.
-#[derive(Clone, Debug, PartialEq, Message)]
+#[derive(Clone, PartialEq, Message)]
 pub struct ScalarTypes {
     #[prost(int32, tag="001")]
     pub int32: i32,
@@ -189,7 +189,7 @@ pub struct ScalarTypes {
 }
 
 /// A prost message with default value.
-#[derive(Clone, Debug, PartialEq, Message)]
+#[derive(Clone, PartialEq, Message)]
 pub struct DefaultValues {
     #[prost(int32, tag="1", default="42")]
     pub int32: i32,
@@ -231,7 +231,7 @@ pub enum BasicEnumeration {
     THREE = 3,
 }
 
-#[derive(Clone, Debug, PartialEq, Message)]
+#[derive(Clone, PartialEq, Message)]
 pub struct Basic {
     #[prost(int32, tag="1")]
     pub int32: i32,
@@ -264,7 +264,7 @@ pub struct Basic {
     pub oneof: Option<BasicOneof>,
 }
 
-#[derive(Clone, Debug, PartialEq, Message)]
+#[derive(Clone, PartialEq, Message)]
 pub struct Compound {
     #[prost(message, optional, tag="1")]
     pub optional_message: Option<Basic>,
@@ -282,7 +282,7 @@ pub struct Compound {
     pub message_btree_map: ::std::collections::BTreeMap<i32, Basic>,
 }
 
-#[derive(Clone, Debug, PartialEq, Oneof)]
+#[derive(Clone, PartialEq, Oneof)]
 pub enum BasicOneof {
     #[prost(int32, tag="8")]
     Int(i32),
