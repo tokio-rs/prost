@@ -162,6 +162,13 @@ type Module = Vec<String>;
 ///
 /// Service generators are registered with a code generator using the
 /// `Config::service_generator` method.
+///
+/// A viable scenario is that an RPC framework provides a service generator. It generates a trait
+/// describing methods of the service and some glue code to call the methods of the trait, defining
+/// details like how errors are handled or if it is asynchronous. Then the user provides an
+/// implementation of the generated trait in the application code and plugs it into the framework.
+///
+/// Such framework isn't part of Prost at present.
 pub trait ServiceGenerator {
     /// Generates a Rust interface or implementation for a service, writing the
     /// result to `buf`.
