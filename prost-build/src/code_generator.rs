@@ -162,6 +162,7 @@ impl <'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
+        self.append_container_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -183,7 +184,10 @@ impl <'a> CodeGenerator<'a> {
         for (idx, oneof) in message.oneof_decl.iter().enumerate() {
             let idx = idx as i32;
             self.path.push(idx);
-            self.append_oneof_field(&message_name, oneof, oneof_fields.get_vec(&idx).unwrap());
+            self.append_oneof_field(&message_name,
+                                    &fq_message_name,
+                                    oneof,
+                                    oneof_fields.get_vec(&idx).unwrap());
             self.path.pop();
         }
         self.path.pop();
@@ -216,6 +220,30 @@ impl <'a> CodeGenerator<'a> {
             }
 
             self.pop_mod();
+        }
+    }
+
+    fn append_container_attributes(&mut self, msg_name: &str) {
+        assert_eq!(b'.', msg_name.as_bytes()[0]);
+        for &(ref matcher, ref attribute) in &self.config.container_attributes {
+            // We abuse the field matcher to match only whole message paths, since the ~~~ field is
+            // illegal. This saves code and hopefuly doesn't have any strange side effects.
+            if match_field(matcher, msg_name, "~~~") {
+                self.push_indent();
+                self.buf.push_str(attribute);
+                self.buf.push('\n');
+            }
+        }
+    }
+
+    fn append_field_attributes(&mut self, msg_name: &str, field_name: &str) {
+        assert_eq!(b'.', msg_name.as_bytes()[0]);
+        for &(ref matcher, ref attribute) in &self.config.field_attributes {
+            if match_field(matcher, msg_name, field_name) {
+                self.push_indent();
+                self.buf.push_str(attribute);
+                self.buf.push('\n');
+            }
         }
     }
 
@@ -277,6 +305,7 @@ impl <'a> CodeGenerator<'a> {
         }
 
         self.buf.push_str("\")]\n");
+        self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -321,6 +350,7 @@ impl <'a> CodeGenerator<'a> {
                                    key_tag,
                                    value_tag,
                                    field.number()));
+        self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!("pub {}: ::std::collections::{}<{}, {}>,\n",
                                    to_snake(field.name()), rust_ty, key_ty, value_ty));
@@ -328,6 +358,7 @@ impl <'a> CodeGenerator<'a> {
 
     fn append_oneof_field(&mut self,
                           message_name: &str,
+                          fq_message_name: &str,
                           oneof: &OneofDescriptorProto,
                           fields: &[(FieldDescriptorProto, usize)]) {
         let name = format!("{}::{}",
@@ -338,6 +369,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(&format!("#[prost(oneof=\"{}\", tags=\"{}\")]\n",
                                    name,
                                    fields.iter().map(|&(ref field, _)| field.number()).join(", ")));
+        self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!("pub {}: ::std::option::Option<{}>,\n", to_snake(oneof.name()), name));
     }
@@ -355,6 +387,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
+        self.append_container_attributes(msg_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -374,6 +407,7 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!("#[prost({}, tag=\"{}\")]\n", ty_tag, field.number()));
+            self.append_field_attributes(msg_name, field.name());
 
             self.push_indent();
             let ty = self.resolve_type(&field);

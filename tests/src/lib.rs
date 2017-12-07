@@ -212,6 +212,22 @@ mod tests {
     }
 
     #[test]
+    fn test_custom_container_attributes() {
+        // We abuse the ident conversion protobuf for the custom attribute additions. We placed
+        // `Eq` on the FooBarBaz (which is not implemented by ordinary messages).
+        let msg1 = foo::bar_baz::FooBarBaz::default();
+        let msg2 = foo::bar_baz::FooBarBaz::default();
+        // This uses Eq, which wouldn't compile if the attribute didn't work
+        assert_eq!(msg1, msg2);
+    }
+
+    #[test]
+    fn test_custom_field_attributes() {
+        let input = include_str!(concat!(env!("OUT_DIR"), "/foo.bar_baz.rs"));
+        assert!(input.contains("// Testing comment"));
+    }
+
+    #[test]
     fn test_nesting() {
         use nesting::{A, B};
         let _ = A {

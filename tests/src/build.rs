@@ -13,6 +13,13 @@ fn main() {
     // values.
     let mut prost_build = prost_build::Config::new();
     prost_build.btree_map(&["."]);
+    prost_build.container_attribute(".Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
+    prost_build.container_attribute(".Foo.Bar_Baz.Foo_barBaz.fuzz_buster",
+                                    "#[derive(Eq, PartialOrd, Ord)]");
+    // No idea what better to place on that field :-(. We don't wont to depend or eg. Serde to be
+    // able to place arbitrary attributes on fields. We'll have to check in nasty way, by reading
+    // the text file.
+    prost_build.field_attribute(".Foo.Bar_Baz.Foo_barBaz.fooBar_baz", "// Testing comment");
 
     prost_build.compile_protos(&[proto_includes.join("test_messages_proto2.proto")],
                                &[protobuf::include()]).unwrap();
