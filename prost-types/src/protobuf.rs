@@ -206,6 +206,32 @@ pub struct EnumDescriptorProto {
     pub value: ::std::vec::Vec<EnumValueDescriptorProto>,
     #[prost(message, optional, tag="3")]
     pub options: ::std::option::Option<EnumOptions>,
+    /// Range of reserved numeric values. Reserved numeric values may not be used
+    /// by enum values in the same enum declaration. Reserved ranges may not
+    /// overlap.
+    #[prost(message, repeated, tag="4")]
+    pub reserved_range: ::std::vec::Vec<enum_descriptor_proto::EnumReservedRange>,
+    /// Reserved enum value names, which may not be reused. A given name may only
+    /// be reserved once.
+    #[prost(string, repeated, tag="5")]
+    pub reserved_name: ::std::vec::Vec<String>,
+}
+pub mod enum_descriptor_proto {
+    /// Range of reserved numeric values. Reserved values may not be used by
+    /// entries in the same enum. Reserved ranges may not overlap.
+    ///
+    /// Note that this is distinct from DescriptorProto.ReservedRange in that it
+    /// is inclusive such that it can appropriately represent the entire int32
+    /// domain.
+    #[derive(Clone, PartialEq, Message)]
+    pub struct EnumReservedRange {
+        /// Inclusive.
+        #[prost(int32, optional, tag="1")]
+        pub start: ::std::option::Option<i32>,
+        /// Inclusive.
+        #[prost(int32, optional, tag="2")]
+        pub end: ::std::option::Option<i32>,
+    }
 }
 /// Describes a value within an enum.
 #[derive(Clone, PartialEq, Message)]
@@ -338,7 +364,7 @@ pub struct FileOptions {
     pub java_generic_services: ::std::option::Option<bool>,
     #[prost(bool, optional, tag="18", default="false")]
     pub py_generic_services: ::std::option::Option<bool>,
-    #[prost(bool, optional, tag="19", default="false")]
+    #[prost(bool, optional, tag="42", default="false")]
     pub php_generic_services: ::std::option::Option<bool>,
     /// Is this file deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
@@ -372,7 +398,8 @@ pub struct FileOptions {
     /// determining the namespace.
     #[prost(string, optional, tag="41")]
     pub php_namespace: ::std::option::Option<String>,
-    /// The parser stores options it doesn't recognize here. See above.
+    /// The parser stores options it doesn't recognize here.
+    /// See the documentation for the "Options" section above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
 }
@@ -1570,6 +1597,12 @@ pub struct Duration {
 ///
 /// Note that oneof type names ("test_oneof" in this case) cannot be used in
 /// paths.
+///
+/// ## Field Mask Verification
+///
+/// The implementation of the all the API methods, which have any FieldMask type
+/// field in the request, should verify the included field paths, and return
+/// `INVALID_ARGUMENT` error if any path is duplicated or unmappable.
 #[derive(Clone, PartialEq, Message)]
 pub struct FieldMask {
     /// The set of field mask paths.
@@ -1718,7 +1751,7 @@ pub enum NullValue {
 /// to this format using [`strftime`](https://docs.python.org/2/library/time.html#time.strftime)
 /// with the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one
 /// can use the Joda Time's [`ISODateTimeFormat.dateTime()`](
-/// http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime())
+/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime--)
 /// to obtain a formatter capable of generating timestamps in this format.
 ///
 ///
