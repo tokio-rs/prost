@@ -7,26 +7,21 @@ extern crate proc_macro;
 extern crate syn;
 
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 #[macro_use]
 extern crate quote;
 
+use failure::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use syn::Ident;
 
-// Proc-macro crates can't export anything, so error chain definitions go in a private module.
-mod error {
-    #![allow(unknown_lints, unused_doc_comment)]
-    error_chain!();
-}
-use error::*;
-
 mod field;
 use field::Field;
 
-fn try_message(input: TokenStream) -> Result<TokenStream> {
-    let syn::DeriveInput { ident, generics, body, .. } = syn::parse_derive_input(&input.to_string())?;
+fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
+    let syn::DeriveInput { ident, generics, body, .. } =
+        syn::parse_derive_input(&input.to_string()).map_err(failure::err_msg)?;
 
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
@@ -55,13 +50,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
                                match Field::new(field.attrs) {
                                    Ok(Some(field)) => Some(Ok((field_ident, field))),
                                    Ok(None) => None,
-                                   Err(err) => Some(Err(err).chain_err(|| {
-                                       format!("invalid message field {}.{}",
-                                               ident, field_ident)
-                                   })),
+                                   Err(err) => Some(Err(err.context(format!("invalid message field {}.{}",
+                                                                            ident, field_ident)))),
                                }
                            })
-                           .collect::<Result<Vec<(Ident, Field)>>>()?;
+                           .collect::<Result<Vec<(Ident, Field)>, failure::Context<String>>>()?;
 
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
@@ -209,7 +202,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream> {
         };
     };
 
-    expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
+    expanded.parse::<TokenStream>().map_err(|e| format_err!("{:?}", e))
 }
 
 #[proc_macro_derive(Message, attributes(prost))]
@@ -300,8 +293,9 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     expanded.parse().unwrap()
 }
 
-fn try_oneof(input: TokenStream) -> Result<TokenStream> {
-    let syn::DeriveInput { ident, generics, body, .. } = syn::parse_derive_input(&input.to_string())?;
+fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
+    let syn::DeriveInput { ident, generics, body, .. } =
+        syn::parse_derive_input(&input.to_string()).map_err(failure::err_msg)?;
 
     if !generics.lifetimes.is_empty() ||
        !generics.ty_params.is_empty() ||
@@ -333,9 +327,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
             bail!("invalid oneof variant {}::{}: oneof variants must have a single field",
                   ident, variant_ident);
         }
-    }).collect::<Result<Vec<(Ident, Field)>>>()?;
+    }).collect::<Result<Vec<(Ident, Field)>, _>>()?;
 
-    let mut tags = fields.iter().flat_map(|&(ref variant_ident, ref field)| -> Result<u32> {
+    let mut tags = fields.iter().flat_map(|&(ref variant_ident, ref field)| -> Result<u32, Error> {
         if field.tags().len() > 1 {
             bail!("invalid oneof variant {}::{}: oneof variants may only have a single tag",
                   ident, variant_ident);
@@ -426,7 +420,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream> {
         };
     };
 
-    expanded.parse::<TokenStream>().map_err(|err| Error::from(format!("{:?}", err)))
+    expanded.parse::<TokenStream>().map_err(|e| format_err!("{:?}", e))
 }
 
 #[proc_macro_derive(Oneof, attributes(prost))]

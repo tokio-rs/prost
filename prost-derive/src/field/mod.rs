@@ -6,6 +6,7 @@ mod scalar;
 use std::fmt;
 use std::slice;
 
+use failure::Error;
 use quote::Tokens;
 use syn::{
     Attribute,
@@ -14,8 +15,6 @@ use syn::{
     MetaItem,
     NestedMetaItem,
 };
-
-use error::*;
 
 #[derive(Clone)]
 pub enum Field {
@@ -35,7 +34,7 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>> {
+    pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
@@ -59,7 +58,7 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>> {
+    pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
@@ -224,11 +223,11 @@ impl fmt::Display for Label {
 
 /// Get the items belonging to the 'prost' list attribute
 /// (e.g. #[prost(foo, bar="baz")]).
-fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<MetaItem>> {
+fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<MetaItem>, Error> {
     Ok(attrs.into_iter().flat_map(|attr| match attr.value {
         MetaItem::List(ident, items) => if ident == "prost" { items } else { Vec::new() },
         _ => Vec::new(),
-    }).flat_map(|attr| -> Result<_> {
+    }).flat_map(|attr| -> Result<_, _> {
         match attr {
             NestedMetaItem::MetaItem(attr) => Ok(attr),
             NestedMetaItem::Literal(lit) => bail!("invalid prost attribute: {:?}", lit),
@@ -236,7 +235,7 @@ fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<MetaItem>> {
     }).collect())
 }
 
-pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<()>
+pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<(), Error>
 where T: fmt::Debug {
     if let Some(ref existing) = *option {
         bail!("{}: {:?} and {:?}", message, existing, value);
@@ -245,9 +244,9 @@ where T: fmt::Debug {
     Ok(())
 }
 
-pub fn set_bool(b: &mut bool, message: &str) -> Result<()> {
+pub fn set_bool(b: &mut bool, message: &str) -> Result<(), Error> {
     if *b {
-        bail!(message);
+        bail!("{}", message);
     } else {
         *b = true;
         Ok(())
@@ -257,7 +256,7 @@ pub fn set_bool(b: &mut bool, message: &str) -> Result<()> {
 
 /// Unpacks an attribute into a (key, boolean) pair, returning the boolean value.
 /// If the key doesn't match the attribute, `None` is returned.
-fn bool_attr(key: &str, attr: &MetaItem) -> Result<Option<bool>> {
+fn bool_attr(key: &str, attr: &MetaItem) -> Result<Option<bool>, Error> {
     if attr.name() != key {
         return Ok(None);
     }
@@ -273,7 +272,7 @@ fn bool_attr(key: &str, attr: &MetaItem) -> Result<Option<bool>> {
             bail!("invalid {} attribute", key);
         },
         MetaItem::NameValue(_, Lit::Str(ref s, _)) => {
-            s.parse::<bool>().map_err(|e| Error::from(e.to_string())).map(Option::Some)
+            s.parse::<bool>().map_err(Error::from).map(Option::Some)
         },
         MetaItem::NameValue(_, Lit::Bool(value)) => Ok(Some(value)),
         _ => bail!("invalid {} attribute", key),
@@ -289,7 +288,7 @@ fn word_attr(key: &str, attr: &MetaItem) -> bool {
     }
 }
 
-fn tag_attr(attr: &MetaItem) -> Result<Option<u32>> {
+fn tag_attr(attr: &MetaItem) -> Result<Option<u32>, Error> {
     if attr.name() != "tag" {
         return Ok(None);
     }
@@ -305,7 +304,7 @@ fn tag_attr(attr: &MetaItem) -> Result<Option<u32>> {
         },
         MetaItem::NameValue(_, ref lit) => {
             match *lit {
-                Lit::Str(ref s, _) => s.parse::<u32>().map_err(|e| Error::from(e.to_string()))
+                Lit::Str(ref s, _) => s.parse::<u32>().map_err(Error::from)
                                                       .map(Option::Some),
                 Lit::Int(value, _) => return Ok(Some(value as u32)),
                 _ => bail!("invalid tag attribute: {:?}", attr),
@@ -315,7 +314,7 @@ fn tag_attr(attr: &MetaItem) -> Result<Option<u32>> {
     }
 }
 
-fn tags_attr(attr: &MetaItem) -> Result<Option<Vec<u32>>> {
+fn tags_attr(attr: &MetaItem) -> Result<Option<Vec<u32>>, Error> {
     if attr.name() != "tags" {
         return Ok(None);
     }
@@ -333,8 +332,8 @@ fn tags_attr(attr: &MetaItem) -> Result<Option<Vec<u32>>> {
         },
         MetaItem::NameValue(_, Lit::Str(ref s, _)) => {
             s.split(',')
-             .map(|s| s.trim().parse::<u32>().map_err(|e| Error::from(e.to_string())))
-             .collect::<Result<Vec<u32>>>()
+             .map(|s| s.trim().parse::<u32>().map_err(Error::from))
+             .collect::<Result<Vec<u32>, _>>()
              .map(|tags| Some(tags))
         },
         _ => bail!("invalid tag attribute: {:?}", attr),
