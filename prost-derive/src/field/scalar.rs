@@ -1,5 +1,6 @@
 use std::fmt;
 
+use failure::Error;
 use quote::{self, Tokens};
 use syn::{
     self,
@@ -12,7 +13,6 @@ use syn::{
     StrStyle,
 };
 
-use error::*;
 use field::{
     Label,
     bool_attr,
@@ -30,7 +30,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut label = None;
         let mut packed = None;
@@ -102,7 +102,7 @@ impl Field {
         }))
     }
 
-    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs)? {
             match field.kind {
                 Kind::Plain(default) => {
@@ -366,7 +366,7 @@ pub enum Ty {
 
 impl Ty {
 
-    pub fn from_attr(attr: &MetaItem) -> Result<Option<Ty>> {
+    pub fn from_attr(attr: &MetaItem) -> Result<Option<Ty>, Error> {
         let ty = match *attr {
             MetaItem::Word(ref name) if name == "float" => Ty::Float,
             MetaItem::Word(ref name) if name == "double" => Ty::Double,
@@ -403,9 +403,9 @@ impl Ty {
         Ok(Some(ty))
     }
 
-    pub fn from_str(s: &str) -> Result<Ty> {
+    pub fn from_str(s: &str) -> Result<Ty, Error> {
         let enumeration_len = "enumeration".len();
-        let error = Err(From::from(format!("invalid type: {}", s)));
+        let error = Err(format_err!("invalid type: {}", s));
         let ty = match s.trim() {
             "float" => Ty::Float,
             "double" => Ty::Double,
@@ -538,7 +538,7 @@ pub enum DefaultValue {
 
 impl DefaultValue {
 
-    pub fn from_attr(attr: &MetaItem) -> Result<Option<Lit>> {
+    pub fn from_attr(attr: &MetaItem) -> Result<Option<Lit>, Error> {
         if attr.name() != "default" {
             return Ok(None);
         } else if let MetaItem::NameValue(_, ref lit) = *attr {
@@ -548,7 +548,7 @@ impl DefaultValue {
         }
     }
 
-    pub fn from_lit(ty: &Ty, lit: Lit) -> Result<DefaultValue> {
+    pub fn from_lit(ty: &Ty, lit: Lit) -> Result<DefaultValue, Error> {
         let is_i32 = *ty == Ty::Int32 || *ty == Ty::Sint32 || *ty == Ty::Sfixed32;
         let is_i64 = *ty == Ty::Int64 || *ty == Ty::Sint64 || *ty == Ty::Sfixed64;
 

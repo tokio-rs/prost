@@ -1,3 +1,4 @@
+use failure::Error;
 use syn::{
     Ident,
     Lit,
@@ -6,7 +7,6 @@ use syn::{
 };
 use quote::Tokens;
 
-use error::*;
 use field::{
     tags_attr,
     set_option,
@@ -19,7 +19,7 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut tags = None;
         let mut unknown_attrs = Vec::new();

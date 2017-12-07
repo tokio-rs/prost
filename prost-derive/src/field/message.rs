@@ -1,10 +1,10 @@
+use failure::Error;
 use syn::{
     Ident,
     MetaItem,
 };
 use quote::Tokens;
 
-use error::*;
 use field::{
     word_attr,
     tag_attr,
@@ -20,7 +20,7 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
@@ -63,7 +63,7 @@ impl Field {
         }))
     }
 
-    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs)? {
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
                 bail!("invalid atribute for oneof field: {}", attr.name());

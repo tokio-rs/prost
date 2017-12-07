@@ -1,3 +1,4 @@
+use failure::Error;
 use syn::{
     Ident,
     Lit,
@@ -6,7 +7,6 @@ use syn::{
 };
 use quote::Tokens;
 
-use error::*;
 use field::{
     scalar,
     tag_attr,
@@ -55,7 +55,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
 
@@ -113,7 +113,7 @@ impl Field {
         })
     }
 
-    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>> {
+    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
         Field::new(attrs)
     }
 
@@ -276,7 +276,7 @@ impl Field {
     }
 }
 
-fn key_ty_from_str(s: &str) -> Result<scalar::Ty> {
+fn key_ty_from_str(s: &str) -> Result<scalar::Ty, Error> {
     let ty = scalar::Ty::from_str(s)?;
     match ty {
         scalar::Ty::Int32 | scalar::Ty::Int64 | scalar::Ty::Uint32 |
@@ -295,7 +295,7 @@ pub enum ValueTy {
 }
 
 impl ValueTy {
-    fn from_str(s: &str) -> Result<ValueTy> {
+    fn from_str(s: &str) -> Result<ValueTy, Error> {
         if let Ok(ty) = scalar::Ty::from_str(s) {
             Ok(ValueTy::Scalar(ty))
         } else if s.trim() == "message" {
