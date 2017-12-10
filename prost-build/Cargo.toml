@@ -14,7 +14,7 @@ bytes = "0.4"
 env_logger = "0.4"
 heck = "0.3"
 itertools = "0.7"
-log = "0.3"
+log = "0.4"
 multimap = { version = "0.4", default-features = false }
 petgraph = "0.4"
 prost = { version = "0.2", path = ".." }
