@@ -38,7 +38,7 @@ pub fn to_upper_camel(s: &str) -> String {
 }
 
 /// Matches a 'matcher' against a fully qualified field name.
-pub fn match_field(matcher: &str, msg: &str, field: &str) -> bool {
+pub fn match_ident(matcher: &str, msg: &str, field: Option<&str>) -> bool {
     assert_eq!(b'.', msg.as_bytes()[0]);
 
     if matcher.is_empty() {
@@ -50,7 +50,9 @@ pub fn match_field(matcher: &str, msg: &str, field: &str) -> bool {
     let match_paths = matcher.split('.').collect::<Vec<_>>();
     let field_paths = {
         let mut paths = msg.split('.').collect::<Vec<_>>();
-        paths.push(field);
+        if let Some(field) = field {
+            paths.push(field);
+        }
         paths
     };
 
@@ -129,26 +131,34 @@ mod tests {
     }
 
     #[test]
-    fn test_match_field() {
+    fn test_match_ident() {
         // Prefix matches
-        assert!(match_field(".", ".foo.bar.Baz", "buzz"));
-        assert!(match_field(".foo", ".foo.bar.Baz", "buzz"));
-        assert!(match_field(".foo.bar", ".foo.bar.Baz", "buzz"));
-        assert!(match_field(".foo.bar.Baz", ".foo.bar.Baz", "buzz"));
-        assert!(match_field(".foo.bar.Baz.buzz", ".foo.bar.Baz", "buzz"));
+        assert!(match_ident(".", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident(".foo", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident(".foo.bar", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident(".foo.bar.Baz", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident(".foo.bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
 
-        assert!(!match_field(".fo", ".foo.bar.Baz", "buzz"));
-        assert!(!match_field(".foo.", ".foo.bar.Baz", "buzz"));
-        assert!(!match_field(".buzz", ".foo.bar.Baz", "buzz"));
-        assert!(!match_field(".Baz.buzz", ".foo.bar.Baz", "buzz"));
+        assert!(!match_ident(".fo", ".foo.bar.Baz", Some("buzz")));
+        assert!(!match_ident(".foo.", ".foo.bar.Baz", Some("buzz")));
+        assert!(!match_ident(".buzz", ".foo.bar.Baz", Some("buzz")));
+        assert!(!match_ident(".Baz.buzz", ".foo.bar.Baz", Some("buzz")));
 
         // Suffix matches
-        assert!(match_field("buzz", ".foo.bar.Baz", "buzz"));
-        assert!(match_field("Baz.buzz", ".foo.bar.Baz", "buzz"));
-        assert!(match_field("bar.Baz.buzz", ".foo.bar.Baz", "buzz"));
-        assert!(match_field("foo.bar.Baz.buzz", ".foo.bar.Baz", "buzz"));
+        assert!(match_ident("buzz", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident("Baz.buzz", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident("bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident("foo.bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
 
-        assert!(!match_field("buz", ".foo.bar.Baz", "buzz"));
-        assert!(!match_field("uz", ".foo.bar.Baz", "buzz"));
+        assert!(!match_ident("buz", ".foo.bar.Baz", Some("buzz")));
+        assert!(!match_ident("uz", ".foo.bar.Baz", Some("buzz")));
+
+        // Type names
+        assert!(match_ident("Baz", ".foo.bar.Baz", None));
+        assert!(match_ident(".", ".foo.bar.Baz", None));
+        assert!(match_ident(".foo.bar", ".foo.bar.Baz", None));
+        assert!(match_ident(".foo.bar.Baz", ".foo.bar.Baz", None));
+        assert!(!match_ident(".fo", ".foo.bar.Baz", None));
+        assert!(!match_ident(".buzz.Baz", ".foo.bar.Baz", None));
     }
 }

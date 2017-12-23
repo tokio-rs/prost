@@ -13,9 +13,19 @@ fn main() {
     // values.
     let mut prost_build = prost_build::Config::new();
     prost_build.btree_map(&["."]);
-    prost_build.container_attribute(".Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
-    prost_build.container_attribute(".Foo.Bar_Baz.Foo_barBaz.fuzz_buster",
-                                    "#[derive(Eq, PartialOrd, Ord)]");
+    // Tests for custom attributes
+    prost_build.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
+    prost_build.type_attribute("Foo.Bar_Baz.Foo_barBaz.fuzz_buster",
+                               "#[derive(Eq, PartialOrd, Ord)]");
+    prost_build.type_attribute("Foo.Custom.Attrs.Msg", "#[allow(missing_docs)]");
+    prost_build.type_attribute("Foo.Custom.Attrs.Msg.field", "/// Oneof docs");
+    prost_build.type_attribute("Foo.Custom.Attrs.AnEnum", "#[allow(missing_docs)]");
+    prost_build.type_attribute("Foo.Custom.Attrs.AnotherEnum", "/// Oneof docs");
+    prost_build.type_attribute("Foo.Custom.OneOfAttrs.Msg.field", "#[derive(Eq, PartialOrd, Ord)]");
+    prost_build.field_attribute("Foo.Custom.Attrs.AnotherEnum.C", "/// The C docs");
+    prost_build.field_attribute("Foo.Custom.Attrs.AnotherEnum.D", "/// The D docs");
+    prost_build.field_attribute("Foo.Custom.Attrs.Msg.field.a", "/// Oneof A docs");
+    prost_build.field_attribute("Foo.Custom.Attrs.Msg.field.b", "/// Oneof B docs");
     // No idea what better to place on that field :-(. We don't wont to depend or eg. Serde to be
     // able to place arbitrary attributes on fields. We'll have to check in nasty way, by reading
     // the text file.
@@ -40,5 +50,11 @@ fn main() {
                                &["src"]).unwrap();
 
     prost_build.compile_protos(&["src/recursive_oneof.proto"],
+                               &["src"]).unwrap();
+
+    prost_build.compile_protos(&["src/custom_attributes.proto"],
+                               &["src"]).unwrap();
+
+    prost_build.compile_protos(&["src/oneof_attributes.proto"],
                                &["src"]).unwrap();
 }

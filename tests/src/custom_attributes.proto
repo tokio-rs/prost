@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package Foo.Custom.Attrs;
+
+message Msg {
+}
+
+enum AnEnum {
+	A = 0;
+	B = 1;
+}
+
+enum AnotherEnum {
+	C = 0;
+	D = 2;
+}

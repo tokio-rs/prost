@@ -43,6 +43,20 @@ pub mod recursive_oneof {
     include!(concat!(env!("OUT_DIR"), "/recursive_oneof.rs"));
 }
 
+/// This tests the custom attributes support by abusing docs.
+///
+/// Docs really are full-blown attributes. So we use them to ensure we can place them on everything
+/// we need. If they aren't put onto something or allowed not to be there (by the generator),
+/// compilation fails.
+#[deny(missing_docs)]
+pub mod custom_attributes {
+    include!(concat!(env!("OUT_DIR"), "/foo.custom.attrs.rs"));
+}
+
+pub mod oneof_attributes {
+    include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
+}
+
 use std::error::Error;
 
 use bytes::{Buf, IntoBuf};
@@ -149,7 +163,7 @@ pub fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
 #[cfg(test)]
 mod tests {
 
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use protobuf_test_messages::proto3::TestAllTypesProto3;
     use super::*;
@@ -212,13 +226,16 @@ mod tests {
     }
 
     #[test]
-    fn test_custom_container_attributes() {
+    fn test_custom_type_attributes() {
         // We abuse the ident conversion protobuf for the custom attribute additions. We placed
-        // `Eq` on the FooBarBaz (which is not implemented by ordinary messages).
+        // `Ord` on the FooBarBaz (which is not implemented by ordinary messages).
+        let mut set1 = BTreeSet::new();
         let msg1 = foo::bar_baz::FooBarBaz::default();
-        let msg2 = foo::bar_baz::FooBarBaz::default();
-        // This uses Eq, which wouldn't compile if the attribute didn't work
-        assert_eq!(msg1, msg2);
+        set1.insert(msg1);
+        // Similar, but for oneof fields
+        let mut set2 = BTreeSet::new();
+        let msg2 = oneof_attributes::Msg::default();
+        set2.insert(msg2.field);
     }
 
     #[test]

@@ -24,7 +24,7 @@ use ast::{
 };
 use ident::{
     to_snake,
-    match_field,
+    match_ident,
     to_upper_camel,
 };
 use message_graph::MessageGraph;
@@ -162,7 +162,7 @@ impl <'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
-        self.append_container_attributes(&fq_message_name);
+        self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -223,12 +223,10 @@ impl <'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_container_attributes(&mut self, msg_name: &str) {
+    fn append_type_attributes(&mut self, msg_name: &str) {
         assert_eq!(b'.', msg_name.as_bytes()[0]);
-        for &(ref matcher, ref attribute) in &self.config.container_attributes {
-            // We abuse the field matcher to match only whole message paths, since the ~~~ field is
-            // illegal. This saves code and hopefuly doesn't have any strange side effects.
-            if match_field(matcher, msg_name, "~~~") {
+        for &(ref matcher, ref attribute) in &self.config.type_attributes {
+            if match_ident(matcher, msg_name, None) {
                 self.push_indent();
                 self.buf.push_str(attribute);
                 self.buf.push('\n');
@@ -239,7 +237,7 @@ impl <'a> CodeGenerator<'a> {
     fn append_field_attributes(&mut self, msg_name: &str, field_name: &str) {
         assert_eq!(b'.', msg_name.as_bytes()[0]);
         for &(ref matcher, ref attribute) in &self.config.field_attributes {
-            if match_field(matcher, msg_name, field_name) {
+            if match_ident(matcher, msg_name, Some(field_name)) {
                 self.push_indent();
                 self.buf.push_str(attribute);
                 self.buf.push('\n');
@@ -336,7 +334,7 @@ impl <'a> CodeGenerator<'a> {
         let btree_map = self.config
                             .btree_map
                             .iter()
-                            .any(|matcher| match_field(matcher, msg_name, field.name()));
+                            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
         let (annotation_ty, rust_ty) = if btree_map {
             ("btree_map", "BTreeMap")
         } else {
@@ -387,7 +385,8 @@ impl <'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
-        self.append_container_attributes(msg_name);
+        let oneof_name = format!("{}.{}", msg_name, oneof.name());
+        self.append_type_attributes(&oneof_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -407,7 +406,7 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!("#[prost({}, tag=\"{}\")]\n", ty_tag, field.number()));
-            self.append_field_attributes(msg_name, field.name());
+            self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
             let ty = self.resolve_type(&field);
@@ -453,6 +452,7 @@ impl <'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]\n");
+        self.append_type_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(desc.name()));
@@ -470,7 +470,7 @@ impl <'a> CodeGenerator<'a> {
             }
 
             self.path.push(idx as i32);
-            self.append_enum_value(value);
+            self.append_enum_value(&fq_enum_name, value);
             self.path.pop();
         }
         self.path.pop();
@@ -480,8 +480,9 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn append_enum_value(&mut self, value: EnumValueDescriptorProto) {
+    fn append_enum_value(&mut self, fq_enum_name: &str, value: EnumValueDescriptorProto) {
         self.append_doc();
+        self.append_field_attributes(fq_enum_name, &value.name());
         self.push_indent();
         self.buf.push_str(&to_upper_camel(value.name()));
         self.buf.push_str(" = ");
