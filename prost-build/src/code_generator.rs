@@ -106,16 +106,12 @@ impl <'a> CodeGenerator<'a> {
 
         if let Some(ref service_generator) = code_gen.config.service_generator {
             code_gen.path.push(6);
-            let mut generated = false; // We call finalize only if there's at least one service
             for (idx, service) in file.service.into_iter().enumerate() {
                 code_gen.path.push(idx as i32);
                 service_generator.generate(code_gen.unpack_service(service), &mut code_gen.buf);
                 code_gen.path.pop();
-                generated = true;
             }
-            if generated {
-                service_generator.finalize(&mut code_gen.buf);
-            }
+            service_generator.finalize(&mut code_gen.buf);
             code_gen.path.pop();
         }
     }
