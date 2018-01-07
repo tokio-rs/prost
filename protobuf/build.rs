@@ -14,7 +14,7 @@ use flate2::bufread::GzDecoder;
 use tar::Archive;
 use tempdir::TempDir;
 
-const VERSION: &'static str = "3.4.1";
+const VERSION: &'static str = "3.5.1.1";
 
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));

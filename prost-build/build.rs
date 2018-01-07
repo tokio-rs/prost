@@ -17,7 +17,7 @@ use curl::easy::Easy;
 use tempdir::TempDir;
 use zip::ZipArchive;
 
-const VERSION: &'static str = "3.4.0";
+const VERSION: &'static str = "3.5.1";
 
 fn main() {
     if env_contains_protoc() { return; }
