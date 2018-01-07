@@ -53,6 +53,11 @@ pub mod custom_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.attrs.rs"));
 }
 
+/// Also for testing custom attributes, but on oneofs.
+///
+/// Unfortunately, an OneOf field generates a companion module in the .rs file. There's no
+/// reasonable way to place a doc comment on that, so we do the test with `derive(Ord)` and have it
+/// in a separate file.
 pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
@@ -236,12 +241,6 @@ mod tests {
         let mut set2 = BTreeSet::new();
         let msg2 = oneof_attributes::Msg::default();
         set2.insert(msg2.field);
-    }
-
-    #[test]
-    fn test_custom_field_attributes() {
-        let input = include_str!(concat!(env!("OUT_DIR"), "/foo.bar_baz.rs"));
-        assert!(input.contains("// Testing comment"));
     }
 
     #[test]

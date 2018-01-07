@@ -37,7 +37,7 @@ pub fn to_upper_camel(s: &str) -> String {
     ident
 }
 
-/// Matches a 'matcher' against a fully qualified field name.
+/// Matches a 'matcher' against a fully qualified identifier.
 pub fn match_ident(matcher: &str, msg: &str, field: Option<&str>) -> bool {
     assert_eq!(b'.', msg.as_bytes()[0]);
 
