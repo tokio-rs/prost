@@ -37,6 +37,6 @@ bytes = "0.4"
 
 [dev-dependencies]
 env_logger = "0.4"
-log = "0.3"
+log = "0.4"
 prost-derive = { version = "0.2", path = "prost-derive" }
-quickcheck = "0.4"
+quickcheck = "0.6"

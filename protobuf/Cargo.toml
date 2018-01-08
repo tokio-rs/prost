@@ -7,6 +7,6 @@ publish = false
 [build-dependencies]
 cfg-if = "0.1"
 curl = "0.4"
-flate2 = "0.2"
+flate2 = "1.0"
 tar = "0.4"
 tempdir = "0.3"

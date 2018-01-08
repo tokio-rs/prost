@@ -119,6 +119,6 @@ fn download_protobuf(out_dir: &Path) {
         transfer.perform().expect("failed to download protobuf");
     }
 
-    Archive::new(GzDecoder::new(Cursor::new(data)).expect("failed to create gzip decoder"))
+    Archive::new(GzDecoder::new(Cursor::new(data)))
             .unpack(out_dir).expect("failed to unpack protobuf tarball");
 }
