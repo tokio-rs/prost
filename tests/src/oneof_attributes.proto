@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+// Testing oneof custom attributes (separately from the other ones, since oneof
+// fields create their own companion module and our trick with abusing
+// deny(missing_docs) doesn't work on that.
+
+package Foo.Custom.OneOfAttrs;
+
+message Msg {
+	oneof field {
+		string a = 1;
+		bytes b = 2;
+	}
+}

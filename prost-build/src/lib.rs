@@ -181,6 +181,8 @@ pub trait ServiceGenerator {
 pub struct Config {
     service_generator: Option<Box<ServiceGenerator>>,
     btree_map: Vec<String>,
+    type_attributes: Vec<(String, String)>,
+    field_attributes: Vec<(String, String)>,
     prost_types: bool,
 }
 
@@ -202,6 +204,9 @@ impl Config {
     /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
     /// matched on the fully qualified field name. If a Protobuf map field matches any of the
     /// paths, a Rust `BTreeMap` field will be generated instead of the default [`HashMap`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
     ///
     /// # Examples
     ///
@@ -240,6 +245,82 @@ impl Config {
     where I: IntoIterator<Item = S>,
           S: AsRef<str> {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self
+    }
+
+    /// Add additional attribute to matched fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`path`** - a patch matching any number of fields. These fields will get the attribute.
+    /// For details about matching fields see [`btree_map`](#method.btree_map).
+    ///
+    /// **`attribute`** - an arbitrary string that'll be placed before each matched field. The
+    /// expected usage are additional attributes, usually in concert with whole-type
+    /// attributes set with [`type_attribute`](method.type_attribute), but it is not
+    /// checked and anything can be put there.
+    ///
+    /// Note that the calls to this method are cumulative ‒ if multiple paths from multiple calls
+    /// match the same field, the field gets all the corresponding attributes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # let mut config = prost_build::Config::new();
+    /// // Prost renames fields named `in` to `in_`. But if serialized through serde,
+    /// // we want them to appear as `in` again.
+    /// config.field_attribute("in", "#[serde(rename = \"in\")]");
+    /// ```
+    pub fn field_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
+    where P: AsRef<str>,
+          A: AsRef<str> {
+        self.field_attributes.push((path.as_ref().to_string(), attribute.as_ref().to_string()));
+        self
+    }
+
+    /// Add additional attribute to matched messages, enums and one-ofs.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - a path matching any number of types. It works the same way as in
+    /// [`btree_map`](#method.btree_map), just with the field name omitted.
+    ///
+    /// **`attribute`** - an arbitrary string to be placed before each matched type. The
+    /// expected usage are additional attributes, but anything is allowed.
+    ///
+    /// The calls to this method are cumulative. They don't overwrite previous calls and if a
+    /// type is matched by multiple calls of the method, all relevant attributes are added to
+    /// it.
+    ///
+    /// For things like serde it might be needed to combine with [field
+    /// attributes](#method.field_attribute).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # let mut config = prost_build::Config::new();
+    /// // Nothing around uses floats, so we can derive real `Eq` in addition to `PartialEq`.
+    /// config.type_attribute(".", "#[derive(Eq)]");
+    /// // Some messages want to be serializable with serde as well.
+    /// config.type_attribute("my_messages.MyMessageType",
+    ///                       "#[derive(Serialize)] #[serde(rename-all = \"snake_case\")]");
+    /// config.type_attribute("my_messages.MyMessageType.MyNestedMessageType",
+    ///                       "#[derive(Serialize)] #[serde(rename-all = \"snake_case\")]");
+    /// ```
+    ///
+    /// # Oneof fields
+    ///
+    /// The `oneof` fields don't have a type name of their own inside Protobuf. Therefore, the
+    /// field name can be used both with `type_attribute` and `field_attribute` ‒ the first is
+    /// placed before the `enum` type definition, the other before the field inside corresponding
+    /// message `struct`.
+    ///
+    /// In other words, to place an attribute on the `enum` implementing the `oneof`, the match
+    /// would look like `my_messages.MyMessageType.oneofname`.
+    pub fn type_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
+    where P: AsRef<str>,
+          A: AsRef<str> {
+        self.type_attributes.push((path.as_ref().to_string(), attribute.as_ref().to_string()));
         self
     }
 
@@ -357,6 +438,8 @@ impl default::Default for Config {
         Config {
             service_generator: None,
             btree_map: Vec::new(),
+            type_attributes: Vec::new(),
+            field_attributes: Vec::new(),
             prost_types: true,
         }
     }

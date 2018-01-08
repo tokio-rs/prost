@@ -277,6 +277,9 @@ generated code examples above.
     int32`, `repeated sint32`, `repeated sfixed32`, and their packed
     counterparts.
 
+  But it is possible to place `serde` derive tags onto the generated types, so
+  the same structure can support both `prost` and `Serde`.
+
 2. **Looks like a lot of field annotations. Can those be simplified?**
 
   Probably. Effort has not yet been spent on reducing the number of annotations.
