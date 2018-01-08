@@ -111,6 +111,7 @@ impl <'a> CodeGenerator<'a> {
                 service_generator.generate(code_gen.unpack_service(service), &mut code_gen.buf);
                 code_gen.path.pop();
             }
+            service_generator.finalize(&mut code_gen.buf);
             code_gen.path.pop();
         }
     }

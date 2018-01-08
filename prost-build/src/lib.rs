@@ -173,6 +173,21 @@ pub trait ServiceGenerator {
     /// Generates a Rust interface or implementation for a service, writing the
     /// result to `buf`.
     fn generate(&self, service: Service, buf: &mut String);
+
+    /// Finalizes the generation process.
+    ///
+    /// In case there's something that needs to be output at the end of the generation process, it
+    /// goes here. Similar to [`generate`](#method.generate), the output should be appended to
+    /// `buf`.
+    ///
+    /// An example can be a module or other thing that needs to appear just once, not for each
+    /// service generated.
+    ///
+    /// This still can be called multiple times in a lifetime of the service generator, because it
+    /// is called once per `.proto` file.
+    ///
+    /// The default implementation is empty and does nothing.
+    fn finalize(&self, _buf: &mut String) {}
 }
 
 /// Configuration options for Protobuf code generation.
@@ -526,6 +541,10 @@ mod tests {
 
             // Close out the trait.
             buf.push_str("}\n");
+        }
+        fn finalize(&self, buf: &mut String) {
+            // Needs to be present only once, no matter how many services there are
+            buf.push_str("pub mod utils { }\n");
         }
     }
 
