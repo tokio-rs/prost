@@ -3,6 +3,7 @@
 #![recursion_limit = "4096"]
 
 extern crate itertools;
+extern crate proc_macro2;
 extern crate proc_macro;
 extern crate syn;
 
@@ -14,39 +15,52 @@ extern crate quote;
 use failure::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use syn::Ident;
+use syn::punctuated::Punctuated;
+use syn::{
+    Data,
+    DataEnum,
+    DataStruct,
+    DeriveInput,
+    Expr,
+    Fields,
+    FieldsNamed,
+    FieldsUnnamed,
+    Ident,
+    Variant,
+};
 
 mod field;
 use field::Field;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
-    let syn::DeriveInput { ident, generics, body, .. } =
-        syn::parse_derive_input(&input.to_string()).map_err(failure::err_msg)?;
+    let input: DeriveInput = syn::parse(input)?;
 
-    if !generics.lifetimes.is_empty() ||
-       !generics.ty_params.is_empty() ||
-       !generics.where_clause.predicates.is_empty() {
+    let ident = input.ident;
+
+    let variant_data = match input.data {
+        Data::Struct(variant_data) => variant_data,
+        Data::Enum(..) => bail!("Message can not be derived for an enum"),
+        Data::Union(..) => bail!("Message can not be derived for a union"),
+    };
+
+    if !input.generics.params.is_empty() ||
+       input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
     }
 
-    let is_struct = if let syn::Body::Struct(syn::VariantData::Struct(_)) = body {
-        true
-    } else {
-        false
-    };
-
-    let fields = match body {
-        syn::Body::Struct(syn::VariantData::Struct(fields)) => fields,
-        syn::Body::Struct(syn::VariantData::Tuple(fields)) => fields,
-        syn::Body::Struct(syn::VariantData::Unit) => Vec::new(),
-        syn::Body::Enum(..) => bail!("Message can not be derived for an enum"),
+    let fields = match variant_data {
+        DataStruct { fields: Fields::Named(FieldsNamed { named: fields, .. }), .. } |
+        DataStruct { fields: Fields::Unnamed(FieldsUnnamed { unnamed: fields, .. }), ..} => {
+            fields.into_iter().collect()
+        },
+        DataStruct { fields: Fields::Unit, .. } => Vec::new(),
     };
 
     let mut fields = fields.into_iter()
                            .enumerate()
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
-                                                       .unwrap_or_else(|| Ident::new(idx.to_string()));
+                                                       .unwrap_or_else(|| Ident::from(idx.to_string()));
                                match Field::new(field.attrs) {
                                    Ok(Some(field)) => Some(Ok((field_ident, field))),
                                    Ok(None) => None,
@@ -75,20 +89,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     }
 
     // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::new(format!("{}_MESSAGE", ident));
+    let module = Ident::from(format!("{}_MESSAGE", ident));
 
     let encoded_len = fields.iter()
                             .map(|&(ref field_ident, ref field)| {
-                                field.encoded_len(&Ident::new(format!("self.{}", field_ident)))
+                                field.encoded_len(quote!(self.#field_ident))
                             });
 
     let encode = fields.iter()
                        .map(|&(ref field_ident, ref field)| {
-                           field.encode(&Ident::new(format!("self.{}", field_ident)))
+                           field.encode(quote!(self.#field_ident))
                        });
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
-        let merge = field.merge(&Ident::new(format!("self.{}", field_ident)));
+        let merge = field.merge(quote!(self.#field_ident));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
         quote!(#(#tags)* => #merge.map_err(|mut error| {
             error.push(STRUCT_NAME, stringify!(#field_ident));
@@ -102,9 +116,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(const STRUCT_NAME: &'static str = stringify!(#ident);)
     };
 
+    // TODO
+    let is_struct = true;
+
     let clear = fields.iter()
                        .map(|&(ref field_ident, ref field)| {
-                           field.clear(&Ident::new(format!("self.{}", field_ident)))
+                           field.clear(quote!(self.#field_ident))
                        });
 
     let default = fields.iter()
@@ -119,6 +136,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let methods = if methods.is_empty() {
         quote!()
     } else {
+
         quote! {
             #[allow(dead_code)]
             impl #ident {
@@ -202,7 +220,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         };
     };
 
-    expanded.parse::<TokenStream>().map_err(|e| format_err!("{:?}", e))
+    Ok(expanded.into())
 }
 
 #[proc_macro_derive(Message, attributes(prost))]
@@ -210,42 +228,44 @@ pub fn message(input: TokenStream) -> TokenStream {
     try_message(input).unwrap()
 }
 
-#[proc_macro_derive(Enumeration, attributes(prost))]
-pub fn enumeration(input: TokenStream) -> TokenStream {
-    let syn::DeriveInput { ident, generics, body, .. } =
-        syn::parse_derive_input(&input.to_string()).expect("unable to parse enumeration type");
 
-    if !generics.lifetimes.is_empty() ||
-       !generics.ty_params.is_empty() ||
-       !generics.where_clause.predicates.is_empty() {
-        panic!("Enumeration may not be derived for generic type");
+fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
+    let input: DeriveInput = syn::parse(input)?;
+    let ident = input.ident;
+
+    if !input.generics.params.is_empty() ||
+       input.generics.where_clause.is_some() {
+        bail!("Message may not be derived for generic type");
     }
 
-    let variants = match body {
-        syn::Body::Struct(..) => panic!("Enumeration can not be derived for a struct"),
-        syn::Body::Enum(variants) => variants,
+    let punctuated_variants = match input.data {
+        Data::Enum(DataEnum { variants, .. }) => variants,
+        Data::Struct(_) => bail!("Enumeration can not be derived for a struct"),
+        Data::Union(..) => bail!("Enumeration can not be derived for a union"),
     };
 
-    let variants = variants.into_iter().map(|syn::Variant { ident: variant, data, discriminant, .. }| {
-        if let syn::VariantData::Unit = data {
-            if let Some(discriminant) = discriminant {
-                (variant, discriminant)
-            } else {
-                panic!("Enumeration variants must have a discriminant value: {}::{}", ident, variant);
-            }
-        } else {
-            panic!("Enumeration variants may not have fields: {}::{}", ident, variant);
+    // Map the variants into 'fields'.
+    let mut variants: Vec<(Ident, Expr)> = Vec::new();
+    for Variant { ident, fields, discriminant, .. } in punctuated_variants {
+        match fields {
+            Fields::Unit => (),
+            Fields::Named(_) | Fields::Unnamed(_) => bail!("Enumeration variants may not have fields"),
         }
-    }).collect::<Vec<_>>();
+
+        match discriminant {
+            Some((_, expr)) => variants.push((ident, expr)),
+            None => bail!("Enumeration variants must have a disriminant"),
+        }
+    }
 
     if variants.is_empty() {
-        panic!("Enumeration must have at least one variant: {}", ident);
+        panic!("Enumeration must have at least one variant");
     }
 
     let default = variants[0].0.clone();
 
     // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::new(format!("{}_ENUMERATION", ident));
+    let module = Ident::from(format!("{}_ENUMERATION", ident));
     let is_valid = variants.iter().map(|&(_, ref value)| quote!(#value => true));
     let from = variants.iter().map(|&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)));
 
@@ -290,44 +310,46 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
         };
     };
 
-    expanded.parse().unwrap()
+    Ok(expanded.into())
+}
+
+#[proc_macro_derive(Enumeration, attributes(prost))]
+pub fn enumeration(input: TokenStream) -> TokenStream {
+    try_enumeration(input).unwrap()
 }
 
 fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
-    let syn::DeriveInput { ident, generics, body, .. } =
-        syn::parse_derive_input(&input.to_string()).map_err(failure::err_msg)?;
+    let input: DeriveInput = syn::parse(input)?;
 
-    if !generics.lifetimes.is_empty() ||
-       !generics.ty_params.is_empty() ||
-       !generics.where_clause.predicates.is_empty() {
-        panic!("Oneof may not be derived for generic type");
-    }
+    let ident = input.ident;
 
-    let variants = match body {
-        syn::Body::Enum(variants) => variants,
-        syn::Body::Struct(..) => panic!("Oneof can not be derived for a struct"),
+    let variants = match input.data {
+        Data::Enum(DataEnum { variants, .. }) => variants,
+        Data::Struct(..) => bail!("Oneof can not be derived for a struct"),
+        Data::Union(..) => bail!("Oneof can not be derived for a union"),
     };
 
+    if !input.generics.params.is_empty() ||
+       input.generics.where_clause.is_some() {
+        bail!("Message may not be derived for generic type");
+    }
+
     // Map the variants into 'fields'.
-    let fields = variants.into_iter().map(|variant| {
-        let variant_ident = variant.ident;
-        let attrs = variant.attrs;
-        if let syn::VariantData::Tuple(fields) = variant.data {
-            if fields.len() != 1 {
-                bail!("invalid oneof variant {}::{}: oneof variants must have a single field",
-                      ident, variant_ident);
-            }
-            match Field::new_oneof(attrs) {
-                Ok(Some(field)) => Ok((variant_ident, field)),
-                Ok(None) => bail!("invalid oneof variant {}::{}: oneof variants may not be ignored",
-                                  ident, variant_ident),
-                Err(err) => bail!("invalid oneof variant {}::{}: {}", ident, variant_ident, err),
-            }
-        } else {
-            bail!("invalid oneof variant {}::{}: oneof variants must have a single field",
-                  ident, variant_ident);
+    let mut fields: Vec<(Ident, Field)> = Vec::new();
+    for Variant { attrs, ident: variant_ident, fields: variant_fields, .. } in variants {
+        let variant_fields = match variant_fields {
+            Fields::Unit => Punctuated::new(),
+            Fields::Named(FieldsNamed { named: fields, .. }) |
+            Fields::Unnamed(FieldsUnnamed { unnamed: fields, .. }) => fields,
+        };
+        if variant_fields.len() != 1 {
+            bail!("Oneof enum variants must have a single field");
         }
-    }).collect::<Result<Vec<(Ident, Field)>, _>>()?;
+        match Field::new_oneof(attrs)? {
+            Some(field) => fields.push((variant_ident, field)),
+            None => bail!("invalid oneof variant: oneof variants may not be ignored"),
+        }
+    }
 
     let mut tags = fields.iter().flat_map(|&(ref variant_ident, ref field)| -> Result<u32, Error> {
         if field.tags().len() > 1 {
@@ -343,16 +365,16 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     }
 
     // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::new(format!("{}_ONEOF", ident));
+    let module = Ident::from(format!("{}_ONEOF", ident));
 
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
-        let encode = field.encode(&Ident::new("*value"));
+        let encode = field.encode(quote!(*value));
         quote!(#ident::#variant_ident(ref value) => { #encode })
     });
 
     let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
         let tag = field.tags()[0];
-        let merge = field.merge(&Ident::new("value"));
+        let merge = field.merge(quote!(value));
         quote! {
             #tag => {
                 let mut value = ::std::default::Default::default();
@@ -362,7 +384,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     });
 
     let encoded_len = fields.iter().map(|&(ref variant_ident, ref field)| {
-        let encoded_len = field.encoded_len(&Ident::new("*value"));
+        let encoded_len = field.encoded_len(quote!(*value));
         quote!(#ident::#variant_ident(ref value) => #encoded_len)
     });
 
@@ -420,7 +442,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         };
     };
 
-    expanded.parse::<TokenStream>().map_err(|e| format_err!("{:?}", e))
+    Ok(expanded.into())
 }
 
 #[proc_macro_derive(Oneof, attributes(prost))]
