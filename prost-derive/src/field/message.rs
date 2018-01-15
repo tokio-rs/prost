@@ -1,8 +1,5 @@
 use failure::Error;
-use syn::{
-    Ident,
-    MetaItem,
-};
+use syn::Meta;
 use quote::Tokens;
 
 use field::{
@@ -20,7 +17,7 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
@@ -63,7 +60,7 @@ impl Field {
         }))
     }
 
-    pub fn new_oneof(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
+    pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs)? {
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
                 bail!("invalid atribute for oneof field: {}", attr.name());
@@ -75,7 +72,7 @@ impl Field {
         }
     }
 
-    pub fn encode(&self, ident: &Ident) -> Tokens {
+    pub fn encode(&self, ident: Tokens) -> Tokens {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
@@ -94,7 +91,7 @@ impl Field {
         }
     }
 
-    pub fn merge(&self, ident: &Ident) -> Tokens {
+    pub fn merge(&self, ident: Tokens) -> Tokens {
         match self.label {
             Label::Optional => quote! {
                 _prost::encoding::message::merge(wire_type,
@@ -110,7 +107,7 @@ impl Field {
         }
     }
 
-    pub fn encoded_len(&self, ident: &Ident) -> Tokens {
+    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
@@ -125,7 +122,7 @@ impl Field {
         }
     }
 
-    pub fn clear(&self, ident: &Ident) -> Tokens {
+    pub fn clear(&self, ident: Tokens) -> Tokens {
         match self.label {
             Label::Optional => quote!(#ident = ::std::option::Option::None),
             Label::Required => quote!(#ident.clear()),

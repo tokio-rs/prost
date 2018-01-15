@@ -1,9 +1,11 @@
 use failure::Error;
 use syn::{
-    Ident,
     Lit,
-    MetaItem,
-    NestedMetaItem,
+    Meta,
+    MetaNameValue,
+    NestedMeta,
+    Path,
+    parse_str,
 };
 use quote::Tokens;
 
@@ -14,12 +16,12 @@ use field::{
 
 #[derive(Clone)]
 pub struct Field {
-    pub ty: Ident,
+    pub ty: Path,
     pub tags: Vec<u32>,
 }
 
 impl Field {
-    pub fn new(attrs: &[MetaItem]) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut tags = None;
         let mut unknown_attrs = Vec::new();
@@ -27,13 +29,13 @@ impl Field {
         for attr in attrs {
             if attr.name() == "oneof" {
                 let t = match *attr {
-                    MetaItem::NameValue(_, Lit::Str(ref ident, _)) => {
-                        Ident::new(ident.as_ref())
-                    },
-                    MetaItem::List(_, ref items) if items.len() == 1 => {
+                    Meta::NameValue(MetaNameValue { lit: Lit::Str(ref lit), .. }) => {
+                        parse_str::<Path>(&lit.value())?
+                    }
+                    Meta::List(ref list) if list.nested.len() == 1 => {
                         // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                        if let NestedMetaItem::MetaItem(MetaItem::Word(ref ident)) = items[0] {
-                            ident.clone()
+                        if let NestedMeta::Meta(Meta::Word(ident)) = list.nested[0] {
+                            Path::from(ident)
                         } else {
                             bail!("invalid oneof attribute: item must be an identifier");
                         }
@@ -71,7 +73,7 @@ impl Field {
     }
 
     /// Returns a statement which encodes the oneof field.
-    pub fn encode(&self, ident: &Ident) -> Tokens {
+    pub fn encode(&self, ident: Tokens) -> Tokens {
         quote! {
             if let Some(ref oneof) = #ident {
                 oneof.encode(buf)
@@ -80,7 +82,7 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the result of decoding the oneof field.
-    pub fn merge(&self, ident: &Ident) -> Tokens {
+    pub fn merge(&self, ident: Tokens) -> Tokens {
         let ty = &self.ty;
         quote! {
             #ty::merge(&mut #ident, tag, wire_type, buf)
@@ -88,14 +90,14 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the oneof field.
-    pub fn encoded_len(&self, ident: &Ident) -> Tokens {
+    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
         let ty = &self.ty;
         quote! {
             #ident.as_ref().map_or(0, #ty::encoded_len)
         }
     }
 
-    pub fn clear(&self, ident: &Ident) -> Tokens {
+    pub fn clear(&self, ident: Tokens) -> Tokens {
         quote!(#ident = ::std::option::Option::None)
     }
 }
