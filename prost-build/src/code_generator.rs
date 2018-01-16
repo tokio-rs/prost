@@ -743,37 +743,73 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                 panic!("invalid c-escaped default binary value ({}): ends with '\'", s)
             }
             match src[p] {
-                b'a' => dst.push(0x07),
-                b'b' => dst.push(0x08),
-                b'f' => dst.push(0x0C),
-                b'n' => dst.push(0x0A),
-                b'r' => dst.push(0x0D),
-                b't' => dst.push(0x09),
-                b'v' => dst.push(0x0B),
-                b'\\' => dst.push(0x5C),
-                b'?' => dst.push(0x3F),
-                b'\'' => dst.push(0x27),
-                b'"' => dst.push(0x22),
+                b'a' => {
+                    dst.push(0x07);
+                    p += 1;
+                },
+                b'b' => {
+                    dst.push(0x08);
+                    p += 1;
+                },
+                b'f' => {
+                    dst.push(0x0C);
+                    p += 1;
+                },
+                b'n' => {
+                    dst.push(0x0A);
+                    p += 1;
+                },
+                b'r' => {
+                    dst.push(0x0D);
+                    p += 1;
+                },
+                b't' => {
+                    dst.push(0x09);
+                    p += 1;
+                },
+                b'v' => {
+                    dst.push(0x0B);
+                    p += 1;
+                },
+                b'\\' => {
+                    dst.push(0x5C);
+                    p += 1;
+                },
+                b'?' => {
+                    dst.push(0x3F);
+                    p += 1;
+                },
+                b'\'' => {
+                    dst.push(0x27);
+                    p += 1;
+                },
+                b'"' => {
+                    dst.push(0x22);
+                    p += 1;
+                },
                 b'0'...b'7' => {
-                    if p + 3 > len {
-                        eprintln!("p: {}, len: {}, src[p..]: {}", p, len, &s[p..]);
-                        panic!("invalid c-escaped default binary value ({}): incomplete octal value", s)
+                    eprintln!("another octal: {}, offset: {}", s, &s[p..]);
+                    let mut octal = 0;
+                    for _ in 0..3 {
+                        if p < len && src[p] >= b'0' && src[p] <= b'7' {
+                            eprintln!("\toctal: {}", octal);
+                            octal = octal * 8 + (src[p] - b'0');
+                            p += 1;
+                        } else {
+                            break;
+                        }
                     }
-                    match u8::from_str_radix(&s[p..p+3], 8) {
-                        Ok(b) => dst.push(b),
-                        _ => panic!("invalid c-escaped default binary value ({}): invalid octal value", s),
-                    }
-                    p += 3;
+                    dst.push(octal);
                 },
                 b'x' | b'X' => {
                     if p + 2 > len {
                         panic!("invalid c-escaped default binary value ({}): incomplete hex value", s)
                     }
-                    match u8::from_str_radix(&s[p..p+2], 16) {
+                    match u8::from_str_radix(&s[p+1..p+3], 16) {
                         Ok(b) => dst.push(b),
-                        _ => panic!("invalid c-escaped default binary value ({}): invalid hex value", s),
+                        _ => panic!("invalid c-escaped default binary value ({}): invalid hex value", &s[p..p+2]),
                     }
-                    p += 2;
+                    p += 3;
                 },
                 _ => {
                     panic!("invalid c-escaped default binary value ({}): invalid escape", s)
@@ -791,5 +827,13 @@ mod tests {
     #[test]
     fn test_unescape_c_escape_string() {
         assert_eq!(&b"hello world"[..], &unescape_c_escape_string("hello world")[..]);
+
+        assert_eq!(&b"\0"[..], &unescape_c_escape_string(r#"\0"#)[..]);
+
+        assert_eq!(&[0o012, 0o156], &unescape_c_escape_string(r#"\012\156"#)[..]);
+        assert_eq!(&[0x01, 0x02], &unescape_c_escape_string(r#"\x01\x02"#)[..]);
+
+        assert_eq!(&b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"[..],
+                   &unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe"#)[..]);
     }
 }

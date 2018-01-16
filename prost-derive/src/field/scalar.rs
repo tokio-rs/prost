@@ -130,7 +130,7 @@ impl Field {
 
         match self.kind {
             Kind::Plain(ref default) => {
-                let default = default.typed(&self.ty);
+                let default = default.typed();
                 quote! {
                     if #ident != #default {
                         #encode_fn(#tag, &#ident, buf);
@@ -183,7 +183,7 @@ impl Field {
 
         match self.kind {
             Kind::Plain(ref default) => {
-                let default = default.typed(&self.ty);
+                let default = default.typed();
                 quote! {
                     if #ident != #default {
                         #encoded_len_fn(#tag, &#ident)
@@ -204,7 +204,7 @@ impl Field {
     pub fn clear(&self, ident: &Ident) -> Tokens {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
-                let default = default.typed(&self.ty);
+                let default = default.typed();
                 match self.ty {
                     Ty::String | Ty::Bytes => quote!(#ident.clear()),
                     _ => quote!(#ident = #default),
@@ -218,7 +218,7 @@ impl Field {
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> Tokens {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(&self.ty),
+            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
             Kind::Optional(_) => quote!(::std::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
         }
@@ -515,7 +515,7 @@ impl fmt::Display for Ty {
     }
 }
 
-/// Scalar protobuf field types.
+/// Scalar Protobuf field types.
 #[derive(Clone)]
 pub enum Kind {
     /// A plain proto3 scalar field.
@@ -530,10 +530,20 @@ pub enum Kind {
     Packed,
 }
 
+/// Scalar Protobuf field default value.
 #[derive(Clone, Debug)]
 pub enum DefaultValue {
-    Lit(Lit),
-    Ident(Ident),
+    F64(f64),
+    F32(f32),
+    I32(i32),
+    I64(i64),
+    U32(u32),
+    U64(u64),
+    Bool(bool),
+    String(String),
+    Bytes(Vec<u8>),
+    Enumeration(String),
+    Identifier(String),
 }
 
 impl DefaultValue {
@@ -555,51 +565,42 @@ impl DefaultValue {
         let is_u32 = *ty == Ty::Uint32 || *ty == Ty::Fixed32;
         let is_u64 = *ty == Ty::Uint64 || *ty == Ty::Fixed64;
 
-        let lit = match lit {
-            Lit::Int(value, IntTy::I32) if is_i32 => Lit::Int(value, IntTy::I32),
-            Lit::Int(value, IntTy::Unsuffixed) if is_i32 => Lit::Int(value, IntTy::I32),
+        let default = match lit {
+            Lit::Int(value, IntTy::I32) | Lit::Int(value, IntTy::Unsuffixed) if is_i32 => DefaultValue::I32(value as _),
+            Lit::Int(value, IntTy::I64) | Lit::Int(value, IntTy::Unsuffixed) if is_i64 => DefaultValue::I64(value as _),
+            Lit::Int(value, IntTy::U32) | Lit::Int(value, IntTy::Unsuffixed) if is_u32 => DefaultValue::U32(value as _),
+            Lit::Int(value, IntTy::U64) | Lit::Int(value, IntTy::Unsuffixed) if is_u64 => DefaultValue::U64(value),
 
-            Lit::Int(value, IntTy::I64) if is_i64 => Lit::Int(value, IntTy::I64),
-            Lit::Int(value, IntTy::Unsuffixed) if is_i64 => Lit::Int(value, IntTy::I64),
+            Lit::Float(ref value, FloatTy::F32) | Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Float => DefaultValue::F32(value.parse()?),
+            Lit::Int(value, IntTy::Unsuffixed) if *ty == Ty::Float => DefaultValue::F32(value as _),
 
-            Lit::Int(value, IntTy::U32) if is_u32 => Lit::Int(value, IntTy::U32),
-            Lit::Int(value, IntTy::Unsuffixed) if is_u32  => Lit::Int(value, IntTy::U32),
+            Lit::Float(ref value, FloatTy::F64) | Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Double => DefaultValue::F64(value.parse()?),
+            Lit::Int(value, IntTy::Unsuffixed) if *ty == Ty::Double => DefaultValue::F64(value as _),
 
-            Lit::Int(value, IntTy::U64) if is_u64 => Lit::Int(value, IntTy::U64),
-            Lit::Int(value, IntTy::Unsuffixed) if is_u64 => Lit::Int(value, IntTy::U64),
-
-            Lit::Float(ref value, FloatTy::F32) if *ty == Ty::Float => Lit::Float(value.clone(), FloatTy::F32),
-            Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Float => Lit::Float(value.clone(), FloatTy::F32),
-            Lit::Int(ref value, IntTy::Unsuffixed) if *ty == Ty::Float => Lit::Float(format!("{}.0", value), FloatTy::F32),
-
-            Lit::Float(ref value, FloatTy::F64) if *ty == Ty::Double => Lit::Float(value.clone(), FloatTy::F64),
-            Lit::Float(ref value, FloatTy::Unsuffixed) if *ty == Ty::Double => Lit::Float(value.clone(), FloatTy::F64),
-            Lit::Int(ref value, IntTy::Unsuffixed) if *ty == Ty::Double => Lit::Float(format!("{}.0", value), FloatTy::F64),
-
-            Lit::Bool(value) if *ty == Ty::Bool => Lit::Bool(value),
-            ref lit@Lit::Str(_, _) if *ty == Ty::String => lit.clone(),
-            ref lit@Lit::ByteStr(_, _) if *ty == Ty::Bytes => lit.clone(),
+            Lit::Bool(value) if *ty == Ty::Bool => DefaultValue::Bool(value),
+            Lit::Str(ref value, _) if *ty == Ty::String => DefaultValue::String(value.clone()),
+            Lit::ByteStr(ref value, _) if *ty == Ty::Bytes => DefaultValue::Bytes(value.clone()),
 
             Lit::Str(s, StrStyle::Cooked) => {
                 let s = s.trim();
                 if let Ty::Enumeration(ref ty) = *ty {
-                    return Ok(DefaultValue::Ident(Ident::new(format!("{}::{}", ty, s))));
+                    return Ok(DefaultValue::Enumeration(format!("{}::{}", ty, s)));
                 }
 
                 // Parse special floating point values.
                 if *ty == Ty::Float {
                     match s {
-                        "inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f32::INFINITY"))),
-                        "-inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f32::NEG_INFINITY"))),
-                        "nan" => return Ok(DefaultValue::Ident(Ident::new("::std::f32::NAN"))),
+                        "inf" => return Ok(DefaultValue::Identifier("::std::f32::INFINITY".to_owned())),
+                        "-inf" => return Ok(DefaultValue::Identifier("::std::f32::NEG_INFINITY".to_owned())),
+                        "nan" => return Ok(DefaultValue::Identifier("::std::f32::NAN".to_owned())),
                         _ => (),
                     }
                 }
                 if *ty == Ty::Double {
                     match s {
-                        "inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f64::INFINITY"))),
-                        "-inf" => return Ok(DefaultValue::Ident(Ident::new("::std::f64::NEG_INFINITY"))),
-                        "nan" => return Ok(DefaultValue::Ident(Ident::new("::std::f64::NAN"))),
+                        "inf" => return Ok(DefaultValue::Identifier("::std::f64::INFINITY".to_owned())),
+                        "-inf" => return Ok(DefaultValue::Identifier("::std::f64::NEG_INFINITY".to_owned())),
+                        "nan" => return Ok(DefaultValue::Identifier("::std::f64::NAN".to_owned())),
                         _ => (),
                     }
                 }
@@ -611,30 +612,30 @@ impl DefaultValue {
 
                         syn::parse::IResult::Done(_, Lit::Int(value, IntTy::I32))
                         | syn::parse::IResult::Done(_, Lit::Int(value, IntTy::Unsuffixed)) if is_i32 => {
-                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}i32", value))));
+                            return Ok(DefaultValue::I32((!value + 1) as i32));
                         },
 
-                        syn::parse::IResult::Done(_, Lit::Int(ref value, IntTy::I64))
-                        | syn::parse::IResult::Done(_, Lit::Int(ref value, IntTy::Unsuffixed)) if is_i64 => {
-                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}i64", value))));
+                        syn::parse::IResult::Done(_, Lit::Int(value, IntTy::I64))
+                        | syn::parse::IResult::Done(_, Lit::Int(value, IntTy::Unsuffixed)) if is_i64 => {
+                            return Ok(DefaultValue::I64((!value + 1) as i64));
                         },
 
                         syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::F32))
                         | syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::Unsuffixed)) if *ty == Ty::Float => {
-                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f32", value))));
+                            return Ok(DefaultValue::F32(-value.parse()?));
                         },
 
                         syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::F64))
                         | syn::parse::IResult::Done(_, Lit::Float(ref value, FloatTy::Unsuffixed)) if *ty == Ty::Double => {
-                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f64", value))));
+                            return Ok(DefaultValue::F64(-value.parse()?));
                         },
 
                         syn::parse::IResult::Done(_, Lit::Int(value, IntTy::Unsuffixed)) if *ty == Ty::Float => {
-                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f32", value))));
+                            return Ok(DefaultValue::F32(-(value as f32)));
                         },
 
-                        syn::parse::IResult::Done(_, Lit::Int(ref value, IntTy::Unsuffixed)) if *ty == Ty::Double => {
-                            return Ok(DefaultValue::Ident(Ident::new(format!("-{}f64", value))));
+                        syn::parse::IResult::Done(_, Lit::Int(value, IntTy::Unsuffixed)) if *ty == Ty::Double => {
+                            return Ok(DefaultValue::F64(-(value as f64)));
                         },
 
                         _ => (),
@@ -651,44 +652,41 @@ impl DefaultValue {
             _ => bail!("invalid default value: {}", quote!(#lit)),
         };
 
-        Ok(DefaultValue::Lit(lit))
+        Ok(default)
     }
 
     pub fn new(ty: &Ty) -> DefaultValue {
-        let lit = match *ty {
-            Ty::Float => Lit::from(0.0f32),
-            Ty::Double => Lit::from(0.0f64),
-            Ty::Int32 => Lit::from(0i32),
-            Ty::Int64 => Lit::from(0i64),
-            Ty::Uint32 => Lit::from(0u32),
-            Ty::Uint64 => Lit::from(0u64),
-            Ty::Sint32 => Lit::from(0i32),
-            Ty::Sint64 => Lit::from(0i64),
-            Ty::Fixed32 => Lit::from(0u32),
-            Ty::Fixed64 => Lit::from(0u64),
-            Ty::Sfixed32 => Lit::from(0i32),
-            Ty::Sfixed64 => Lit::from(0i64),
-            Ty::Bool => Lit::from(false),
-            Ty::String => Lit::from(""),
-            Ty::Bytes => Lit::from(&b""[..]),
-            Ty::Enumeration(ref ty) => return DefaultValue::Ident(Ident::new(format!("{}::default()", ty))),
-        };
-        DefaultValue::Lit(lit)
-    }
+        match *ty {
+            Ty::Float => DefaultValue::F32(0.0),
+            Ty::Double => DefaultValue::F64(0.0),
+            Ty::Int32 | Ty::Sint32 | Ty::Sfixed32 => DefaultValue::I32(0),
+            Ty::Int64 | Ty::Sint64 | Ty::Sfixed64 => DefaultValue::I64(0),
+            Ty::Uint32 | Ty::Fixed32 => DefaultValue::U32(0),
+            Ty::Uint64 | Ty::Fixed64 => DefaultValue::U64(0),
 
-    pub fn owned(&self, ty: &Ty) -> Tokens {
-        match *self {
-            DefaultValue::Lit(Lit::Str(ref value, ..)) if value.is_empty() => quote!(::std::string::String::new()),
-            DefaultValue::Lit(ref lit@Lit::Str(..)) => quote!(#lit.to_owned()),
-            DefaultValue::Lit(Lit::ByteStr(ref value, ..)) if value.is_empty() => quote!(::std::vec::Vec::new()),
-            DefaultValue::Lit(ref lit@Lit::ByteStr(..)) => quote!(#lit.to_owned()),
-            DefaultValue::Lit(ref lit) => quote!(#lit),
-            DefaultValue::Ident(..) => self.typed(ty),
+            Ty::Bool => DefaultValue::Bool(false),
+            Ty::String => DefaultValue::String(String::new()),
+            Ty::Bytes => DefaultValue::Bytes(Vec::new()),
+            Ty::Enumeration(ref ty) => return DefaultValue::Enumeration(format!("{}::default()", ty)),
         }
     }
 
-    pub fn typed(&self, ty: &Ty) -> Tokens {
-        if let Ty::Enumeration(..) = *ty {
+    pub fn owned(&self) -> Tokens {
+        match *self {
+            DefaultValue::String(ref value) if value.is_empty() => quote!(::std::string::String::new()),
+            DefaultValue::String(ref value) => quote!(#value.to_owned()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) => {
+                let lit = Lit::ByteStr(value.clone(), StrStyle::Cooked);
+                quote!(#lit.to_owned())
+            },
+
+            ref other => other.typed(),
+        }
+    }
+
+    pub fn typed(&self) -> Tokens {
+        if let DefaultValue::Enumeration(_) = *self {
             quote!(super::#self as i32)
         } else {
             quote!(#self)
@@ -699,8 +697,17 @@ impl DefaultValue {
 impl quote::ToTokens for DefaultValue {
     fn to_tokens(&self, tokens: &mut Tokens) {
         match *self {
-            DefaultValue::Lit(ref lit) => lit.to_tokens(tokens),
-            DefaultValue::Ident(ref ident) => ident.to_tokens(tokens),
+            DefaultValue::F64(value) => value.to_tokens(tokens),
+            DefaultValue::F32(value) => value.to_tokens(tokens),
+            DefaultValue::I32(value) => value.to_tokens(tokens),
+            DefaultValue::I64(value) => value.to_tokens(tokens),
+            DefaultValue::U32(value) => value.to_tokens(tokens),
+            DefaultValue::U64(value) => value.to_tokens(tokens),
+            DefaultValue::Bool(value) => value.to_tokens(tokens),
+            DefaultValue::String(ref value) => value.to_tokens(tokens),
+            DefaultValue::Bytes(ref value) => Lit::ByteStr(value.clone(), StrStyle::Cooked).to_tokens(tokens),
+            DefaultValue::Enumeration(ref value) => Ident::new(value.as_str()).to_tokens(tokens),
+            DefaultValue::Identifier(ref value) => Ident::new(value.as_str()).to_tokens(tokens),
         }
     }
 }

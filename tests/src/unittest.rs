@@ -6,40 +6,42 @@ pub mod protobuf_unittest_import {
     include!(concat!(env!("OUT_DIR"), "/protobuf_unittest_import.rs"));
 }
 
-// GeneratedMessageTest.FloatingPointDefaults
 #[test]
-fn floating_point_defaults() {
+fn extreme_default_values() {
     use std::{f32, f64};
-    let extreme_default = protobuf_unittest::TestExtremeDefaultValues::default();
-    assert_eq!(0.0f32, extreme_default.zero_float());
-    assert_eq!(1.0f32, extreme_default.one_float());
-    assert_eq!(1.5f32, extreme_default.small_float());
-    assert_eq!(-1.0f32, extreme_default.negative_one_float());
-    assert_eq!(-1.5f32, extreme_default.negative_float());
-    assert_eq!(2.0e8f32, extreme_default.large_float());
-    assert_eq!(-8e-28f32, extreme_default.small_negative_float());
-    assert_eq!(f64::INFINITY, extreme_default.inf_double());
-    assert_eq!(f64::NEG_INFINITY, extreme_default.neg_inf_double());
-    assert_ne!(extreme_default.nan_double(), extreme_default.nan_double());
-    assert_eq!(f32::INFINITY, extreme_default.inf_float());
-    assert_eq!(f32::NEG_INFINITY, extreme_default.neg_inf_float());
-    assert_ne!(extreme_default.nan_float(), extreme_default.nan_float());
-}
+    let pb = protobuf_unittest::TestExtremeDefaultValues::default();
 
-// GeneratedMessageTest.ExtremeSmallIntegerDefault
-#[test]
-fn extreme_small_integer_default() {
-    use std::{i32, i64};
-    let extreme_default = protobuf_unittest::TestExtremeDefaultValues::default();
-    assert_eq!(i32::MIN, extreme_default.really_small_int32());
-    assert_eq!(i64::MIN, extreme_default.really_small_int64());
-}
+    assert_eq!(b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE", pb.escaped_bytes());
 
-// GeneratedMessageTest.StringDefaults
-#[test]
-fn string_defaults() {
-  let message = protobuf_unittest::TestExtremeDefaultValues::default();
-  // Check if '\000' can be used in default string value.
-  assert_eq!("hel\0lo", message.string_with_zero());
-  assert_eq!(b"wor\0ld", message.bytes_with_zero());
+    assert_eq!(0xFFFFFFFF, pb.large_uint32());
+    assert_eq!(0xFFFFFFFFFFFFFFFF, pb.large_uint64());
+    assert_eq!(-0x7FFFFFFF, pb.small_int32());
+    assert_eq!(-0x7FFFFFFFFFFFFFFF, pb.small_int64());
+    assert_eq!(-0x80000000, pb.really_small_int32());
+    assert_eq!(-0x8000000000000000, pb.really_small_int64());
+
+    assert_eq!(pb.utf8_string(), "\u{1234}");
+
+    assert_eq!(0.0, pb.zero_float());
+    assert_eq!(1.0, pb.one_float());
+    assert_eq!(1.5, pb.small_float());
+    assert_eq!(-1.0, pb.negative_one_float());
+    assert_eq!(-1.5, pb.negative_float());
+    assert_eq!(2E8, pb.large_float());
+    assert_eq!(-8e-28, pb.small_negative_float());
+
+    assert_eq!(f64::INFINITY, pb.inf_double());
+    assert_eq!(f64::NEG_INFINITY, pb.neg_inf_double());
+    assert_ne!(pb.nan_double(), pb.nan_double());
+    assert_eq!(f32::INFINITY, pb.inf_float());
+    assert_eq!(f32::NEG_INFINITY, pb.neg_inf_float());
+    assert_ne!(pb.nan_float(), pb.nan_float());
+
+    assert_eq!("? ? ?? ?? ??? ??/ ??-", pb.cpp_trigraph());
+
+    assert_eq!("hel\0lo", pb.string_with_zero());
+    assert_eq!(b"wor\0ld", pb.bytes_with_zero());
+    assert_eq!("ab\0c", pb.string_piece_with_zero());
+    assert_eq!("12\03", pb.cord_with_zero());
+    assert_eq!("${unknown}", pb.replacement_string());
 }
