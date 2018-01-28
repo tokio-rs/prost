@@ -172,7 +172,7 @@ type Module = Vec<String>;
 pub trait ServiceGenerator {
     /// Generates a Rust interface or implementation for a service, writing the
     /// result to `buf`.
-    fn generate(&self, service: Service, buf: &mut String);
+    fn generate(&mut self, service: Service, buf: &mut String);
 
     /// Finalizes the generation process.
     ///
@@ -187,7 +187,7 @@ pub trait ServiceGenerator {
     /// is called once per `.proto` file.
     ///
     /// The default implementation is empty and does nothing.
-    fn finalize(&self, _buf: &mut String) {}
+    fn finalize(&mut self, _buf: &mut String) {}
 }
 
 /// Configuration options for Protobuf code generation.
@@ -371,7 +371,7 @@ impl Config {
     ///                                &["src"]).unwrap();
     /// }
     /// ```
-    pub fn compile_protos<P>(&self, protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
+    pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
         let target = match env::var("OUT_DIR") {
             Ok(val) => PathBuf::from(val),
             Err(env::VarError::NotPresent) => {
@@ -434,7 +434,7 @@ impl Config {
         Ok(())
     }
 
-    fn generate(&self, files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
+    fn generate(&mut self, files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
         let mut modules = HashMap::new();
 
         let message_graph = MessageGraph::new(&files);
@@ -525,7 +525,7 @@ mod tests {
     /// service methods.
     struct ServiceTraitGenerator;
     impl ServiceGenerator for ServiceTraitGenerator {
-        fn generate(&self, service: Service, buf: &mut String) {
+        fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
             service.comments.append_with_indent(0, buf);
             buf.push_str(&format!("trait {} {{\n", &service.name));
@@ -542,7 +542,7 @@ mod tests {
             // Close out the trait.
             buf.push_str("}\n");
         }
-        fn finalize(&self, buf: &mut String) {
+        fn finalize(&mut self, buf: &mut String) {
             // Needs to be present only once, no matter how many services there are
             buf.push_str("pub mod utils { }\n");
         }
