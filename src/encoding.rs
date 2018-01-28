@@ -64,7 +64,7 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
 
             let byte = bytes[0];
             if byte < 0x80 {
-                (byte as u64, 1)
+                (u64::from(byte), 1)
             } else if len > 10 || bytes[len - 1] < 0x80 {
                 decode_varint_slice(bytes)?
             } else {
@@ -90,31 +90,31 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
 
     let mut b: u8;
     let mut part0: u32;
-    b = bytes[0]; part0  =  b as u32       ; if b < 0x80 { return Ok((part0 as u64, 1)) };
+    b = bytes[0]; part0  = u32::from(b)      ; if b < 0x80 { return Ok((u64::from(part0), 1)) };
     part0 -= 0x80;
-    b = bytes[1]; part0 += (b as u32) <<  7; if b < 0x80 { return Ok((part0 as u64, 2)) };
+    b = bytes[1]; part0 += u32::from(b) <<  7; if b < 0x80 { return Ok((u64::from(part0), 2)) };
     part0 -= 0x80 << 7;
-    b = bytes[2]; part0 += (b as u32) << 14; if b < 0x80 { return Ok((part0 as u64, 3)) };
+    b = bytes[2]; part0 += u32::from(b) << 14; if b < 0x80 { return Ok((u64::from(part0), 3)) };
     part0 -= 0x80 << 14;
-    b = bytes[3]; part0 += (b as u32) << 21; if b < 0x80 { return Ok((part0 as u64, 4)) };
+    b = bytes[3]; part0 += u32::from(b) << 21; if b < 0x80 { return Ok((u64::from(part0), 4)) };
     part0 -= 0x80 << 21;
-    let value = part0 as u64;
+    let value = u64::from(part0);
 
     let mut part1: u32;
-    b = bytes[4]; part1  =  b as u32       ; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 5)) };
+    b = bytes[4]; part1  = u32::from(b)      ; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 5)) };
     part1 -= 0x80;
-    b = bytes[5]; part1 += (b as u32) <<  7; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 6)) };
+    b = bytes[5]; part1 += u32::from(b) <<  7; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 6)) };
     part1 -= 0x80 << 7;
-    b = bytes[6]; part1 += (b as u32) << 14; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 7)) };
+    b = bytes[6]; part1 += u32::from(b) << 14; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 7)) };
     part1 -= 0x80 << 14;
-    b = bytes[7]; part1 += (b as u32) << 21; if b < 0x80 { return Ok((value + ((part1 as u64) << 28), 8)) };
+    b = bytes[7]; part1 += u32::from(b) << 21; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 8)) };
     part1 -= 0x80 << 21;
-    let value = value + ((part1 as u64) << 28);
+    let value = value + ((u64::from(part1)) << 28);
 
     let mut part2: u32;
-    b = bytes[8]; part2  =  b as u32       ; if b < 0x80 { return Ok((value + ((part2 as u64) << 56), 9)) };
+    b = bytes[8]; part2  = u32::from(b)      ; if b < 0x80 { return Ok((value + (u64::from(part2) << 56), 9)) };
     part2 -= 0x80;
-    b = bytes[9]; part2 += (b as u32) <<  7; if b < 0x80 { return Ok((value + ((part2 as u64) << 56), 10)) };
+    b = bytes[9]; part2 += u32::from(b) <<  7; if b < 0x80 { return Ok((value + (u64::from(part2) << 56), 10)) };
 
     // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
     Err(DecodeError::new("invalid varint"))
@@ -127,7 +127,7 @@ fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
     let mut value = 0;
     for count in 0..min(10, buf.remaining()) {
         let byte = buf.get_u8();
-        value |= ((byte & 0x7F) as u64) << (count * 7);
+        value |= u64::from(byte & 0x7F) << (count * 7);
         if byte <= 0x7F {
             return Ok(value);
         }
@@ -177,7 +177,7 @@ impl WireType {
 pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut {
     debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
     let key = (tag << 3) | wire_type as u32;
-    encode_varint(key as u64, buf);
+    encode_varint(u64::from(key), buf);
 }
 
 /// Decodes a Protobuf field key, which consists of a wire type designator and
@@ -185,7 +185,7 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut
 #[inline]
 pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError> where B: Buf {
     let key = decode_varint(buf)?;
-    if key > u32::MAX as u64 {
+    if key > u64::from(u32::MAX) {
         return Err(DecodeError::new(format!("invalid key value: {}", key)));
     }
     let wire_type = WireType::try_from(key as u8 & 0x07)?;
@@ -202,7 +202,7 @@ pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError> where 
 /// The returned width will be between 1 and 5 bytes (inclusive).
 #[inline]
 pub fn key_len(tag: u32) -> usize {
-    encoded_len_varint((tag << 3) as u64)
+    encoded_len_varint(u64::from(tag << 3))
 }
 
 /// Checks that the expected wire type matches the actual wire type,
