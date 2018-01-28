@@ -46,7 +46,7 @@ enum Syntax {
 }
 
 pub struct CodeGenerator<'a> {
-    config: &'a Config,
+    config: &'a mut Config,
     package: String,
     source_info: SourceCodeInfo,
     syntax: Syntax,
@@ -57,7 +57,7 @@ pub struct CodeGenerator<'a> {
 }
 
 impl <'a> CodeGenerator<'a> {
-    pub fn generate(config: &Config,
+    pub fn generate(config: &mut Config,
                     message_graph: &MessageGraph,
                     file: FileDescriptorProto,
                     buf: &mut String) {
@@ -104,14 +104,19 @@ impl <'a> CodeGenerator<'a> {
         }
         code_gen.path.pop();
 
-        if let Some(ref service_generator) = code_gen.config.service_generator {
+        if code_gen.config.service_generator.is_some() {
             code_gen.path.push(6);
             for (idx, service) in file.service.into_iter().enumerate() {
                 code_gen.path.push(idx as i32);
-                service_generator.generate(code_gen.unpack_service(service), &mut code_gen.buf);
+                code_gen.push_service(service);
                 code_gen.path.pop();
             }
-            service_generator.finalize(&mut code_gen.buf);
+
+            let buf = code_gen.buf;
+            code_gen.config.service_generator.as_mut().map(|service_generator| {
+                service_generator.finalize(buf);
+            });
+
             code_gen.path.pop();
         }
     }
@@ -226,10 +231,11 @@ impl <'a> CodeGenerator<'a> {
 
     fn append_type_attributes(&mut self, msg_name: &str) {
         assert_eq!(b'.', msg_name.as_bytes()[0]);
-        for &(ref matcher, ref attribute) in &self.config.type_attributes {
-            if match_ident(matcher, msg_name, None) {
+        // TODO: this clone is dirty, but expedious.
+        for (matcher, attribute) in self.config.type_attributes.clone() {
+            if match_ident(&matcher, msg_name, None) {
                 self.push_indent();
-                self.buf.push_str(attribute);
+                self.buf.push_str(&attribute);
                 self.buf.push('\n');
             }
         }
@@ -237,10 +243,11 @@ impl <'a> CodeGenerator<'a> {
 
     fn append_field_attributes(&mut self, msg_name: &str, field_name: &str) {
         assert_eq!(b'.', msg_name.as_bytes()[0]);
-        for &(ref matcher, ref attribute) in &self.config.field_attributes {
-            if match_ident(matcher, msg_name, Some(field_name)) {
+        // TODO: this clone is dirty, but expedious.
+        for (matcher, attribute) in self.config.field_attributes.clone() {
+            if match_ident(&matcher, msg_name, Some(field_name)) {
                 self.push_indent();
-                self.buf.push_str(attribute);
+                self.buf.push_str(&attribute);
                 self.buf.push('\n');
             }
         }
@@ -491,7 +498,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(",\n");
     }
 
-    fn unpack_service(&mut self, service: ServiceDescriptorProto) -> Service {
+    fn push_service(&mut self, service: ServiceDescriptorProto) {
         let name = service.name().to_owned();
         debug!("  service: {:?}", name);
 
@@ -531,14 +538,17 @@ impl <'a> CodeGenerator<'a> {
                              .collect();
         self.path.pop();
 
-        Service {
+        let service = Service {
             name: to_upper_camel(&name),
             proto_name: name,
             package: self.package.clone(),
             comments,
             methods,
             options: service.options.unwrap_or_default(),
-        }
+        };
+
+        let buf = &mut self.buf;
+        self.config.service_generator.as_mut().map(move |service_generator| service_generator.generate(service, buf));
     }
 
     fn push_indent(&mut self) {
