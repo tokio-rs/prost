@@ -1,7 +1,7 @@
 [package]
 name = "prost"
 # NB: When modifying, also modify html_root_url in lib.rs
-version = "0.2.3"
+version = "0.3.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -38,5 +38,5 @@ bytes = "0.4"
 [dev-dependencies]
 env_logger = "0.5"
 log = "0.4"
-prost-derive = { version = "0.2", path = "prost-derive" }
+prost-derive = { version = "0.3.0", path = "prost-derive" }
 quickcheck = "0.6"

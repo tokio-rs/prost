@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-codegen/0.2.3")]
+#![doc(html_root_url = "https://docs.rs/prost-codegen/0.3.0")]
 
 //! Protocol Buffers well-known types.
 //!
