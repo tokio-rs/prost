@@ -37,16 +37,16 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new(&attrs)? {
+        let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
             Field::Scalar(field)
-        } else if let Some(field) = message::Field::new(&attrs)? {
+        } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
             Field::Message(field)
-        } else if let Some(field) = map::Field::new(&attrs)? {
+        } else if let Some(field) = map::Field::new(&attrs, inferred_tag)? {
             Field::Map(field)
         } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
@@ -224,8 +224,7 @@ impl fmt::Display for Label {
     }
 }
 
-/// Get the items belonging to the 'prost' list attribute
-/// (e.g. #[prost(foo, bar="baz")]).
+/// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
 fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
     Ok(attrs.iter().flat_map(Attribute::interpret_meta).flat_map(|meta| match meta {
         Meta::List(MetaList { ident, nested, .. }) => if ident == "prost" {

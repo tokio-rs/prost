@@ -35,7 +35,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut label = None;
         let mut packed = None;
@@ -71,7 +71,7 @@ impl Field {
             _ => bail!("unknown attributes: {:?}", unknown_attrs),
         }
 
-        let tag = match tag {
+        let tag = match tag.or(inferred_tag) {
             Some(tag) => tag,
             None => bail!("missing tag attribute"),
         };
@@ -108,7 +108,7 @@ impl Field {
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(attrs)? {
+        if let Some(mut field) = Field::new(attrs, None)? {
             match field.kind {
                 Kind::Plain(default) => {
                     field.kind = Kind::Required(default);

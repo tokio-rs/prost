@@ -1,6 +1,7 @@
 use prost::Message;
 
 use check_message;
+use check_serialize_equivalent;
 
 #[derive(Clone, PartialEq, Message)]
 pub struct RepeatedFloats {
@@ -186,6 +187,56 @@ pub struct ScalarTypes {
     pub packed_string: Vec<String>,
     #[prost(bytes, repeated, tag="416")]
     pub packed_bytes: Vec<Vec<u8>>,
+}
+
+#[test]
+fn check_tags_inferred() {
+    check_message(&TagsInferred::default());
+    check_serialize_equivalent(&TagsInferred::default(), &TagsQualified::default());
+}
+
+#[derive(Clone, PartialEq, Message)]
+pub struct TagsInferred {
+    #[prost(bool)]
+    pub one: bool,
+    #[prost(int32, optional)]
+    pub two: Option<i32>,
+    #[prost(float, repeated)]
+    pub three: Vec<f32>,
+
+    #[prost(tag="9", string, required)]
+    pub skip_to_nine: String,
+    #[prost(enumeration="BasicEnumeration", default="ONE")]
+    pub ten: i32,
+    #[prost(map="string, string")]
+    pub eleven: ::std::collections::HashMap<String, String>,
+
+    #[prost(tag="5", bytes)]
+    pub back_to_five: Vec<u8>,
+    #[prost(message, required)]
+    pub six: Basic,
+}
+
+#[derive(Clone, PartialEq, Message)]
+pub struct TagsQualified {
+    #[prost(tag="1", bool)]
+    pub one: bool,
+    #[prost(tag="2", int32, optional)]
+    pub two: Option<i32>,
+    #[prost(tag="3", float, repeated)]
+    pub three: Vec<f32>,
+
+    #[prost(tag="5", bytes)]
+    pub five: Vec<u8>,
+    #[prost(tag="6", message, required)]
+    pub six: Basic,
+
+    #[prost(tag="9", string, required)]
+    pub nine: String,
+    #[prost(tag="10", enumeration="BasicEnumeration", default="ONE")]
+    pub ten: i32,
+    #[prost(tag="11", map="string, string")]
+    pub eleven: ::std::collections::HashMap<String, String>,
 }
 
 /// A prost message with default value.

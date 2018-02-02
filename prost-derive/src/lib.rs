@@ -56,13 +56,17 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         DataStruct { fields: Fields::Unit, .. } => Vec::new(),
     };
 
+    let mut next_tag: u32 = 0;
     let mut fields = fields.into_iter()
                            .enumerate()
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
-                                                       .unwrap_or_else(|| Ident::from(idx.to_string()));
-                               match Field::new(field.attrs) {
-                                   Ok(Some(field)) => Some(Ok((field_ident, field))),
+                                                      .unwrap_or_else(|| Ident::from(idx.to_string()));
+                               match Field::new(field.attrs, Some(next_tag)) {
+                                   Ok(Some(field)) => {
+                                       next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
+                                       Some(Ok((field_ident, field)))
+                                   }
                                    Ok(None) => None,
                                    Err(err) => Some(Err(err.context(format!("invalid message field {}.{}",
                                                                             ident, field_ident)))),

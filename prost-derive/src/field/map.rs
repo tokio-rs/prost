@@ -56,7 +56,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
 
@@ -103,7 +103,7 @@ impl Field {
             }
         }
 
-        Ok(match (types, tag) {
+        Ok(match (types, tag.or(inferred_tag)) {
             (Some((map_ty, key_ty, val_ty)), Some(tag)) => {
                 Some(Field {
                     map_ty: map_ty,
@@ -117,7 +117,7 @@ impl Field {
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        Field::new(attrs)
+        Field::new(attrs, None)
     }
 
     /// Returns a statement which encodes the map field.

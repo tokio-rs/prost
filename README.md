@@ -261,6 +261,52 @@ annotations.
 Currently the best documentation on adding annotations is to look at the
 generated code examples above.
 
+### Tag Inference for Existing Types
+
+Prost automatically infers tags for the struct.
+
+Fields are tagged sequentially in the order they
+are specified, starting with `1`.
+
+You may skip tags which have been reserved, or where there are gaps between
+sequentially occurring tag values by specifying the tag number to skip to with
+the `tag` attribute on the first field after the gap. The following fields will
+be tagged sequentially starting from the next number.
+
+```rust
+#[derive(Clone, Debug, PartialEq, Message)]
+struct Person {
+  pub id: String, // tag=1
+
+  // NOTE: Old "name" field has been removed
+  // pub name: String, // tag=2 (Removed)
+
+  #[prost(tag="6")]
+  pub given_name: String, // tag=6
+  pub family_name: String, // tag=7
+  pub formatted_name: String, // tag=8
+
+  #[prost(tag="3")]
+  pub age: u32, // tag=3
+  pub height: u32, // tag=4
+  #[prost(enumeration="Gender")]
+  pub gender: i32, // tag=5
+
+  // NOTE: Skip to less commonly occurring fields
+  #[prost(tag="16")]
+  pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
+  pub name_suffix: String, // tag=17  (eg. jr/esq)
+  pub maiden_name: String, // tag=18
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+pub enum Gender {
+  Unknown = 0,
+  Female = 1,
+  Male = 2,
+}
+```
+
 ## FAQ
 
 1. **Could `prost` be implemented as a serializer for [Serde](https://serde.rs/)?**
@@ -279,12 +325,6 @@ generated code examples above.
 
   But it is possible to place `serde` derive tags onto the generated types, so
   the same structure can support both `prost` and `Serde`.
-
-2. **Looks like a lot of field annotations. Can those be simplified?**
-
-  Probably. Effort has not yet been spent on reducing the number of annotations.
-  The recommended way of using `prost` is through [`prost-build`](prost-build),
-  in which case the annotations are never seen.
 
 ## License
 
