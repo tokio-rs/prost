@@ -61,7 +61,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
                                                        .unwrap_or_else(|| Ident::from(idx.to_string()));
-                               match Field::new(field.attrs) {
+                               match Field::new(field.attrs, Some(&field.ty), None) {
                                    Ok(Some(field)) => Some(Ok((field_ident, field))),
                                    Ok(None) => None,
                                    Err(err) => Some(Err(err.context(format!("invalid message field {}.{}",

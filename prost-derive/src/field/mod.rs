@@ -17,6 +17,7 @@ use syn::{
     MetaList,
     MetaNameValue,
     NestedMeta,
+    Type,
 };
 
 #[derive(Clone)]
@@ -37,12 +38,12 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    pub fn new(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: Vec<Attribute>, rust_type: Option<&Type>, default_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new(&attrs)? {
+        let field = if let Some(field) = scalar::Field::new(&attrs, rust_type, default_tag)? {
             Field::Scalar(field)
         } else if let Some(field) = message::Field::new(&attrs)? {
             Field::Message(field)
@@ -51,7 +52,11 @@ impl Field {
         } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
         } else {
-            bail!("no type attribute");
+            if let Some(rt) = rust_type {
+                bail!("no type attribute (can't infer type for: {})", quote!(rt));
+            } else {
+                bail!("no type attribute");
+            }
         };
 
         Ok(Some(field))

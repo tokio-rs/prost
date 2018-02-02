@@ -165,6 +165,17 @@ pub fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
     assert_eq!(msg, &roundtrip);
 }
 
+/// Serialize from A should equal Serialize from B
+pub fn check_serialize_equivalent<M, N>(msg_a: &M, msg_b: &N)
+where M: Message + Default + PartialEq,
+      N: Message + Default + PartialEq {
+    let mut buf_a = Vec::new();
+    msg_a.encode(&mut buf_a).unwrap();
+    let mut buf_b = Vec::new();
+    msg_b.encode(&mut buf_b).unwrap();
+    assert_eq!(buf_a, buf_b);
+}
+
 #[cfg(test)]
 mod tests {
 

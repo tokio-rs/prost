@@ -14,6 +14,7 @@ use syn::{
     MetaNameValue,
     NestedMeta,
     Path,
+    Type,
     parse_str,
     self,
 };
@@ -35,7 +36,7 @@ pub struct Field {
 
 impl Field {
 
-    pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: &[Meta], rust_type: Option<&Type>, default_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut label = None;
         let mut packed = None;
@@ -60,6 +61,17 @@ impl Field {
             }
         }
 
+        if ty.is_none() {
+            if let Some(inferred) = rust_type.and_then(|rt| Inferred::from_rust_type(rt)) {
+                ty = Some(inferred.ty);
+                if label.is_none() {
+                    label = inferred.label;
+                }
+                if packed.is_none() {
+                    packed = inferred.packed;
+                }
+            }
+        }
         let ty = match ty {
             Some(ty) => ty,
             None => return Ok(None),
@@ -108,7 +120,7 @@ impl Field {
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(attrs)? {
+        if let Some(mut field) = Field::new(attrs, None, None)? {
             match field.kind {
                 Kind::Plain(default) => {
                     field.kind = Kind::Required(default);
@@ -729,6 +741,81 @@ impl quote::ToTokens for DefaultValue {
                 value.to_tokens(tokens)
             },
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
+        }
+    }
+}
+
+
+struct Inferred {
+    ty: Ty,
+    label: Option<Label>,
+    packed: Option<bool>,
+}
+
+impl Inferred {
+    fn new(ty: Ty, label: Option<Label>) -> Inferred {
+        let packed = match (label, &ty) {
+            (Some(Label::Repeated), &Ty::String) => Some(false),
+            (Some(Label::Repeated), &Ty::Bytes) => Some(false),
+            (Some(Label::Repeated), _) => Some(true),
+            _ => None,
+        };
+
+        Inferred{ty, label, packed}
+    }
+
+    /// Choose a sane default protobuf type from a rust type if one isn't specified
+    fn from_rust_type(ty: &Type) -> Option<Inferred> {
+        let path = match ty {
+            &Type::Path(syn::TypePath{ref path, ..}) => path,
+            _ => return None,
+        };
+        let segment = match path.segments.first() {
+            Some(syn::punctuated::Pair::End(seg)) => seg,
+            _ => return None, // NOTE: Not an inferrable scalar type
+        };
+        let label = match segment.ident.as_ref() {
+            "Option" => Some(Label::Optional),
+            "Vec" => Some(Label::Repeated),
+            _ => None,
+        };
+        let ty =
+            if label.is_some() {
+                let bracketed = match segment.arguments {
+                    syn::PathArguments::AngleBracketed(ref bracketed) => bracketed,
+                    _ => return None,
+                };
+                match bracketed.args.first() {
+                    Some(syn::punctuated::Pair::End(&syn::GenericArgument::Type(ref inner))) => inner,
+                    _ => return None,
+                }
+            } else {
+                ty
+            };
+
+        let tok = quote!(#ty);
+        if label == Some(Label::Repeated) && tok == quote!(u8) {
+            Some(Inferred::new(Ty::Bytes, None))
+        } else if tok == quote!(i32) {
+            Some(Inferred::new(Ty::Int32, label))
+        } else if tok == quote!(i64) {
+            Some(Inferred::new(Ty::Int64, label))
+        } else if tok == quote!(u32) {
+            Some(Inferred::new(Ty::Uint32, label))
+        } else if tok == quote!(u64) {
+            Some(Inferred::new(Ty::Uint64, label))
+        } else if tok == quote!(f32) {
+            Some(Inferred::new(Ty::Float, label))
+        } else if tok == quote!(f64) {
+            Some(Inferred::new(Ty::Double, label))
+        } else if tok == quote!(bool) {
+            Some(Inferred::new(Ty::Bool, label))
+        } else if tok == quote!(String) {
+            Some(Inferred::new(Ty::String, label))
+        } else if tok == quote!(Vec<u8>) {
+            Some(Inferred::new(Ty::Bytes, label))
+        } else {
+            None
         }
     }
 }
