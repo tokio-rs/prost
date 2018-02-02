@@ -261,6 +261,34 @@ annotations.
 Currently the best documentation on adding annotations is to look at the
 generated code examples above.
 
+### Type Inference for Existing Types
+
+While deriving the `Message` trait `prost` will automatically infer Protobuf
+types for scalar fields if a type is not already specified by field attributes.
+
+Non-scalar type attributes (`map`, `oneof`, and `message`) are required.
+
+The Rust types `i32` and `i64` are mapped to `int32` and `int64` respectively.
+For `enum`, `sint*`, `fixed*`, or `sfixed*` types, the Protobuf type should be
+overridden with field attributes.
+
+```rust
+#[derive(Clone, Debug, PartialEq, Message)]
+pub struct Person {
+    #[prost(tag="1")]
+    pub id: i32, // type is "int32"
+    #[prost(tag="2")]
+    pub name: Option<String>, // type is "optional string"
+    #[prost(tag="3")]
+    pub emails: Vec<bool>, // type is "repeated bool"
+
+    #[prost(tag="4", message)]
+    pub some_message: Option<SomeMessage>,
+    #[prost(tag="5", fixed64)]
+    pub some_fixed64: u64,
+}
+```
+
 ### Tag Inference for Existing Types
 
 Prost automatically infers tags for the struct.

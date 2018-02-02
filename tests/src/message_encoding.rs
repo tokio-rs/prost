@@ -190,6 +190,225 @@ pub struct ScalarTypes {
 }
 
 #[test]
+fn check_scalar_types_inferred() {
+    check_message(&ScalarTypesInferred::default());
+    check_serialize_equivalent(&ScalarTypesInferred::default(), &ScalarTypesQualified::default());
+}
+
+/// A protobuf message which infers protobuf types from rust types.
+#[derive(Clone, PartialEq, Message)]
+pub struct ScalarTypesInferred {
+    #[prost(tag="001")]
+    pub int32: i32,
+    #[prost(tag="002")]
+    pub int64: i64,
+    #[prost(tag="003")]
+    pub uint32: u32,
+    #[prost(tag="004")]
+    pub uint64: u64,
+    #[prost(tag="011")]
+    pub float: f32,
+    #[prost(tag="012")]
+    pub double: f64,
+    #[prost(tag="013")]
+    pub _bool: bool,
+    #[prost(tag="014")]
+    pub string: String,
+    #[prost(tag="015")]
+    pub bytes: Vec<u8>,
+
+    #[prost(tag="101", required)]
+    pub required_int32: i32,
+    #[prost(tag="102", required)]
+    pub required_int64: i64,
+    #[prost(tag="103", required)]
+    pub required_uint32: u32,
+    #[prost(tag="104", required)]
+    pub required_uint64: u64,
+    #[prost(tag="111", required)]
+    pub required_float: f32,
+    #[prost(tag="112", required)]
+    pub required_double: f64,
+    #[prost(tag="113", required)]
+    pub required_bool: bool,
+    #[prost(tag="114", required)]
+    pub required_string: String,
+    #[prost(tag="115", required)]
+    pub required_bytes: Vec<u8>,
+
+    #[prost(tag="201")]
+    pub optional_int32: Option<i32>,
+    #[prost(tag="202")]
+    pub optional_int64: Option<i64>,
+    #[prost(tag="203")]
+    pub optional_uint32: Option<u32>,
+    #[prost(tag="204")]
+    pub optional_uint64: Option<u64>,
+    #[prost(tag="211")]
+    pub optional_float: Option<f32>,
+    #[prost(tag="212")]
+    pub optional_double: Option<f64>,
+    #[prost(tag="213")]
+    pub optional_bool: Option<bool>,
+    #[prost(tag="214")]
+    pub optional_string: Option<String>,
+    #[prost(tag="215")]
+    pub optional_bytes: Option<Vec<u8>>,
+
+    #[prost(tag="301", packed="false")]
+    pub repeated_int32: Vec<i32>,
+    #[prost(tag="302", packed="false")]
+    pub repeated_int64: Vec<i64>,
+    #[prost(tag="303", packed="false")]
+    pub repeated_uint32: Vec<u32>,
+    #[prost(tag="304", packed="false")]
+    pub repeated_uint64: Vec<u64>,
+    #[prost(tag="311", packed="false")]
+    pub repeated_float: Vec<f32>,
+    #[prost(tag="312", packed="false")]
+    pub repeated_double: Vec<f64>,
+    #[prost(tag="313", packed="false")]
+    pub repeated_bool: Vec<bool>,
+    #[prost(tag="315")]
+    pub repeated_string: Vec<String>,
+    #[prost(tag="316")]
+    pub repeated_bytes: Vec<Vec<u8>>,
+
+    #[prost(tag="401", packed="true")]
+    pub packed_int32: Vec<i32>,
+    #[prost(tag="402", packed="true")]
+    pub packed_int64: Vec<i64>,
+    #[prost(tag="403", packed="true")]
+    pub packed_uint32: Vec<u32>,
+    #[prost(tag="404", packed="true")]
+    pub packed_uint64: Vec<u64>,
+    #[prost(tag="411", packed="true")]
+    pub packed_float: Vec<f32>,
+    #[prost(tag="412", packed="true")]
+    pub packed_double: Vec<f64>,
+    #[prost(tag="413", packed="true")]
+    pub packed_bool: Vec<bool>,
+    #[prost(tag="415")]
+    pub packed_string: Vec<String>,
+    #[prost(tag="416")]
+    pub packed_bytes: Vec<Vec<u8>>,
+
+    #[prost(tag="417")]
+    pub qualified_bytes: ::std::vec::Vec<u8>,
+    #[prost(tag="418")]
+    pub qualified_string: ::std::string::String,
+    #[prost(tag="419")]
+    pub qualified_option: ::std::option::Option<f64>,
+    #[prost(tag="420")]
+    pub qualified_packed_bytes: ::std::vec::Vec<::std::vec::Vec<u8>>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+pub struct ScalarTypesQualified {
+    #[prost(tag="001", int32)]
+    pub int32: i32,
+    #[prost(tag="002", int64)]
+    pub int64: i64,
+    #[prost(tag="003", uint32)]
+    pub uint32: u32,
+    #[prost(tag="004", uint64)]
+    pub uint64: u64,
+    #[prost(tag="011", float)]
+    pub float: f32,
+    #[prost(tag="012", double)]
+    pub double: f64,
+    #[prost(tag="013", bool)]
+    pub _bool: bool,
+    #[prost(tag="014", string)]
+    pub string: String,
+    #[prost(tag="015", bytes)]
+    pub bytes: Vec<u8>,
+
+    #[prost(tag="101", required, int32)]
+    pub required_int32: i32,
+    #[prost(tag="102", required, int64)]
+    pub required_int64: i64,
+    #[prost(tag="103", required, uint32)]
+    pub required_uint32: u32,
+    #[prost(tag="104", required, uint64)]
+    pub required_uint64: u64,
+    #[prost(tag="111", required, float)]
+    pub required_float: f32,
+    #[prost(tag="112", required, double)]
+    pub required_double: f64,
+    #[prost(tag="113", required, bool)]
+    pub required_bool: bool,
+    #[prost(tag="114", required, string)]
+    pub required_string: String,
+    #[prost(tag="115", required, bytes)]
+    pub required_bytes: Vec<u8>,
+
+    #[prost(tag="201", optional, int32)]
+    pub optional_int32: Option<i32>,
+    #[prost(tag="202", optional, int64)]
+    pub optional_int64: Option<i64>,
+    #[prost(tag="203", optional, uint32)]
+    pub optional_uint32: Option<u32>,
+    #[prost(tag="204", optional, uint64)]
+    pub optional_uint64: Option<u64>,
+    #[prost(tag="211", optional, float)]
+    pub optional_float: Option<f32>,
+    #[prost(tag="212", optional, double)]
+    pub optional_double: Option<f64>,
+    #[prost(tag="213", optional, bool)]
+    pub optional_bool: Option<bool>,
+    #[prost(tag="214", optional, string)]
+    pub optional_string: Option<String>,
+    #[prost(tag="215", optional, bytes)]
+    pub optional_bytes: Option<Vec<u8>>,
+
+    #[prost(tag="301", packed="false", repeated, int32)]
+    pub repeated_int32: Vec<i32>,
+    #[prost(tag="302", packed="false", repeated, int64)]
+    pub repeated_int64: Vec<i64>,
+    #[prost(tag="303", packed="false", repeated, uint32)]
+    pub repeated_uint32: Vec<u32>,
+    #[prost(tag="304", packed="false", repeated, uint64)]
+    pub repeated_uint64: Vec<u64>,
+    #[prost(tag="311", packed="false", repeated, float)]
+    pub repeated_float: Vec<f32>,
+    #[prost(tag="312", packed="false", repeated, double)]
+    pub repeated_double: Vec<f64>,
+    #[prost(tag="313", packed="false", repeated, bool)]
+    pub repeated_bool: Vec<bool>,
+    #[prost(tag="315", packed="false", repeated, string)]
+    pub repeated_string: Vec<String>,
+    #[prost(tag="316", packed="false", repeated, bytes)]
+    pub repeated_bytes: Vec<Vec<u8>>,
+
+    #[prost(tag="401", repeated, int32)]
+    pub packed_int32: Vec<i32>,
+    #[prost(tag="402", repeated, int64)]
+    pub packed_int64: Vec<i64>,
+    #[prost(tag="403", repeated, uint32)]
+    pub packed_uint32: Vec<u32>,
+    #[prost(tag="404", repeated, uint64)]
+    pub packed_uint64: Vec<u64>,
+    #[prost(tag="411", repeated, float)]
+    pub packed_float: Vec<f32>,
+    #[prost(tag="412", repeated, double)]
+    pub packed_double: Vec<f64>,
+    #[prost(tag="413", repeated, bool)]
+    pub packed_bool: Vec<bool>,
+    #[prost(tag="415", repeated, string)]
+    pub packed_string: Vec<String>,
+    #[prost(tag="416", repeated, bytes)]
+    pub packed_bytes: Vec<Vec<u8>>,
+
+    #[prost(tag="417", bytes)]
+    pub qualified_bytes: ::std::vec::Vec<u8>,
+    #[prost(tag="418", string)]
+    pub qualified_string: ::std::string::String,
+    #[prost(tag="419", optional, double)]
+    pub qualified_option: ::std::option::Option<f64>,
+}
+
+#[test]
 fn check_tags_inferred() {
     check_message(&TagsInferred::default());
     check_serialize_equivalent(&TagsInferred::default(), &TagsQualified::default());

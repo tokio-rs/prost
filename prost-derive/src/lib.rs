@@ -62,7 +62,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
                                                       .unwrap_or_else(|| Ident::from(idx.to_string()));
-                               match Field::new(field.attrs, Some(next_tag)) {
+                               match Field::new(field.attrs, Some(&field.ty), Some(next_tag)) {
                                    Ok(Some(field)) => {
                                        next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
                                        Some(Ok((field_ident, field)))
