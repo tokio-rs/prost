@@ -261,6 +261,82 @@ annotations.
 Currently the best documentation on adding annotations is to look at the
 generated code examples above.
 
+### Type Inference for Existing Types
+
+When apply `#[derive(Message)]`, `prost` will automatically infer Protobuf types
+for scalars if one is not specified with field attributes.
+
+Non-scalar type attributes (`map`, `oneof`, and `message`) are required.
+
+The Rust types `i32` and `i64` are mapped to `int32` and `int64` respectively.
+For `enum`, `sint*`, `fixed*`, or `sfixed*` types, the Protobuf type should be
+overridden with field attributes.
+
+
+```rust
+#[derive(Clone, Debug, PartialEq, Message)]
+pub struct Person {
+    #[prost(tag="1")]
+    pub id: i32, // type is "int32"
+    #[prost(tag="2")]
+    pub name: Option<String>, // type is "optional string"
+    #[prost(tag="3")]
+    pub emails: Vec<bool>, // type is "repeated bool"
+
+    #[prost(tag="4", message)]
+    pub some_message: Option<SomeMessage>,
+    #[prost(tag="5", fixed64)]
+    pub some_fixed64: u64,
+}
+```
+
+### Tag Inference for Existing Types
+
+Prost supports inferring tags for existing types with the struct `tags` attribute.
+
+With `#[prost(tags = "sequential")]`, fields are tagged sequentially in the
+order they are specified, starting with `1`.
+
+You may skip tags which have been reserved, or where there are gaps between
+sequentially occurring tag values by specifying the tag number to skip to with
+the `tag` attribute on the first field after the gap. The following fields will
+be tagged sequentially starting from the next number.
+
+```rust
+#[derive(Clone, Debug, PartialEq, Message)]
+#[prost(tags="sequential")]
+struct Person {
+  pub id: String, // tag=1
+
+  // NOTE: Old "name" field has been removed
+  // pub name: String, // tag=2 (Removed)
+
+  #[prost(tag="6")]
+  pub given_name: String, // tag=6
+  pub family_name: String, // tag=7
+  pub formatted_name: String, // tag=8
+
+  #[prost(tag="3")]
+  pub age: u32, // tag=3
+  pub height: u32, // tag=4
+  #[prost(enumeration="Gender")]
+  pub gender: i32, // tag=5
+
+  // NOTE: Skip to less commonly occurring fields
+  #[prost(tag="16")]
+  pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
+  pub name_suffix: String, // tag=17  (eg. jr/esq)
+  pub maiden_name: String, // tag=18
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+pub enum Gender {
+  Unknown = 0,
+  Female = 1,
+  Male = 2,
+}
+```
+
 ## FAQ
 
 1. **Could `prost` be implemented as a serializer for [Serde](https://serde.rs/)?**
@@ -279,12 +355,6 @@ generated code examples above.
 
   But it is possible to place `serde` derive tags onto the generated types, so
   the same structure can support both `prost` and `Serde`.
-
-2. **Looks like a lot of field annotations. Can those be simplified?**
-
-  Probably. Effort has not yet been spent on reducing the number of annotations.
-  The recommended way of using `prost` is through [`prost-build`](prost-build),
-  in which case the annotations are never seen.
 
 ## License
 
