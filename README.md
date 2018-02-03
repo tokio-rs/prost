@@ -263,8 +263,8 @@ generated code examples above.
 
 ### Type Inference for Existing Types
 
-When apply `#[derive(Message)]`, `prost` will automatically infer Protobuf types
-for scalars if one is not specified with field attributes.
+While deriving the `Message` trait `prost` will automatically infer Protobuf
+types for scalar fields if a type is not already specified by field attributes.
 
 Non-scalar type attributes (`map`, `oneof`, and `message`) are required.
 
