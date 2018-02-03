@@ -30,7 +30,10 @@ use syn::{
 };
 
 mod field;
-use field::Field;
+use field::{Field, prost_attrs, set_option};
+
+mod infer_tags;
+use infer_tags::InferTagsMode;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
@@ -48,6 +51,22 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         bail!("Message may not be derived for generic type");
     }
 
+    let mut infer_tags_mode: Option<InferTagsMode> = None;
+    let mut unknown_attrs = Vec::new();
+    for attr in prost_attrs(input.attrs)? {
+        if let Some(m) = InferTagsMode::from_attr(&attr)? {
+            set_option(&mut infer_tags_mode, m, "duplicate tags attributes")?;
+        } else {
+            unknown_attrs.push(attr);
+        }
+    }
+
+    match unknown_attrs.len() {
+        0 => (),
+        1 => bail!("unknown attribute: {:?}", unknown_attrs[0]),
+        _ => bail!("unknown attributes: {:?}", unknown_attrs),
+    }
+
     let fields = match variant_data {
         DataStruct { fields: Fields::Named(FieldsNamed { named: fields, .. }), .. } |
         DataStruct { fields: Fields::Unnamed(FieldsUnnamed { unnamed: fields, .. }), ..} => {
@@ -56,13 +75,21 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         DataStruct { fields: Fields::Unit, .. } => Vec::new(),
     };
 
+    let mut next_tag: u32 = 0;
     let mut fields = fields.into_iter()
                            .enumerate()
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
                                                        .unwrap_or_else(|| Ident::from(idx.to_string()));
-                               match Field::new(field.attrs, Some(&field.ty), None) {
-                                   Ok(Some(field)) => Some(Ok((field_ident, field))),
+                               let default_tag = match infer_tags_mode {
+                                 Some(InferTagsMode::Sequential) => Some(next_tag),
+                                 _ => None,
+                               };
+                               match Field::new(field.attrs, Some(&field.ty), default_tag) {
+                                   Ok(Some(field)) => {
+                                       next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
+                                       Some(Ok((field_ident, field)))
+                                   }
                                    Ok(None) => None,
                                    Err(err) => Some(Err(err.context(format!("invalid message field {}.{}",
                                                                             ident, field_ident)))),

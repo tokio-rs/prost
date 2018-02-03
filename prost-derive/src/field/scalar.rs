@@ -83,6 +83,9 @@ impl Field {
             _ => bail!("unknown attributes: {:?}", unknown_attrs),
         }
 
+        if tag.is_none() {
+            tag = default_tag;
+        }
         let tag = match tag {
             Some(tag) => tag,
             None => bail!("missing tag attribute"),

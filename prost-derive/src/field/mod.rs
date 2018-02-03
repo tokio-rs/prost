@@ -45,15 +45,15 @@ impl Field {
 
         let field = if let Some(field) = scalar::Field::new(&attrs, rust_type, default_tag)? {
             Field::Scalar(field)
-        } else if let Some(field) = message::Field::new(&attrs)? {
+        } else if let Some(field) = message::Field::new(&attrs, default_tag)? {
             Field::Message(field)
-        } else if let Some(field) = map::Field::new(&attrs)? {
+        } else if let Some(field) = map::Field::new(&attrs, default_tag)? {
             Field::Map(field)
         } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
         } else {
             if let Some(rt) = rust_type {
-                bail!("no type attribute (can't infer type for: {})", quote!(rt));
+                bail!("no type attribute (can't infer type for: {})", quote!(#rt));
             } else {
                 bail!("no type attribute");
             }
@@ -231,7 +231,7 @@ impl fmt::Display for Label {
 
 /// Get the items belonging to the 'prost' list attribute
 /// (e.g. #[prost(foo, bar="baz")]).
-fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
+pub fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
     Ok(attrs.iter().flat_map(Attribute::interpret_meta).flat_map(|meta| match meta {
         Meta::List(MetaList { ident, nested, .. }) => if ident == "prost" {
             nested.into_iter().collect()

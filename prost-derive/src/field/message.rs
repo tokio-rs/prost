@@ -17,7 +17,7 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
+    pub fn new(attrs: &[Meta], default_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
@@ -49,6 +49,9 @@ impl Field {
             _ => bail!("unknown attributes for message field: {:?}", unknown_attrs),
         }
 
+        if tag.is_none() {
+            tag = default_tag;
+        }
         let tag = match tag {
             Some(tag) => tag,
             None => bail!("message field is missing a tag attribute"),
@@ -61,7 +64,7 @@ impl Field {
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(attrs)? {
+        if let Some(mut field) = Field::new(attrs, None)? {
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
                 bail!("invalid atribute for oneof field: {}", attr.name());
             }
