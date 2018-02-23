@@ -28,7 +28,7 @@ use tests::{
 };
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     let mut bytes = Vec::new();
 
     loop {

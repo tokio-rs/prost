@@ -25,6 +25,6 @@ prost-build = { path = "../prost-build" }
 tempdir = "0.3"
 
 [build-dependencies]
-env_logger = "0.4"
+env_logger = { version = "0.5", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }
