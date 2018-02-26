@@ -150,43 +150,43 @@ pub mod field_descriptor_proto {
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
-        TypeDouble = 1,
-        TypeFloat = 2,
+        Double = 1,
+        Float = 2,
         /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT64 if
         /// negative values are likely.
-        TypeInt64 = 3,
-        TypeUint64 = 4,
+        Int64 = 3,
+        Uint64 = 4,
         /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT32 if
         /// negative values are likely.
-        TypeInt32 = 5,
-        TypeFixed64 = 6,
-        TypeFixed32 = 7,
-        TypeBool = 8,
-        TypeString = 9,
+        Int32 = 5,
+        Fixed64 = 6,
+        Fixed32 = 7,
+        Bool = 8,
+        String = 9,
         /// Tag-delimited aggregate.
         /// Group type is deprecated and not supported in proto3. However, Proto3
         /// implementations should still be able to parse the group wire format and
         /// treat group fields as unknown fields.
-        TypeGroup = 10,
+        Group = 10,
         /// Length-delimited aggregate.
-        TypeMessage = 11,
+        Message = 11,
         /// New in version 2.
-        TypeBytes = 12,
-        TypeUint32 = 13,
-        TypeEnum = 14,
-        TypeSfixed32 = 15,
-        TypeSfixed64 = 16,
+        Bytes = 12,
+        Uint32 = 13,
+        Enum = 14,
+        Sfixed32 = 15,
+        Sfixed64 = 16,
         /// Uses ZigZag encoding.
-        TypeSint32 = 17,
+        Sint32 = 17,
         /// Uses ZigZag encoding.
-        TypeSint64 = 18,
+        Sint64 = 18,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum Label {
         /// 0 is reserved for errors
-        LabelOptional = 1,
-        LabelRequired = 2,
-        LabelRepeated = 3,
+        Optional = 1,
+        Required = 2,
+        Repeated = 3,
     }
 }
 /// Describes a oneof.
@@ -1086,13 +1086,13 @@ pub mod field {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
     pub enum Cardinality {
         /// For fields with unknown cardinality.
-        CardinalityUnknown = 0,
+        Unknown = 0,
         /// For optional fields.
-        CardinalityOptional = 1,
+        Optional = 1,
         /// For required fields. Proto2 syntax only.
-        CardinalityRequired = 2,
+        Required = 2,
         /// For repeated fields.
-        CardinalityRepeated = 3,
+        Repeated = 3,
     }
 }
 /// Enum type definition.
@@ -1148,9 +1148,9 @@ pub struct Option {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
 pub enum Syntax {
     /// Syntax `proto2`.
-    SyntaxProto2 = 0,
+    Proto2 = 0,
     /// Syntax `proto3`.
-    SyntaxProto3 = 1,
+    Proto3 = 1,
 }
 /// Api is a light-weight descriptor for an API Interface.
 ///

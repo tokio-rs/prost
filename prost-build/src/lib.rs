@@ -199,6 +199,7 @@ pub struct Config {
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
+    strip_enum_prefix: bool,
 }
 
 impl Config {
@@ -352,6 +353,17 @@ impl Config {
         self
     }
 
+    /// Configures the code generator to not strip the enum name from variant names.
+    ///
+    /// Protobuf enum definitions commonly include the enum name as a prefix of every variant name.
+    /// This style is non-idiomatic in Rust, so by default `prost` strips the enum name prefix from
+    /// variants which include it. Configuring this option will prevent `prost` from stripping the
+    /// prefix.
+    pub fn retain_enum_prefix(&mut self) -> &mut Self {
+        self.strip_enum_prefix = false;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -449,6 +461,7 @@ impl default::Default for Config {
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),
             prost_types: true,
+            strip_enum_prefix: true,
         }
     }
 }

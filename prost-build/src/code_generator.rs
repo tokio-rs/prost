@@ -256,14 +256,14 @@ impl <'a> CodeGenerator<'a> {
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
         let type_ = field.type_();
-        if type_ == Type::TypeGroup { return; }
+        if type_ == Type::Group { return; }
 
-        let repeated = field.label == Some(Label::LabelRepeated as i32);
+        let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
         let boxed = !repeated
-                 && type_ == Type::TypeMessage
+                 && type_ == Type::Message
                  && self.message_graph.is_nested(field.type_name(), msg_name);
 
         debug!("    field: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
@@ -275,11 +275,11 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(&type_tag);
 
         match field.label() {
-            Label::LabelOptional => if optional {
+            Label::Optional => if optional {
                 self.buf.push_str(", optional");
             },
-            Label::LabelRequired => self.buf.push_str(", required"),
-            Label::LabelRepeated => {
+            Label::Required => self.buf.push_str(", required"),
+            Label::Repeated => {
                 self.buf.push_str(", repeated");
                 if can_pack(&field) && !field.options.as_ref().map_or(self.syntax == Syntax::Proto3,
                                                                       |options| options.packed()) {
@@ -294,13 +294,13 @@ impl <'a> CodeGenerator<'a> {
 
         if let Some(ref default) = field.default_value {
             self.buf.push_str("\", default=\"");
-            if type_ == Type::TypeBytes {
+            if type_ == Type::Bytes {
                 self.buf.push_str("b\\\"");
                 for b in unescape_c_escape_string(default) {
                     self.buf.extend(ascii::escape_default(b).flat_map(|c| (c as char).escape_default()));
                 }
                 self.buf.push_str("\\\"");
-            } else if type_ == Type::TypeEnum {
+            } else if type_ == Type::Enum {
                 self.buf.push_str(&to_upper_camel(default));
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
@@ -405,7 +405,7 @@ impl <'a> CodeGenerator<'a> {
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
             let type_ = field.type_();
-            if type_ == Type::TypeGroup { continue; }
+            if type_ == Type::Group { continue; }
 
             self.path.push(idx as i32);
             self.append_doc();
@@ -419,7 +419,7 @@ impl <'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field);
 
-            let boxed = type_ == Type::TypeMessage
+            let boxed = type_ == Type::Message
                      && self.message_graph.is_nested(field.type_name(), msg_name);
 
             debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
@@ -454,7 +454,9 @@ impl <'a> CodeGenerator<'a> {
         debug!("  enum: {:?}", desc.name());
 
         // Skip Protobuf well-known types.
-        let fq_enum_name = format!(".{}.{}", self.package, desc.name());
+        let enum_name = &desc.name();
+        let enum_values = &desc.value;
+        let fq_enum_name = format!(".{}.{}", self.package, enum_name);
         if self.well_known_type(&fq_enum_name).is_some() { return; }
 
         self.append_doc();
@@ -470,7 +472,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (idx, value) in desc.value.into_iter().enumerate() {
+        for (idx, value) in enum_values.into_iter().enumerate() {
             // Skip duplicate enum values. Protobuf allows this when the
             // 'allow_alias' option is set.
             if !numbers.insert(value.number()) {
@@ -478,7 +480,12 @@ impl <'a> CodeGenerator<'a> {
             }
 
             self.path.push(idx as i32);
-            self.append_enum_value(&fq_enum_name, value);
+            let stripped_prefix = if self.config.strip_enum_prefix {
+                Some(to_upper_camel(&enum_name))
+            } else {
+                None
+            };
+            self.append_enum_value(&fq_enum_name, value, stripped_prefix);
             self.path.pop();
         }
         self.path.pop();
@@ -488,11 +495,23 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn append_enum_value(&mut self, fq_enum_name: &str, value: EnumValueDescriptorProto) {
+    fn append_enum_value(&mut self, fq_enum_name: &str, value: &EnumValueDescriptorProto, prefix_to_strip: Option<String>) {
         self.append_doc();
         self.append_field_attributes(fq_enum_name, &value.name());
         self.push_indent();
-        self.buf.push_str(&to_upper_camel(value.name()));
+        let name = to_upper_camel(value.name());
+        let name_unprefixed = match prefix_to_strip {
+            Some(prefix) => {
+                let is_prefixed = name.starts_with(&prefix) && name != prefix;
+                if is_prefixed {
+                    let prefix_len = prefix.len();
+                    name[prefix_len..].to_string()
+                }
+                else { name }
+            },
+            None => name
+        };
+        self.buf.push_str(&name_unprefixed);
         self.buf.push_str(" = ");
         self.buf.push_str(&value.number().to_string());
         self.buf.push_str(",\n");
@@ -581,16 +600,16 @@ impl <'a> CodeGenerator<'a> {
 
     fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
         match field.type_() {
-            Type::TypeFloat => Cow::Borrowed("f32"),
-            Type::TypeDouble => Cow::Borrowed("f64"),
-            Type::TypeUint32 | Type::TypeFixed32 => Cow::Borrowed("u32"),
-            Type::TypeUint64 | Type::TypeFixed64 => Cow::Borrowed("u64"),
-            Type::TypeInt32 | Type::TypeSfixed32 | Type::TypeSint32 | Type::TypeEnum => Cow::Borrowed("i32"),
-            Type::TypeInt64 | Type::TypeSfixed64 | Type::TypeSint64 => Cow::Borrowed("i64"),
-            Type::TypeBool => Cow::Borrowed("bool"),
-            Type::TypeString => Cow::Borrowed("String"),
-            Type::TypeBytes => Cow::Borrowed("Vec<u8>"),
-            Type::TypeGroup | Type::TypeMessage => {
+            Type::Float => Cow::Borrowed("f32"),
+            Type::Double => Cow::Borrowed("f64"),
+            Type::Uint32 | Type::Fixed32 => Cow::Borrowed("u32"),
+            Type::Uint64 | Type::Fixed64 => Cow::Borrowed("u64"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => Cow::Borrowed("i32"),
+            Type::Int64 | Type::Sfixed64 | Type::Sint64 => Cow::Borrowed("i64"),
+            Type::Bool => Cow::Borrowed("bool"),
+            Type::String => Cow::Borrowed("String"),
+            Type::Bytes => Cow::Borrowed("Vec<u8>"),
+            Type::Group | Type::Message => {
                 if let Some(ty) = self.well_known_type(field.type_name()) {
                     Cow::Borrowed(ty)
                 } else {
@@ -625,41 +644,41 @@ impl <'a> CodeGenerator<'a> {
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
-            Type::TypeFloat => Cow::Borrowed("float"),
-            Type::TypeDouble => Cow::Borrowed("double"),
-            Type::TypeInt32 => Cow::Borrowed("int32"),
-            Type::TypeInt64 => Cow::Borrowed("int64"),
-            Type::TypeUint32 => Cow::Borrowed("uint32"),
-            Type::TypeUint64 => Cow::Borrowed("uint64"),
-            Type::TypeSint32 => Cow::Borrowed("sint32"),
-            Type::TypeSint64 => Cow::Borrowed("sint64"),
-            Type::TypeFixed32 => Cow::Borrowed("fixed32"),
-            Type::TypeFixed64 => Cow::Borrowed("fixed64"),
-            Type::TypeSfixed32 => Cow::Borrowed("sfixed32"),
-            Type::TypeSfixed64 => Cow::Borrowed("sfixed64"),
-            Type::TypeBool => Cow::Borrowed("bool"),
-            Type::TypeString => Cow::Borrowed("string"),
-            Type::TypeBytes => Cow::Borrowed("bytes"),
-            Type::TypeGroup => Cow::Borrowed("group"),
-            Type::TypeMessage => Cow::Borrowed("message"),
-            Type::TypeEnum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
+            Type::Float => Cow::Borrowed("float"),
+            Type::Double => Cow::Borrowed("double"),
+            Type::Int32 => Cow::Borrowed("int32"),
+            Type::Int64 => Cow::Borrowed("int64"),
+            Type::Uint32 => Cow::Borrowed("uint32"),
+            Type::Uint64 => Cow::Borrowed("uint64"),
+            Type::Sint32 => Cow::Borrowed("sint32"),
+            Type::Sint64 => Cow::Borrowed("sint64"),
+            Type::Fixed32 => Cow::Borrowed("fixed32"),
+            Type::Fixed64 => Cow::Borrowed("fixed64"),
+            Type::Sfixed32 => Cow::Borrowed("sfixed32"),
+            Type::Sfixed64 => Cow::Borrowed("sfixed64"),
+            Type::Bool => Cow::Borrowed("bool"),
+            Type::String => Cow::Borrowed("string"),
+            Type::Bytes => Cow::Borrowed("bytes"),
+            Type::Group => Cow::Borrowed("group"),
+            Type::Message => Cow::Borrowed("message"),
+            Type::Enum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
         }
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
-            Type::TypeEnum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
+            Type::Enum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
             _ => self.field_type_tag(field),
         }
     }
 
     fn optional(&self, field: &FieldDescriptorProto) -> bool {
-        if field.label() != Label::LabelOptional {
+        if field.label() != Label::Optional {
             return false;
         }
 
         match field.type_() {
-            Type::TypeMessage => true,
+            Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
     }
@@ -726,10 +745,10 @@ impl <'a> CodeGenerator<'a> {
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
         match field.type_() {
-            Type::TypeFloat   | Type::TypeDouble  | Type::TypeInt32    | Type::TypeInt64    |
-            Type::TypeUint32  | Type::TypeUint64  | Type::TypeSint32   | Type::TypeSint64   |
-            Type::TypeFixed32 | Type::TypeFixed64 | Type::TypeSfixed32 | Type::TypeSfixed64 |
-            Type::TypeBool    | Type::TypeEnum => true,
+            Type::Float   | Type::Double  | Type::Int32    | Type::Int64    |
+            Type::Uint32  | Type::Uint64  | Type::Sint32   | Type::Sint64   |
+            Type::Fixed32 | Type::Fixed64 | Type::Sfixed32 | Type::Sfixed64 |
+            Type::Bool    | Type::Enum => true,
             _ => false,
         }
 }
