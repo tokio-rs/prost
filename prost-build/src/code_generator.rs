@@ -454,7 +454,9 @@ impl <'a> CodeGenerator<'a> {
         debug!("  enum: {:?}", desc.name());
 
         // Skip Protobuf well-known types.
-        let fq_enum_name = format!(".{}.{}", self.package, desc.name());
+        let enum_name = &desc.name();
+        let enum_values = &desc.value;
+        let fq_enum_name = format!(".{}.{}", self.package, enum_name);
         if self.well_known_type(&fq_enum_name).is_some() { return; }
 
         self.append_doc();
@@ -470,7 +472,7 @@ impl <'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (idx, value) in desc.value.into_iter().enumerate() {
+        for (idx, value) in enum_values.into_iter().enumerate() {
             // Skip duplicate enum values. Protobuf allows this when the
             // 'allow_alias' option is set.
             if !numbers.insert(value.number()) {
@@ -478,7 +480,8 @@ impl <'a> CodeGenerator<'a> {
             }
 
             self.path.push(idx as i32);
-            self.append_enum_value(&fq_enum_name, value);
+            let strip_prefix = if self.config.idiomatic_enum_values { Some(to_upper_camel(&enum_name)) } else { None };
+            self.append_enum_value(&fq_enum_name, value, strip_prefix);
             self.path.pop();
         }
         self.path.pop();
@@ -488,11 +491,23 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn append_enum_value(&mut self, fq_enum_name: &str, value: EnumValueDescriptorProto) {
+    fn append_enum_value(&mut self, fq_enum_name: &str, value: &EnumValueDescriptorProto, prefix_to_strip: Option<String>) {
         self.append_doc();
         self.append_field_attributes(fq_enum_name, &value.name());
         self.push_indent();
-        self.buf.push_str(&to_upper_camel(value.name()));
+        let name = to_upper_camel(value.name());
+        let name_unprefixed = match prefix_to_strip {
+            Some(prefix) => {
+                let is_prefixed = name.starts_with(&prefix);
+                if is_prefixed {
+                    let prefix_len = prefix.len();
+                    name[prefix_len..].to_string()
+                }
+                else { name }
+            },
+            None => name
+        };
+        self.buf.push_str(&name_unprefixed);
         self.buf.push_str(" = ");
         self.buf.push_str(&value.number().to_string());
         self.buf.push_str(",\n");
