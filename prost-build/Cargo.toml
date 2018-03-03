@@ -16,7 +16,7 @@ heck = "0.3"
 itertools = "0.7"
 log = "0.4"
 multimap = { version = "0.4", default-features = false }
-petgraph = "0.4"
+petgraph = { version = "0.4", default-features = false }
 prost = { version = "0.3.0", path = ".." }
 prost-types = { version = "0.3.0", path = "../prost-types" }
 tempdir = "0.3"
