@@ -372,17 +372,10 @@ impl Config {
     /// }
     /// ```
     pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
-        let target = match env::var("OUT_DIR") {
-            Ok(val) => PathBuf::from(val),
-            Err(env::VarError::NotPresent) => {
-                return Err(Error::new(ErrorKind::Other,
-                                    "OUT_DIR environment variable is not set"));
-            },
-            Err(env::VarError::NotUnicode(..)) => {
-                return Err(Error::new(ErrorKind::InvalidData,
-                                    "OUT_DIR environment variable is not valid UTF-8"));
-            },
-        };
+        let target: PathBuf = env::var_os("OUT_DIR")
+            .ok_or_else(|| Error::new(ErrorKind::Other,
+                                      "OUT_DIR environment variable is not set"))?
+            .into();
 
         // TODO: We should probably emit 'rerun-if-changed=PATH' directives for
         // cargo, however according to [1] if we output any, those paths will
