@@ -1,21 +1,8 @@
-extern crate fs_extra;
-
-use fs_extra::dir;
-
 use std::env;
-use std::fs;
-use std::path::{
-    PathBuf,
-};
+use std::path::PathBuf;
 
 fn main() {
     if env_contains_protoc() { return; }
-
-    // Recursively copy all the protobuf files to `OUT_DIR` so that they are
-    // available for use at runtime.
-
-    let src_dir = PathBuf::from("../third-party/protobuf");
-    static INCLUDE: &str = "include";
 
     let protoc_bin_name = match (env::consts::OS, env::consts::ARCH) {
         ("linux", "x86") => "protoc-linux-x86_32",
@@ -27,25 +14,10 @@ fn main() {
                     env::consts::OS, env::consts::ARCH),
     };
 
-    let dest_dir = {
-        let out_dir = PathBuf::from(env::var_os("OUT_DIR")
-            .expect("OUT_DIR environment variable is invalid"));
-        out_dir.join("protobuf")
-    };
-
-    let protoc = dest_dir.join(protoc_bin_name);
-    let protoc_include_dir = dest_dir.join(INCLUDE);
-
-    fs::create_dir_all(&protoc_include_dir).unwrap();
-
-    fs::copy(src_dir.join(protoc_bin_name), &protoc).unwrap();
-
-    let options = {
-        let mut options = dir::CopyOptions::new();
-        options.overwrite = true;
-        options
-    };
-    dir::copy(src_dir.join(INCLUDE), &dest_dir, &options).unwrap();
+    let cwd = env::current_dir().unwrap();
+    let protobuf = cwd.join("third-party/protobuf");
+    let protoc = protobuf.join(protoc_bin_name);
+    let protoc_include_dir = protobuf.join("include");
 
     println!("cargo:rustc-env=PROTOC={}", protoc.display());
     println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_include_dir.display());
@@ -75,7 +47,6 @@ fn env_contains_protoc() -> bool {
                protoc_include);
     }
 
-    // Even if PROTOC and PROTOC_INCLUDE are set in the environment, still 
     println!("cargo:rustc-env=PROTOC={}", protoc.display());
     println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_include.display());
     println!("cargo:rerun-if-env-changed=PROTOC");

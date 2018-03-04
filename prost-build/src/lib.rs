@@ -388,8 +388,8 @@ impl Config {
 
         let mut cmd = Command::new(protoc());
         cmd.arg("--include_imports")
-        .arg("--include_source_info")
-        .arg("-o").arg(&descriptor_set);
+           .arg("--include_source_info")
+           .arg("-o").arg(&descriptor_set);
 
         for include in includes {
             cmd.arg("-I").arg(include.as_ref());
