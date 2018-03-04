@@ -1,44 +1,54 @@
-extern crate curl;
-extern crate tempdir;
-extern crate zip;
+extern crate fs_extra;
+
+use fs_extra::dir;
 
 use std::env;
 use std::fs;
-use std::io::{
-    self,
-    Cursor,
-};
 use std::path::{
-    Path,
     PathBuf,
 };
-
-use curl::easy::Easy;
-use tempdir::TempDir;
-use zip::ZipArchive;
-
-const VERSION: &'static str = "3.5.1";
 
 fn main() {
     if env_contains_protoc() { return; }
 
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable is invalid"));
-    let protoc_dir = out_dir.join("protoc");
+    // Recursively copy all the protobuf files to `OUT_DIR` so that they are
+    // available for use at runtime.
 
-    // If the protoc directory doesn't already exist from a previous build, download protoc.
-    if !protoc_dir.exists() {
-        // The unzipping done by download_protoc is not atomic, so to avoid failing halfway through
-        // and leaving trash state, download/unzip to a temporary directory, then rename.
-        let tempdir = TempDir::new_in(&out_dir, "protoc").expect("failed to create temporary directory");
-        download_protoc(tempdir.path());
-        fs::rename(&tempdir.into_path(), &protoc_dir).expect("unable to move temporary directory");
-    }
-    let mut protoc = protoc_dir.join("bin");
-    protoc.push("protoc");
-    protoc.set_extension(env::consts::EXE_EXTENSION);
+    let src_dir = PathBuf::from("../third-party/protobuf");
+    static INCLUDE: &str = "include";
+
+    let protoc_bin_name = match (env::consts::OS, env::consts::ARCH) {
+        ("linux", "x86") => "protoc-linux-x86_32",
+        ("linux", "x86_64") => "protoc-linux-x86_64",
+        ("linux", "aarch64") => "protoc-linux-aarch_64",
+        ("macos", "x86_64") => "protoc-osx-x86_64",
+        ("windows", _) => "protoc-win32.exe",
+        _ => panic!("no precompiled protoc binary for the current platform: {}-{}",
+                    env::consts::OS, env::consts::ARCH),
+    };
+
+    let dest_dir = {
+        let out_dir = PathBuf::from(env::var_os("OUT_DIR")
+            .expect("OUT_DIR environment variable is invalid"));
+        out_dir.join("protobuf")
+    };
+
+    let protoc = dest_dir.join(protoc_bin_name);
+    let protoc_include_dir = dest_dir.join(INCLUDE);
+
+    fs::create_dir_all(&protoc_include_dir).unwrap();
+
+    fs::copy(src_dir.join(protoc_bin_name), &protoc).unwrap();
+
+    let options = {
+        let mut options = dir::CopyOptions::new();
+        options.overwrite = true;
+        options
+    };
+    dir::copy(src_dir.join(INCLUDE), &dest_dir, &options).unwrap();
 
     println!("cargo:rustc-env=PROTOC={}", protoc.display());
-    println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_dir.join("include").display());
+    println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_include_dir.display());
     println!("cargo:rerun-if-env-changed=PROTOC");
     println!("cargo:rerun-if-env-changed=PROTOC_INCLUDE");
 }
@@ -73,65 +83,3 @@ fn env_contains_protoc() -> bool {
     true
 }
 
-/// Downloads and unpacks the protoc package for the current architecture to the target path.
-/// Returns the paths to `protoc` and the include directory.
-fn download_protoc(target: &Path) {
-    let url = protoc_url();
-    let mut data = Vec::new();
-    let mut handle = Easy::new();
-
-    handle.url(&url).expect("failed to set URL");
-    handle.follow_location(true).expect("failed to configure follow location");
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|new_data| {
-            data.extend_from_slice(new_data);
-            Ok(new_data.len())
-        }).expect("failed to transfer data");
-        transfer.perform().expect("failed to perform transfer");
-    }
-
-    let mut archive = ZipArchive::new(Cursor::new(data)).expect("failed to open zip archive");
-
-    for i in 0..archive.len() {
-        let mut src = archive.by_index(i).expect("failed to index into zip archive");
-
-        let mut path = target.to_owned();
-        path.push(src.name());
-
-        if src.name().ends_with('/') {
-            fs::create_dir(&path).unwrap();
-        } else {
-            let mut dest = &mut fs::File::create(&path).unwrap();
-            io::copy(&mut src, &mut dest).unwrap();
-
-            #[cfg(unix)]
-            fn convert_permissions(mode: u32) -> Option<fs::Permissions> {
-                use std::os::unix::fs::PermissionsExt;
-                Some(fs::Permissions::from_mode(mode))
-            }
-            #[cfg(not(unix))]
-            fn convert_permissions(_mode: u32) -> Option<fs::Permissions> {
-                None
-            }
-            if let Some(permissions) = src.unix_mode().and_then(convert_permissions) {
-                fs::set_permissions(&path, permissions).unwrap();
-            }
-        }
-    }
-}
-
-fn protoc_url() -> String {
-    let platform = match (env::consts::OS, env::consts::ARCH) {
-        ("linux", "x86")    => "linux-x86_32",
-        ("linux", "x86_64") => "linux-x86_64",
-        ("macos", "x86")    => "osx-x86_32",
-        ("macos", "x86_64") => "osx-x86_64",
-        ("windows", _)      => "win32",
-        _ => panic!("no precompiled protoc binary for the current platform: {}-{}",
-                    env::consts::OS, env::consts::ARCH),
-    };
-    format!("https://github.com/google/protobuf/releases/download/v{version}/protoc-{version}-{platform}.zip",
-            version = VERSION,
-            platform = platform)
-}

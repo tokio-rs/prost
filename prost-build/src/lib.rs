@@ -103,8 +103,8 @@
 //! ```
 //!
 //! If `PROTOC` and `PROTOC_INCLUDE` are not found in the environment, then a pre-compiled `protoc`
-//! binary will be downloaded and cached in the target directory. Pre-compiled `protoc` binaries
-//! exist for Linux, macOS, and Windows systems.
+//! binary embedded in the prost-build crate will be used. Pre-compiled `protoc` binaries exist for
+//! Linux, macOS, and Windows systems.
 
 extern crate heck;
 extern crate itertools;
