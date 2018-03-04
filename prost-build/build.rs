@@ -21,14 +21,14 @@ fn main() {
         ("linux", "x86") => "protoc-linux-x86_32",
         ("linux", "x86_64") => "protoc-linux-x86_64",
         ("linux", "aarch64") => "protoc-linux-aarch_64",
-        ("macos", _) => "protoc-osx-x86_64",
+        ("macos", "x86_64") => "protoc-osx-x86_64",
         ("windows", _) => "protoc-win32.exe",
         _ => panic!("no precompiled protoc binary for the current platform: {}-{}",
                     env::consts::OS, env::consts::ARCH),
     };
 
     let dest_dir = {
-        let out_dir = PathBuf::from(env::var("OUT_DIR")
+        let out_dir = PathBuf::from(env::var_os("OUT_DIR")
             .expect("OUT_DIR environment variable is invalid"));
         out_dir.join("protobuf")
     };
