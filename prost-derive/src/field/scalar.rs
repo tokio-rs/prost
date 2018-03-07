@@ -696,7 +696,7 @@ impl DefaultValue {
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
             DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
             DefaultValue::Bytes(ref value) => {
-                let lit = LitByteStr::new(value, Span::def_site());
+                let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.to_owned())
             },
 
@@ -724,7 +724,7 @@ impl quote::ToTokens for DefaultValue {
             DefaultValue::U64(value) => value.to_tokens(tokens),
             DefaultValue::Bool(value) => value.to_tokens(tokens),
             DefaultValue::String(ref value) => value.to_tokens(tokens),
-            DefaultValue::Bytes(ref value) => LitByteStr::new(value, Span::def_site()).to_tokens(tokens),
+            DefaultValue::Bytes(ref value) => LitByteStr::new(value, Span::call_site()).to_tokens(tokens),
             DefaultValue::Enumeration(ref value) => {
                 value.to_tokens(tokens)
             },
