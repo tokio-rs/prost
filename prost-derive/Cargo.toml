@@ -13,7 +13,7 @@ description = "A Protocol Buffers implementation for the Rust Language."
 proc_macro = true
 
 [dependencies]
-failure = "0.1"
+failure = { version = "0.1", default-features = false, features = ["std"] }
 itertools = "0.7"
 proc-macro2 = "0.2"
 quote = "0.4"
