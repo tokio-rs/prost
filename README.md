@@ -292,10 +292,10 @@ pub struct Person {
 
 ### Tag Inference for Existing Types
 
-Prost supports inferring tags for existing types with the struct `tags` attribute.
+Prost automatically infers tags for the struct.
 
-With `#[prost(tags = "sequential")]`, fields are tagged sequentially in the
-order they are specified, starting with `1`.
+Fields are tagged sequentially in the order they
+are specified, starting with `1`.
 
 You may skip tags which have been reserved, or where there are gaps between
 sequentially occurring tag values by specifying the tag number to skip to with
@@ -304,7 +304,6 @@ be tagged sequentially starting from the next number.
 
 ```rust
 #[derive(Clone, Debug, PartialEq, Message)]
-#[prost(tags="sequential")]
 struct Person {
   pub id: String, // tag=1
 

@@ -30,10 +30,7 @@ use syn::{
 };
 
 mod field;
-use field::{Field, prost_attrs, set_option};
-
-mod infer_tags;
-use infer_tags::InferTagsMode;
+use field::Field;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
@@ -51,22 +48,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         bail!("Message may not be derived for generic type");
     }
 
-    let mut infer_tags_mode: Option<InferTagsMode> = None;
-    let mut unknown_attrs = Vec::new();
-    for attr in prost_attrs(input.attrs)? {
-        if let Some(m) = InferTagsMode::from_attr(&attr)? {
-            set_option(&mut infer_tags_mode, m, "duplicate tags attributes")?;
-        } else {
-            unknown_attrs.push(attr);
-        }
-    }
-
-    match unknown_attrs.len() {
-        0 => (),
-        1 => bail!("unknown attribute: {:?}", unknown_attrs[0]),
-        _ => bail!("unknown attributes: {:?}", unknown_attrs),
-    }
-
     let fields = match variant_data {
         DataStruct { fields: Fields::Named(FieldsNamed { named: fields, .. }), .. } |
         DataStruct { fields: Fields::Unnamed(FieldsUnnamed { unnamed: fields, .. }), ..} => {
@@ -81,11 +62,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
                                                        .unwrap_or_else(|| Ident::from(idx.to_string()));
-                               let default_tag = match infer_tags_mode {
-                                 Some(InferTagsMode::Sequential) => Some(next_tag),
-                                 _ => None,
-                               };
-                               match Field::new(field.attrs, Some(&field.ty), default_tag) {
+                               match Field::new(field.attrs, Some(&field.ty), Some(next_tag)) {
                                    Ok(Some(field)) => {
                                        next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
                                        Some(Ok((field_ident, field)))

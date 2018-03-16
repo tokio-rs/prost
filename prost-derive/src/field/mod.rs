@@ -51,12 +51,10 @@ impl Field {
             Field::Map(field)
         } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
+        } else if let Some(rt) = rust_type {
+            bail!("no type attribute (can't infer type for: {})", quote!(#rt));
         } else {
-            if let Some(rt) = rust_type {
-                bail!("no type attribute (can't infer type for: {})", quote!(#rt));
-            } else {
-                bail!("no type attribute");
-            }
+            bail!("no type attribute");
         };
 
         Ok(Some(field))

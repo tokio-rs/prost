@@ -764,13 +764,13 @@ impl Inferred {
             _ => None,
         };
 
-        Inferred{ty, label, packed}
+        Inferred { ty, label, packed }
     }
 
     /// Choose a sane default protobuf type from a rust type if one isn't specified
     fn from_rust_type(ty: &Type) -> Option<Inferred> {
         let path = match ty {
-            &Type::Path(syn::TypePath{ref path, ..}) => path,
+            &Type::Path(syn::TypePath { ref path, .. }) => path,
             _ => return None,
         };
         let segment = match path.segments.first() {
@@ -798,6 +798,11 @@ impl Inferred {
 
         let tok = quote!(#ty);
         if label == Some(Label::Repeated) && tok == quote!(u8) {
+            // If label is Label::Repeated, then the rust type was Vec<u8>
+            // which should be inferred as a NON-repeated protobuf "bytes" field.
+            //
+            //     Vec<u8>   =>   bytes
+            //
             Some(Inferred::new(Ty::Bytes, None))
         } else if tok == quote!(i32) {
             Some(Inferred::new(Ty::Int32, label))
@@ -816,6 +821,11 @@ impl Inferred {
         } else if tok == quote!(String) {
             Some(Inferred::new(Ty::String, label))
         } else if tok == quote!(Vec<u8>) {
+            // Although we handle `u8` above, this case is necessary to handle the cases
+            //
+            //     Option<Vec<u8>>   =>   optional bytes
+            //     Vec<Vec<u8>>      =>   repeated bytes
+            //
             Some(Inferred::new(Ty::Bytes, label))
         } else {
             None

@@ -401,7 +401,6 @@ fn check_tags_inferred() {
 }
 
 #[derive(Clone, PartialEq, Message)]
-#[prost(tags="sequential")]
 pub struct TagsInferred {
     #[prost(bool)]
     pub one: bool,
