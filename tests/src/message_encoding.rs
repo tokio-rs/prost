@@ -293,6 +293,13 @@ pub struct ScalarTypesInferred {
     pub packed_string: Vec<String>,
     #[prost(tag="416")]
     pub packed_bytes: Vec<Vec<u8>>,
+
+    #[prost(tag="417")]
+    pub qualified_bytes: ::std::vec::Vec<u8>,
+    #[prost(tag="418")]
+    pub qualified_string: ::std::string::String,
+    #[prost(tag="419")]
+    pub qualified_option: ::std::option::Option<f64>,
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -391,6 +398,13 @@ pub struct ScalarTypesQualified {
     pub packed_string: Vec<String>,
     #[prost(tag="416", repeated, bytes)]
     pub packed_bytes: Vec<Vec<u8>>,
+
+    #[prost(tag="417", bytes)]
+    pub qualified_bytes: ::std::vec::Vec<u8>,
+    #[prost(tag="418", string)]
+    pub qualified_string: ::std::string::String,
+    #[prost(tag="419", optional, double)]
+    pub qualified_option: ::std::option::Option<f64>,
 }
 
 #[test]

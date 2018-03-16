@@ -24,6 +24,7 @@ use field::{
     bool_attr,
     set_option,
     tag_attr,
+    word_attr,
 };
 
 /// A scalar protobuf field.
@@ -79,6 +80,8 @@ impl Field {
 
         match unknown_attrs.len() {
             0 => (),
+            // If message is specified, this shouldn't be treated as a scalar field
+            1 if word_attr("message", unknown_attrs[0]) => return Ok(None),
             1 => bail!("unknown attribute: {:?}", unknown_attrs[0]),
             _ => bail!("unknown attributes: {:?}", unknown_attrs),
         }
@@ -773,7 +776,7 @@ impl Inferred {
             &Type::Path(syn::TypePath { ref path, .. }) => path,
             _ => return None,
         };
-        let segment = match path.segments.first() {
+        let segment = match path.segments.last() {
             Some(syn::punctuated::Pair::End(seg)) => seg,
             _ => return None, // NOTE: Not an inferrable scalar type
         };
@@ -782,21 +785,23 @@ impl Inferred {
             "Vec" => Some(Label::Repeated),
             _ => None,
         };
-        let ty =
+        let tok =
             if label.is_some() {
                 let bracketed = match segment.arguments {
                     syn::PathArguments::AngleBracketed(ref bracketed) => bracketed,
                     _ => return None,
                 };
                 match bracketed.args.first() {
-                    Some(syn::punctuated::Pair::End(&syn::GenericArgument::Type(ref inner))) => inner,
+                    Some(syn::punctuated::Pair::End(&syn::GenericArgument::Type(ref ty))) => quote!(#ty),
                     _ => return None,
                 }
+            } else if segment.ident.as_ref() == "String" {
+                let ty = Ident::from("String");
+                quote!(#ty)
             } else {
-                ty
+                quote!(#ty)
             };
 
-        let tok = quote!(#ty);
         if label == Some(Label::Repeated) && tok == quote!(u8) {
             // If label is Label::Repeated, then the rust type was Vec<u8>
             // which should be inferred as a NON-repeated protobuf "bytes" field.
