@@ -199,6 +199,7 @@ pub struct Config {
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
+    idiomatic_enum_values: bool,
 }
 
 impl Config {
@@ -352,6 +353,11 @@ impl Config {
         self
     }
 
+    pub fn use_idiomatic_enum_values(&mut self, idiomatic: bool) -> &mut Self {
+        self.idiomatic_enum_values = idiomatic;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -449,6 +455,7 @@ impl default::Default for Config {
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),
             prost_types: true,
+            idiomatic_enum_values: false, // defaulting to false (non-idiomatic), consider defaulting to true
         }
     }
 }
