@@ -85,9 +85,9 @@
 //! ## Sourcing `protoc`
 //!
 //! `prost-build` depends on the Protocol Buffers compiler, `protoc`, to parse `.proto` files into
-//! a representation that can be transformed into Rust. If set, `prost_build` will use the `PROTOC`
-//! and `PROTOC_INCLUDE` environment variables for locating `protoc` and the protobuf built-in
-//! includes. For example, on a macOS system where protobuf is installed with Homebrew, set the
+//! a representation that can be transformed into Rust. If set, `prost-build` uses the `PROTOC` and
+//! `PROTOC_INCLUDE` environment variables for locating `protoc` and the Protobuf includes
+//! directory. For example, on a macOS system where Protobuf is installed with Homebrew, set the
 //! environment to:
 //!
 //! ```bash
@@ -102,9 +102,14 @@
 //! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
-//! If `PROTOC` and `PROTOC_INCLUDE` are not found in the environment, then a pre-compiled `protoc`
-//! binary embedded in the prost-build crate will be used. Pre-compiled `protoc` binaries exist for
-//! Linux, macOS, and Windows systems.
+//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in
+//! the prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux, macOS, and
+//! Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
+//! `protoc` or `protoc.exe` binary on the `PATH` is used. If `protoc` is not available in any of
+//! these fallback locations, then the build fails.
+//!
+//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
+//! in the prost-build crate is be used.
 
 extern crate heck;
 extern crate itertools;
@@ -219,7 +224,7 @@ impl Config {
     /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
     /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
     /// matched on the fully qualified field name. If a Protobuf map field matches any of the
-    /// paths, a Rust `BTreeMap` field will be generated instead of the default [`HashMap`][3].
+    /// paths, a Rust `BTreeMap` field is generated instead of the default [`HashMap`][3].
     ///
     /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
     /// standards.
@@ -268,7 +273,7 @@ impl Config {
     ///
     /// # Arguments
     ///
-    /// **`path`** - a patch matching any number of fields. These fields will get the attribute.
+    /// **`path`** - a patch matching any number of fields. These fields get the attribute.
     /// For details about matching fields see [`btree_map`](#method.btree_map).
     ///
     /// **`attribute`** - an arbitrary string that'll be placed before each matched field. The
@@ -284,7 +289,7 @@ impl Config {
     /// ```
     /// # let mut config = prost_build::Config::new();
     /// // Prost renames fields named `in` to `in_`. But if serialized through serde,
-    /// // we want them to appear as `in` again.
+    /// // they should as `in`.
     /// config.field_attribute("in", "#[serde(rename = \"in\")]");
     /// ```
     pub fn field_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
@@ -357,7 +362,7 @@ impl Config {
     ///
     /// Protobuf enum definitions commonly include the enum name as a prefix of every variant name.
     /// This style is non-idiomatic in Rust, so by default `prost` strips the enum name prefix from
-    /// variants which include it. Configuring this option will prevent `prost` from stripping the
+    /// variants which include it. Configuring this option prevents `prost` from stripping the
     /// prefix.
     pub fn retain_enum_prefix(&mut self) -> &mut Self {
         self.strip_enum_prefix = false;
@@ -389,10 +394,10 @@ impl Config {
                                       "OUT_DIR environment variable is not set"))?
             .into();
 
-        // TODO: We should probably emit 'rerun-if-changed=PATH' directives for
-        // cargo, however according to [1] if we output any, those paths will
-        // replace the default crate root, which we don't want. Figure out how to do
-        // it in an additive way, perhaps gcc-rs has this figured out.
+        // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
+        // according to [1] if any are output then those paths replace the default crate root,
+        // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
+        // this figured out.
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
         let tmp = tempdir::TempDir::new("prost-build")?;
@@ -468,20 +473,19 @@ impl default::Default for Config {
 
 /// Compile `.proto` files into Rust files during a Cargo build.
 ///
-/// The generated `.rs` files will be written to the Cargo `OUT_DIR` directory, suitable for use
-/// with the [include!][1] macro. See the [Cargo `build.rs` code generation][2] example for more
-/// info.
+/// The generated `.rs` files are written to the Cargo `OUT_DIR` directory, suitable for use with
+/// the [include!][1] macro. See the [Cargo `build.rs` code generation][2] example for more info.
 ///
 /// This function should be called in a project's `build.rs`.
 ///
 /// # Arguments
 ///
 /// **`protos`** - Paths to `.proto` files to compile. Any transitively [imported][3] `.proto`
-/// files will automatically be included.
+/// files are automatically be included.
 ///
-/// **`includes`** - Paths to directories in which to search for imports. Directories will be
-/// searched in order. The `.proto` files passed in **`protos`** must be found
-/// in one of the provided include directories.
+/// **`includes`** - Paths to directories in which to search for imports. Directories are searched
+/// in order. The `.proto` files passed in **`protos`** must be found in one of the provided
+/// include directories.
 ///
 /// # Errors
 ///

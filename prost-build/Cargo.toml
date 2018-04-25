@@ -21,5 +21,8 @@ prost = { version = "0.3.2", path = ".." }
 prost-types = { version = "0.3.2", path = "../prost-types" }
 tempdir = "0.3"
 
+[build-dependencies]
+which = "2"
+
 [dev-dependencies]
 env_logger = { version = "0.5", default-features = false }
