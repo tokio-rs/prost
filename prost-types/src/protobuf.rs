@@ -146,7 +146,7 @@ pub struct FieldDescriptorProto {
     pub options: ::std::option::Option<FieldOptions>,
 }
 pub mod field_descriptor_proto {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
@@ -181,7 +181,7 @@ pub mod field_descriptor_proto {
         /// Uses ZigZag encoding.
         Sint64 = 18,
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum Label {
         /// 0 is reserved for errors
         Optional = 1,
@@ -405,7 +405,7 @@ pub struct FileOptions {
 }
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
         Speed = 1,
@@ -549,14 +549,14 @@ pub struct FieldOptions {
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
 }
 pub mod field_options {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum CType {
         /// Default mode.
         String = 0,
         Cord = 1,
         StringPiece = 2,
     }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum JsType {
         /// Use the default type.
         JsNormal = 0,
@@ -640,7 +640,7 @@ pub mod method_options {
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum IdempotencyLevel {
         IdempotencyUnknown = 0,
         /// implies idempotent
@@ -1041,7 +1041,7 @@ pub struct Field {
 }
 pub mod field {
     /// Basic field types.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum Kind {
         /// Field type unknown.
         TypeUnknown = 0,
@@ -1083,7 +1083,7 @@ pub mod field {
         TypeSint64 = 18,
     }
     /// Whether a field is optional, required, or repeated.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
     pub enum Cardinality {
         /// For fields with unknown cardinality.
         Unknown = 0,
@@ -1145,7 +1145,7 @@ pub struct Option {
     pub value: ::std::option::Option<Any>,
 }
 /// The syntax in which a protocol buffer element is defined.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
 pub enum Syntax {
     /// Syntax `proto2`.
     Proto2 = 0,
@@ -1672,7 +1672,7 @@ pub struct ListValue {
 /// `Value` type union.
 ///
 ///  The JSON representation for `NullValue` is JSON `null`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
 pub enum NullValue {
     /// Null value.
     NullValue = 0,
