@@ -158,10 +158,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                                         quote!(builder.field(&wrapper))
                                     };
                                     quote! {
-                                         {
+                                         let builder = {
                                              let wrapper = #wrapper;
-                                             #call;
-                                         }
+                                             #call
+                                         };
                                     }
                                 });
     let debug_builder = if is_struct {
