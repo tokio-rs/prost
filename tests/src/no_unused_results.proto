@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package no_unused_results;
+
+message Test {
+    string dummy_field = 1;
+}
