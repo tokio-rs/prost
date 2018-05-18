@@ -13,6 +13,7 @@ pub mod unittest;
 #[cfg(test)] mod bootstrap;
 #[cfg(test)] mod debug;
 #[cfg(test)] mod message_encoding;
+#[cfg(test)] mod no_unused_results;
 
 pub mod protobuf_test_messages {
     pub mod proto2 {
