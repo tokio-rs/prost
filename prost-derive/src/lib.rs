@@ -3,8 +3,8 @@
 #![recursion_limit = "4096"]
 
 extern crate itertools;
-extern crate proc_macro2;
 extern crate proc_macro;
+extern crate proc_macro2;
 extern crate syn;
 
 #[macro_use]
@@ -15,6 +15,7 @@ extern crate quote;
 use failure::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use syn::punctuated::Punctuated;
 use syn::{
     Data,
@@ -61,7 +62,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                            .enumerate()
                            .flat_map(|(idx, field)| {
                                let field_ident = field.ident
-                                                      .unwrap_or_else(|| Ident::from(idx.to_string()));
+                                    .unwrap_or_else(|| Ident::new(&idx.to_string(), Span::call_site()));
                                match Field::new(field.attrs, Some(next_tag)) {
                                    Ok(Some(field)) => {
                                        next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
@@ -93,7 +94,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     }
 
     // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::from(format!("{}_MESSAGE", ident));
+    let module = Ident::new(&format!("{}_MESSAGE", ident), Span::call_site());
 
     let encoded_len = fields.iter()
                             .map(|&(ref field_ident, ref field)| {
@@ -269,7 +270,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let default = variants[0].0.clone();
 
     // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::from(format!("{}_ENUMERATION", ident));
+    let module = Ident::new(&format!("{}_ENUMERATION", ident), Span::call_site());
     let is_valid = variants.iter().map(|&(_, ref value)| quote!(#value => true));
     let from = variants.iter().map(|&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)));
 
@@ -369,7 +370,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     }
 
     // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::from(format!("{}_ONEOF", ident));
+    let module = Ident::new(&format!("{}_ONEOF", ident), Span::call_site());
 
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encode = field.encode(quote!(*value));

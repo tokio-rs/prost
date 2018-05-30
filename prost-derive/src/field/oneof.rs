@@ -1,4 +1,5 @@
 use failure::Error;
+use proc_macro2::TokenStream;
 use syn::{
     Lit,
     Meta,
@@ -7,7 +8,6 @@ use syn::{
     Path,
     parse_str,
 };
-use quote::Tokens;
 
 use field::{
     tags_attr,
@@ -34,8 +34,8 @@ impl Field {
                     }
                     Meta::List(ref list) if list.nested.len() == 1 => {
                         // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                        if let NestedMeta::Meta(Meta::Word(ident)) = list.nested[0] {
-                            Path::from(ident)
+                        if let NestedMeta::Meta(Meta::Word(ref ident)) = list.nested[0] {
+                            Path::from(ident.clone())
                         } else {
                             bail!("invalid oneof attribute: item must be an identifier");
                         }
@@ -73,7 +73,7 @@ impl Field {
     }
 
     /// Returns a statement which encodes the oneof field.
-    pub fn encode(&self, ident: Tokens) -> Tokens {
+    pub fn encode(&self, ident: TokenStream) -> TokenStream {
         quote! {
             if let Some(ref oneof) = #ident {
                 oneof.encode(buf)
@@ -82,7 +82,7 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the result of decoding the oneof field.
-    pub fn merge(&self, ident: Tokens) -> Tokens {
+    pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let ty = &self.ty;
         quote! {
             #ty::merge(&mut #ident, tag, wire_type, buf)
@@ -90,14 +90,14 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the oneof field.
-    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
+    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let ty = &self.ty;
         quote! {
             #ident.as_ref().map_or(0, #ty::encoded_len)
         }
     }
 
-    pub fn clear(&self, ident: Tokens) -> Tokens {
+    pub fn clear(&self, ident: TokenStream) -> TokenStream {
         quote!(#ident = ::std::option::Option::None)
     }
 }

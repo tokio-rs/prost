@@ -1,6 +1,6 @@
 use failure::Error;
+use proc_macro2::TokenStream;
 use syn::Meta;
-use quote::Tokens;
 
 use field::{
     word_attr,
@@ -72,7 +72,7 @@ impl Field {
         }
     }
 
-    pub fn encode(&self, ident: Tokens) -> Tokens {
+    pub fn encode(&self, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
@@ -91,7 +91,7 @@ impl Field {
         }
     }
 
-    pub fn merge(&self, ident: Tokens) -> Tokens {
+    pub fn merge(&self, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => quote! {
                 _prost::encoding::message::merge(wire_type,
@@ -107,7 +107,7 @@ impl Field {
         }
     }
 
-    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
+    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
@@ -122,7 +122,7 @@ impl Field {
         }
     }
 
-    pub fn clear(&self, ident: Tokens) -> Tokens {
+    pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => quote!(#ident = ::std::option::Option::None),
             Label::Required => quote!(#ident.clear()),

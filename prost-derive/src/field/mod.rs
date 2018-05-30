@@ -7,7 +7,7 @@ use std::fmt;
 use std::slice;
 
 use failure::Error;
-use quote::Tokens;
+use proc_macro2::TokenStream;
 use syn::{
     Attribute,
     Ident,
@@ -89,7 +89,7 @@ impl Field {
     }
 
     /// Returns a statement which encodes the field.
-    pub fn encode(&self, ident: Tokens) -> Tokens {
+    pub fn encode(&self, ident: TokenStream) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.encode(ident),
             Field::Message(ref message) => message.encode(ident),
@@ -100,7 +100,7 @@ impl Field {
 
     /// Returns an expression which evaluates to the result of merging a decoded
     /// value into the field.
-    pub fn merge(&self, ident: Tokens) -> Tokens {
+    pub fn merge(&self, ident: TokenStream) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.merge(ident),
             Field::Message(ref message) => message.merge(ident),
@@ -110,7 +110,7 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
-    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
+    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.encoded_len(ident),
             Field::Map(ref map) => map.encoded_len(ident),
@@ -120,7 +120,7 @@ impl Field {
     }
 
     /// Returns a statement which clears the field.
-    pub fn clear(&self, ident: Tokens) -> Tokens {
+    pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.clear(ident),
             Field::Message(ref message) => message.clear(ident),
@@ -129,7 +129,7 @@ impl Field {
         }
     }
 
-    pub fn default(&self) -> Tokens {
+    pub fn default(&self) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
             _ => quote!(::std::default::Default::default()),
@@ -137,7 +137,7 @@ impl Field {
     }
 
     /// Produces the fragment implementing debug for the given field.
-    pub fn debug(&self, ident: Tokens) -> Tokens {
+    pub fn debug(&self, ident: TokenStream) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => {
                 let wrapper = scalar.debug(quote!(ScalarWrapper));
@@ -161,7 +161,7 @@ impl Field {
         }
     }
 
-    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
+    pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
         match *self {
             Field::Scalar(ref scalar) => scalar.methods(ident),
             Field::Map(ref map) => map.methods(ident),
