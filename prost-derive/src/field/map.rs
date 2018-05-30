@@ -1,4 +1,8 @@
 use failure::Error;
+use proc_macro2::{
+    Span,
+    TokenStream,
+};
 use syn::{
     Ident,
     Lit,
@@ -6,7 +10,6 @@ use syn::{
     MetaNameValue,
     NestedMeta,
 };
-use quote::Tokens;
 
 use field::{
     scalar,
@@ -31,8 +34,8 @@ impl MapTy {
 
     fn module(&self) -> Ident {
         match *self {
-            MapTy::HashMap => Ident::from("hash_map"),
-            MapTy::BTreeMap => Ident::from("btree_map"),
+            MapTy::HashMap => Ident::new("hash_map", Span::call_site()),
+            MapTy::BTreeMap => Ident::new("btree_map", Span::call_site()),
         }
     }
 }
@@ -63,7 +66,7 @@ impl Field {
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
-            } else if let Some(map_ty) = MapTy::from_str(attr.name().as_ref()) {
+            } else if let Some(map_ty) = MapTy::from_str(&attr.name().to_string()) {
                 let (k, v): (String, String) = match *attr {
                     Meta::NameValue(MetaNameValue { lit: Lit::Str(ref lit), .. }) => {
                         let items = lit.value();
@@ -121,7 +124,7 @@ impl Field {
     }
 
     /// Returns a statement which encodes the map field.
-    pub fn encode(&self, ident: Tokens) -> Tokens {
+    pub fn encode(&self, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         let key_mod = self.key_ty.module();
         let ke = quote!(_prost::encoding::#key_mod::encode);
@@ -160,7 +163,7 @@ impl Field {
 
     /// Returns an expression which evaluates to the result of merging a decoded key value pair
     /// into the map.
-    pub fn merge(&self, ident: Tokens) -> Tokens {
+    pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let key_mod = self.key_ty.module();
         let km = quote!(_prost::encoding::#key_mod::merge);
         let module = self.map_ty.module();
@@ -185,7 +188,7 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the map.
-    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
+    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         let key_mod = self.key_ty.module();
         let kl = quote!(_prost::encoding::#key_mod::encoded_len);
@@ -211,18 +214,18 @@ impl Field {
         }
     }
 
-    pub fn clear(&self, ident: Tokens) -> Tokens {
+    pub fn clear(&self, ident: TokenStream) -> TokenStream {
         quote!(#ident.clear())
     }
 
     /// Returns methods to embed in the message.
-    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
+    pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {
             let key_ty = self.key_ty.rust_type();
             let key_ref_ty = self.key_ty.rust_ref_type();
 
-            let get = Ident::from(format!("get_{}", ident));
-            let insert = Ident::from(format!("insert_{}", ident));
+            let get = Ident::new(&format!("get_{}", ident), Span::call_site());
+            let insert = Ident::new(&format!("insert_{}", ident), Span::call_site());
             let take_ref = if self.key_ty.is_numeric() { quote!(&) } else { quote!() };
 
             Some(quote! {
@@ -242,10 +245,10 @@ impl Field {
     ///
     /// The Debug tries to convert any enumerations met into the variants if possible, instead of
     /// outputting the raw numbers.
-    pub fn debug(&self, wrapper_name: Tokens) -> Tokens {
+    pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let type_name = match self.map_ty {
-            MapTy::HashMap => Ident::from("HashMap"),
-            MapTy::BTreeMap => Ident::from("BTreeMap"),
+            MapTy::HashMap => Ident::new("HashMap", Span::call_site()),
+            MapTy::BTreeMap => Ident::new("BTreeMap", Span::call_site()),
         };
         // A fake field for generating the debug wrapper
         let key_wrapper = fake_scalar(self.key_ty.clone()).debug(quote!(KeyWrapper));
@@ -318,7 +321,7 @@ impl ValueTy {
     ///
     /// If the contained value is enumeration, it tries to convert it to the variant. If not, it
     /// just forwards the implementation.
-    fn debug(&self) -> Tokens {
+    fn debug(&self) -> TokenStream {
         match *self {
             ValueTy::Scalar(ref ty) => fake_scalar(ty.clone()).debug(quote!(ValueWrapper)),
             ValueTy::Message => quote!(fn ValueWrapper<T>(v: T) -> T { v }),

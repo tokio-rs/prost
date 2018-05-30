@@ -1,8 +1,11 @@
 use std::fmt;
 
 use failure::Error;
-use proc_macro2::Span;
-use quote::{self, Tokens};
+use proc_macro2::{
+    Span,
+    TokenStream,
+};
+use quote;
 use syn::{
     FloatSuffix,
     Ident,
@@ -123,7 +126,7 @@ impl Field {
         }
     }
 
-    pub fn encode(&self, ident: Tokens) -> Tokens {
+    pub fn encode(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let encode_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
@@ -155,7 +158,7 @@ impl Field {
 
     /// Returns an expression which evaluates to the result of merging a decoded
     /// scalar value into the field.
-    pub fn merge(&self, ident: Tokens) -> Tokens {
+    pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let merge_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
@@ -176,7 +179,7 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
-    pub fn encoded_len(&self, ident: Tokens) -> Tokens {
+    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let encoded_len_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encoded_len),
@@ -206,7 +209,7 @@ impl Field {
         }
     }
 
-    pub fn clear(&self, ident: Tokens) -> Tokens {
+    pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
                 let default = default.typed();
@@ -221,7 +224,7 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the default value of the field.
-    pub fn default(&self) -> Tokens {
+    pub fn default(&self) -> TokenStream {
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
             Kind::Optional(_) => quote!(::std::option::Option::None),
@@ -230,7 +233,7 @@ impl Field {
     }
 
     /// An inner debug wrapper, around the base type.
-    fn debug_inner(&self, wrap_name: Tokens) -> Tokens {
+    fn debug_inner(&self, wrap_name: TokenStream) -> TokenStream {
         if let Ty::Enumeration(ref ty) = self.ty {
             quote! {
                 struct #wrap_name<'a>(&'a i32);
@@ -251,7 +254,7 @@ impl Field {
     }
 
     /// Returns a fragment for formatting the field `ident` in `Debug`.
-    pub fn debug(&self, wrapper_name: Tokens) -> Tokens {
+    pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
         let inner_ty = self.ty.rust_type();
         match self.kind {
@@ -286,9 +289,9 @@ impl Field {
     }
 
     /// Returns methods to embed in the message.
-    pub fn methods(&self, ident: &Ident) -> Option<Tokens> {
-        let set = Ident::from(format!("set_{}", ident));
-        let push = Ident::from(format!("push_{}", ident));
+    pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
+        let set = Ident::new(&format!("set_{}", ident), Span::call_site());
+        let push = Ident::new(&format!("push_{}", ident), Span::call_site());
         if let Ty::Enumeration(ref ty) = self.ty {
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
@@ -468,7 +471,7 @@ impl Ty {
     }
 
     // TODO: rename to 'owned_type'.
-    pub fn rust_type(&self) -> Tokens {
+    pub fn rust_type(&self) -> TokenStream {
         match *self {
             Ty::String => quote!(::std::string::String),
             Ty::Bytes => quote!(::std::vec::Vec<u8>),
@@ -477,7 +480,7 @@ impl Ty {
     }
 
     // TODO: rename to 'ref_type'
-    pub fn rust_ref_type(&self) -> Tokens {
+    pub fn rust_ref_type(&self) -> TokenStream {
         match *self {
             Ty::Double => quote!(f64),
             Ty::Float => quote!(f32),
@@ -500,8 +503,8 @@ impl Ty {
 
     pub fn module(&self) -> Ident {
         match *self {
-            Ty::Enumeration(..) => Ident::from("int32"),
-            _ => Ident::from(self.as_str()),
+            Ty::Enumeration(..) => Ident::new("int32", Span::call_site()),
+            _ => Ident::new(self.as_str(), Span::call_site()),
         }
     }
 
@@ -550,7 +553,7 @@ pub enum DefaultValue {
     Bool(bool),
     String(String),
     Bytes(Vec<u8>),
-    Enumeration(Tokens),
+    Enumeration(TokenStream),
     Path(Path),
 }
 
@@ -607,7 +610,7 @@ impl DefaultValue {
                 let value = value.trim();
 
                 if let Ty::Enumeration(ref path) = *ty {
-                    let variant = Ident::from(value);
+                    let variant = Ident::new(value, Span::call_site());
                     return Ok(DefaultValue::Enumeration(quote!(#path::#variant)))
                 }
 
@@ -690,7 +693,7 @@ impl DefaultValue {
         }
     }
 
-    pub fn owned(&self) -> Tokens {
+    pub fn owned(&self) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => quote!(::std::string::String::new()),
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
@@ -704,7 +707,7 @@ impl DefaultValue {
         }
     }
 
-    pub fn typed(&self) -> Tokens {
+    pub fn typed(&self) -> TokenStream {
         if let DefaultValue::Enumeration(_) = *self {
             quote!(super::#self as i32)
         } else {
@@ -714,7 +717,7 @@ impl DefaultValue {
 }
 
 impl quote::ToTokens for DefaultValue {
-    fn to_tokens(&self, tokens: &mut Tokens) {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
         match *self {
             DefaultValue::F64(value) => value.to_tokens(tokens),
             DefaultValue::F32(value) => value.to_tokens(tokens),
