@@ -10,7 +10,6 @@ use std::usize;
 use bytes::{
     Buf,
     BufMut,
-    LittleEndian,
 };
 
 use DecodeError;
@@ -436,7 +435,7 @@ macro_rules! fixed_width {
 
             pub fn encode<B>(tag: u32, value: &$ty, buf: &mut B) where B: BufMut {
                 encode_key(tag, $wire_type, buf);
-                buf.$put::<LittleEndian>(*value);
+                buf.$put(*value);
             }
 
             pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
@@ -444,7 +443,7 @@ macro_rules! fixed_width {
                 if buf.remaining() < $width {
                     return Err(DecodeError::new("buffer underflow"));
                 }
-                *value = buf.$get::<LittleEndian>();
+                *value = buf.$get();
                 Ok(())
             }
 
@@ -458,7 +457,7 @@ macro_rules! fixed_width {
                 encode_varint(len as u64, buf);
 
                 for value in values {
-                    buf.$put::<LittleEndian>(*value);
+                    buf.$put(*value);
                 }
             }
 
@@ -514,12 +513,12 @@ macro_rules! fixed_width {
         }
     );
 }
-fixed_width!(f32, 4, WireType::ThirtyTwoBit, float, put_f32, get_f32);
-fixed_width!(f64, 8, WireType::SixtyFourBit, double, put_f64, get_f64);
-fixed_width!(u32, 4, WireType::ThirtyTwoBit, fixed32, put_u32, get_u32);
-fixed_width!(u64, 8, WireType::SixtyFourBit, fixed64, put_u64, get_u64);
-fixed_width!(i32, 4, WireType::ThirtyTwoBit, sfixed32, put_i32, get_i32);
-fixed_width!(i64, 8, WireType::SixtyFourBit, sfixed64, put_i64, get_i64);
+fixed_width!(f32, 4, WireType::ThirtyTwoBit, float, put_f32_le, get_f32_le);
+fixed_width!(f64, 8, WireType::SixtyFourBit, double, put_f64_le, get_f64_le);
+fixed_width!(u32, 4, WireType::ThirtyTwoBit, fixed32, put_u32_le, get_u32_le);
+fixed_width!(u64, 8, WireType::SixtyFourBit, fixed64, put_u64_le, get_u64_le);
+fixed_width!(i32, 4, WireType::ThirtyTwoBit, sfixed32, put_i32_le, get_i32_le);
+fixed_width!(i64, 8, WireType::SixtyFourBit, sfixed64, put_i64_le, get_i64_le);
 
 /// Macro which emits encoding functions for a length-delimited type.
 macro_rules! length_delimited {
