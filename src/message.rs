@@ -49,7 +49,7 @@ pub trait Message: Debug + Send + Sync {
         let required = len + encoded_len_varint(len as u64);
         let remaining = buf.remaining_mut();
         if required > remaining {
-            return Err(EncodeError::new(required, remaining))
+            return Err(EncodeError::new(required, remaining));
         }
         encode_varint(len as u64, buf);
         self.encode_raw(buf);
