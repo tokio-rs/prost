@@ -260,7 +260,7 @@ impl <'a> CodeGenerator<'a> {
 
         let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
-        let ty = self.resolve_type(&field).into_owned();
+        let ty = self.resolve_type(&field);
 
         let boxed = !repeated
                  && type_ == Type::Message
@@ -330,8 +330,8 @@ impl <'a> CodeGenerator<'a> {
                         field: FieldDescriptorProto,
                         key: &FieldDescriptorProto,
                         value: &FieldDescriptorProto) {
-        let key_ty = self.resolve_type(key).into_owned();
-        let value_ty = self.resolve_type(value).into_owned();
+        let key_ty = self.resolve_type(key);
+        let value_ty = self.resolve_type(value);
 
         debug!("    map field: {:?}, key type: {:?}, value type: {:?}",
                field.name(), key_ty, value_ty);
@@ -417,7 +417,7 @@ impl <'a> CodeGenerator<'a> {
             self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field).into_owned();
+            let ty = self.resolve_type(&field);
 
             let boxed = type_ == Type::Message
                      && self.message_graph.is_nested(field.type_name(), msg_name);
@@ -598,22 +598,22 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type(&'a self, field: &FieldDescriptorProto) -> Cow<'a, str>{
+    fn resolve_type(&self, field: &FieldDescriptorProto) -> String {
         match field.type_() {
-            Type::Float => Cow::Borrowed("f32"),
-            Type::Double => Cow::Borrowed("f64"),
-            Type::Uint32 | Type::Fixed32 => Cow::Borrowed("u32"),
-            Type::Uint64 | Type::Fixed64 => Cow::Borrowed("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => Cow::Borrowed("i32"),
-            Type::Int64 | Type::Sfixed64 | Type::Sint64 => Cow::Borrowed("i64"),
-            Type::Bool => Cow::Borrowed("bool"),
-            Type::String => Cow::Borrowed("String"),
-            Type::Bytes => Cow::Borrowed("Vec<u8>"),
+            Type::Float => String::from("f32"),
+            Type::Double => String::from("f64"),
+            Type::Uint32 | Type::Fixed32 => String::from("u32"),
+            Type::Uint64 | Type::Fixed64 => String::from("u64"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+            Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
+            Type::Bool => String::from("bool"),
+            Type::String => String::from("String"),
+            Type::Bytes => String::from("Vec<u8>"),
             Type::Group | Type::Message => {
                 if let Some(ty) = self.known_type(field.type_name()) {
-                    Cow::Borrowed(ty)
+                    String::from(ty)
                 } else {
-                    Cow::Owned(self.resolve_ident(field.type_name()))
+                    self.resolve_ident(field.type_name())
                 }
             },
         }
