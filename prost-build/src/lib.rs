@@ -366,7 +366,7 @@ impl Config {
         self
     }
 
-    /// Maps Protobuf types to a Rust types.
+    /// Maps a set of Protobuf types to Rust types.
     pub fn map_types(&mut self, map: HashMap<String, String>) -> &mut Self {
         self.mapped_types.extend(map);
         self
