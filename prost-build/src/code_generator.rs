@@ -127,8 +127,8 @@ impl <'a> CodeGenerator<'a> {
         let message_name = message.name().to_string();
         let fq_message_name = format!(".{}.{}", self.package, message.name());
 
-        // Skip Protobuf well-known types.
-        if self.well_known_type(&fq_message_name).is_some() { return; }
+        // Skip known types.
+        if self.known_type(&fq_message_name).is_some() { return; }
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
@@ -260,7 +260,7 @@ impl <'a> CodeGenerator<'a> {
 
         let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
-        let ty = self.resolve_type(&field);
+        let ty = self.resolve_type(&field).into_owned();
 
         let boxed = !repeated
                  && type_ == Type::Message
@@ -344,8 +344,8 @@ impl <'a> CodeGenerator<'a> {
                         field: FieldDescriptorProto,
                         key: &FieldDescriptorProto,
                         value: &FieldDescriptorProto) {
-        let key_ty = self.resolve_type(key);
-        let value_ty = self.resolve_type(value);
+        let key_ty = self.resolve_type(key).into_owned();
+        let value_ty = self.resolve_type(value).into_owned();
 
         debug!("    map field: {:?}, key type: {:?}, value type: {:?}",
                field.name(), key_ty, value_ty);
@@ -431,7 +431,7 @@ impl <'a> CodeGenerator<'a> {
             self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field);
+            let ty = self.resolve_type(&field).into_owned();
 
             let boxed = type_ == Type::Message
                      && self.message_graph.is_nested(field.type_name(), msg_name);
@@ -471,7 +471,7 @@ impl <'a> CodeGenerator<'a> {
         let enum_name = &desc.name();
         let enum_values = &desc.value;
         let fq_enum_name = format!(".{}.{}", self.package, enum_name);
-        if self.well_known_type(&fq_enum_name).is_some() { return; }
+        if self.known_type(&fq_enum_name).is_some() { return; }
 
         self.append_doc();
         self.push_indent();
@@ -605,7 +605,7 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
+    fn resolve_type(&'a self, field: &FieldDescriptorProto) -> Cow<'a, str>{
         match field.type_() {
             Type::Float => Cow::Borrowed("f32"),
             Type::Double => Cow::Borrowed("f64"),
@@ -617,7 +617,7 @@ impl <'a> CodeGenerator<'a> {
             Type::String => Cow::Borrowed("String"),
             Type::Bytes => Cow::Borrowed("Vec<u8>"),
             Type::Group | Type::Message => {
-                if let Some(ty) = self.well_known_type(field.type_name()) {
+                if let Some(ty) = self.known_type(field.type_name()) {
                     Cow::Borrowed(ty)
                 } else {
                     Cow::Owned(self.resolve_ident(field.type_name()))
@@ -688,6 +688,15 @@ impl <'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
+    }
+
+    /// Returns the Rust type name for a Protobuf type.
+    ///
+    /// The Rust type name might either be one of the well-known Protobuf types or come from
+    /// user-defined mappings.
+    fn known_type(&self, fq_msg_type: &str) -> Option<&str> {
+        self.well_known_type(fq_msg_type)
+            .or_else(|| self.config.mapped_types.get(fq_msg_type).map(|s| s.as_str()))
     }
 
     /// Returns the prost_types name for a well-known Protobuf type, or `None` if the provided
