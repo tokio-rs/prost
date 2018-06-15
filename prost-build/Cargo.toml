@@ -10,7 +10,7 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 
 [dependencies]
-bytes = "0.4"
+bytes = "0.4.7"
 env_logger = { version = "0.5", default-features = false }
 heck = "0.3"
 itertools = "0.7"
