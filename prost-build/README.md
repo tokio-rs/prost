@@ -4,7 +4,7 @@
 # `prost-build`
 
 `prost-build` makes it easy to generate Rust code from `.proto` files as part of
-a Cargo build. See the crate [documentation](https://docs.rs/prost-build/) for examples
+a Cargo build. See the crate [documentation](https://docs.rs/crate/prost-build) for examples
 of how to integrate `prost-build` into a Cargo project.
 
 ## License
