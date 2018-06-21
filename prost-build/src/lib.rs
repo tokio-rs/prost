@@ -518,12 +518,28 @@ pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: As
 
 /// Returns the path to the `protoc` binary.
 pub fn protoc() -> &'static Path {
-    Path::new(env!("PROTOC"))
+    #[cfg(not(feature = "docs-rs"))]
+    fn inner() -> &'static Path {
+        Path::new(env!("PROTOC"))
+    }
+    #[cfg(feature = "docs-rs")]
+    fn inner() -> &'static Path {
+        Path::new("")
+    }
+    inner()
 }
 
 /// Returns the path to the Protobuf include directory.
 pub fn protoc_include() -> &'static Path {
-    Path::new(env!("PROTOC_INCLUDE"))
+    #[cfg(not(feature = "docs-rs"))]
+    fn inner() -> &'static Path {
+        Path::new(env!("PROTOC_INCLUDE"))
+    }
+    #[cfg(feature = "docs-rs")]
+    fn inner() -> &'static Path {
+        Path::new("")
+    }
+    inner()
 }
 
 #[cfg(test)]
