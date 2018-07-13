@@ -82,7 +82,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
     // See: https://developers.google.com/protocol-buffers/docs/encoding#order
-    fields.sort_by_key(|&(_, ref field)| field.tags().into_iter().min().unwrap());
+    fields.sort_by_key(|&(_, ref field)| field.tags().into_iter().min().unwrap_or(0));
     let fields = fields;
 
     let mut tags = fields.iter().flat_map(|&(_, ref field)| field.tags()).collect::<Vec<_>>();
@@ -107,12 +107,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                        });
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
-        let merge = field.merge(quote!(self.#field_ident));
-        let tags = field.tags().into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
-        quote!(#(#tags)* => #merge.map_err(|mut error| {
-            error.push(STRUCT_NAME, stringify!(#field_ident));
-            error
-        }),)
+        if field.tags().is_empty() {
+            quote!()
+        } else {
+            let merge = field.merge(quote!(self.#field_ident));
+            let tags = field.tags().into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
+            quote!(#(#tags)* => #merge.map_err(|mut error| {
+                error.push(STRUCT_NAME, stringify!(#field_ident));
+                error
+            }),)
+        }
     });
 
     let struct_name = if fields.is_empty() {

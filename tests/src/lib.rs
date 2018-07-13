@@ -10,6 +10,7 @@ extern crate prost_types;
 pub mod packages;
 pub mod unittest;
 pub mod default_trait;
+pub mod unknown_fields;
 
 #[cfg(test)] mod bootstrap;
 #[cfg(test)] mod debug;

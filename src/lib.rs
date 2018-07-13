@@ -9,12 +9,14 @@ extern crate quickcheck;
 mod error;
 mod message;
 mod types;
+mod unknown_field_set;
 
 #[doc(hidden)]
 pub mod encoding;
 
 pub use message::Message;
 pub use error::{DecodeError, EncodeError};
+pub use unknown_field_set::UnknownFieldSet;
 
 use bytes::{
     BufMut,

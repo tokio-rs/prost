@@ -2,6 +2,7 @@ mod map;
 mod message;
 mod oneof;
 mod scalar;
+mod unknown_field_set;
 
 use std::fmt;
 use std::slice;
@@ -29,6 +30,8 @@ pub enum Field {
     Map(map::Field),
     /// A oneof field.
     Oneof(oneof::Field),
+    /// A unknown_field_set pseudo-field.
+    UnknownFieldSet(unknown_field_set::Field),
 }
 
 impl Field {
@@ -50,6 +53,8 @@ impl Field {
             Field::Map(field)
         } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
+        } else if let Some(field) = unknown_field_set::Field::new(&attrs)? {
+            Field::UnknownFieldSet(field)
         } else {
             bail!("no type attribute");
         };
@@ -85,6 +90,7 @@ impl Field {
             Field::Message(ref message) => vec![message.tag],
             Field::Map(ref map) => vec![map.tag],
             Field::Oneof(ref oneof) => oneof.tags.clone(),
+            Field::UnknownFieldSet(ref _set) => vec![],
         }
     }
 
@@ -95,6 +101,7 @@ impl Field {
             Field::Message(ref message) => message.encode(ident),
             Field::Map(ref map) => map.encode(ident),
             Field::Oneof(ref oneof) => oneof.encode(ident),
+            Field::UnknownFieldSet(ref set) => set.encode(ident),
         }
     }
 
@@ -106,6 +113,7 @@ impl Field {
             Field::Message(ref message) => message.merge(ident),
             Field::Map(ref map) => map.merge(ident),
             Field::Oneof(ref oneof) => oneof.merge(ident),
+            Field::UnknownFieldSet(ref set) => set.merge(ident),
         }
     }
 
@@ -116,6 +124,7 @@ impl Field {
             Field::Map(ref map) => map.encoded_len(ident),
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
+            Field::UnknownFieldSet(ref set) => set.encoded_len(ident),
         }
     }
 
@@ -126,6 +135,7 @@ impl Field {
             Field::Message(ref message) => message.clear(ident),
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),
+            Field::UnknownFieldSet(ref set) => set.clear(ident),
         }
     }
 
