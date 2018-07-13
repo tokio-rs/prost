@@ -56,4 +56,7 @@ fn main() {
 
     prost_build.compile_protos(&["src/no_unused_results.proto"],
                                &["src"]).unwrap();
+
+    prost_build.compile_protos(&["src/default_trait.proto"],
+                               &["src"]).unwrap();
 }

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package default_trait;
+
+message AMessage {
+	int32 number = 1;
+
+	oneof field {
+		string oneof_a = 2;
+		bytes oneof_b = 3;
+	}
+}
+
+enum AnEnum {
+	A = 0;
+	B = 1;
+}
