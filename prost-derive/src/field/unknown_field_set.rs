@@ -18,8 +18,10 @@ impl Field {
     }
 
     /// Returns a statement which encodes the field.
-    pub fn encode(&self, _ident: TokenStream) -> TokenStream {
-        quote! {}
+    pub fn encode(&self, ident: TokenStream) -> TokenStream {
+        quote! {
+            #ident.encode(buf);
+        }
     }
 
     /// Returns an expression which evaluates to the result of decoding the field.
@@ -28,8 +30,10 @@ impl Field {
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
-    pub fn encoded_len(&self, _ident: TokenStream) -> TokenStream {
-        quote! { 0 }
+    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
+        quote! {
+            #ident.encoded_len()
+        }
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {

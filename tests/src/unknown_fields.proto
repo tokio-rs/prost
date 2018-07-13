@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package unknown_fields;
+
+message MessageWithAllTypes {
+    int32 varint = 1000;
+    fixed64 sixty_four_bit = 1001;
+    string length_delimited = 1002;
+    fixed32 thirty_two_bit = 1003;
+}

@@ -119,7 +119,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     });
 
-    let struct_name = if fields.is_empty() {
+    let encountered_unknown = match find_unknown_field_set_ident(&fields)? {
+        Some(unknown_field_set_ident) => {
+            // TODO(pgron): Don't just skip
+            quote!(self.#unknown_field_set_ident.skip_unknown_field(tag, wire_type, buf))
+        },
+        None => {
+            // There is no UnknownFieldSet in this message so it's not possible
+            // to retain unknown values.
+            // TODO(pgron): Validate that the unknown_field_set is an UnknownFieldSet
+            quote!(_prost::encoding::skip_field(wire_type, buf))
+        },
+    };
+
+    let struct_name = if num_tags == 0 {  // TODO(pgron): Check that this works with empty oneofs
         quote!()
     } else {
         quote!(const STRUCT_NAME: &'static str = stringify!(#ident);)
@@ -195,7 +208,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                     let (tag, wire_type) = _prost::encoding::decode_key(buf)?;
                     match tag {
                         #(#merge)*
-                        _ => _prost::encoding::skip_field(wire_type, buf),
+                        _ => #encountered_unknown,
                     }
                 }
 
@@ -452,6 +465,22 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     Ok(expanded.into())
+}
+
+fn find_unknown_field_set_ident(fields: &Vec<(Ident, Field)>) -> Result<Option<Ident>, Error> {
+    let mut unknown_field_set_fields = fields
+        .iter()
+        .filter(|&(ref _field_ident, ref field)| {
+            field.is_unknown_field_set()
+        })
+        .map(|&(ref field_ident, ref _field)| {
+            field_ident.clone()
+        })
+        .collect::<Vec<Ident>>();
+    if unknown_field_set_fields.len() > 1 {
+        bail!("Got more than one unknown_field_set field.");
+    }
+    Ok(unknown_field_set_fields.pop())
 }
 
 #[proc_macro_derive(Oneof, attributes(prost))]

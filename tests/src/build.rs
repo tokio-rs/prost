@@ -59,4 +59,7 @@ fn main() {
 
     prost_build.compile_protos(&["src/default_trait.proto"],
                                &["src"]).unwrap();
+
+    prost_build.compile_protos(&["src/unknown_fields.proto"],
+                               &["src"]).unwrap();
 }

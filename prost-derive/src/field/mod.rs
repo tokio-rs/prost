@@ -139,6 +139,13 @@ impl Field {
         }
     }
 
+    pub fn is_unknown_field_set(&self) -> bool {
+        match *self {
+            Field::UnknownFieldSet(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn default(&self) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
