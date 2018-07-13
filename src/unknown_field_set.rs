@@ -5,6 +5,6 @@
 /// Every Message struct should have an UnknownFieldSet member. This is how
 /// messages make sure to not discard unknown data in a decode/encode cycle,
 /// which is required by the Protobuf spec.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct UnknownFieldSet {
 }

@@ -227,9 +227,11 @@ mod tests {
                 foo::bar_baz::foo_bar_baz::FuzzBuster {
                     t: BTreeMap::<i32, foo::bar_baz::FooBarBaz>::new(),
                     nested_self: None,
+                    ..Default::default()
                 },
             ],
             p_i_e: 0,
+            ..Default::default()
         };
 
         // Test enum ident conversion.
@@ -267,6 +269,7 @@ mod tests {
             b: Some(Box::new(B::default())),
             repeated_b: Vec::<B>::new(),
             map_b: BTreeMap::<i32, B>::new(),
+            ..Default::default()
         };
     }
 
@@ -276,9 +279,12 @@ mod tests {
         let _ = A {
             kind: Some(a::Kind::B(Box::new(B {
                 a: Some(Box::new(A {
-                    kind: Some(a::Kind::C(C {}))
-                }))
-            })))
+                    kind: Some(a::Kind::C(C {..Default::default()})),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            }))),
+            ..Default::default()
         };
     }
 }

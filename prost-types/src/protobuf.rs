@@ -4,6 +4,8 @@
 pub struct FileDescriptorSet {
     #[prost(message, repeated, tag="1")]
     pub file: ::std::vec::Vec<FileDescriptorProto>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Describes a complete .proto file.
 #[derive(Clone, PartialEq, Message)]
@@ -45,6 +47,8 @@ pub struct FileDescriptorProto {
     /// The supported values are "proto2" and "proto3".
     #[prost(string, optional, tag="12")]
     pub syntax: ::std::option::Option<String>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Describes a message type.
 #[derive(Clone, PartialEq, Message)]
@@ -71,6 +75,8 @@ pub struct DescriptorProto {
     /// A given name may only be reserved once.
     #[prost(string, repeated, tag="10")]
     pub reserved_name: ::std::vec::Vec<String>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod descriptor_proto {
     #[derive(Clone, PartialEq, Message)]
@@ -81,6 +87,8 @@ pub mod descriptor_proto {
         pub end: ::std::option::Option<i32>,
         #[prost(message, optional, tag="3")]
         pub options: ::std::option::Option<super::ExtensionRangeOptions>,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
     /// fields or extension ranges in the same message. Reserved ranges may
@@ -93,6 +101,8 @@ pub mod descriptor_proto {
         /// Exclusive.
         #[prost(int32, optional, tag="2")]
         pub end: ::std::option::Option<i32>,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
 }
 #[derive(Clone, PartialEq, Message)]
@@ -100,6 +110,8 @@ pub struct ExtensionRangeOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Describes a field within a message.
 #[derive(Clone, PartialEq, Message)]
@@ -144,6 +156,8 @@ pub struct FieldDescriptorProto {
     pub json_name: ::std::option::Option<String>,
     #[prost(message, optional, tag="8")]
     pub options: ::std::option::Option<FieldOptions>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod field_descriptor_proto {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
@@ -196,6 +210,8 @@ pub struct OneofDescriptorProto {
     pub name: ::std::option::Option<String>,
     #[prost(message, optional, tag="2")]
     pub options: ::std::option::Option<OneofOptions>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Describes an enum type.
 #[derive(Clone, PartialEq, Message)]
@@ -215,6 +231,8 @@ pub struct EnumDescriptorProto {
     /// be reserved once.
     #[prost(string, repeated, tag="5")]
     pub reserved_name: ::std::vec::Vec<String>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod enum_descriptor_proto {
     /// Range of reserved numeric values. Reserved values may not be used by
@@ -231,6 +249,8 @@ pub mod enum_descriptor_proto {
         /// Inclusive.
         #[prost(int32, optional, tag="2")]
         pub end: ::std::option::Option<i32>,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
 }
 /// Describes a value within an enum.
@@ -242,6 +262,8 @@ pub struct EnumValueDescriptorProto {
     pub number: ::std::option::Option<i32>,
     #[prost(message, optional, tag="3")]
     pub options: ::std::option::Option<EnumValueOptions>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Describes a service.
 #[derive(Clone, PartialEq, Message)]
@@ -252,6 +274,8 @@ pub struct ServiceDescriptorProto {
     pub method: ::std::vec::Vec<MethodDescriptorProto>,
     #[prost(message, optional, tag="3")]
     pub options: ::std::option::Option<ServiceOptions>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Describes a method of a service.
 #[derive(Clone, PartialEq, Message)]
@@ -272,6 +296,8 @@ pub struct MethodDescriptorProto {
     /// Identifies if server streams multiple server messages
     #[prost(bool, optional, tag="6", default="false")]
     pub server_streaming: ::std::option::Option<bool>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 // ===================================================================
 // Options
@@ -402,6 +428,8 @@ pub struct FileOptions {
     /// See the documentation for the "Options" section above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
@@ -476,6 +504,8 @@ pub struct MessageOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 #[derive(Clone, PartialEq, Message)]
 pub struct FieldOptions {
@@ -547,6 +577,8 @@ pub struct FieldOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod field_options {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
@@ -571,6 +603,8 @@ pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 #[derive(Clone, PartialEq, Message)]
 pub struct EnumOptions {
@@ -587,6 +621,8 @@ pub struct EnumOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 #[derive(Clone, PartialEq, Message)]
 pub struct EnumValueOptions {
@@ -599,6 +635,8 @@ pub struct EnumValueOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 #[derive(Clone, PartialEq, Message)]
 pub struct ServiceOptions {
@@ -616,6 +654,8 @@ pub struct ServiceOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 #[derive(Clone, PartialEq, Message)]
 pub struct MethodOptions {
@@ -635,6 +675,8 @@ pub struct MethodOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::std::vec::Vec<UninterpretedOption>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod method_options {
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
@@ -673,6 +715,8 @@ pub struct UninterpretedOption {
     pub string_value: ::std::option::Option<Vec<u8>>,
     #[prost(string, optional, tag="8")]
     pub aggregate_value: ::std::option::Option<String>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod uninterpreted_option {
     /// The name of the uninterpreted option.  Each string represents a segment in
@@ -686,6 +730,8 @@ pub mod uninterpreted_option {
         pub name_part: String,
         #[prost(bool, required, tag="2")]
         pub is_extension: bool,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
 }
 // ===================================================================
@@ -740,6 +786,8 @@ pub struct SourceCodeInfo {
     ///   be recorded in the future.
     #[prost(message, repeated, tag="1")]
     pub location: ::std::vec::Vec<source_code_info::Location>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod source_code_info {
     #[derive(Clone, PartialEq, Message)]
@@ -829,6 +877,8 @@ pub mod source_code_info {
         pub trailing_comments: ::std::option::Option<String>,
         #[prost(string, repeated, tag="6")]
         pub leading_detached_comments: ::std::vec::Vec<String>,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
 }
 /// Describes the relationship between generated code and its original source
@@ -840,6 +890,8 @@ pub struct GeneratedCodeInfo {
     /// of its generating .proto file.
     #[prost(message, repeated, tag="1")]
     pub annotation: ::std::vec::Vec<generated_code_info::Annotation>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod generated_code_info {
     #[derive(Clone, PartialEq, Message)]
@@ -860,6 +912,8 @@ pub mod generated_code_info {
         /// the last relevant byte (so the length of the text = end - begin).
         #[prost(int32, optional, tag="4")]
         pub end: ::std::option::Option<i32>,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
 }
 /// `Any` contains an arbitrary serialized protocol buffer message along with a
@@ -971,6 +1025,8 @@ pub struct Any {
     /// Must be a valid serialized protocol buffer of the above specified type.
     #[prost(bytes, tag="2")]
     pub value: Vec<u8>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.
@@ -980,6 +1036,8 @@ pub struct SourceContext {
     /// protobuf element.  For example: `"google/protobuf/source_context.proto"`.
     #[prost(string, tag="1")]
     pub file_name: String,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// A protocol buffer message type.
 #[derive(Clone, PartialEq, Message)]
@@ -1002,6 +1060,8 @@ pub struct Type {
     /// The source syntax.
     #[prost(enumeration="Syntax", tag="6")]
     pub syntax: i32,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// A single field of a message type.
 #[derive(Clone, PartialEq, Message)]
@@ -1038,6 +1098,8 @@ pub struct Field {
     /// The string value of the default value of this field. Proto2 syntax only.
     #[prost(string, tag="11")]
     pub default_value: String,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod field {
     /// Basic field types.
@@ -1113,6 +1175,8 @@ pub struct Enum {
     /// The source syntax.
     #[prost(enumeration="Syntax", tag="5")]
     pub syntax: i32,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Enum value definition.
 #[derive(Clone, PartialEq, Message)]
@@ -1126,6 +1190,8 @@ pub struct EnumValue {
     /// Protocol buffer options.
     #[prost(message, repeated, tag="3")]
     pub options: ::std::vec::Vec<Option>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// A protocol buffer option, which can be attached to a message, field,
 /// enumeration, etc.
@@ -1143,6 +1209,8 @@ pub struct Option {
     /// value using the google.protobuf.Int32Value type.
     #[prost(message, optional, tag="2")]
     pub value: ::std::option::Option<Any>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// The syntax in which a protocol buffer element is defined.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
@@ -1206,6 +1274,8 @@ pub struct Api {
     /// The source syntax of the service.
     #[prost(enumeration="Syntax", tag="7")]
     pub syntax: i32,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Method represents a method of an API interface.
 #[derive(Clone, PartialEq, Message)]
@@ -1231,6 +1301,8 @@ pub struct Method {
     /// The source syntax of this method.
     #[prost(enumeration="Syntax", tag="7")]
     pub syntax: i32,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// Declares an API Interface to be included in this interface. The including
 /// interface must redeclare all the methods from the included interface, but
@@ -1319,6 +1391,8 @@ pub struct Mixin {
     /// are rooted.
     #[prost(string, tag="2")]
     pub root: String,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// A Duration represents a signed, fixed-length span of time represented
 /// as a count of seconds and fractions of seconds at nanosecond
@@ -1395,6 +1469,8 @@ pub struct Duration {
     /// to +999,999,999 inclusive.
     #[prost(int32, tag="2")]
     pub nanos: i32,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// `FieldMask` represents a set of symbolic field paths, for example:
 ///
@@ -1608,6 +1684,8 @@ pub struct FieldMask {
     /// The set of field mask paths.
     #[prost(string, repeated, tag="1")]
     pub paths: ::std::vec::Vec<String>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// `Struct` represents a structured data value, consisting of fields
 /// which map to dynamically typed values. In some languages, `Struct`
@@ -1622,6 +1700,8 @@ pub struct Struct {
     /// Unordered map of dynamically typed values.
     #[prost(btree_map="string, message", tag="1")]
     pub fields: ::std::collections::BTreeMap<String, Value>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// `Value` represents a dynamically typed value which can be either
 /// null, a number, a string, a boolean, a recursive struct value, or a
@@ -1634,6 +1714,8 @@ pub struct Value {
     /// The kind of value.
     #[prost(oneof="value::Kind", tags="1, 2, 3, 4, 5, 6")]
     pub kind: ::std::option::Option<value::Kind>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod value {
     /// The kind of value.
@@ -1667,6 +1749,8 @@ pub struct ListValue {
     /// Repeated field of dynamically typed values.
     #[prost(message, repeated, tag="1")]
     pub values: ::std::vec::Vec<Value>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// `NullValue` is a singleton enumeration to represent the null value for the
 /// `Value` type union.
@@ -1768,4 +1852,6 @@ pub struct Timestamp {
     /// inclusive.
     #[prost(int32, tag="2")]
     pub nanos: i32,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }

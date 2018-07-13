@@ -20,24 +20,30 @@ fn test() {
     let mut widget_factory = widget::factory::WidgetFactory::default();
     assert_eq!(0, widget_factory.encoded_len());
 
-    widget_factory.inner = Some(widget::factory::widget_factory::Inner {});
+    widget_factory.inner = Some(widget::factory::widget_factory::Inner {
+        ..Default::default()
+    });
     assert_eq!(2, widget_factory.encoded_len());
 
-    widget_factory.root = Some(Root {});
+    widget_factory.root = Some(Root {..Default::default()});
     assert_eq!(4, widget_factory.encoded_len());
 
-    widget_factory.root_inner = Some(root::Inner {});
+    widget_factory.root_inner = Some(root::Inner {..Default::default()});
     assert_eq!(6, widget_factory.encoded_len());
 
-    widget_factory.widget = Some(widget::Widget {});
+    widget_factory.widget = Some(widget::Widget {..Default::default()});
     assert_eq!(8, widget_factory.encoded_len());
 
-    widget_factory.widget_inner = Some(widget::widget::Inner {});
+    widget_factory.widget_inner = Some(widget::widget::Inner {
+        ..Default::default()
+    });
     assert_eq!(10, widget_factory.encoded_len());
 
-    widget_factory.gizmo = Some(gizmo::Gizmo {});
+    widget_factory.gizmo = Some(gizmo::Gizmo {..Default::default()});
     assert_eq!(12, widget_factory.encoded_len());
 
-    widget_factory.gizmo_inner = Some(gizmo::gizmo::Inner {});
+    widget_factory.gizmo_inner = Some(gizmo::gizmo::Inner {
+        ..Default::default()
+    });
     assert_eq!(14, widget_factory.encoded_len());
 }

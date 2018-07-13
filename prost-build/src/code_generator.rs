@@ -198,6 +198,8 @@ impl <'a> CodeGenerator<'a> {
         }
         self.path.pop();
 
+        self.append_unknown_fields_field();
+
         self.depth -= 1;
         self.push_indent();
         self.buf.push_str("}\n");
@@ -435,6 +437,13 @@ impl <'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("}\n");
+    }
+
+    fn append_unknown_fields_field(&mut self) {
+        self.push_indent();
+        self.buf.push_str("#[prost(unknown_field_set)]\n");
+        self.push_indent();
+        self.buf.push_str("pub unknown_fields: ::prost::UnknownFieldSet,\n");
     }
 
     fn location(&self) -> &Location {

@@ -11,6 +11,7 @@
 
 #[macro_use]
 extern crate prost_derive;
+extern crate prost;
 
 use std::i32;
 use std::i64;
@@ -60,7 +61,7 @@ impl From<time::Duration> for Duration {
         let seconds = if seconds > i64::MAX as u64 { i64::MAX } else { seconds as i64 };
         let nanos = duration.subsec_nanos();
         let nanos = if nanos > i32::MAX as u32 { i32::MAX } else { nanos as i32 };
-        let mut duration = Duration { seconds, nanos };
+        let mut duration = Duration { seconds, nanos, ..Default::default() };
         duration.normalize();
         duration
     }
@@ -112,6 +113,7 @@ impl From<time::SystemTime> for Timestamp {
         Timestamp {
             seconds: duration.seconds,
             nanos: duration.nanos,
+            ..Default::default()
         }
     }
 }
@@ -129,6 +131,7 @@ impl From<Timestamp> for Result<time::SystemTime, time::Duration> {
             let mut duration = Duration {
                 seconds: -timestamp.seconds,
                 nanos: timestamp.nanos,
+                ..Default::default()
             };
             duration.normalize();
             Err(time::Duration::new(duration.seconds as u64, duration.nanos as u32))

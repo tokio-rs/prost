@@ -11,6 +11,8 @@ pub struct Version {
     /// be empty for mainline stable releases.
     #[prost(string, optional, tag="4")]
     pub suffix: ::std::option::Option<String>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[derive(Clone, PartialEq, Message)]
@@ -42,6 +44,8 @@ pub struct CodeGeneratorRequest {
     /// The version number of protocol compiler.
     #[prost(message, optional, tag="3")]
     pub compiler_version: ::std::option::Option<Version>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
 #[derive(Clone, PartialEq, Message)]
@@ -58,6 +62,8 @@ pub struct CodeGeneratorResponse {
     pub error: ::std::option::Option<String>,
     #[prost(message, repeated, tag="15")]
     pub file: ::std::vec::Vec<code_generator_response::File>,
+    #[prost(unknown_field_set)]
+    pub unknown_fields: ::prost::UnknownFieldSet,
 }
 pub mod code_generator_response {
     /// Represents a single generated file.
@@ -118,5 +124,7 @@ pub mod code_generator_response {
         /// The file contents.
         #[prost(string, optional, tag="15")]
         pub content: ::std::option::Option<String>,
+        #[prost(unknown_field_set)]
+        pub unknown_fields: ::prost::UnknownFieldSet,
     }
 }
