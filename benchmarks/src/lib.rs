@@ -43,7 +43,7 @@ pub fn bench_message_decode<M>(b: &mut test::Bencher, bytes: &[u8]) where M: Mes
 
 // Encoded GoogleMessage1 extracted from the protobuf cpp benchmarks.
 // https://github.com/google/protobuf/tree/3.3.x/benchmarks
-pub const GOOGLE_MESSAGE1: &'static [u8] = include_bytes!(env!("GOOGLE_MESSAGE1"));
+pub const GOOGLE_MESSAGE1: &'static [u8] = include_bytes!(env!("DATASET_GOOGLE_MESSAGE1_PROTO2"));
 
 pub mod proto2 {
     use bytes::IntoBuf;

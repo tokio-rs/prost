@@ -14,7 +14,7 @@ use flate2::bufread::GzDecoder;
 use tar::Archive;
 use tempdir::TempDir;
 
-const VERSION: &'static str = "3.5.1.1";
+const VERSION: &'static str = "3.6.0.1";
 
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
@@ -63,21 +63,14 @@ fn main() {
                         .expect("failed to execute make conformance");
         assert!(rc.success(), "failed to make protobuf");
 
-        // Copy .protos and data into the install directory.
-        fs::create_dir(prefix_dir.join("share")).expect("failed to create share directory");
-        fs::create_dir(prefix_dir.join("include").join("benchmarks"))
-           .expect("failed to create benchmarks include directory");
+        // Move conformance.proto to the install directory.
         fs::create_dir(prefix_dir.join("include").join("conformance"))
-           .expect("failed to create conformance include directory");
+            .expect("failed to create conformance include directory");
+        fs::rename(src_dir.join("conformance").join("conformance.proto"),
+                   prefix_dir.join("include").join("conformance").join("conformance.proto"))
+            .expect(&format!("failed to move conformance.proto"));
 
-        for proto in &[
-            "benchmarks/benchmark_messages_proto2.proto",
-            "benchmarks/benchmark_messages_proto3.proto",
-            "conformance/conformance.proto"
-        ] {
-            fs::rename(src_dir.join(proto), prefix_dir.join("include").join(proto))
-               .expect(&format!("failed to move {}", proto));
-        }
+        // Move test message protos to the install directory.
         for proto in &[
             "google/protobuf/test_messages_proto2.proto",
             "google/protobuf/test_messages_proto3.proto",
@@ -89,10 +82,15 @@ fn main() {
                .expect(&format!("failed to move {}", proto));
         }
 
-        for dat in &["google_message1.dat", "google_message2.dat"] {
-            fs::rename(src_dir.join("benchmarks").join(dat), prefix_dir.join("share").join(dat))
-            .expect(&format!("failed to move {}", dat));
-        }
+        // Move the benchmark datasets to the install directory.
+        fs::create_dir(prefix_dir.join("include").join("benchmarks"))
+            .expect("failed to create conformance include directory");
+        fs::rename(src_dir.join("benchmarks").join("benchmarks.proto"),
+                   prefix_dir.join("include").join("benchmarks").join("benchmarks.proto"))
+            .expect(&format!("failed to move benchmarks.proto"));
+        fs::rename(src_dir.join("benchmarks").join("datasets"),
+                   prefix_dir.join("include").join("benchmarks").join("datasets"))
+            .expect(&format!("failed to move benchmark datasets"));
 
         fs::rename(&prefix_dir, &protobuf_dir).expect("unable to move temporary directory");
     }
