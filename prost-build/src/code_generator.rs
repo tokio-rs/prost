@@ -301,7 +301,23 @@ impl <'a> CodeGenerator<'a> {
                 }
                 self.buf.push_str("\\\"");
             } else if type_ == Type::Enum {
-                self.buf.push_str(&to_upper_camel(default));
+                let enum_value = to_upper_camel(default);
+                let stripped_prefix = if self.config.strip_enum_prefix {
+                    // Field types are fully qualified, so we extract
+                    // the last segment and strip it from the left
+                    // side of the default value.
+                    let enum_type = field
+                        .type_name
+                        .as_ref()
+                        .and_then(|ty| ty.split('.').last())
+                        .unwrap();
+                    // TODO(danburkert): trim_left_matches doesn't account for word-breaks
+                    // (underscores), and can match multiple prefixes.
+                    enum_value.trim_left_matches(enum_type)
+                } else {
+                    default
+                };
+                self.buf.push_str(&to_upper_camel(stripped_prefix));
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
                 // safer, we should unescape the Protobuf string and re-escape it with the Rust
