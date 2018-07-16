@@ -63,6 +63,14 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
+/// Issue https://github.com/danburkert/prost/issues/118
+///
+/// When a message contains an enum field with a default value, we
+/// must ensure that the appropriate name conventions are used.
+pub mod default_enum_value {
+    include!(concat!(env!("OUT_DIR"), "/default_enum_value.rs"));
+}
+
 use std::error::Error;
 
 use bytes::{Buf, IntoBuf};
@@ -278,5 +286,13 @@ mod tests {
                 }))
             })))
         };
+    }
+
+    #[test]
+    fn test_default_enum() {
+        let msg = default_enum_value::Test::default();
+        assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
+        assert_eq!(msg.privacy_level_3(), default_enum_value::PrivacyLevel::PrivacyLevelThree);
+        assert_eq!(msg.privacy_level_4(), default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour);
     }
 }
