@@ -1,7 +1,10 @@
-use test;
+#![feature(test)]
+
+extern crate bytes;
+extern crate prost;
+extern crate test;
 
 use bytes::IntoBuf;
-
 use prost::encoding::{
     decode_varint,
     encode_varint,
