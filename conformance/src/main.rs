@@ -1,12 +1,8 @@
 extern crate bytes;
 extern crate env_logger;
 extern crate prost;
+extern crate protobuf;
 extern crate tests;
-
-#[macro_use]
-extern crate prost_derive;
-
-include!(concat!(env!("OUT_DIR"), "/conformance.rs"));
 
 use std::io::{
     Read,
@@ -20,8 +16,15 @@ use bytes::{
 };
 use prost::Message;
 
-use tests::protobuf_test_messages::proto2::TestAllTypesProto2;
-use tests::protobuf_test_messages::proto3::TestAllTypesProto3;
+use protobuf::test_messages::proto2::TestAllTypesProto2;
+use protobuf::test_messages::proto3::TestAllTypesProto3;
+use protobuf::conformance::{
+    ConformanceRequest,
+    ConformanceResponse,
+    WireFormat,
+    conformance_request,
+    conformance_response,
+};
 use tests::{
     RoundtripResult,
     roundtrip,

@@ -17,7 +17,6 @@ appveyor = { repository = "danburkert/prost" }
 
 [workspace]
 members = [
-  "benchmarks",
   "conformance",
   "prost-build",
   "prost-derive",
@@ -36,7 +35,17 @@ byteorder = "1"
 bytes = "0.4.7"
 
 [dev-dependencies]
+criterion = "0.2"
 env_logger = { version = "0.5", default-features = false }
+failure = "0.1"
 log = "0.4"
 prost-derive = { version = "0.4.0", path = "prost-derive" }
+protobuf = { path = "protobuf" }
 quickcheck = "0.6"
+
+[[bench]]
+name = "varint"
+
+[[bench]]
+name = "benchmark"
+harness = false
