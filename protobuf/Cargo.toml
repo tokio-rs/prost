@@ -4,9 +4,16 @@ version = "0.0.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false
 
+[dependencies]
+bytes = "0.4.7"
+prost = { path = ".." }
+prost-derive = { path = "../prost-derive" }
+prost-types = { path = "../prost-types" }
+
 [build-dependencies]
 cfg-if = "0.1"
 curl = "0.4"
 flate2 = "1.0"
+prost-build = { path = "../prost-build" }
 tar = "0.4"
 tempdir = "0.3"

@@ -1,14 +1,8 @@
-pub mod protobuf_unittest {
-    include!(concat!(env!("OUT_DIR"), "/protobuf_unittest.rs"));
-}
-
-pub mod protobuf_unittest_import {
-    include!(concat!(env!("OUT_DIR"), "/protobuf_unittest_import.rs"));
-}
-
 #[test]
 fn extreme_default_values() {
     use std::{f32, f64};
+    use protobuf::test_messages::protobuf_unittest;
+
     let pb = protobuf_unittest::TestExtremeDefaultValues::default();
 
     assert_eq!(b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE", pb.escaped_bytes());

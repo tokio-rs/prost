@@ -18,6 +18,7 @@ bytes = "0.4.7"
 prost = { path = ".." }
 prost-derive = { path = "../prost-derive" }
 prost-types = { path = "../prost-types" }
+protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
 diff = "0.1"

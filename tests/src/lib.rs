@@ -1,6 +1,7 @@
 extern crate bytes;
 extern crate prost;
 extern crate prost_types;
+extern crate protobuf;
 
 #[macro_use] extern crate prost_derive;
 
@@ -14,21 +15,6 @@ pub mod unittest;
 #[cfg(test)] mod debug;
 #[cfg(test)] mod message_encoding;
 #[cfg(test)] mod no_unused_results;
-
-pub mod protobuf_test_messages {
-    pub mod proto2 {
-        include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto2.rs"));
-    }
-    pub mod proto3 {
-        include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto3.rs"));
-    }
-}
-
-pub mod google {
-    pub mod protobuf {
-        include!(concat!(env!("OUT_DIR"), "/google.protobuf.rs"));
-    }
-}
 
 pub mod foo {
     pub mod bar_baz {
@@ -190,7 +176,7 @@ mod tests {
 
     use std::collections::{BTreeMap, BTreeSet};
 
-    use protobuf_test_messages::proto3::TestAllTypesProto3;
+    use protobuf::test_messages::proto3::TestAllTypesProto3;
     use super::*;
 
     #[test]
