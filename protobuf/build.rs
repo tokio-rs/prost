@@ -52,10 +52,12 @@ fn main() {
         let tempdir = TempDir::new_in(out_dir, "protobuf")
                               .expect("failed to create temporary directory");
 
-        let src_dir = download_protobuf(tempdir.path());
-        let prefix_dir = build_protobuf(&src_dir);
-        move_protos(&src_dir, &prefix_dir);
-        move_datasets(&src_dir, &prefix_dir);
+        let src_dir = &download_protobuf(tempdir.path());
+        let prefix_dir = &src_dir.join("prefix");
+        fs::create_dir(prefix_dir).expect("failed to create prefix directory");
+        install_conformance_test_runner(src_dir, prefix_dir);
+        install_protos(src_dir, prefix_dir);
+        install_datasets(src_dir, prefix_dir);
         fs::rename(prefix_dir, protobuf_dir).expect("failed to move protobuf dir");
     }
 
@@ -87,8 +89,8 @@ fn main() {
             test_includes.join("unittest.proto"),
         ], &[include_dir.to_path_buf()]).unwrap();
 
-    // Emit an environment variable with the path to the conformance test runner
-    // so that it can be used in the conformance tests.
+    // Emit an environment variable with the path to the build so that it can be located in the
+    // main crate.
     println!("cargo:rustc-env=PROTOBUF={}", protobuf_dir.display());
 }
 
@@ -118,46 +120,45 @@ fn download_protobuf(out_dir: &Path) -> PathBuf {
     out_dir.join(format!("protobuf-{}", VERSION))
 }
 
-fn build_protobuf(src_dir: &Path) -> PathBuf {
-    let prefix_dir = src_dir.join("prefix");
-    fs::create_dir(&prefix_dir).expect("failed to create prefix directory");
+fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) {
+    #[cfg(not(windows))]
+    {
+        // Build and install protoc, the protobuf libraries, and the conformance test runner.
+        let rc = Command::new("./autogen.sh")
+                        .current_dir(&src_dir)
+                        .status()
+                        .expect("failed to execute autogen.sh");
+        assert!(rc.success(), "protobuf autogen.sh failed");
 
-    // Build and install protoc, the protobuf libraries, and the conformance test runner.
-    let rc = Command::new("./autogen.sh")
-                    .current_dir(&src_dir)
-                    .status()
-                    .expect("failed to execute autogen.sh");
-    assert!(rc.success(), "protobuf autogen.sh failed");
+        let num_jobs = env::var("NUM_JOBS").expect("NUM_JOBS environment variable not set");
 
-    let num_jobs = env::var("NUM_JOBS").expect("NUM_JOBS environment variable not set");
+        let rc = Command::new("./configure")
+                        .arg("--disable-shared")
+                        .arg("--prefix").arg(&prefix_dir)
+                        .current_dir(&src_dir)
+                        .status()
+                        .expect("failed to execute configure");
+        assert!(rc.success(), "failed to configure protobuf");
 
-    let rc = Command::new("./configure")
-                    .arg("--disable-shared")
-                    .arg("--prefix").arg(&prefix_dir)
-                    .current_dir(&src_dir)
-                    .status()
-                    .expect("failed to execute configure");
-    assert!(rc.success(), "failed to configure protobuf");
+        let rc = Command::new("make")
+                        .arg("-j").arg(&num_jobs)
+                        .arg("install")
+                        .current_dir(&src_dir)
+                        .status()
+                        .expect("failed to execute make protobuf");
+        assert!(rc.success(), "failed to make protobuf");
 
-    let rc = Command::new("make")
-                    .arg("-j").arg(&num_jobs)
-                    .arg("install")
-                    .current_dir(&src_dir)
-                    .status()
-                    .expect("failed to execute make protobuf");
-    assert!(rc.success(), "failed to make protobuf");
-
-    let rc = Command::new("make")
-                    .arg("-j").arg(&num_jobs)
-                    .arg("install")
-                    .current_dir(src_dir.join("conformance"))
-                    .status()
-                    .expect("failed to execute make conformance");
-    assert!(rc.success(), "failed to make conformance");
-    prefix_dir
+        let rc = Command::new("make")
+                        .arg("-j").arg(&num_jobs)
+                        .arg("install")
+                        .current_dir(src_dir.join("conformance"))
+                        .status()
+                        .expect("failed to execute make conformance");
+        assert!(rc.success(), "failed to make conformance");
+    }
 }
 
-fn move_protos(src_dir: &Path, prefix_dir: &Path) {
+fn install_protos(src_dir: &Path, prefix_dir: &Path) {
     let include_dir = prefix_dir.join("include");
 
     // Move test protos to the prefix directory.
@@ -166,7 +167,7 @@ fn move_protos(src_dir: &Path, prefix_dir: &Path) {
     for proto in TEST_PROTOS {
         fs::rename(src_dir.join("src").join("google").join("protobuf").join(proto),
                    test_include_dir.join(proto))
-            .expect(&format!("failed to move {}", /*proto*/ src_dir.join("src").join("google").join("protobuf").join(proto).display()));
+            .expect(&format!("failed to move {}", proto));
     }
 
     // Move conformance.proto to the install directory.
@@ -195,7 +196,7 @@ fn move_protos(src_dir: &Path, prefix_dir: &Path) {
     }
 }
 
-fn move_datasets(src_dir: &Path, prefix_dir: &Path) {
+fn install_datasets(src_dir: &Path, prefix_dir: &Path) {
     let share_dir = &prefix_dir.join("share");
     fs::create_dir(share_dir)
         .expect("failed to create share directory");

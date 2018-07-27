@@ -22,9 +22,8 @@ build: false
 
 test_script:
   - SET RUST_BACKTRACE=1
-    # The 'protobuf' crate can't be compiled on Windows, which means none of the
-    # integration tests or benchmarks can be run.
-  - cargo test --target %TARGET% -p prost -p prost-build -p prost-types
+    # The Protobuf conformance test runner can't be compiled on Windows.
+  - cargo test --target %TARGET% --all --exclude conformance
 
 cache:
   - C:\Users\appveyor\.cargo\registry
