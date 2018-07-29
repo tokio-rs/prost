@@ -311,9 +311,7 @@ impl <'a> CodeGenerator<'a> {
                         .as_ref()
                         .and_then(|ty| ty.split('.').last())
                         .unwrap();
-                    // TODO(danburkert): trim_left_matches doesn't account for word-breaks
-                    // (underscores), and can match multiple prefixes.
-                    enum_value.trim_left_matches(enum_type)
+                    strip_enum_prefix(enum_type, &enum_value)
                 } else {
                     default
                 };
@@ -517,17 +515,10 @@ impl <'a> CodeGenerator<'a> {
         self.push_indent();
         let name = to_upper_camel(value.name());
         let name_unprefixed = match prefix_to_strip {
-            Some(prefix) => {
-                let is_prefixed = name.starts_with(&prefix) && name != prefix;
-                if is_prefixed {
-                    let prefix_len = prefix.len();
-                    name[prefix_len..].to_string()
-                }
-                else { name }
-            },
-            None => name
+            Some(prefix) => strip_enum_prefix(&prefix, &name),
+            None => &name,
         };
-        self.buf.push_str(&name_unprefixed);
+        self.buf.push_str(name_unprefixed);
         self.buf.push_str(" = ");
         self.buf.push_str(&value.number().to_string());
         self.buf.push_str(",\n");
@@ -865,6 +856,34 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
     dst
 }
 
+/// Strip an enum's type name from the prefix of an enum value.
+///
+/// This function assumes that both have been formatted to Rust's
+/// upper camel case naming conventions.
+///
+/// It also tries to handle cases where the stripped name would be
+/// invalid - for example, if it were to begin with a number.
+fn strip_enum_prefix<'a>(prefix: &str, name: &'a str) -> &'a str {
+    let stripped = if name.starts_with(prefix) {
+        &name[prefix.len()..]
+    } else {
+        name
+    };
+    // If the next character after the stripped prefix is not
+    // uppercase, then it means that we didn't have a true prefix -
+    // for example, "Foo" should not be stripped from "Foobar".
+    if stripped
+        .chars()
+        .next()
+        .map(char::is_uppercase)
+        .unwrap_or(false)
+    {
+        stripped
+    } else {
+        name
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -880,5 +899,14 @@ mod tests {
 
         assert_eq!(&b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"[..],
                    &unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe"#)[..]);
+    }
+
+    #[test]
+    fn test_strip_enum_prefix() {
+        assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
+        assert_eq!(strip_enum_prefix("Foo", "Foobar"), "Foobar");
+        assert_eq!(strip_enum_prefix("Foo", "Foo"), "Foo");
+        assert_eq!(strip_enum_prefix("Foo", "Bar"), "Bar");
+        assert_eq!(strip_enum_prefix("Foo", "Foo1"), "Foo1");
     }
 }
