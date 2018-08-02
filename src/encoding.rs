@@ -703,15 +703,21 @@ macro_rules! map {
                                                tag: u32,
                                                values: &$map_ty<K, V>,
                                                buf: &mut B)
-        where K: Default + Eq + Hash + Ord,
-              V: Default + PartialEq,
+        where K: Eq + Hash + Ord,
+              V: PartialEq,
               B: BufMut,
               KE: Fn(u32, &K, &mut B),
               KL: Fn(u32, &K) -> usize,
               VE: Fn(u32, &V, &mut B),
-              VL: Fn(u32, &V) -> usize {
-            encode_with_default(key_encode, key_encoded_len, val_encode, val_encoded_len,
-                                &V::default(), tag, values, buf)
+              VL: Fn(u32, &V) -> usize
+        {
+            for (key, val) in values.iter() {
+                let len = key_encoded_len(1, key) + val_encoded_len(2, val);
+                encode_key(tag, WireType::LengthDelimited, buf);
+                encode_varint(len as u64, buf);
+                key_encode(1, key, buf);
+                val_encode(2, val, buf);
+            }
         }
 
         /// Generic protobuf map merge function.
@@ -734,49 +740,15 @@ macro_rules! map {
                                          tag: u32,
                                          values: &$map_ty<K, V>)
                                          -> usize
-        where K: Default + Eq + Hash + Ord,
-              V: Default + PartialEq,
-              KL: Fn(u32, &K) -> usize,
-              VL: Fn(u32, &V) -> usize {
-            encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(),
-                                        tag, values)
-        }
-
-        /// Generic protobuf map encode function with an overriden value default.
-        ///
-        /// This is necessary because enumeration values can have a default value other
-        /// than 0 in proto2.
-        pub fn encode_with_default<K, V, B, KE, KL, VE, VL>(key_encode: KE,
-                                                            key_encoded_len: KL,
-                                                            val_encode: VE,
-                                                            val_encoded_len: VL,
-                                                            val_default: &V,
-                                                            tag: u32,
-                                                            values: &$map_ty<K, V>,
-                                                            buf: &mut B)
-        where K: Default + Eq + Hash + Ord,
+        where K: Eq + Hash + Ord,
               V: PartialEq,
-              B: BufMut,
-              KE: Fn(u32, &K, &mut B),
               KL: Fn(u32, &K) -> usize,
-              VE: Fn(u32, &V, &mut B),
-              VL: Fn(u32, &V) -> usize {
-            for (key, val) in values.iter() {
-                let skip_key = key == &K::default();
-                let skip_val = val == val_default;
-
-                let len = (if skip_key { 0 } else { key_encoded_len(1, key) }) +
-                        (if skip_val { 0 } else { val_encoded_len(2, val) });
-
-                encode_key(tag, WireType::LengthDelimited, buf);
-                encode_varint(len as u64, buf);
-                if !skip_key {
-                    key_encode(1, key, buf);
-                }
-                if !skip_val {
-                    val_encode(2, val, buf);
-                }
-            }
+              VL: Fn(u32, &V) -> usize
+        {
+            key_len(tag) * values.len() + values.iter().map(|(key, val)| {
+                let len = key_encoded_len(1, key) + val_encoded_len(2, val);
+                encoded_len_varint(len as u64) + len
+            }).sum::<usize>()
         }
 
         /// Generic protobuf map merge function with an overriden value default.
@@ -807,27 +779,6 @@ macro_rules! map {
             values.insert(key, val);
 
             Ok(())
-        }
-
-        /// Generic protobuf map encode function with an overriden value default.
-        ///
-        /// This is necessary because enumeration values can have a default value other
-        /// than 0 in proto2.
-        pub fn encoded_len_with_default<K, V, KL, VL>(key_encoded_len: KL,
-                                                      val_encoded_len: VL,
-                                                      val_default: &V,
-                                                      tag: u32,
-                                                      values: &$map_ty<K, V>)
-                                                      -> usize
-        where K: Default + Eq + Hash + Ord,
-              V: PartialEq,
-              KL: Fn(u32, &K) -> usize,
-              VL: Fn(u32, &V) -> usize {
-            key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-                let len = (if key == &K::default() { 0 } else { key_encoded_len(1, key) })
-                        + (if val == val_default { 0 } else { val_encoded_len(2, val) });
-                encoded_len_varint(len as u64) + len
-            }).sum::<usize>()
         }
     )
 }

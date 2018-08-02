@@ -130,34 +130,23 @@ impl Field {
         let ke = quote!(_prost::encoding::#key_mod::encode);
         let kl = quote!(_prost::encoding::#key_mod::encoded_len);
         let module = self.map_ty.module();
-        match self.value_ty {
-            ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
-                let default = quote!(#ty::default() as i32);
-                quote! {
-                    _prost::encoding::#module::encode_with_default(#ke, #kl,
-                                                                   _prost::encoding::int32::encode,
-                                                                   _prost::encoding::int32::encoded_len,
-                                                                   &(#default),
-                                                                   #tag, &#ident, buf);
-                }
+        let (ve, vl) = match self.value_ty {
+            ValueTy::Scalar(scalar::Ty::Enumeration(_)) => {
+                (quote!(_prost::encoding::int32::encode),
+                 quote!(_prost::encoding::int32::encoded_len))
             },
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
-                let ve = quote!(_prost::encoding::#val_mod::encode);
-                let vl = quote!(_prost::encoding::#val_mod::encoded_len);
-                quote! {
-                    _prost::encoding::#module::encode(#ke, #kl, #ve, #vl,
-                                                      #tag, &#ident, buf);
-                }
+                (quote!(_prost::encoding::#val_mod::encode),
+                 quote!(_prost::encoding::#val_mod::encoded_len))
             },
             ValueTy::Message => {
-                quote! {
-                    _prost::encoding::#module::encode(#ke, #kl,
-                                                      _prost::encoding::message::encode,
-                                                      _prost::encoding::message::encoded_len,
-                                                      #tag, &#ident, buf);
-                }
+                (quote!(_prost::encoding::message::encode),
+                 quote!(_prost::encoding::message::encoded_len))
             },
+        };
+        quote! {
+            _prost::encoding::#module::encode(#ke, #kl, #ve, #vl, #tag, &#ident, buf);
         }
     }
 
@@ -180,9 +169,9 @@ impl Field {
                 let vm = quote!(_prost::encoding::#val_mod::merge);
                 quote!(_prost::encoding::#module::merge(#km, #vm, &mut #ident, buf))
             },
-            ValueTy::Message => {
-                quote!(_prost::encoding::#module::merge(#km, _prost::encoding::message::merge,
-                                                        &mut #ident, buf))
+            ValueTy::Message => quote! {
+                _prost::encoding::#module::merge(#km, _prost::encoding::message::merge,
+                                                 &mut #ident, buf)
             },
         }
     }
@@ -193,25 +182,19 @@ impl Field {
         let key_mod = self.key_ty.module();
         let kl = quote!(_prost::encoding::#key_mod::encoded_len);
         let module = self.map_ty.module();
-        match self.value_ty {
-            ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
-                let default = quote!(#ty::default() as i32);
-                quote! {
-                    _prost::encoding::#module::encoded_len_with_default(
-                        #kl, _prost::encoding::int32::encoded_len,
-                        &(#default), #tag, &#ident)
-                }
+        let vl = match self.value_ty {
+            ValueTy::Scalar(scalar::Ty::Enumeration(_)) => {
+                quote!(_prost::encoding::int32::encoded_len)
             },
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
-                let vl = quote!(_prost::encoding::#val_mod::encoded_len);
-                quote!(_prost::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
+                quote!(_prost::encoding::#val_mod::encoded_len)
             },
             ValueTy::Message => {
-                quote!(_prost::encoding::#module::encoded_len(#kl, _prost::encoding::message::encoded_len,
-                                                              #tag, &#ident))
+                quote!(_prost::encoding::message::encoded_len)
             },
-        }
+        };
+        quote!(_prost::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
