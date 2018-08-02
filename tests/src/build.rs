@@ -2,6 +2,10 @@ extern crate env_logger;
 extern crate prost_build;
 extern crate protobuf;
 
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+
 fn main() {
     let _ = env_logger::init();
 
@@ -25,9 +29,6 @@ fn main() {
     prost_build.field_attribute("Foo.Custom.Attrs.Msg.field.a", "/// Oneof A docs");
     prost_build.field_attribute("Foo.Custom.Attrs.Msg.field.b", "/// Oneof B docs");
 
-    prost_build.compile_protos(&["src/packages/widget_factory.proto"],
-                               &["src/packages"]).unwrap();
-
     prost_build.compile_protos(&["src/ident_conversion.proto"],
                                &["src"]).unwrap();
 
@@ -48,4 +49,17 @@ fn main() {
 
     prost_build.compile_protos(&["src/default_enum_value.proto"],
                                &["src"]).unwrap();
+
+    prost_build.compile_protos(&["src/packages/widget_factory.proto"],
+                               &["src/packages"]).unwrap();
+
+    // Compile some of the modules examples as an extern_path.
+    let extern_path = &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
+        .join("extern_paths");
+    fs::create_dir_all(extern_path).expect("failed to create prefix directory");
+
+    prost_build.out_dir(extern_path)
+               .extern_path(".packages.gizmo", "::packages::gizmo")
+               .compile_protos(&["src/packages/widget_factory.proto"],
+                               &["src/packages"]).unwrap();
 }

@@ -8,6 +8,7 @@ extern crate protobuf;
 #[cfg(test)] extern crate tempdir;
 #[cfg(test)] extern crate prost_build;
 
+pub mod extern_paths;
 pub mod packages;
 pub mod unittest;
 
