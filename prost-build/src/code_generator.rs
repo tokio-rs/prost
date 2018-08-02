@@ -127,8 +127,8 @@ impl <'a> CodeGenerator<'a> {
         let message_name = message.name().to_string();
         let fq_message_name = format!(".{}.{}", self.package, message.name());
 
-        // Skip Protobuf well-known types.
-        if self.well_known_type(&fq_message_name).is_some() { return; }
+        // Skip known types.
+        if self.known_type(&fq_message_name).is_some() { return; }
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
@@ -471,7 +471,7 @@ impl <'a> CodeGenerator<'a> {
         let enum_name = &desc.name();
         let enum_values = &desc.value;
         let fq_enum_name = format!(".{}.{}", self.package, enum_name);
-        if self.well_known_type(&fq_enum_name).is_some() { return; }
+        if self.known_type(&fq_enum_name).is_some() { return; }
 
         self.append_doc();
         self.push_indent();
@@ -605,22 +605,22 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type<'b>(&self, field: &'b FieldDescriptorProto) -> Cow<'b, str> {
+    fn resolve_type(&self, field: &FieldDescriptorProto) -> String {
         match field.type_() {
-            Type::Float => Cow::Borrowed("f32"),
-            Type::Double => Cow::Borrowed("f64"),
-            Type::Uint32 | Type::Fixed32 => Cow::Borrowed("u32"),
-            Type::Uint64 | Type::Fixed64 => Cow::Borrowed("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => Cow::Borrowed("i32"),
-            Type::Int64 | Type::Sfixed64 | Type::Sint64 => Cow::Borrowed("i64"),
-            Type::Bool => Cow::Borrowed("bool"),
-            Type::String => Cow::Borrowed("String"),
-            Type::Bytes => Cow::Borrowed("Vec<u8>"),
+            Type::Float => String::from("f32"),
+            Type::Double => String::from("f64"),
+            Type::Uint32 | Type::Fixed32 => String::from("u32"),
+            Type::Uint64 | Type::Fixed64 => String::from("u64"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+            Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
+            Type::Bool => String::from("bool"),
+            Type::String => String::from("String"),
+            Type::Bytes => String::from("Vec<u8>"),
             Type::Group | Type::Message => {
-                if let Some(ty) = self.well_known_type(field.type_name()) {
-                    Cow::Borrowed(ty)
+                if let Some(ty) = self.known_type(field.type_name()) {
+                    String::from(ty)
                 } else {
-                    Cow::Owned(self.resolve_ident(field.type_name()))
+                    self.resolve_ident(field.type_name())
                 }
             },
         }
@@ -688,6 +688,15 @@ impl <'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
+    }
+
+    /// Returns the Rust type name for a Protobuf type.
+    ///
+    /// The Rust type name might either be one of the well-known Protobuf types or come from
+    /// user-defined mappings.
+    fn known_type(&self, fq_msg_type: &str) -> Option<&str> {
+        self.well_known_type(fq_msg_type)
+            .or_else(|| self.config.mapped_types.get(fq_msg_type).map(|s| s.as_str()))
     }
 
     /// Returns the prost_types name for a well-known Protobuf type, or `None` if the provided

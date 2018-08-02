@@ -205,6 +205,7 @@ pub struct Config {
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
     strip_enum_prefix: bool,
+    mapped_types: HashMap<String, String>,
     out_dir: Option<PathBuf>,
 }
 
@@ -359,6 +360,18 @@ impl Config {
         self
     }
 
+    /// Maps a Protobuf type to a Rust type. Both types must be fully-qualified.
+    pub fn map_type(&mut self, source: String, target: String) -> &mut Self {
+        self.mapped_types.insert(source, target);
+        self
+    }
+
+    /// Maps a set of Protobuf types to Rust types.
+    pub fn map_types(&mut self, map: HashMap<String, String>) -> &mut Self {
+        self.mapped_types.extend(map);
+        self
+    }
+
     /// Configures the code generator to not strip the enum name from variant names.
     ///
     /// Protobuf enum definitions commonly include the enum name as a prefix of every variant name.
@@ -479,6 +492,7 @@ impl default::Default for Config {
             field_attributes: Vec::new(),
             prost_types: true,
             strip_enum_prefix: true,
+            mapped_types: HashMap::new(),
             out_dir: None,
         }
     }
