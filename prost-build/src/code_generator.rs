@@ -1,6 +1,7 @@
 use std::ascii;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::iter;
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
@@ -22,6 +23,7 @@ use ast::{
     Method,
     Service,
 };
+use extern_paths::ExternPaths;
 use ident::{
     to_snake,
     match_ident,
@@ -51,6 +53,7 @@ pub struct CodeGenerator<'a> {
     source_info: SourceCodeInfo,
     syntax: Syntax,
     message_graph: &'a MessageGraph,
+    extern_paths: &'a ExternPaths,
     depth: u8,
     path: Vec<i32>,
     buf: &'a mut String,
@@ -59,6 +62,7 @@ pub struct CodeGenerator<'a> {
 impl <'a> CodeGenerator<'a> {
     pub fn generate(config: &mut Config,
                     message_graph: &MessageGraph,
+                    extern_paths: &ExternPaths,
                     file: FileDescriptorProto,
                     buf: &mut String) {
 
@@ -76,14 +80,15 @@ impl <'a> CodeGenerator<'a> {
         };
 
         let mut code_gen = CodeGenerator {
-            config: config,
+            config,
             package: file.package.unwrap(),
-            source_info: source_info,
-            syntax: syntax,
-            message_graph: message_graph,
+            source_info,
+            syntax,
+            message_graph,
+            extern_paths,
             depth: 0,
             path: Vec::new(),
-            buf: buf,
+            buf,
         };
 
         debug!("file: {:?}, package: {:?}", file.name.as_ref().unwrap(), code_gen.package);
@@ -127,8 +132,8 @@ impl <'a> CodeGenerator<'a> {
         let message_name = message.name().to_string();
         let fq_message_name = format!(".{}.{}", self.package, message.name());
 
-        // Skip known types.
-        if self.known_type(&fq_message_name).is_some() { return; }
+        // Skip external types.
+        if self.extern_paths.resolve_ident(&fq_message_name).is_some() { return; }
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
@@ -467,11 +472,11 @@ impl <'a> CodeGenerator<'a> {
     fn append_enum(&mut self, desc: EnumDescriptorProto) {
         debug!("  enum: {:?}", desc.name());
 
-        // Skip Protobuf well-known types.
+        // Skip external types.
         let enum_name = &desc.name();
         let enum_values = &desc.value;
         let fq_enum_name = format!(".{}.{}", self.package, enum_name);
-        if self.known_type(&fq_enum_name).is_some() { return; }
+        if self.extern_paths.resolve_ident(&fq_enum_name).is_some() { return; }
 
         self.append_doc();
         self.push_indent();
@@ -616,19 +621,17 @@ impl <'a> CodeGenerator<'a> {
             Type::Bool => String::from("bool"),
             Type::String => String::from("String"),
             Type::Bytes => String::from("Vec<u8>"),
-            Type::Group | Type::Message => {
-                if let Some(ty) = self.known_type(field.type_name()) {
-                    String::from(ty)
-                } else {
-                    self.resolve_ident(field.type_name())
-                }
-            },
+            Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
 
     fn resolve_ident(&self, pb_ident: &str) -> String {
         // protoc should always give fully qualified identifiers.
         assert_eq!(".", &pb_ident[..1]);
+
+        if let Some(proto_ident) = self.extern_paths.resolve_ident(pb_ident) {
+            return proto_ident;
+        }
 
         let mut local_path = self.package.split('.').peekable();
 
@@ -645,7 +648,7 @@ impl <'a> CodeGenerator<'a> {
 
         local_path.map(|_| "super".to_string())
                   .chain(ident_path.map(to_snake))
-                  .chain(Some(to_upper_camel(ident_type)).into_iter())
+                  .chain(iter::once(to_upper_camel(ident_type)))
                   .join("::")
     }
 
@@ -688,73 +691,6 @@ impl <'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
-    }
-
-    /// Returns the Rust type name for a Protobuf type.
-    ///
-    /// The Rust type name might either be one of the well-known Protobuf types or come from
-    /// user-defined mappings.
-    fn known_type(&self, fq_msg_type: &str) -> Option<&str> {
-        self.well_known_type(fq_msg_type)
-            .or_else(|| self.config.mapped_types.get(fq_msg_type).map(|s| s.as_str()))
-    }
-
-    /// Returns the prost_types name for a well-known Protobuf type, or `None` if the provided
-    /// message type is not a well-known type, or prost_types has been disabled.
-    fn well_known_type(&self, fq_msg_type: &str) -> Option<&'static str> {
-        if !self.config.prost_types { return None; }
-        Some(match fq_msg_type {
-            ".google.protobuf.BoolValue" => "bool",
-            ".google.protobuf.BytesValue" => "::std::vec::Vec<u8>",
-            ".google.protobuf.DoubleValue" => "f64",
-            ".google.protobuf.Empty" => "()",
-            ".google.protobuf.FloatValue" => "f32",
-            ".google.protobuf.Int32Value" => "i32",
-            ".google.protobuf.Int64Value" => "i64",
-            ".google.protobuf.StringValue" => "::std::string::String",
-            ".google.protobuf.UInt32Value" => "u32",
-            ".google.protobuf.UInt64Value" => "u64",
-
-            ".google.protobuf.Any" => "::prost_types::Any",
-            ".google.protobuf.Api" => "::prost_types::Api",
-            ".google.protobuf.DescriptorProto" => "::prost_types::DescriptorProto",
-            ".google.protobuf.Duration" => "::prost_types::Duration",
-            ".google.protobuf.Enum" => "::prost_types::Enum",
-            ".google.protobuf.EnumDescriptorProto" => "::prost_types::EnumDescriptorProt",
-            ".google.protobuf.EnumOptions" => "::prost_types::EnumOptions",
-            ".google.protobuf.EnumValue" => "::prost_types::EnumValue",
-            ".google.protobuf.EnumValueDescriptorProto" => "::prost_types::EnumValueDescriptorProto",
-            ".google.protobuf.EnumValueOptions" => "::prost_types::EnumValueOptions",
-            ".google.protobuf.ExtensionRangeOptions" => "::prost_types::ExtensionRangeOptions",
-            ".google.protobuf.Field" => "::prost_types::Field",
-            ".google.protobuf.FieldDescriptorProto" => "::prost_types::FieldDescriptorProto",
-            ".google.protobuf.FieldMask" => "::prost_types::FieldMask",
-            ".google.protobuf.FieldOptions" => "::prost_types::FieldOptions",
-            ".google.protobuf.FileDescriptorProto" => "::prost_types::FileDescriptorProto",
-            ".google.protobuf.FileDescriptorSet" => "::prost_types::FileDescriptorSet",
-            ".google.protobuf.FileOptions" => "::prost_types::FileOptions",
-            ".google.protobuf.GeneratedCodeInfo" => "::prost_types::GeneratedCodeInfo",
-            ".google.protobuf.ListValue" => "::prost_types::ListValue",
-            ".google.protobuf.MessageOptions" => "::prost_types::MessageOptions",
-            ".google.protobuf.Method" => "::prost_types::Method",
-            ".google.protobuf.MethodDescriptorProto" => "::prost_types::MethodDescriptorProto",
-            ".google.protobuf.MethodOptions" => "::prost_types::MethodOptions",
-            ".google.protobuf.Mixin" => "::prost_types::Mixin",
-            ".google.protobuf.NullValue" => "::prost_types::NullValue",
-            ".google.protobuf.OneofDescriptorProto" => "::prost_types::OneofDescriptorProto",
-            ".google.protobuf.OneofOptions" => "::prost_types::OneofOptions",
-            ".google.protobuf.Option" => "::prost_types::Option",
-            ".google.protobuf.ServiceDescriptorProto" => "::prost_types::ServiceDescriptorProto",
-            ".google.protobuf.ServiceOptions" => "::prost_types::ServiceOptions",
-            ".google.protobuf.SourceCodeInfo" => "::prost_types::SourceCodeInfo",
-            ".google.protobuf.SourceContext" => "::prost_types::SourceContext",
-            ".google.protobuf.Struct" => "::prost_types::Struct",
-            ".google.protobuf.Timestamp" => "::prost_types::Timestamp",
-            ".google.protobuf.Type" => "::prost_types::Type",
-            ".google.protobuf.UninterpretedOption" => "::prost_types::UninterpretedOption",
-            ".google.protobuf.Value" => "::prost_types::Value",
-            _ => return None,
-        })
     }
 }
 

@@ -126,6 +126,7 @@ mod ast;
 mod code_generator;
 mod ident;
 mod message_graph;
+mod extern_paths;
 
 use std::default;
 use std::collections::HashMap;
@@ -156,6 +157,7 @@ use code_generator::{
     CodeGenerator,
     module,
 };
+use extern_paths::ExternPaths;
 use message_graph::MessageGraph;
 
 type Module = Vec<String>;
@@ -206,7 +208,7 @@ pub struct Config {
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
-    mapped_types: HashMap<String, String>,
+    extern_paths: Vec<(String, String)>,
 }
 
 impl Config {
@@ -233,7 +235,7 @@ impl Config {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// # let mut config = prost_build::Config::new();
     /// // Match a specific field in a message type.
     /// config.btree_map(&[".my_messages.MyMessageType.my_map_field"]);
@@ -288,7 +290,7 @@ impl Config {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// # let mut config = prost_build::Config::new();
     /// // Prost renames fields named `in` to `in_`. But if serialized through serde,
     /// // they should as `in`.
@@ -320,7 +322,7 @@ impl Config {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// # let mut config = prost_build::Config::new();
     /// // Nothing around uses floats, so we can derive real `Eq` in addition to `PartialEq`.
     /// config.type_attribute(".", "#[derive(Eq)]");
@@ -360,15 +362,122 @@ impl Config {
         self
     }
 
-    /// Maps a Protobuf type to a Rust type. Both types must be fully-qualified.
-    pub fn map_type(&mut self, source: String, target: String) -> &mut Self {
-        self.mapped_types.insert(source, target);
-        self
-    }
-
-    /// Maps a set of Protobuf types to Rust types.
-    pub fn map_types(&mut self, map: HashMap<String, String>) -> &mut Self {
-        self.mapped_types.extend(map);
+    /// Declare an externally provided Protobuf package or type.
+    ///
+    /// `extern_path` allows `prost` types in external crates to be referenced in generated code.
+    ///
+    /// When `prost` compiles a `.proto` which includes an import of another `.proto`, it will
+    /// automatically recursively compile the imported file as well. `extern_path` can be used
+    /// to instead substitute types from an external crate.
+    ///
+    /// # Example
+    ///
+    /// As an example, consider a crate, `uuid`, with a `prost`-generated `Uuid` type:
+    ///
+    /// ```proto
+    /// // uuid.proto
+    ///
+    /// syntax = "proto3";
+    /// package uuid;
+    ///
+    /// message Uuid {
+    ///     string uuid_str = 1;
+    /// }
+    /// ```
+    ///
+    /// The `uuid` crate implements some traits for `Uuid`, and publicly exports it:
+    ///
+    /// ```rust,ignore
+    /// // lib.rs in the uuid crate
+    ///
+    /// extern crate prost;
+    /// #[macro_use]
+    /// extern crate prost_derive;
+    ///
+    /// include!(concat!(env!("OUT_DIR"), "/uuid.rs"));
+    ///
+    /// pub trait DoSomething {
+    ///     fn do_it(&self);
+    /// }
+    ///
+    /// impl DoSomething for Uuid {
+    ///     fn do_it(&self) {
+    ///         println!("Done");
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// A separate crate, `my_application`, uses `prost` to generate message types which reference
+    /// `Uuid`:
+    ///
+    /// ```proto
+    /// // my_application.proto
+    ///
+    /// syntax = "proto3";
+    /// package my_application;
+    ///
+    /// import "uuid.proto";
+    ///
+    /// message MyMessage {
+    ///     uuid.Uuid message_id = 1;
+    ///     string some_payload = 2;
+    /// }
+    /// ```
+    ///
+    /// Additionally, `my_application` depends on the trait impls provided by the `uuid` crate:
+    ///
+    /// ```rust,ignore
+    /// // `main.rs` of `my_application`
+    ///
+    /// extern crate prost;
+    /// #[macro_use]
+    /// extern crate prost_derive;
+    /// extern crate uuid;
+    ///
+    /// use uuid::{DoSomething, Uuid};
+    ///
+    /// include!(concat!(env!("OUT_DIR"), "/my_application.rs"));
+    ///
+    /// pub fn process_message(msg: MyMessage) {
+    ///     if let Some(uuid) = msg.message_id {
+    ///         uuid.do_it();
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Without configuring `uuid` as an external path in `my_application`'s `build.rs`, `prost`
+    /// would compile a completely separate version of the `Uuid` type, and `process_message` would
+    /// fail to compile. However, if `my_application` configures `uuid` as an extern path with a
+    /// call to `.extern_path(".uuid", "::uuid")`, `prost` will use the external type instead of
+    /// compiling a new version of `Uuid`. Note that the configuration could also be specified as
+    /// `.extern_path(".uuid.Uuid", "::uuid::Uuid")` if only the `Uuid` type were externally
+    /// provided, and not the whole `uuid` package.
+    ///
+    /// # Usage
+    ///
+    /// `extern_path` takes a fully-qualified Protobuf path, and the corresponding Rust path that
+    /// it will be substituted with in generated code. The Protobuf path can refer to a package or
+    /// a type, and the Rust path should correspondingly refer to a Rust module or type.
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Declare the `uuid` Protobuf package and all nested packages and types as externally
+    /// // provided by the `uuid` crate.
+    /// config.extern_path(".uuid", "::uuid");
+    ///
+    /// // Declare the `foo.bar.baz` Protobuf package and all nested packages and types as
+    /// // externally provided by the `foo_bar_baz` crate.
+    /// config.extern_path(".foo.bar.baz", "::foo_bar_baz");
+    ///
+    /// // Declare the `uuid.Uuid` Protobuf type (and all nested types) as externally provided
+    /// // by the `uuid` crate's `Uuid` type.
+    /// config.extern_path(".uuid.Uuid", "::uuid::Uuid");
+    /// ```
+    pub fn extern_path<P1, P2>(&mut self, proto_path: P1, rust_path: P2) -> &mut Self
+    where P1: Into<String>,
+          P2: Into<String>
+    {
+        self.extern_paths.push((proto_path.into(), rust_path.into()));
         self
     }
 
@@ -401,7 +510,7 @@ impl Config {
     ///
     /// # Example `build.rs`
     ///
-    /// ```norun
+    /// ```rust,no_run
     /// extern crate prost_build;
     ///
     /// fn main() {
@@ -456,7 +565,7 @@ impl Config {
         fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
         let descriptor_set = FileDescriptorSet::decode(&buf)?;
 
-        let modules = self.generate(descriptor_set.file);
+        let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
@@ -469,17 +578,19 @@ impl Config {
         Ok(())
     }
 
-    fn generate(&mut self, files: Vec<FileDescriptorProto>) -> HashMap<Module, String> {
+    fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
 
         let message_graph = MessageGraph::new(&files);
+        let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
+            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
         for file in files {
             let module = module(&file);
             let mut buf = modules.entry(module).or_insert_with(String::new);
-            CodeGenerator::generate(self, &message_graph, file, &mut buf);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
-        modules
+        Ok(modules)
     }
 }
 
@@ -493,7 +604,7 @@ impl default::Default for Config {
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
-            mapped_types: HashMap::new(),
+            extern_paths: Vec::new(),
         }
     }
 }
@@ -527,7 +638,7 @@ impl default::Default for Config {
 ///
 /// # Example `build.rs`
 ///
-/// ```norun
+/// ```rust,no_run
 /// extern crate prost_build;
 ///
 /// fn main() {

@@ -1,30 +1,18 @@
-//! Tests nested packages.
+//! Tests nested packages with `extern_path`.
 
-include!(concat!(env!("OUT_DIR"), "/packages.rs"));
-
-pub mod gizmo {
-    include!(concat!(env!("OUT_DIR"), "/packages.gizmo.rs"));
-}
+include!(concat!(env!("OUT_DIR"), "/extern_paths/packages.rs"));
 
 pub mod widget {
-    include!(concat!(env!("OUT_DIR"), "/packages.widget.rs"));
+    include!(concat!(env!("OUT_DIR"), "/extern_paths/packages.widget.rs"));
     pub mod factory {
-        include!(concat!(env!("OUT_DIR"), "/packages.widget.factory.rs"));
-    }
-}
-
-// Trait used in extern_paths.rs.
-pub trait DoIt {
-    fn do_it(&self);
-}
-
-impl DoIt for gizmo::Gizmo {
-    fn do_it(&self) {
+        include!(concat!(env!("OUT_DIR"), "/extern_paths/packages.widget.factory.rs"));
     }
 }
 
 #[test]
 fn test() {
+    use packages::DoIt;
+    use packages::gizmo;
     use prost::Message;
 
     let mut widget_factory = widget::factory::WidgetFactory::default();
@@ -47,6 +35,7 @@ fn test() {
 
     widget_factory.gizmo = Some(gizmo::Gizmo {});
     assert_eq!(12, widget_factory.encoded_len());
+    widget_factory.gizmo.as_ref().map(DoIt::do_it);
 
     widget_factory.gizmo_inner = Some(gizmo::gizmo::Inner {});
     assert_eq!(14, widget_factory.encoded_len());
