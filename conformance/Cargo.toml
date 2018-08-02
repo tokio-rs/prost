@@ -9,9 +9,5 @@ bytes = "0.4.7"
 env_logger = { version = "0.5", default-features = false }
 log = "0.3"
 prost = { path = ".." }
-prost-derive = { path = "../prost-derive" }
-tests = { path = "../tests" }
-
-[build-dependencies]
 protobuf = { path = "../protobuf" }
-prost-build = { path = "../prost-build" }
+tests = { path = "../tests" }

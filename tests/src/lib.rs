@@ -1,6 +1,7 @@
 extern crate bytes;
 extern crate prost;
 extern crate prost_types;
+extern crate protobuf;
 
 #[macro_use] extern crate prost_derive;
 
@@ -14,21 +15,6 @@ pub mod unittest;
 #[cfg(test)] mod debug;
 #[cfg(test)] mod message_encoding;
 #[cfg(test)] mod no_unused_results;
-
-pub mod protobuf_test_messages {
-    pub mod proto2 {
-        include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto2.rs"));
-    }
-    pub mod proto3 {
-        include!(concat!(env!("OUT_DIR"), "/protobuf_test_messages.proto3.rs"));
-    }
-}
-
-pub mod google {
-    pub mod protobuf {
-        include!(concat!(env!("OUT_DIR"), "/google.protobuf.rs"));
-    }
-}
 
 pub mod foo {
     pub mod bar_baz {
@@ -61,6 +47,14 @@ pub mod custom_attributes {
 /// in a separate file.
 pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
+}
+
+/// Issue https://github.com/danburkert/prost/issues/118
+///
+/// When a message contains an enum field with a default value, we
+/// must ensure that the appropriate name conventions are used.
+pub mod default_enum_value {
+    include!(concat!(env!("OUT_DIR"), "/default_enum_value.rs"));
 }
 
 use std::error::Error;
@@ -182,7 +176,7 @@ mod tests {
 
     use std::collections::{BTreeMap, BTreeSet};
 
-    use protobuf_test_messages::proto3::TestAllTypesProto3;
+    use protobuf::test_messages::proto3::TestAllTypesProto3;
     use super::*;
 
     #[test]
@@ -278,5 +272,13 @@ mod tests {
                 }))
             })))
         };
+    }
+
+    #[test]
+    fn test_default_enum() {
+        let msg = default_enum_value::Test::default();
+        assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
+        assert_eq!(msg.privacy_level_3(), default_enum_value::PrivacyLevel::PrivacyLevelThree);
+        assert_eq!(msg.privacy_level_4(), default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour);
     }
 }

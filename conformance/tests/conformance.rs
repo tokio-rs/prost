@@ -1,5 +1,9 @@
+extern crate protobuf;
+
 use std::env;
 use std::process::Command;
+
+use protobuf::conformance;
 
 /// Runs the protobuf conformance test. This must be done in an integration test
 /// so that Cargo will build the proto-conformance binary.
@@ -15,7 +19,7 @@ fn test_conformance() {
         path.join("conformance")
     }).unwrap();
 
-    let status = Command::new(env!("CONFORMANCE_TEST_RUNNER"))
+    let status = Command::new(conformance::test_runner())
                          .arg("--enforce_recommended")
                          .arg("--failure_list").arg("failing_tests.txt")
                          .arg(proto_conformance)

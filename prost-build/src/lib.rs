@@ -206,6 +206,7 @@ pub struct Config {
     prost_types: bool,
     strip_enum_prefix: bool,
     mapped_types: HashMap<String, String>,
+    out_dir: Option<PathBuf>,
 }
 
 impl Config {
@@ -382,6 +383,15 @@ impl Config {
         self
     }
 
+    /// Configures the output directory where generated Rust files will be written.
+    ///
+    /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
+    /// executing build scripts, so `out_dir` typically does not need to be configured.
+    pub fn out_dir<P>(&mut self, path: P) -> &mut Self where P: Into<PathBuf> {
+        self.out_dir = Some(path.into());
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -402,10 +412,12 @@ impl Config {
     /// }
     /// ```
     pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
-        let target: PathBuf = env::var_os("OUT_DIR")
-            .ok_or_else(|| Error::new(ErrorKind::Other,
-                                      "OUT_DIR environment variable is not set"))?
-            .into();
+        let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
+            env::var_os("OUT_DIR")
+                .ok_or_else(|| Error::new(ErrorKind::Other,
+                                          "OUT_DIR environment variable is not set"))
+                .map(Into::into)
+        })?;
 
         // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
         // according to [1] if any are output then those paths replace the default crate root,
@@ -481,6 +493,7 @@ impl default::Default for Config {
             prost_types: true,
             strip_enum_prefix: true,
             mapped_types: HashMap::new(),
+            out_dir: None,
         }
     }
 }
@@ -532,12 +545,28 @@ pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: As
 
 /// Returns the path to the `protoc` binary.
 pub fn protoc() -> &'static Path {
-    Path::new(env!("PROTOC"))
+    #[cfg(not(feature = "docs-rs"))]
+    fn inner() -> &'static Path {
+        Path::new(env!("PROTOC"))
+    }
+    #[cfg(feature = "docs-rs")]
+    fn inner() -> &'static Path {
+        Path::new("")
+    }
+    inner()
 }
 
 /// Returns the path to the Protobuf include directory.
 pub fn protoc_include() -> &'static Path {
-    Path::new(env!("PROTOC_INCLUDE"))
+    #[cfg(not(feature = "docs-rs"))]
+    fn inner() -> &'static Path {
+        Path::new(env!("PROTOC_INCLUDE"))
+    }
+    #[cfg(feature = "docs-rs")]
+    fn inner() -> &'static Path {
+        Path::new("")
+    }
+    inner()
 }
 
 #[cfg(test)]

@@ -398,6 +398,16 @@ pub struct FileOptions {
     /// determining the namespace.
     #[prost(string, optional, tag="41")]
     pub php_namespace: ::std::option::Option<String>,
+    /// Use this option to change the namespace of php generated metadata classes.
+    /// Default is empty. When this option is empty, the proto file name will be used
+    /// for determining the namespace.
+    #[prost(string, optional, tag="44")]
+    pub php_metadata_namespace: ::std::option::Option<String>,
+    /// Use this option to change the package of ruby generated classes. Default
+    /// is empty. When this option is not set, the package name will be used for
+    /// determining the ruby package.
+    #[prost(string, optional, tag="45")]
+    pub ruby_package: ::std::option::Option<String>,
     /// The parser stores options it doesn't recognize here.
     /// See the documentation for the "Options" section above.
     #[prost(message, repeated, tag="999")]
@@ -944,17 +954,18 @@ pub mod generated_code_info {
 ///
 #[derive(Clone, PartialEq, Message)]
 pub struct Any {
-    /// A URL/resource name whose content describes the type of the
-    /// serialized protocol buffer message.
+    /// A URL/resource name that uniquely identifies the type of the serialized
+    /// protocol buffer message. The last segment of the URL's path must represent
+    /// the fully qualified name of the type (as in
+    /// `path/google.protobuf.Duration`). The name should be in a canonical form
+    /// (e.g., leading "." is not accepted).
     ///
-    /// For URLs which use the scheme `http`, `https`, or no scheme, the
-    /// following restrictions and interpretations apply:
+    /// In practice, teams usually precompile into the binary all types that they
+    /// expect it to use in the context of Any. However, for URLs which use the
+    /// scheme `http`, `https`, or no scheme, one can optionally set up a type
+    /// server that maps type URLs to message definitions as follows:
     ///
     /// * If no scheme is provided, `https` is assumed.
-    /// * The last segment of the URL's path must represent the fully
-    ///   qualified name of the type (as in `path/google.protobuf.Duration`).
-    ///   The name should be in a canonical form (e.g., leading "." is
-    ///   not accepted).
     /// * An HTTP GET on the URL must yield a [google.protobuf.Type][]
     ///   value in binary format, or produce an error.
     /// * Applications are allowed to cache lookup results based on the
@@ -962,6 +973,10 @@ pub struct Any {
     ///   lookup. Therefore, binary compatibility needs to be preserved
     ///   on changes to types. (Use versioned type names to manage
     ///   breaking changes.)
+    ///
+    /// Note: this functionality is not currently available in the official
+    /// protobuf release, and it is not used for type URLs beginning with
+    /// type.googleapis.com.
     ///
     /// Schemes other than `http`, `https` (or the empty scheme) might be
     /// used with implementation specific semantics.
@@ -1600,8 +1615,8 @@ pub struct Duration {
 ///
 /// ## Field Mask Verification
 ///
-/// The implementation of the all the API methods, which have any FieldMask type
-/// field in the request, should verify the included field paths, and return
+/// The implementation of any API method which has a FieldMask type field in the
+/// request should verify the included field paths, and return an
 /// `INVALID_ARGUMENT` error if any path is duplicated or unmappable.
 #[derive(Clone, PartialEq, Message)]
 pub struct FieldMask {
@@ -1740,7 +1755,9 @@ pub enum NullValue {
 /// {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
 /// seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
 /// are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
-/// is required, though only UTC (as indicated by "Z") is presently supported.
+/// is required. A proto3 JSON serializer should always use UTC (as indicated by
+/// "Z") when printing the Timestamp type and a proto3 JSON parser should be
+/// able to accept both UTC and other timezones (as indicated by an offset).
 ///
 /// For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
 /// 01:30 UTC on January 15, 2017.
@@ -1751,8 +1768,8 @@ pub enum NullValue {
 /// to this format using [`strftime`](https://docs.python.org/2/library/time.html#time.strftime)
 /// with the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one
 /// can use the Joda Time's [`ISODateTimeFormat.dateTime()`](
-/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime--)
-/// to obtain a formatter capable of generating timestamps in this format.
+/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime--
+/// ) to obtain a formatter capable of generating timestamps in this format.
 ///
 ///
 #[derive(Clone, PartialEq, Message)]

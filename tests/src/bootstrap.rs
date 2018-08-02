@@ -1,4 +1,3 @@
-use std::env;
 use std::fs;
 use std::io::Read;
 use std::io::Write;
@@ -14,11 +13,11 @@ fn bootstrap() {
     let protobuf = Path::new(prost_build::protoc_include()).join("google").join("protobuf");
 
     let tempdir = tempdir::TempDir::new("prost-types-bootstrap").unwrap();
-    env::set_var("OUT_DIR", tempdir.path());
 
     let mut config = prost_build::Config::new();
     config.compile_well_known_types();
     config.btree_map(&["."]);
+    config.out_dir(tempdir.path());
     config.compile_protos(&[
                             // Protobuf Plugins.
                             protobuf.join("descriptor.proto"),
