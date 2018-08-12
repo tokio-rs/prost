@@ -117,7 +117,7 @@ use std::default;
 use std::env;
 use std::fmt;
 use std::fs;
-use std::io::{Error, ErrorKind, Result};
+use std::io::{Error, ErrorKind, Result, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -190,6 +190,7 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
+    include_file: Option<PathBuf>,
 }
 
 impl Config {
@@ -485,6 +486,39 @@ impl Config {
         self
     }
 
+    /// Configures the optional module filename for easy inclusion of all generated Rust files
+    ///
+    /// If set, generates a file (inside the `OUT_DIR` or `out_dir()` as appropriate) which contains
+    /// a set of `pub mod XXX` statements combining to load all Rust files generated.  This can allow
+    /// for a shortcut where multiple related proto files have been compiled together resulting in
+    /// a semi-complex set of includes.
+    ///
+    /// Turning a need for:
+    ///
+    /// ```rust,no_run,ignore
+    /// pub mod Foo {
+    ///     pub mod Bar {
+    ///         include!(concat!(env!("OUT_DIR"), "/foo.bar.rs"));
+    ///     }
+    ///     pub mod Baz {
+    ///         include!(concat!(env!("OUT_DIR"), "/foo.baz.rs"));
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Into the simpler:
+    ///
+    /// ```rust,no_run,ignore
+    /// include!(concat!(env!("OUT_DIR"), "/_includes.rs"));
+    /// ```
+    pub fn include_file<P>(&mut self, path: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.include_file = Some(path.into());
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -507,12 +541,16 @@ impl Config {
     where
         P: AsRef<Path>,
     {
+        let mut target_is_env = false;
         let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
             env::var_os("OUT_DIR")
                 .ok_or_else(|| {
                     Error::new(ErrorKind::Other, "OUT_DIR environment variable is not set")
                 })
-                .map(Into::into)
+                .map(|val| {
+                    target_is_env = true;
+                    Into::into(val)
+                })
         })?;
 
         // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
@@ -559,7 +597,7 @@ impl Config {
         })?;
 
         let modules = self.generate(descriptor_set.file)?;
-        for (module, content) in modules {
+        for (module, content) in &modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
 
@@ -578,7 +616,81 @@ impl Config {
             }
         }
 
+        if let Some(ref include_file) = self.include_file {
+            trace!("Writing include file: {:?}", target.join(include_file));
+            let mut file = fs::File::create(target.join(include_file))?;
+            self.write_includes(
+                modules.keys().collect(),
+                &mut file,
+                0,
+                if target_is_env { None } else { Some(&target) },
+            )?;
+            file.flush()?;
+        }
+
         Ok(())
+    }
+
+    fn write_includes(
+        &self,
+        mut entries: Vec<&Module>,
+        outfile: &mut fs::File,
+        depth: usize,
+        basepath: Option<&PathBuf>,
+    ) -> Result<usize> {
+        let mut written = 0;
+        while !entries.is_empty() {
+            let modident = &entries[0][depth];
+            let matching: Vec<&Module> = entries
+                .iter()
+                .filter(|&v| &v[depth] == modident)
+                .copied()
+                .collect();
+            {
+                // Will NLL sort this mess out?
+                let _temp = entries
+                    .drain(..)
+                    .filter(|&v| &v[depth] != modident)
+                    .collect();
+                entries = _temp;
+            }
+            self.write_line(outfile, depth, &format!("pub mod {} {{", modident))?;
+            let subwritten = self.write_includes(
+                matching
+                    .iter()
+                    .filter(|v| v.len() > depth + 1)
+                    .copied()
+                    .collect(),
+                outfile,
+                depth + 1,
+                basepath,
+            )?;
+            written += subwritten;
+            if subwritten != matching.len() {
+                let modname = matching[0][..=depth].join(".");
+                if let Some(buf) = basepath {
+                    self.write_line(
+                        outfile,
+                        depth + 1,
+                        &format!("include!(\"{:?}/{}.rs\");", buf, modname),
+                    )?;
+                } else {
+                    self.write_line(
+                        outfile,
+                        depth + 1,
+                        &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));", modname),
+                    )?;
+                }
+                written += 1;
+            }
+
+            self.write_line(outfile, depth, "}")?;
+        }
+        Ok(written)
+    }
+
+    fn write_line(&self, outfile: &mut fs::File, depth: usize, line: &str) -> Result<()> {
+        outfile.write_all(format!("{}{}\n", ("    ").to_owned().repeat(depth), line).as_bytes())
     }
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
@@ -632,6 +744,7 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
+            include_file: None,
         }
     }
 }
@@ -802,6 +915,7 @@ mod tests {
 
         Config::new()
             .service_generator(Box::new(gen))
+            .include_file("_protos.rs")
             .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
             .unwrap();
 
