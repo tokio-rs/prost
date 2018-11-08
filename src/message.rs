@@ -8,7 +8,7 @@ use EncodeError;
 use encoding::*;
 
 /// A Protocol Buffers message.
-pub trait Message: Debug + Send + Sync {
+pub trait Message: Debug + Default + Send + Sync {
 
     /// Encodes the message to a buffer.
     ///
