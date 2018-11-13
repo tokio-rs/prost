@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::usize;
 
-use bytes::{Buf, BufMut, IntoBuf};
+use bytes::{Buf, BufMut, Bytes, IntoBuf};
 
 use DecodeError;
 use EncodeError;
@@ -64,11 +64,19 @@ pub trait Message: Debug + Send + Sync {
         Self::merge(&mut message, &mut buf.into_buf()).map(|_| message)
     }
 
+    fn decode_bytes(buf: Bytes) -> Result<Self, DecodeError> where Self: Default {
+        Self::decode(buf)
+    }
+
     /// Decodes a length-delimited instance of the message from the buffer.
     fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError> where B: IntoBuf, Self: Default {
         let mut message = Self::default();
         message.merge_length_delimited(buf)?;
         Ok(message)
+    }
+
+    fn decode_bytes_length_delimited(buf: Bytes) -> Result<Self, DecodeError> where Self: Default {
+        Self::decode_length_delimited(buf)
     }
 
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
@@ -82,10 +90,18 @@ pub trait Message: Debug + Send + Sync {
         Ok(())
     }
 
+    fn merge_bytes(&mut self, buf: Bytes) -> Result<(), DecodeError> where Self: Sized {
+        self.merge(buf)
+    }
+
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
     fn merge_length_delimited<B>(&mut self, buf: B) -> Result<(), DecodeError> where B: IntoBuf, Self: Sized {
         message::merge(WireType::LengthDelimited, self, &mut buf.into_buf())
+    }
+
+    fn merge_bytes_length_delimited(&mut self, buf: Bytes) -> Result<(), DecodeError> where Self: Sized {
+        self.merge_length_delimited(buf)
     }
 
     /// Clears the message, resetting all fields to their default.
@@ -104,5 +120,18 @@ impl <M> Message for Box<M> where M: Message {
     }
     fn clear(&mut self) {
         (**self).clear()
+    }
+
+    /*
+     * Doesn't work :-(
+    fn decode_bytes_length_delimited(buf: Bytes) -> Result<Self, DecodeError> where M: Default {
+        M::decode_bytes_length_delimited(buf).map(Box::new)
+    }
+    */
+    fn merge_bytes(&mut self, buf: Bytes) -> Result<(), DecodeError> where Self: Sized {
+        (**self).merge_bytes(buf)
+    }
+    fn merge_bytes_length_delimited(&mut self, buf: Bytes) -> Result<(), DecodeError> where Self: Sized {
+        (**self).merge_bytes_length_delimited(buf)
     }
 }
