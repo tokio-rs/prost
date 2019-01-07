@@ -117,7 +117,7 @@ extern crate multimap;
 extern crate petgraph;
 extern crate prost;
 extern crate prost_types;
-extern crate tempdir;
+extern crate tempfile;
 
 #[macro_use]
 extern crate log;
@@ -534,7 +534,9 @@ impl Config {
         // this figured out.
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
-        let tmp = tempdir::TempDir::new("prost-build")?;
+        let tmp = tempfile::Builder::new()
+            .prefix("prost-build")
+            .tempdir()?;
         let descriptor_set = tmp.path().join("prost-descriptor-set");
 
         let mut cmd = Command::new(protoc());

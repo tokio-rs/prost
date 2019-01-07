@@ -16,4 +16,4 @@ curl = "0.4"
 flate2 = "1.0"
 prost-build = { path = "../prost-build" }
 tar = "0.4"
-tempdir = "0.3"
+tempfile = "3"
