@@ -3,7 +3,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
-use tempdir;
+use tempfile;
 use prost_build;
 
 /// Test which bootstraps protobuf.rs and compiler.rs from the .proto definitions in the Protobuf
@@ -12,7 +12,10 @@ use prost_build;
 fn bootstrap() {
     let protobuf = Path::new(prost_build::protoc_include()).join("google").join("protobuf");
 
-    let tempdir = tempdir::TempDir::new("prost-types-bootstrap").unwrap();
+    let tempdir = tempfile::Builder::new()
+        .prefix("prost-types-bootstrap")
+        .tempdir()
+        .unwrap();
 
     let mut config = prost_build::Config::new();
     config.compile_well_known_types();

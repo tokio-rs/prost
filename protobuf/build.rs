@@ -2,7 +2,7 @@ extern crate curl;
 extern crate flate2;
 extern crate prost_build;
 extern crate tar;
-extern crate tempdir;
+extern crate tempfile;
 
 use std::env;
 use std::fs;
@@ -13,7 +13,6 @@ use std::process::Command;
 use curl::easy::Easy;
 use flate2::bufread::GzDecoder;
 use tar::Archive;
-use tempdir::TempDir;
 
 const VERSION: &'static str = "3.6.0.1";
 
@@ -49,8 +48,10 @@ fn main() {
     let protobuf_dir = &out_dir.join(format!("protobuf-{}", VERSION));
 
     if !protobuf_dir.exists() {
-        let tempdir = TempDir::new_in(out_dir, "protobuf")
-                              .expect("failed to create temporary directory");
+        let tempdir = tempfile::Builder::new()
+            .prefix("protobuf")
+            .tempdir_in(out_dir)
+            .expect("failed to create temporary directory");
 
         let src_dir = &download_protobuf(tempdir.path());
         let prefix_dir = &src_dir.join("prefix");

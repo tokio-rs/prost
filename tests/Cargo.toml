@@ -23,7 +23,7 @@ protobuf = { path = "../protobuf" }
 [dev-dependencies]
 diff = "0.1"
 prost-build = { path = "../prost-build" }
-tempdir = "0.3"
+tempfile = "3"
 
 [build-dependencies]
 env_logger = { version = "0.5", default-features = false }

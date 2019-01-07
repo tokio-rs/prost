@@ -5,7 +5,7 @@ extern crate protobuf;
 
 #[macro_use] extern crate prost_derive;
 
-#[cfg(test)] extern crate tempdir;
+#[cfg(test)] extern crate tempfile;
 #[cfg(test)] extern crate prost_build;
 
 pub mod extern_paths;
