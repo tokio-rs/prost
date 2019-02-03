@@ -1,14 +1,19 @@
 [package]
-name = "tests"
+name = "tests-2015"
 version = "0.0.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false
-edition = "2018"
+edition = "2015"
 
-build = "src/build.rs"
+build = "../tests/src/build.rs"
 
 [lib]
 doctest = false
+path = "../tests/src/lib.rs"
+
+[features]
+default = ["edition-2015"]
+edition-2015 = []
 
 [dependencies]
 bytes = "0.4.7"

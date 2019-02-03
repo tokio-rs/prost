@@ -14,8 +14,6 @@
 //!     1. The `PROTOC_INCLUDE` environment variable.
 //!     2. The bundled Protobuf include directory.
 
-extern crate which;
-
 use std::env;
 use std::path::PathBuf;
 

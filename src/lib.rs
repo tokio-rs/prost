@@ -1,11 +1,5 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.4.0")]
 
-extern crate bytes;
-
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck;
-
 mod error;
 mod message;
 mod types;
@@ -13,12 +7,12 @@ mod types;
 #[doc(hidden)]
 pub mod encoding;
 
-pub use error::{DecodeError, EncodeError};
-pub use message::Message;
+pub use crate::error::{DecodeError, EncodeError};
+pub use crate::message::Message;
 
 use bytes::{BufMut, IntoBuf};
 
-use encoding::{decode_varint, encode_varint, encoded_len_varint};
+use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
 
 /// Encodes a length delimiter to the buffer.
 ///

@@ -14,8 +14,8 @@ pub mod widget {
 
 #[test]
 fn test() {
-    use packages::gizmo;
-    use packages::DoIt;
+    use crate::packages::gizmo;
+    use crate::packages::DoIt;
     use prost::Message;
 
     let mut widget_factory = widget::factory::WidgetFactory::default();

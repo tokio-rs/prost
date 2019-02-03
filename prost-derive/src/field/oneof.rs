@@ -1,8 +1,9 @@
-use failure::Error;
+use failure::{bail, Error};
 use proc_macro2::TokenStream;
+use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use field::{set_option, tags_attr};
+use crate::field::{set_option, tags_attr};
 
 #[derive(Clone)]
 pub struct Field {

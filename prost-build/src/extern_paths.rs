@@ -2,7 +2,7 @@ use std::collections::{hash_map, HashMap};
 
 use itertools::Itertools;
 
-use ident::{to_snake, to_upper_camel};
+use crate::ident::{to_snake, to_upper_camel};
 
 fn validate_proto_path(path: &str) -> Result<(), String> {
     if path.chars().next().map(|c| c != '.').unwrap_or(true) {
@@ -96,7 +96,16 @@ impl ExternPaths {
                     rust_path
                         .split("::")
                         .chain(segments)
-                        .map(|segment| to_snake(&segment))
+                        .enumerate()
+                        .map(|(idx, segment)| {
+                            if idx == 0 && segment == "crate" {
+                                // If the first segment of the path is 'crate', then do not escape
+                                // it into a raw identifier, since it's being used as the keyword.
+                                segment.to_owned()
+                            } else {
+                                to_snake(&segment)
+                            }
+                        })
                         .chain(ident_type.into_iter())
                         .join("::"),
                 );

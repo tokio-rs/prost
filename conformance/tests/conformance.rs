@@ -1,5 +1,3 @@
-extern crate protobuf;
-
 use std::env;
 use std::process::Command;
 

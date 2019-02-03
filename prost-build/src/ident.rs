@@ -7,17 +7,21 @@ use heck::{CamelCase, SnakeCase};
 pub fn to_snake(s: &str) -> String {
     let mut ident = s.to_snake_case();
 
-    // Add a trailing underscore if the identifier matches a Rust keyword
-    // (https://doc.rust-lang.org/grammar.html#keywords).
-    match &ident[..] {
-        "abstract" | "alignof" | "as" | "become" | "box" | "break" | "const" | "continue"
-        | "crate" | "do" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if"
-        | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut"
-        | "offsetof" | "override" | "priv" | "proc" | "pub" | "pure" | "ref" | "return"
-        | "self" | "sizeof" | "static" | "struct" | "super" | "trait" | "true" | "type"
-        | "typeof" | "unsafe" | "unsized" | "use" | "virtual" | "where" | "while" | "yield" => {
-            ident.push('_');
-        }
+    // Use a raw identifier if the identifier matches a Rust keyword:
+    // https://doc.rust-lang.org/reference/keywords.html.
+    match ident.as_str() {
+        // 2015 strict keywords.
+        | "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false"
+        | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "match" | "mod" | "move" | "mut"
+        | "pub" | "ref" | "return" | "self" | "static" | "struct" | "super" | "trait" | "true"
+        | "type" | "unsafe" | "use" | "where" | "while"
+        // 2018 strict keywords.
+        | "dyn"
+        // 2015 reserved keywords.
+        | "abstract" | "become" | "box" | "do" | "final" | "macro" | "override" | "priv" | "typeof"
+        | "unsized" | "virtual" | "yield"
+        // 2018 reserved keywords.
+        | "async" | "await" | "try" => ident.insert_str(0, "r#"),
         _ => (),
     }
     ident
@@ -27,10 +31,10 @@ pub fn to_snake(s: &str) -> String {
 pub fn to_upper_camel(s: &str) -> String {
     let mut ident = s.to_camel_case();
 
-    // Add a trailing underscore if the identifier matches a Rust keyword
-    // (https://doc.rust-lang.org/grammar.html#keywords).
+    // Use a raw identifier if the identifier matches a Rust keyword:
+    // https://doc.rust-lang.org/reference/keywords.html.
     if ident == "Self" {
-        ident.push('_');
+        ident.insert_str(0, "r#");
     }
     ident
 }
@@ -79,7 +83,7 @@ mod tests {
         assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ"));
         assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ"));
         assert_eq!("xml_http_request", &to_snake("XMLHttpRequest"));
-        assert_eq!("while_", &to_snake("While"));
+        assert_eq!("r#while", &to_snake("While"));
         assert_eq!("fuzz_buster", &to_snake("FUZZ_BUSTER"));
         assert_eq!("foo_bar_baz", &to_snake("foo_bar_baz"));
         assert_eq!("fuzz_buster", &to_snake("FUZZ_buster"));
@@ -125,7 +129,7 @@ mod tests {
         assert_eq!("FooBar", &to_upper_camel("_FOO_BAR_"));
         assert_eq!("FuzzBuster", &to_upper_camel("fuzzBuster"));
         assert_eq!("FuzzBuster", &to_upper_camel("FuzzBuster"));
-        assert_eq!("Self_", &to_upper_camel("self"));
+        assert_eq!("r#Self", &to_upper_camel("self"));
     }
 
     #[test]

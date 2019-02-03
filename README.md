@@ -326,6 +326,16 @@ pub enum Gender {
   But it is possible to place `serde` derive tags onto the generated types, so
   the same structure can support both `prost` and `Serde`.
 
+2. **I get errors when trying to run `cargo test` on MacOS**
+
+  If the errors are about missing `autoreconf` or similar, you can probably fix
+  them by running
+
+  ```
+  brew install automake
+  brew install libtool
+  ```
+
 ## License
 
 `prost` is distributed under the terms of the Apache License (Version 2.0).

@@ -2,28 +2,22 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
-extern crate itertools;
 extern crate proc_macro;
-extern crate proc_macro2;
-extern crate syn;
 
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate quote;
+use failure::bail;
+use quote::quote;
 
 use failure::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::punctuated::Punctuated;
 use syn::{
-    Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident,
-    Variant,
+    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
+    FieldsUnnamed, Ident, Variant,
 };
 
 mod field;
-use field::Field;
+use crate::field::Field;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;

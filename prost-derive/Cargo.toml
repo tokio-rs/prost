@@ -8,6 +8,7 @@ repository = "https://github.com/danburkert/prost"
 documentation = "https://docs.rs/prost-derive"
 readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
+edition = "2018"
 
 [lib]
 proc_macro = true

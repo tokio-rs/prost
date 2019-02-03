@@ -1,9 +1,3 @@
-extern crate bytes;
-extern crate env_logger;
-extern crate prost;
-extern crate protobuf;
-extern crate tests;
-
 use std::io::{self, Read, Write};
 
 use bytes::{ByteOrder, LittleEndian};
