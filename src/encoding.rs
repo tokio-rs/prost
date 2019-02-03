@@ -51,30 +51,23 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
 
 /// Decodes a LEB128-encoded variable length integer from the buffer.
 pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
-    // NLL hack.
-    'slow: loop {
-        // Another NLL hack.
-        let (value, advance) = {
-            let bytes = buf.bytes();
-            let len = bytes.len();
-            if len == 0 {
-                return Err(DecodeError::new("invalid varint"));
-            }
-
-            let byte = bytes[0];
-            if byte < 0x80 {
-                (u64::from(byte), 1)
-            } else if len > 10 || bytes[len - 1] < 0x80 {
-                decode_varint_slice(bytes)?
-            } else {
-                break 'slow;
-            }
-        };
-
-        buf.advance(advance);
-        return Ok(value);
+    let bytes = buf.bytes();
+    let len = bytes.len();
+    if len == 0 {
+        return Err(DecodeError::new("invalid varint"));
     }
-    decode_varint_slow(buf)
+
+    let byte = bytes[0];
+    if byte < 0x80 {
+        buf.advance(1);
+        Ok(u64::from(byte))
+    } else if len > 10 || bytes[len - 1] < 0x80 {
+        let (value, advance) = decode_varint_slice(bytes)?;
+        buf.advance(advance);
+        Ok(value)
+    } else {
+        decode_varint_slow(buf)
+    }
 }
 
 /// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
