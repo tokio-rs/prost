@@ -10,34 +10,40 @@ use crate::message_encoding::{Basic, BasicEnumeration};
 #[test]
 fn basic() {
     let mut basic = Basic::default();
-    assert_eq!(format!("{:?}", basic),
-               "Basic { \
-                    int32: 0, \
-                    bools: [], \
-                    string: \"\", \
-                    optional_string: None, \
-                    enumeration: ZERO, \
-                    enumeration_map: {}, \
-                    string_map: {}, \
-                    enumeration_btree_map: {}, \
-                    string_btree_map: {}, \
-                    oneof: None \
-                }");
-    basic.enumeration_map.insert(0, BasicEnumeration::TWO as i32);
+    assert_eq!(
+        format!("{:?}", basic),
+        "Basic { \
+         int32: 0, \
+         bools: [], \
+         string: \"\", \
+         optional_string: None, \
+         enumeration: ZERO, \
+         enumeration_map: {}, \
+         string_map: {}, \
+         enumeration_btree_map: {}, \
+         string_btree_map: {}, \
+         oneof: None \
+         }"
+    );
+    basic
+        .enumeration_map
+        .insert(0, BasicEnumeration::TWO as i32);
     basic.enumeration = 42;
-    assert_eq!(format!("{:?}", basic),
-               "Basic { \
-                    int32: 0, \
-                    bools: [], \
-                    string: \"\", \
-                    optional_string: None, \
-                    enumeration: 42, \
-                    enumeration_map: {0: TWO}, \
-                    string_map: {}, \
-                    enumeration_btree_map: {}, \
-                    string_btree_map: {}, \
-                    oneof: None \
-                }");
+    assert_eq!(
+        format!("{:?}", basic),
+        "Basic { \
+         int32: 0, \
+         bools: [], \
+         string: \"\", \
+         optional_string: None, \
+         enumeration: 42, \
+         enumeration_map: {0: TWO}, \
+         string_map: {}, \
+         enumeration_btree_map: {}, \
+         string_btree_map: {}, \
+         oneof: None \
+         }"
+    );
 }
 
 /*
@@ -58,17 +64,17 @@ fn tuple_struct() {
 
 #[derive(Clone, PartialEq, Oneof)]
 pub enum OneofWithEnum {
-    #[prost(int32, tag="8")]
+    #[prost(int32, tag = "8")]
     Int(i32),
-    #[prost(string, tag="9")]
+    #[prost(string, tag = "9")]
     String(String),
-    #[prost(enumeration="BasicEnumeration", tag="10")]
+    #[prost(enumeration = "BasicEnumeration", tag = "10")]
     Enumeration(i32),
 }
 
 #[derive(Clone, PartialEq, Message)]
 struct MessageWithOneof {
-    #[prost(oneof="OneofWithEnum", tags="8, 9, 10")]
+    #[prost(oneof = "OneofWithEnum", tags = "8, 9, 10")]
     of: Option<OneofWithEnum>,
 }
 
@@ -76,7 +82,10 @@ struct MessageWithOneof {
 #[test]
 fn oneof_with_enum() {
     let msg = MessageWithOneof {
-        of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO as i32))
+        of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO as i32)),
     };
-    assert_eq!(format!("{:?}", msg), "MessageWithOneof { of: Some(Enumeration(TWO)) }");
+    assert_eq!(
+        format!("{:?}", msg),
+        "MessageWithOneof { of: Some(Enumeration(TWO)) }"
+    );
 }

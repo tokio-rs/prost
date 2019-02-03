@@ -1,21 +1,8 @@
 use failure::Error;
-use proc_macro2::{
-    Span,
-    TokenStream,
-};
-use syn::{
-    Ident,
-    Lit,
-    Meta,
-    MetaNameValue,
-    NestedMeta,
-};
+use proc_macro2::{Span, TokenStream};
+use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
-use crate::field::{
-    scalar,
-    tag_attr,
-    set_option,
-};
+use crate::field::{scalar, set_option, tag_attr};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -58,7 +45,6 @@ pub struct Field {
 }
 
 impl Field {
-
     pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
@@ -68,7 +54,10 @@ impl Field {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(map_ty) = MapTy::from_str(&attr.name().to_string()) {
                 let (k, v): (String, String) = match *attr {
-                    Meta::NameValue(MetaNameValue { lit: Lit::Str(ref lit), .. }) => {
+                    Meta::NameValue(MetaNameValue {
+                        lit: Lit::Str(ref lit),
+                        ..
+                    }) => {
                         let items = lit.value();
                         let mut items = items.split(',').map(ToString::to_string);
                         let k = items.next().unwrap();
@@ -80,7 +69,6 @@ impl Field {
                             bail!("invalid map attribute: {:?}", attr);
                         }
                         (k, v)
-
                     }
                     Meta::List(ref meta_list) => {
                         // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
@@ -96,26 +84,27 @@ impl Field {
                             _ => bail!("invalid map attribute: value must be an identifier"),
                         };
                         (k, v)
-                    },
+                    }
                     _ => return Ok(None),
                 };
-                set_option(&mut types, (map_ty, key_ty_from_str(&k)?, ValueTy::from_str(&v)?),
-                           "duplicate map type attribute")?;
+                set_option(
+                    &mut types,
+                    (map_ty, key_ty_from_str(&k)?, ValueTy::from_str(&v)?),
+                    "duplicate map type attribute",
+                )?;
             } else {
                 return Ok(None);
             }
         }
 
         Ok(match (types, tag.or(inferred_tag)) {
-            (Some((map_ty, key_ty, val_ty)), Some(tag)) => {
-                Some(Field {
-                    map_ty: map_ty,
-                    key_ty: key_ty,
-                    value_ty: val_ty,
-                    tag: tag
-                })
-            },
-            _ => None
+            (Some((map_ty, key_ty, val_ty)), Some(tag)) => Some(Field {
+                map_ty: map_ty,
+                key_ty: key_ty,
+                value_ty: val_ty,
+                tag: tag,
+            }),
+            _ => None,
         })
     }
 
@@ -140,7 +129,7 @@ impl Field {
                                                                    &(#default),
                                                                    #tag, &#ident, buf);
                 }
-            },
+            }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
                 let ve = quote!(_prost::encoding::#val_mod::encode);
@@ -149,7 +138,7 @@ impl Field {
                     _prost::encoding::#module::encode(#ke, #kl, #ve, #vl,
                                                       #tag, &#ident, buf);
                 }
-            },
+            }
             ValueTy::Message => {
                 quote! {
                     _prost::encoding::#module::encode(#ke, #kl,
@@ -157,7 +146,7 @@ impl Field {
                                                       _prost::encoding::message::encoded_len,
                                                       #tag, &#ident, buf);
                 }
-            },
+            }
         }
     }
 
@@ -174,16 +163,16 @@ impl Field {
                     _prost::encoding::#module::merge_with_default(#km, _prost::encoding::int32::merge,
                                                                   #default, &mut #ident, buf)
                 }
-            },
+            }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
                 let vm = quote!(_prost::encoding::#val_mod::merge);
                 quote!(_prost::encoding::#module::merge(#km, #vm, &mut #ident, buf))
-            },
+            }
             ValueTy::Message => {
                 quote!(_prost::encoding::#module::merge(#km, _prost::encoding::message::merge,
                                                         &mut #ident, buf))
-            },
+            }
         }
     }
 
@@ -201,16 +190,16 @@ impl Field {
                         #kl, _prost::encoding::int32::encoded_len,
                         &(#default), #tag, &#ident)
                 }
-            },
+            }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
                 let vl = quote!(_prost::encoding::#val_mod::encoded_len);
                 quote!(_prost::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
-            },
+            }
             ValueTy::Message => {
                 quote!(_prost::encoding::#module::encoded_len(#kl, _prost::encoding::message::encoded_len,
                                                               #tag, &#ident))
-            },
+            }
         }
     }
 
@@ -226,7 +215,11 @@ impl Field {
 
             let get = Ident::new(&format!("get_{}", ident), Span::call_site());
             let insert = Ident::new(&format!("insert_{}", ident), Span::call_site());
-            let take_ref = if self.key_ty.is_numeric() { quote!(&) } else { quote!() };
+            let take_ref = if self.key_ty.is_numeric() {
+                quote!(&)
+            } else {
+                quote!()
+            };
 
             Some(quote! {
                 pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
@@ -274,7 +267,7 @@ impl Field {
                         #fmt
                     }
                 }
-            },
+            }
             ValueTy::Message => quote! {
                 struct #wrapper_name<'a, V: 'a>(&'a ::std::collections::#type_name<#key, V>);
                 impl<'a, V> ::std::fmt::Debug for #wrapper_name<'a, V>
@@ -283,7 +276,7 @@ impl Field {
                 {
                     #fmt
                 }
-            }
+            },
         }
     }
 }
@@ -291,10 +284,18 @@ impl Field {
 fn key_ty_from_str(s: &str) -> Result<scalar::Ty, Error> {
     let ty = scalar::Ty::from_str(s)?;
     match ty {
-        scalar::Ty::Int32 | scalar::Ty::Int64 | scalar::Ty::Uint32 |
-            scalar::Ty::Uint64 | scalar::Ty::Sint32 | scalar::Ty::Sint64 |
-            scalar::Ty::Fixed32 | scalar::Ty::Fixed64 | scalar::Ty::Sfixed32 |
-            scalar::Ty::Sfixed64 | scalar::Ty::Bool | scalar::Ty::String  => Ok(ty),
+        scalar::Ty::Int32
+        | scalar::Ty::Int64
+        | scalar::Ty::Uint32
+        | scalar::Ty::Uint64
+        | scalar::Ty::Sint32
+        | scalar::Ty::Sint64
+        | scalar::Ty::Fixed32
+        | scalar::Ty::Fixed64
+        | scalar::Ty::Sfixed32
+        | scalar::Ty::Sfixed64
+        | scalar::Ty::Bool
+        | scalar::Ty::String => Ok(ty),
         _ => bail!("invalid map key type: {}", s),
     }
 }
@@ -324,7 +325,11 @@ impl ValueTy {
     fn debug(&self) -> TokenStream {
         match *self {
             ValueTy::Scalar(ref ty) => fake_scalar(ty.clone()).debug(quote!(ValueWrapper)),
-            ValueTy::Message => quote!(fn ValueWrapper<T>(v: T) -> T { v }),
+            ValueTy::Message => quote!(
+                fn ValueWrapper<T>(v: T) -> T {
+                    v
+                }
+            ),
         }
     }
 }

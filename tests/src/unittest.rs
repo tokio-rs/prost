@@ -1,11 +1,14 @@
 #[test]
 fn extreme_default_values() {
-    use std::{f32, f64};
     use protobuf::test_messages::protobuf_unittest;
+    use std::{f32, f64};
 
     let pb = protobuf_unittest::TestExtremeDefaultValues::default();
 
-    assert_eq!(b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE", pb.escaped_bytes());
+    assert_eq!(
+        b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE",
+        pb.escaped_bytes()
+    );
 
     assert_eq!(0xFFFFFFFF, pb.large_uint32());
     assert_eq!(0xFFFFFFFFFFFFFFFF, pb.large_uint64());

@@ -7,10 +7,7 @@ use std::str;
 use std::u32;
 use std::usize;
 
-use ::bytes::{
-    Buf,
-    BufMut,
-};
+use ::bytes::{Buf, BufMut};
 
 use crate::DecodeError;
 use crate::Message;
@@ -18,7 +15,10 @@ use crate::Message;
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
-pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
+pub fn encode_varint<B>(mut value: u64, buf: &mut B)
+where
+    B: BufMut,
+{
     // Safety notes:
     //
     // - bytes_mut is unsafe because it may return an uninitialized slice.
@@ -42,15 +42,22 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B) where B: BufMut {
             }
         }
 
-        unsafe { buf.advance_mut(i); }
+        unsafe {
+            buf.advance_mut(i);
+        }
         debug_assert!(buf.has_remaining_mut());
     }
 
-    unsafe { buf.advance_mut(i); }
+    unsafe {
+        buf.advance_mut(i);
+    }
 }
 
 /// Decodes a LEB128-encoded variable length integer from the buffer.
-pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
+pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError>
+where
+    B: Buf,
+{
     let bytes = buf.bytes();
     let len = bytes.len();
     if len == 0 {
@@ -82,31 +89,71 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
 
     let mut b: u8;
     let mut part0: u32;
-    b = bytes[0]; part0  = u32::from(b)      ; if b < 0x80 { return Ok((u64::from(part0), 1)) };
+    b = bytes[0];
+    part0 = u32::from(b);
+    if b < 0x80 {
+        return Ok((u64::from(part0), 1));
+    };
     part0 -= 0x80;
-    b = bytes[1]; part0 += u32::from(b) <<  7; if b < 0x80 { return Ok((u64::from(part0), 2)) };
+    b = bytes[1];
+    part0 += u32::from(b) << 7;
+    if b < 0x80 {
+        return Ok((u64::from(part0), 2));
+    };
     part0 -= 0x80 << 7;
-    b = bytes[2]; part0 += u32::from(b) << 14; if b < 0x80 { return Ok((u64::from(part0), 3)) };
+    b = bytes[2];
+    part0 += u32::from(b) << 14;
+    if b < 0x80 {
+        return Ok((u64::from(part0), 3));
+    };
     part0 -= 0x80 << 14;
-    b = bytes[3]; part0 += u32::from(b) << 21; if b < 0x80 { return Ok((u64::from(part0), 4)) };
+    b = bytes[3];
+    part0 += u32::from(b) << 21;
+    if b < 0x80 {
+        return Ok((u64::from(part0), 4));
+    };
     part0 -= 0x80 << 21;
     let value = u64::from(part0);
 
     let mut part1: u32;
-    b = bytes[4]; part1  = u32::from(b)      ; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 5)) };
+    b = bytes[4];
+    part1 = u32::from(b);
+    if b < 0x80 {
+        return Ok((value + (u64::from(part1) << 28), 5));
+    };
     part1 -= 0x80;
-    b = bytes[5]; part1 += u32::from(b) <<  7; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 6)) };
+    b = bytes[5];
+    part1 += u32::from(b) << 7;
+    if b < 0x80 {
+        return Ok((value + (u64::from(part1) << 28), 6));
+    };
     part1 -= 0x80 << 7;
-    b = bytes[6]; part1 += u32::from(b) << 14; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 7)) };
+    b = bytes[6];
+    part1 += u32::from(b) << 14;
+    if b < 0x80 {
+        return Ok((value + (u64::from(part1) << 28), 7));
+    };
     part1 -= 0x80 << 14;
-    b = bytes[7]; part1 += u32::from(b) << 21; if b < 0x80 { return Ok((value + (u64::from(part1) << 28), 8)) };
+    b = bytes[7];
+    part1 += u32::from(b) << 21;
+    if b < 0x80 {
+        return Ok((value + (u64::from(part1) << 28), 8));
+    };
     part1 -= 0x80 << 21;
     let value = value + ((u64::from(part1)) << 28);
 
     let mut part2: u32;
-    b = bytes[8]; part2  = u32::from(b)      ; if b < 0x80 { return Ok((value + (u64::from(part2) << 56), 9)) };
+    b = bytes[8];
+    part2 = u32::from(b);
+    if b < 0x80 {
+        return Ok((value + (u64::from(part2) << 56), 9));
+    };
     part2 -= 0x80;
-    b = bytes[9]; part2 += u32::from(b) <<  7; if b < 0x80 { return Ok((value + (u64::from(part2) << 56), 10)) };
+    b = bytes[9];
+    part2 += u32::from(b) << 7;
+    if b < 0x80 {
+        return Ok((value + (u64::from(part2) << 56), 10));
+    };
 
     // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
     Err(DecodeError::new("invalid varint"))
@@ -115,7 +162,10 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
 /// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as
 /// necessary.
 #[inline(never)]
-fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError> where B: Buf {
+fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError>
+where
+    B: Buf,
+{
     let mut value = 0;
     for count in 0..min(10, buf.remaining()) {
         let byte = buf.get_u8();
@@ -143,7 +193,7 @@ pub enum WireType {
     Varint = 0,
     SixtyFourBit = 1,
     LengthDelimited = 2,
-    ThirtyTwoBit = 5
+    ThirtyTwoBit = 5,
 }
 
 pub const MIN_TAG: u32 = 1;
@@ -158,7 +208,10 @@ impl WireType {
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
             5 => Ok(WireType::ThirtyTwoBit),
-            _ => Err(DecodeError::new(format!("invalid wire type value: {}", val))),
+            _ => Err(DecodeError::new(format!(
+                "invalid wire type value: {}",
+                val
+            ))),
         }
     }
 }
@@ -166,7 +219,10 @@ impl WireType {
 /// Encodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline]
-pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut {
+pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B)
+where
+    B: BufMut,
+{
     debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
     let key = (tag << 3) | wire_type as u32;
     encode_varint(u64::from(key), buf);
@@ -175,7 +231,10 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B) where B: BufMut
 /// Decodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline]
-pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError> where B: Buf {
+pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError>
+where
+    B: Buf,
+{
     let key = decode_varint(buf)?;
     if key > u64::from(u32::MAX) {
         return Err(DecodeError::new(format!("invalid key value: {}", key)));
@@ -202,7 +261,10 @@ pub fn key_len(tag: u32) -> usize {
 #[inline]
 pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), DecodeError> {
     if expected != actual {
-        return Err(DecodeError::new(format!("invalid wire type: {:?} (expected {:?})", actual, expected)));
+        return Err(DecodeError::new(format!(
+            "invalid wire type: {:?} (expected {:?})",
+            actual, expected
+        )));
     }
     Ok(())
 }
@@ -212,25 +274,29 @@ pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), Decod
 pub fn merge_loop<T, M, B>(value: &mut T, buf: &mut B, mut merge: M) -> Result<(), DecodeError>
 where
     M: FnMut(&mut T, &mut B) -> Result<(), DecodeError>,
-    B: Buf {
-        let len = decode_varint(buf)?;
-        let remaining = buf.remaining();
-        if len > remaining as u64 {
-            return Err(DecodeError::new("buffer underflow"))
-        }
+    B: Buf,
+{
+    let len = decode_varint(buf)?;
+    let remaining = buf.remaining();
+    if len > remaining as u64 {
+        return Err(DecodeError::new("buffer underflow"));
+    }
 
-        let limit = remaining - len as usize;
-        while buf.remaining() > limit {
-            merge(value, buf)?;
-        }
+    let limit = remaining - len as usize;
+    while buf.remaining() > limit {
+        merge(value, buf)?;
+    }
 
-        if buf.remaining() != limit {
-            return Err(DecodeError::new("delimited length exceeded"))
-        }
-        Ok(())
+    if buf.remaining() != limit {
+        return Err(DecodeError::new("delimited length exceeded"));
+    }
+    Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError>
+where
+    B: Buf,
+{
     let len = match wire_type {
         WireType::Varint => decode_varint(buf).map(|_| 0)?,
         WireType::ThirtyTwoBit => 4,
@@ -248,13 +314,16 @@ pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError
 
 /// Helper macro which emits an `encode_repeated` function for the type.
 macro_rules! encode_repeated {
-    ($ty:ty) => (
-         pub fn encode_repeated<B>(tag: u32, values: &[$ty], buf: &mut B) where B: BufMut {
-             for value in values {
-                 encode(tag, value, buf);
-             }
-         }
-    )
+    ($ty:ty) => {
+        pub fn encode_repeated<B>(tag: u32, values: &[$ty], buf: &mut B)
+        where
+            B: BufMut,
+        {
+            for value in values {
+                encode(tag, value, buf);
+            }
+        }
+    };
 }
 
 /// Helper macro which emits a `merge_repeated_numeric` function for the numeric type.
@@ -262,11 +331,15 @@ macro_rules! merge_repeated_numeric {
     ($ty:ty,
      $wire_type:expr,
      $merge:ident,
-     $merge_repeated:ident) => (
-        pub fn $merge_repeated<B>(wire_type: WireType,
-                                  values: &mut Vec<$ty>,
-                                  buf: &mut B)
-                                  -> Result<(), DecodeError> where B: Buf {
+     $merge_repeated:ident) => {
+        pub fn $merge_repeated<B>(
+            wire_type: WireType,
+            values: &mut Vec<$ty>,
+            buf: &mut B,
+        ) -> Result<(), DecodeError>
+        where
+            B: Buf,
+        {
             if wire_type == WireType::LengthDelimited {
                 // Packed.
                 merge_loop(values, buf, |values, buf| {
@@ -284,7 +357,7 @@ macro_rules! merge_repeated_numeric {
                 Ok(())
             }
         }
-    )
+    };
 }
 
 /// Macro which emits a module containing a set of encoding functions for a
@@ -422,16 +495,26 @@ macro_rules! fixed_width {
      $wire_type:expr,
      $proto_ty:ident,
      $put:ident,
-     $get:ident) => (
+     $get:ident) => {
         pub mod $proto_ty {
             use crate::encoding::*;
 
-            pub fn encode<B>(tag: u32, value: &$ty, buf: &mut B) where B: BufMut {
+            pub fn encode<B>(tag: u32, value: &$ty, buf: &mut B)
+            where
+                B: BufMut,
+            {
                 encode_key(tag, $wire_type, buf);
                 buf.$put(*value);
             }
 
-            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+            pub fn merge<B>(
+                wire_type: WireType,
+                value: &mut $ty,
+                buf: &mut B,
+            ) -> Result<(), DecodeError>
+            where
+                B: Buf,
+            {
                 check_wire_type($wire_type, wire_type)?;
                 if buf.remaining() < $width {
                     return Err(DecodeError::new("buffer underflow"));
@@ -442,8 +525,13 @@ macro_rules! fixed_width {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed<B>(tag: u32, values: &[$ty], buf: &mut B) where B: BufMut {
-                if values.is_empty() { return; }
+            pub fn encode_packed<B>(tag: u32, values: &[$ty], buf: &mut B)
+            where
+                B: BufMut,
+            {
+                if values.is_empty() {
+                    return;
+                }
 
                 encode_key(tag, WireType::LengthDelimited, buf);
                 let len = values.len() as u64 * $width;
@@ -480,11 +568,8 @@ macro_rules! fixed_width {
             mod test {
                 use quickcheck::TestResult;
 
+                use super::super::test::{check_collection_type, check_type};
                 use super::*;
-                use super::super::test::{
-                    check_collection_type,
-                    check_type,
-                };
 
                 quickcheck! {
                     fn check(value: $ty, tag: u32) -> TestResult {
@@ -504,87 +589,135 @@ macro_rules! fixed_width {
                 }
             }
         }
-    );
+    };
 }
-fixed_width!(f32, 4, WireType::ThirtyTwoBit, float, put_f32_le, get_f32_le);
-fixed_width!(f64, 8, WireType::SixtyFourBit, double, put_f64_le, get_f64_le);
-fixed_width!(u32, 4, WireType::ThirtyTwoBit, fixed32, put_u32_le, get_u32_le);
-fixed_width!(u64, 8, WireType::SixtyFourBit, fixed64, put_u64_le, get_u64_le);
-fixed_width!(i32, 4, WireType::ThirtyTwoBit, sfixed32, put_i32_le, get_i32_le);
-fixed_width!(i64, 8, WireType::SixtyFourBit, sfixed64, put_i64_le, get_i64_le);
+fixed_width!(
+    f32,
+    4,
+    WireType::ThirtyTwoBit,
+    float,
+    put_f32_le,
+    get_f32_le
+);
+fixed_width!(
+    f64,
+    8,
+    WireType::SixtyFourBit,
+    double,
+    put_f64_le,
+    get_f64_le
+);
+fixed_width!(
+    u32,
+    4,
+    WireType::ThirtyTwoBit,
+    fixed32,
+    put_u32_le,
+    get_u32_le
+);
+fixed_width!(
+    u64,
+    8,
+    WireType::SixtyFourBit,
+    fixed64,
+    put_u64_le,
+    get_u64_le
+);
+fixed_width!(
+    i32,
+    4,
+    WireType::ThirtyTwoBit,
+    sfixed32,
+    put_i32_le,
+    get_i32_le
+);
+fixed_width!(
+    i64,
+    8,
+    WireType::SixtyFourBit,
+    sfixed64,
+    put_i64_le,
+    get_i64_le
+);
 
 /// Macro which emits encoding functions for a length-delimited type.
 macro_rules! length_delimited {
-    ($ty:ty) => (
-
+    ($ty:ty) => {
         encode_repeated!($ty);
 
-         pub fn merge_repeated<B>(wire_type: WireType, values: &mut Vec<$ty>, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
-                check_wire_type(WireType::LengthDelimited, wire_type)?;
-                let mut value = Default::default();
-                merge(wire_type, &mut value, buf)?;
-                values.push(value);
-                Ok(())
-         }
+        pub fn merge_repeated<B>(
+            wire_type: WireType,
+            values: &mut Vec<$ty>,
+            buf: &mut B,
+        ) -> Result<(), DecodeError>
+        where
+            B: Buf,
+        {
+            check_wire_type(WireType::LengthDelimited, wire_type)?;
+            let mut value = Default::default();
+            merge(wire_type, &mut value, buf)?;
+            values.push(value);
+            Ok(())
+        }
 
-         #[inline]
-         pub fn encoded_len(tag: u32, value: &$ty) -> usize {
-             key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
-         }
+        #[inline]
+        pub fn encoded_len(tag: u32, value: &$ty) -> usize {
+            key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
+        }
 
-         #[inline]
-         pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
-             key_len(tag) * values.len() + values.iter().map(|value| {
-                 encoded_len_varint(value.len() as u64) + value.len()
-             }).sum::<usize>()
-         }
+        #[inline]
+        pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
+            key_len(tag) * values.len()
+                + values
+                    .iter()
+                    .map(|value| encoded_len_varint(value.len() as u64) + value.len())
+                    .sum::<usize>()
+        }
 
-         #[cfg(test)]
-         mod test {
+        #[cfg(test)]
+        mod test {
             use quickcheck::TestResult;
 
+            use super::super::test::{check_collection_type, check_type};
             use super::*;
-            use super::super::test::{
-                check_collection_type,
-                check_type,
-            };
 
-             quickcheck! {
-                 fn check(value: $ty, tag: u32) -> TestResult {
-                     super::test::check_type(value, tag, WireType::LengthDelimited,
-                                             encode, merge, encoded_len)
-                 }
-                 fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                     super::test::check_collection_type(value, tag, WireType::LengthDelimited,
-                                                        encode_repeated, merge_repeated,
-                                                        encoded_len_repeated)
-                 }
-             }
-         }
-    )
+            quickcheck! {
+                fn check(value: $ty, tag: u32) -> TestResult {
+                    super::test::check_type(value, tag, WireType::LengthDelimited,
+                                            encode, merge, encoded_len)
+                }
+                fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
+                    super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                       encode_repeated, merge_repeated,
+                                                       encoded_len_repeated)
+                }
+            }
+        }
+    };
 }
 
 pub mod string {
     use super::*;
 
-    pub fn encode<B>(tag: u32,
-                     value: &String,
-                     buf: &mut B) where B: BufMut {
+    pub fn encode<B>(tag: u32, value: &String, buf: &mut B)
+    where
+        B: BufMut,
+    {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value.as_bytes());
     }
-    pub fn merge<B>(wire_type: WireType,
-                    value: &mut String,
-                    buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+    pub fn merge<B>(wire_type: WireType, value: &mut String, buf: &mut B) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
         unsafe {
             // String::as_mut_vec is unsafe because it doesn't check that the bytes
             // inserted into it the resulting vec are valid UTF-8. We check
             // explicitly in order to ensure this is safe.
             super::bytes::merge(wire_type, value.as_mut_vec(), buf)?;
-            str::from_utf8(value.as_bytes()).map_err(|_| {
-                DecodeError::new("invalid string value: data is not UTF-8 encoded")
-            })?;
+            str::from_utf8(value.as_bytes())
+                .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
         }
         Ok(())
     }
@@ -595,13 +728,23 @@ pub mod string {
 pub mod bytes {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &Vec<u8>, buf: &mut B) where B: BufMut {
+    pub fn encode<B>(tag: u32, value: &Vec<u8>, buf: &mut B)
+    where
+        B: BufMut,
+    {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value);
     }
 
-    pub fn merge<B>(wire_type: WireType, value: &mut Vec<u8>, buf: &mut B) -> Result<(), DecodeError> where B: Buf {
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut Vec<u8>,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
@@ -631,31 +774,43 @@ pub mod message {
     use super::*;
 
     pub fn encode<M, B>(tag: u32, msg: &M, buf: &mut B)
-    where M: Message,
-          B: BufMut {
+    where
+        M: Message,
+        B: BufMut,
+    {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(msg.encoded_len() as u64, buf);
         msg.encode_raw(buf);
     }
 
     pub fn merge<M, B>(wire_type: WireType, msg: &mut M, buf: &mut B) -> Result<(), DecodeError>
-    where M: Message,
-          B: Buf {
+    where
+        M: Message,
+        B: Buf,
+    {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         merge_loop(msg, buf, M::merge_field)
     }
 
     pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
-    where M: Message,
-          B: BufMut {
+    where
+        M: Message,
+        B: BufMut,
+    {
         for msg in messages {
             encode(tag, msg, buf);
         }
     }
 
-    pub fn merge_repeated<M, B>(wire_type: WireType, messages: &mut Vec<M>, buf: &mut B) -> Result<(), DecodeError>
-    where M: Message + Default,
-          B: Buf {
+    pub fn merge_repeated<M, B>(
+        wire_type: WireType,
+        messages: &mut Vec<M>,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
+    where
+        M: Message + Default,
+        B: Buf,
+    {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut msg = M::default();
         merge(WireType::LengthDelimited, &mut msg, buf)?;
@@ -664,102 +819,128 @@ pub mod message {
     }
 
     #[inline]
-    pub fn encoded_len<M>(tag: u32, msg: &M) -> usize where M: Message {
+    pub fn encoded_len<M>(tag: u32, msg: &M) -> usize
+    where
+        M: Message,
+    {
         let len = msg.encoded_len();
         key_len(tag) + encoded_len_varint(len as u64) + msg.encoded_len()
     }
 
     #[inline]
-    pub fn encoded_len_repeated<M>(tag: u32, messages: &[M]) -> usize where M: Message {
+    pub fn encoded_len_repeated<M>(tag: u32, messages: &[M]) -> usize
+    where
+        M: Message,
+    {
         key_len(tag) * messages.len()
-            + messages.iter()
-                      .map(Message::encoded_len)
-                      .map(|len| len + encoded_len_varint(len as u64))
-                      .sum::<usize>()
+            + messages
+                .iter()
+                .map(Message::encoded_len)
+                .map(|len| len + encoded_len_varint(len as u64))
+                .sum::<usize>()
     }
 }
 
 /// Rust doesn't have a `Map` trait, so macros are currently the best way to be
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
-    ($map_ty:ident) => (
+    ($map_ty:ident) => {
         use std::collections::$map_ty;
         use std::hash::Hash;
 
         use crate::encoding::*;
 
         /// Generic protobuf map encode function.
-        pub fn encode<K, V, B, KE, KL, VE, VL>(key_encode: KE,
-                                               key_encoded_len: KL,
-                                               val_encode: VE,
-                                               val_encoded_len: VL,
-                                               tag: u32,
-                                               values: &$map_ty<K, V>,
-                                               buf: &mut B)
-        where K: Default + Eq + Hash + Ord,
-              V: Default + PartialEq,
-              B: BufMut,
-              KE: Fn(u32, &K, &mut B),
-              KL: Fn(u32, &K) -> usize,
-              VE: Fn(u32, &V, &mut B),
-              VL: Fn(u32, &V) -> usize {
-            encode_with_default(key_encode, key_encoded_len, val_encode, val_encoded_len,
-                                &V::default(), tag, values, buf)
+        pub fn encode<K, V, B, KE, KL, VE, VL>(
+            key_encode: KE,
+            key_encoded_len: KL,
+            val_encode: VE,
+            val_encoded_len: VL,
+            tag: u32,
+            values: &$map_ty<K, V>,
+            buf: &mut B,
+        ) where
+            K: Default + Eq + Hash + Ord,
+            V: Default + PartialEq,
+            B: BufMut,
+            KE: Fn(u32, &K, &mut B),
+            KL: Fn(u32, &K) -> usize,
+            VE: Fn(u32, &V, &mut B),
+            VL: Fn(u32, &V) -> usize,
+        {
+            encode_with_default(
+                key_encode,
+                key_encoded_len,
+                val_encode,
+                val_encoded_len,
+                &V::default(),
+                tag,
+                values,
+                buf,
+            )
         }
 
         /// Generic protobuf map merge function.
-        pub fn merge<K, V, B, KM, VM>(key_merge: KM,
-                                      val_merge: VM,
-                                      values: &mut $map_ty<K, V>,
-                                      buf: &mut B)
-                                      -> Result<(), DecodeError>
-        where K: Default + Eq + Hash + Ord,
-              V: Default,
-              B: Buf,
-              KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
-              VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError> {
+        pub fn merge<K, V, B, KM, VM>(
+            key_merge: KM,
+            val_merge: VM,
+            values: &mut $map_ty<K, V>,
+            buf: &mut B,
+        ) -> Result<(), DecodeError>
+        where
+            K: Default + Eq + Hash + Ord,
+            V: Default,
+            B: Buf,
+            KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
+            VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError>,
+        {
             merge_with_default(key_merge, val_merge, V::default(), values, buf)
         }
 
         /// Generic protobuf map encode function.
-        pub fn encoded_len<K, V, KL, VL>(key_encoded_len: KL,
-                                         val_encoded_len: VL,
-                                         tag: u32,
-                                         values: &$map_ty<K, V>)
-                                         -> usize
-        where K: Default + Eq + Hash + Ord,
-              V: Default + PartialEq,
-              KL: Fn(u32, &K) -> usize,
-              VL: Fn(u32, &V) -> usize {
-            encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(),
-                                        tag, values)
+        pub fn encoded_len<K, V, KL, VL>(
+            key_encoded_len: KL,
+            val_encoded_len: VL,
+            tag: u32,
+            values: &$map_ty<K, V>,
+        ) -> usize
+        where
+            K: Default + Eq + Hash + Ord,
+            V: Default + PartialEq,
+            KL: Fn(u32, &K) -> usize,
+            VL: Fn(u32, &V) -> usize,
+        {
+            encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(), tag, values)
         }
 
         /// Generic protobuf map encode function with an overriden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
-        pub fn encode_with_default<K, V, B, KE, KL, VE, VL>(key_encode: KE,
-                                                            key_encoded_len: KL,
-                                                            val_encode: VE,
-                                                            val_encoded_len: VL,
-                                                            val_default: &V,
-                                                            tag: u32,
-                                                            values: &$map_ty<K, V>,
-                                                            buf: &mut B)
-        where K: Default + Eq + Hash + Ord,
-              V: PartialEq,
-              B: BufMut,
-              KE: Fn(u32, &K, &mut B),
-              KL: Fn(u32, &K) -> usize,
-              VE: Fn(u32, &V, &mut B),
-              VL: Fn(u32, &V) -> usize {
+        pub fn encode_with_default<K, V, B, KE, KL, VE, VL>(
+            key_encode: KE,
+            key_encoded_len: KL,
+            val_encode: VE,
+            val_encoded_len: VL,
+            val_default: &V,
+            tag: u32,
+            values: &$map_ty<K, V>,
+            buf: &mut B,
+        ) where
+            K: Default + Eq + Hash + Ord,
+            V: PartialEq,
+            B: BufMut,
+            KE: Fn(u32, &K, &mut B),
+            KL: Fn(u32, &K) -> usize,
+            VE: Fn(u32, &V, &mut B),
+            VL: Fn(u32, &V) -> usize,
+        {
             for (key, val) in values.iter() {
                 let skip_key = key == &K::default();
                 let skip_val = val == val_default;
 
-                let len = (if skip_key { 0 } else { key_encoded_len(1, key) }) +
-                        (if skip_val { 0 } else { val_encoded_len(2, val) });
+                let len = (if skip_key { 0 } else { key_encoded_len(1, key) })
+                    + (if skip_val { 0 } else { val_encoded_len(2, val) });
 
                 encode_key(tag, WireType::LengthDelimited, buf);
                 encode_varint(len as u64, buf);
@@ -776,27 +957,33 @@ macro_rules! map {
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
-        pub fn merge_with_default<K, V, B, KM, VM>(key_merge: KM,
-                                                   val_merge: VM,
-                                                   val_default: V,
-                                                   values: &mut $map_ty<K, V>,
-                                                   buf: &mut B)
-                                                   -> Result<(), DecodeError>
-        where K: Default + Eq + Hash + Ord,
-              B: Buf,
-              KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
-              VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError> {
-
+        pub fn merge_with_default<K, V, B, KM, VM>(
+            key_merge: KM,
+            val_merge: VM,
+            val_default: V,
+            values: &mut $map_ty<K, V>,
+            buf: &mut B,
+        ) -> Result<(), DecodeError>
+        where
+            K: Default + Eq + Hash + Ord,
+            B: Buf,
+            KM: Fn(WireType, &mut K, &mut B) -> Result<(), DecodeError>,
+            VM: Fn(WireType, &mut V, &mut B) -> Result<(), DecodeError>,
+        {
             let mut key = Default::default();
             let mut val = val_default;
-            merge_loop(&mut (&mut key, &mut val), buf, |&mut (ref mut key, ref mut val), buf| {
-                let (tag, wire_type) = decode_key(buf)?;
-                match tag {
-                    1 => key_merge(wire_type, key, buf),
-                    2 => val_merge(wire_type, val, buf),
-                    _ => skip_field(wire_type, buf),
-                }
-            })?;
+            merge_loop(
+                &mut (&mut key, &mut val),
+                buf,
+                |&mut (ref mut key, ref mut val), buf| {
+                    let (tag, wire_type) = decode_key(buf)?;
+                    match tag {
+                        1 => key_merge(wire_type, key, buf),
+                        2 => val_merge(wire_type, val, buf),
+                        _ => skip_field(wire_type, buf),
+                    }
+                },
+            )?;
             values.insert(key, val);
 
             Ok(())
@@ -806,23 +993,37 @@ macro_rules! map {
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
-        pub fn encoded_len_with_default<K, V, KL, VL>(key_encoded_len: KL,
-                                                      val_encoded_len: VL,
-                                                      val_default: &V,
-                                                      tag: u32,
-                                                      values: &$map_ty<K, V>)
-                                                      -> usize
-        where K: Default + Eq + Hash + Ord,
-              V: PartialEq,
-              KL: Fn(u32, &K) -> usize,
-              VL: Fn(u32, &V) -> usize {
-            key_len(tag) * values.len() + values.iter().map(|(key, val)| {
-                let len = (if key == &K::default() { 0 } else { key_encoded_len(1, key) })
-                        + (if val == val_default { 0 } else { val_encoded_len(2, val) });
-                encoded_len_varint(len as u64) + len
-            }).sum::<usize>()
+        pub fn encoded_len_with_default<K, V, KL, VL>(
+            key_encoded_len: KL,
+            val_encoded_len: VL,
+            val_default: &V,
+            tag: u32,
+            values: &$map_ty<K, V>,
+        ) -> usize
+        where
+            K: Default + Eq + Hash + Ord,
+            V: PartialEq,
+            KL: Fn(u32, &K) -> usize,
+            VL: Fn(u32, &V) -> usize,
+        {
+            key_len(tag) * values.len()
+                + values
+                    .iter()
+                    .map(|(key, val)| {
+                        let len = (if key == &K::default() {
+                            0
+                        } else {
+                            key_encoded_len(1, key)
+                        }) + (if val == val_default {
+                            0
+                        } else {
+                            val_encoded_len(2, val)
+                        });
+                        encoded_len_varint(len as u64) + len
+                    })
+                    .sum::<usize>()
         }
-    )
+    };
 }
 
 pub mod hash_map {
@@ -845,18 +1046,20 @@ mod test {
 
     use crate::encoding::*;
 
-    pub fn check_type<T, B>(value: T,
-                            tag: u32,
-                            wire_type: WireType,
-                            encode: fn(u32, &B, &mut BytesMut),
-                            merge: fn(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
-                            encoded_len: fn(u32, &B) -> usize)
-                            -> TestResult
-    where T: Debug + Default + PartialEq + Borrow<B>,
-          B: ?Sized {
-
+    pub fn check_type<T, B>(
+        value: T,
+        tag: u32,
+        wire_type: WireType,
+        encode: fn(u32, &B, &mut BytesMut),
+        merge: fn(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
+        encoded_len: fn(u32, &B) -> usize,
+    ) -> TestResult
+    where
+        T: Debug + Default + PartialEq + Borrow<B>,
+        B: ?Sized,
+    {
         if tag > MAX_TAG || tag < MIN_TAG {
-            return TestResult::discard()
+            return TestResult::discard();
         }
 
         let expected_len = encoded_len(tag, value.borrow());
@@ -867,8 +1070,11 @@ mod test {
         let mut buf = buf.freeze().into_buf();
 
         if buf.remaining() != expected_len {
-            return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
-                                             expected_len, buf.remaining()));
+            return TestResult::error(format!(
+                "encoded_len wrong; expected: {}, actual: {}",
+                expected_len,
+                buf.remaining()
+            ));
         }
 
         if !buf.has_remaining() {
@@ -882,28 +1088,34 @@ mod test {
         };
 
         if tag != decoded_tag {
-            return TestResult::error(
-                format!("decoded tag does not match; expected: {}, actual: {}",
-                        tag, decoded_tag));
+            return TestResult::error(format!(
+                "decoded tag does not match; expected: {}, actual: {}",
+                tag, decoded_tag
+            ));
         }
 
         if wire_type != decoded_wire_type {
-            return TestResult::error(
-                format!("decoded wire type does not match; expected: {:?}, actual: {:?}",
-                        wire_type, decoded_wire_type));
+            return TestResult::error(format!(
+                "decoded wire type does not match; expected: {:?}, actual: {:?}",
+                wire_type, decoded_wire_type
+            ));
         }
 
         match wire_type {
             WireType::SixtyFourBit if buf.remaining() != 8 => {
-                return TestResult::error(
-                    format!("64bit wire type illegal remaining: {}, tag: {}",
-                            buf.remaining(), tag));
-            },
+                return TestResult::error(format!(
+                    "64bit wire type illegal remaining: {}, tag: {}",
+                    buf.remaining(),
+                    tag
+                ));
+            }
             WireType::ThirtyTwoBit if buf.remaining() != 4 => {
-                return TestResult::error(
-                    format!("32bit wire type illegal remaining: {}, tag: {}",
-                            buf.remaining(), tag));
-            },
+                return TestResult::error(format!(
+                    "32bit wire type illegal remaining: {}, tag: {}",
+                    buf.remaining(),
+                    tag
+                ));
+            }
             _ => (),
         }
 
@@ -913,8 +1125,10 @@ mod test {
         };
 
         if buf.has_remaining() {
-            return TestResult::error(format!("expected buffer to be empty, remaining: {}",
-                                             buf.remaining()));
+            return TestResult::error(format!(
+                "expected buffer to be empty, remaining: {}",
+                buf.remaining()
+            ));
         }
 
         if value == roundtrip_value {
@@ -924,21 +1138,23 @@ mod test {
         }
     }
 
-    pub fn check_collection_type<T, B, E, M, L>(value: T,
-                                                tag: u32,
-                                                wire_type: WireType,
-                                                encode: E,
-                                                mut merge: M,
-                                                encoded_len: L)
-                                                -> TestResult
-    where T: Debug + Default + PartialEq + Borrow<B>,
-          B: ?Sized,
-          E: FnOnce(u32, &B, &mut BytesMut),
-          M: FnMut(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
-          L: FnOnce(u32, &B) -> usize {
-
+    pub fn check_collection_type<T, B, E, M, L>(
+        value: T,
+        tag: u32,
+        wire_type: WireType,
+        encode: E,
+        mut merge: M,
+        encoded_len: L,
+    ) -> TestResult
+    where
+        T: Debug + Default + PartialEq + Borrow<B>,
+        B: ?Sized,
+        E: FnOnce(u32, &B, &mut BytesMut),
+        M: FnMut(WireType, &mut T, &mut Cursor<Bytes>) -> Result<(), DecodeError>,
+        L: FnOnce(u32, &B) -> usize,
+    {
         if tag > MAX_TAG || tag < MIN_TAG {
-            return TestResult::discard()
+            return TestResult::discard();
         }
 
         let expected_len = encoded_len(tag, value.borrow());
@@ -949,28 +1165,32 @@ mod test {
         let mut buf = buf.freeze().into_buf();
 
         if buf.remaining() != expected_len {
-            return TestResult::error(format!("encoded_len wrong; expected: {}, actual: {}",
-                                             expected_len, buf.remaining()));
+            return TestResult::error(format!(
+                "encoded_len wrong; expected: {}, actual: {}",
+                expected_len,
+                buf.remaining()
+            ));
         }
 
         let mut roundtrip_value = Default::default();
         while buf.has_remaining() {
-
             let (decoded_tag, decoded_wire_type) = match decode_key(&mut buf) {
                 Ok(key) => key,
                 Err(error) => return TestResult::error(format!("{:?}", error)),
             };
 
             if tag != decoded_tag {
-                return TestResult::error(
-                    format!("decoded tag does not match; expected: {}, actual: {}",
-                            tag, decoded_tag));
+                return TestResult::error(format!(
+                    "decoded tag does not match; expected: {}, actual: {}",
+                    tag, decoded_tag
+                ));
             }
 
             if wire_type != decoded_wire_type {
-                return TestResult::error(
-                    format!("decoded wire type does not match; expected: {:?}, actual: {:?}",
-                            wire_type, decoded_wire_type));
+                return TestResult::error(format!(
+                    "decoded wire type does not match; expected: {:?}, actual: {:?}",
+                    wire_type, decoded_wire_type
+                ));
             }
 
             if let Err(error) = merge(wire_type, &mut roundtrip_value, &mut buf) {
@@ -1003,7 +1223,8 @@ mod test {
             let roundtrip_value = decode_varint(&mut encoded.into_buf()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            let roundtrip_value = decode_varint_slow(&mut encoded.into_buf()).expect("slow decoding failed");
+            let roundtrip_value =
+                decode_varint_slow(&mut encoded.into_buf()).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 
@@ -1029,16 +1250,37 @@ mod test {
         check(2u64.pow(42) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
         check(2u64.pow(42), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
 
-        check(2u64.pow(49) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
-        check(2u64.pow(49), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+        check(
+            2u64.pow(49) - 1,
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F],
+        );
+        check(
+            2u64.pow(49),
+            &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01],
+        );
 
-        check(2u64.pow(56) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
-        check(2u64.pow(56), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+        check(
+            2u64.pow(56) - 1,
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F],
+        );
+        check(
+            2u64.pow(56),
+            &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01],
+        );
 
-        check(2u64.pow(63) - 1, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]);
-        check(2u64.pow(63), &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01]);
+        check(
+            2u64.pow(63) - 1,
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F],
+        );
+        check(
+            2u64.pow(63),
+            &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01],
+        );
 
-        check(u64::MAX, &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]);
+        check(
+            u64::MAX,
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+        );
     }
 
     /// This big bowl o' macro soup generates a quickcheck encoding test for each

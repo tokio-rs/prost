@@ -2,13 +2,7 @@ use failure::Error;
 use proc_macro2::TokenStream;
 use syn::Meta;
 
-use crate::field::{
-    word_attr,
-    tag_attr,
-    set_option,
-    set_bool,
-    Label,
-};
+use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
 
 #[derive(Clone)]
 pub struct Field {
@@ -45,7 +39,10 @@ impl Field {
 
         match unknown_attrs.len() {
             0 => (),
-            1 => bail!("unknown attribute for message field: {:?}", unknown_attrs[0]),
+            1 => bail!(
+                "unknown attribute for message field: {:?}",
+                unknown_attrs[0]
+            ),
             _ => bail!("unknown attributes for message field: {:?}", unknown_attrs),
         }
 

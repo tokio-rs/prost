@@ -119,39 +119,23 @@ extern crate log;
 
 mod ast;
 mod code_generator;
+mod extern_paths;
 mod ident;
 mod message_graph;
-mod extern_paths;
 
-use std::default;
 use std::collections::HashMap;
+use std::default;
 use std::env;
 use std::fs;
-use std::io::{
-    Error,
-    ErrorKind,
-    Read,
-    Result,
-    Write,
-};
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
-pub use crate::ast::{
-    Comments,
-    Method,
-    Service,
-};
-use crate::code_generator::{
-    CodeGenerator,
-    module,
-};
+pub use crate::ast::{Comments, Method, Service};
+use crate::code_generator::{module, CodeGenerator};
 use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
 
@@ -207,7 +191,6 @@ pub struct Config {
 }
 
 impl Config {
-
     /// Creates a new code generator configuration with default options.
     pub fn new() -> Config {
         Config::default()
@@ -262,8 +245,10 @@ impl Config {
     /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#maps
     /// [3]: https://doc.rust-lang.org/std/collections/struct.HashMap.html
     pub fn btree_map<I, S>(&mut self, paths: I) -> &mut Self
-    where I: IntoIterator<Item = S>,
-          S: AsRef<str> {
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
@@ -292,9 +277,12 @@ impl Config {
     /// config.field_attribute("in", "#[serde(rename = \"in\")]");
     /// ```
     pub fn field_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
-    where P: AsRef<str>,
-          A: AsRef<str> {
-        self.field_attributes.push((path.as_ref().to_string(), attribute.as_ref().to_string()));
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        self.field_attributes
+            .push((path.as_ref().to_string(), attribute.as_ref().to_string()));
         self
     }
 
@@ -338,9 +326,12 @@ impl Config {
     /// In other words, to place an attribute on the `enum` implementing the `oneof`, the match
     /// would look like `my_messages.MyMessageType.oneofname`.
     pub fn type_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
-    where P: AsRef<str>,
-          A: AsRef<str> {
-        self.type_attributes.push((path.as_ref().to_string(), attribute.as_ref().to_string()));
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        self.type_attributes
+            .push((path.as_ref().to_string(), attribute.as_ref().to_string()));
         self
     }
 
@@ -469,10 +460,12 @@ impl Config {
     /// config.extern_path(".uuid.Uuid", "::uuid::Uuid");
     /// ```
     pub fn extern_path<P1, P2>(&mut self, proto_path: P1, rust_path: P2) -> &mut Self
-    where P1: Into<String>,
-          P2: Into<String>
+    where
+        P1: Into<String>,
+        P2: Into<String>,
     {
-        self.extern_paths.push((proto_path.into(), rust_path.into()));
+        self.extern_paths
+            .push((proto_path.into(), rust_path.into()));
         self
     }
 
@@ -491,7 +484,10 @@ impl Config {
     ///
     /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
     /// executing build scripts, so `out_dir` typically does not need to be configured.
-    pub fn out_dir<P>(&mut self, path: P) -> &mut Self where P: Into<PathBuf> {
+    pub fn out_dir<P>(&mut self, path: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
         self.out_dir = Some(path.into());
         self
     }
@@ -515,11 +511,15 @@ impl Config {
     ///                                &["src"]).unwrap();
     /// }
     /// ```
-    pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
+    pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
             env::var_os("OUT_DIR")
-                .ok_or_else(|| Error::new(ErrorKind::Other,
-                                          "OUT_DIR environment variable is not set"))
+                .ok_or_else(|| {
+                    Error::new(ErrorKind::Other, "OUT_DIR environment variable is not set")
+                })
                 .map(Into::into)
         })?;
 
@@ -536,8 +536,9 @@ impl Config {
 
         let mut cmd = Command::new(protoc());
         cmd.arg("--include_imports")
-           .arg("--include_source_info")
-           .arg("-o").arg(&descriptor_set);
+            .arg("--include_source_info")
+            .arg("-o")
+            .arg(&descriptor_set);
 
         for include in includes {
             cmd.arg("-I").arg(include.as_ref());
@@ -553,9 +554,10 @@ impl Config {
 
         let output = cmd.output()?;
         if !output.status.success() {
-            return Err(Error::new(ErrorKind::Other,
-                                format!("protoc failed: {}",
-                                        String::from_utf8_lossy(&output.stderr))));
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("protoc failed: {}", String::from_utf8_lossy(&output.stderr)),
+            ));
         }
 
         let mut buf = Vec::new();
@@ -647,7 +649,10 @@ impl default::Default for Config {
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
-pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()> where P: AsRef<Path> {
+pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()>
+where
+    P: AsRef<Path>,
+{
     Config::new().compile_protos(protos, includes)
 }
 
@@ -679,8 +684,8 @@ pub fn protoc_include() -> &'static Path {
 
 #[cfg(test)]
 mod tests {
-    use env_logger;
     use super::*;
+    use env_logger;
 
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
@@ -694,10 +699,10 @@ mod tests {
             // Generate the service methods.
             for method in service.methods {
                 method.comments.append_with_indent(1, buf);
-                buf.push_str(&format!("    fn {}({}) -> {};\n",
-                                      method.name,
-                                      method.input_type,
-                                      method.output_type));
+                buf.push_str(&format!(
+                    "    fn {}({}) -> {};\n",
+                    method.name, method.input_type, method.output_type
+                ));
             }
 
             // Close out the trait.
@@ -713,8 +718,8 @@ mod tests {
     fn smoke_test() {
         let _ = env_logger::init();
         Config::new()
-               .service_generator(Box::new(ServiceTraitGenerator))
-               .compile_protos(&["src/smoke_test.proto"], &["src"])
-               .unwrap();
+            .service_generator(Box::new(ServiceTraitGenerator))
+            .compile_protos(&["src/smoke_test.proto"], &["src"])
+            .unwrap();
     }
 }

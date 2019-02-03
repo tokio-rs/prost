@@ -1,13 +1,18 @@
-#[macro_use] extern crate prost_derive;
+#[macro_use]
+extern crate prost_derive;
 
 pub mod extern_paths;
 pub mod packages;
 pub mod unittest;
 
-#[cfg(test)] mod bootstrap;
-#[cfg(test)] mod debug;
-#[cfg(test)] mod message_encoding;
-#[cfg(test)] mod no_unused_results;
+#[cfg(test)]
+mod bootstrap;
+#[cfg(test)]
+mod debug;
+#[cfg(test)]
+mod message_encoding;
+#[cfg(test)]
+mod no_unused_results;
 
 pub mod foo {
     pub mod bar_baz {
@@ -71,7 +76,9 @@ impl RoundtripResult {
     pub fn unwrap(self) -> Vec<u8> {
         match self {
             RoundtripResult::Ok(buf) => buf,
-            RoundtripResult::DecodeError(error) => panic!("failed to decode the roundtrip data: {}", error),
+            RoundtripResult::DecodeError(error) => {
+                panic!("failed to decode the roundtrip data: {}", error)
+            }
             RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
         }
     }
@@ -88,7 +95,10 @@ impl RoundtripResult {
 
 /// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
 /// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
-pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
+pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult
+where
+    M: Message + Default,
+{
     // Try to decode a message from the data. If decoding fails, continue.
     let all_types = match M::decode(data) {
         Ok(all_types) => all_types,
@@ -99,7 +109,7 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
 
     // TODO: Reenable this once sign-extension in negative int32s is figured out.
     //assert!(encoded_len <= len, "encoded_len: {}, len: {}, all_types: {:?}",
-                                //encoded_len, len, all_types);
+    //encoded_len, len, all_types);
 
     let mut buf1 = Vec::new();
     if let Err(error) = all_types.encode(&mut buf1) {
@@ -107,8 +117,13 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
     }
     if encoded_len != buf1.len() {
         return RoundtripResult::Error(
-            format!("expected encoded len ({}) did not match actual encoded len ({})",
-                    encoded_len, buf1.len()).into());
+            format!(
+                "expected encoded len ({}) did not match actual encoded len ({})",
+                encoded_len,
+                buf1.len()
+            )
+            .into(),
+        );
     }
 
     let roundtrip = match M::decode(&buf1) {
@@ -129,14 +144,17 @@ pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult where M: Message + Default {
     */
 
     if buf1 != buf2 {
-        return RoundtripResult::Error("roundtripped encoded buffers do not match".into())
+        return RoundtripResult::Error("roundtripped encoded buffers do not match".into());
     }
 
     RoundtripResult::Ok(buf1)
 }
 
 /// Generic rountrip serialization check for messages.
-pub fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
+pub fn check_message<M>(msg: &M)
+where
+    M: Message + Default + PartialEq,
+{
     let expected_len = msg.encoded_len();
 
     let mut buf = Vec::with_capacity(18);
@@ -155,8 +173,10 @@ pub fn check_message<M>(msg: &M) where M: Message + Default + PartialEq {
 
 /// Serialize from A should equal Serialize from B
 pub fn check_serialize_equivalent<M, N>(msg_a: &M, msg_b: &N)
-where M: Message + Default + PartialEq,
-      N: Message + Default + PartialEq {
+where
+    M: Message + Default + PartialEq,
+    N: Message + Default + PartialEq,
+{
     let mut buf_a = Vec::new();
     msg_a.encode(&mut buf_a).unwrap();
     let mut buf_b = Vec::new();
@@ -169,8 +189,8 @@ mod tests {
 
     use std::collections::{BTreeMap, BTreeSet};
 
-    use protobuf::test_messages::proto3::TestAllTypesProto3;
     use super::*;
+    use protobuf::test_messages::proto3::TestAllTypesProto3;
 
     #[test]
     fn test_all_types_proto3() {
@@ -180,23 +200,20 @@ mod tests {
             &[0x92, 0x01, 0x00, 0x92, 0xF4, 0x01, 0x02, 0x00, 0x00],
             &[0x5d, 0xff, 0xff, 0xff, 0xff, 0x28, 0xff, 0xff, 0x21],
             &[0x98, 0x04, 0x02, 0x08, 0x0B, 0x98, 0x04, 0x02, 0x08, 0x02],
-
             // optional_int32: -1
             &[0x08, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x08],
-
             // repeated_bool: [true, true]
             &[0xDA, 0x02, 0x02, 0x2A, 0x03],
-
             // oneof_double: nan
             &[0xb1, 0x07, 0xf6, 0x3d, 0xf5, 0xff, 0x27, 0x3d, 0xf5, 0xff],
-
             // optional_float: -0.0
             &[0xdd, 0x00, 0x00, 0x00, 0x00, 0x80],
-
             // optional_value: nan
-            &[0xE2, 0x13, 0x1B, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
-              0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
-              0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x08, 0xFF, 0x0E],
+            &[
+                0xE2, 0x13, 0x1B, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+                0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                0xFF, 0xFF, 0x08, 0xFF, 0x0E,
+            ],
         ];
 
         for msg in msgs {
@@ -208,12 +225,10 @@ mod tests {
     fn test_ident_conversions() {
         let msg = foo::bar_baz::FooBarBaz {
             foo_bar_baz: 42,
-            fuzz_busters: vec![
-                foo::bar_baz::foo_bar_baz::FuzzBuster {
-                    t: BTreeMap::<i32, foo::bar_baz::FooBarBaz>::new(),
-                    nested_self: None,
-                },
-            ],
+            fuzz_busters: vec![foo::bar_baz::foo_bar_baz::FuzzBuster {
+                t: BTreeMap::<i32, foo::bar_baz::FooBarBaz>::new(),
+                nested_self: None,
+            }],
             p_i_e: 0,
         };
 
@@ -261,9 +276,9 @@ mod tests {
         let _ = A {
             kind: Some(a::Kind::B(Box::new(B {
                 a: Some(Box::new(A {
-                    kind: Some(a::Kind::C(C {}))
-                }))
-            })))
+                    kind: Some(a::Kind::C(C {})),
+                })),
+            }))),
         };
     }
 
@@ -271,7 +286,13 @@ mod tests {
     fn test_default_enum() {
         let msg = default_enum_value::Test::default();
         assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
-        assert_eq!(msg.privacy_level_3(), default_enum_value::PrivacyLevel::PrivacyLevelThree);
-        assert_eq!(msg.privacy_level_4(), default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour);
+        assert_eq!(
+            msg.privacy_level_3(),
+            default_enum_value::PrivacyLevel::PrivacyLevelThree
+        );
+        assert_eq!(
+            msg.privacy_level_4(),
+            default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour
+        );
     }
 }

@@ -21,7 +21,10 @@ use std::path::PathBuf;
 
 /// Returns the path to the location of the bundled Protobuf artifacts.
 fn bundle_path() -> PathBuf {
-    env::current_dir().unwrap().join("third-party").join("protobuf")
+    env::current_dir()
+        .unwrap()
+        .join("third-party")
+        .join("protobuf")
 }
 
 /// Returns the path to the `protoc` pointed to by the `PROTOC` environment variable, if it is set.
@@ -32,7 +35,10 @@ fn env_protoc() -> Option<PathBuf> {
     };
 
     if !protoc.exists() {
-        panic!("PROTOC environment variable points to non-existent file ({:?})", protoc);
+        panic!(
+            "PROTOC environment variable points to non-existent file ({:?})",
+            protoc
+        );
     }
 
     Some(protoc)
@@ -66,12 +72,16 @@ fn env_protoc_include() -> Option<PathBuf> {
     };
 
     if !protoc_include.exists() {
-        panic!("PROTOC_INCLUDE environment variable points to non-existent directory ({:?})",
-               protoc_include);
+        panic!(
+            "PROTOC_INCLUDE environment variable points to non-existent directory ({:?})",
+            protoc_include
+        );
     }
     if !protoc_include.is_dir() {
-        panic!("PROTOC_INCLUDE environment variable points to a non-directory file ({:?})",
-               protoc_include);
+        panic!(
+            "PROTOC_INCLUDE environment variable points to a non-directory file ({:?})",
+            protoc_include
+        );
     }
 
     Some(protoc_include)
@@ -83,14 +93,21 @@ fn bundled_protoc_include() -> PathBuf {
 }
 
 fn main() {
-    let protoc = env_protoc().or_else(bundled_protoc).or_else(path_protoc).expect(
-        "Failed to find the protoc binary. The PROTOC environment variable is not set, \
-        there is no bundled protoc for this platform, and protoc is not in the PATH");
+    let protoc = env_protoc()
+        .or_else(bundled_protoc)
+        .or_else(path_protoc)
+        .expect(
+            "Failed to find the protoc binary. The PROTOC environment variable is not set, \
+             there is no bundled protoc for this platform, and protoc is not in the PATH",
+        );
 
     let protoc_include = env_protoc_include().unwrap_or_else(bundled_protoc_include);
 
     println!("cargo:rustc-env=PROTOC={}", protoc.display());
-    println!("cargo:rustc-env=PROTOC_INCLUDE={}", protoc_include.display());
+    println!(
+        "cargo:rustc-env=PROTOC_INCLUDE={}",
+        protoc_include.display()
+    );
     println!("cargo:rerun-if-env-changed=PROTOC");
     println!("cargo:rerun-if-env-changed=PROTOC_INCLUDE");
 }
