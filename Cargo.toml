@@ -10,6 +10,7 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "danburkert/prost" }

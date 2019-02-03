@@ -1,7 +1,7 @@
-extern crate bytes;
-extern crate criterion;
-extern crate prost;
-extern crate protobuf;
+
+use criterion;
+use prost;
+use protobuf;
 
 #[macro_use]
 extern crate failure;

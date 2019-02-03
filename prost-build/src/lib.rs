@@ -111,13 +111,8 @@
 //! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
 //! in the prost-build crate is be used.
 
-extern crate heck;
-extern crate itertools;
-extern crate multimap;
-extern crate petgraph;
-extern crate prost;
-extern crate prost_types;
-extern crate tempfile;
+use prost_types;
+use tempdir;
 
 #[macro_use]
 extern crate log;
@@ -148,17 +143,17 @@ use std::process::Command;
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
-pub use ast::{
+pub use crate::ast::{
     Comments,
     Method,
     Service,
 };
-use code_generator::{
+use crate::code_generator::{
     CodeGenerator,
     module,
 };
-use extern_paths::ExternPaths;
-use message_graph::MessageGraph;
+use crate::extern_paths::ExternPaths;
+use crate::message_graph::MessageGraph;
 
 type Module = Vec<String>;
 
@@ -201,7 +196,7 @@ pub trait ServiceGenerator {
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
-    service_generator: Option<Box<ServiceGenerator>>,
+    service_generator: Option<Box<dyn ServiceGenerator>>,
     btree_map: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
@@ -350,7 +345,7 @@ impl Config {
     }
 
     /// Configures the code generator to use the provided service generator.
-    pub fn service_generator(&mut self, service_generator: Box<ServiceGenerator>) -> &mut Self {
+    pub fn service_generator(&mut self, service_generator: Box<dyn ServiceGenerator>) -> &mut Self {
         self.service_generator = Some(service_generator);
         self
     }
@@ -684,7 +679,7 @@ pub fn protoc_include() -> &'static Path {
 
 #[cfg(test)]
 mod tests {
-    extern crate env_logger;
+    use env_logger;
     use super::*;
 
     /// An example service generator that generates a trait with methods corresponding to the

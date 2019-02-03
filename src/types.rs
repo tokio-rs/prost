@@ -5,11 +5,11 @@
 //! the `prost-types` crate in order to avoid a cyclic dependency between `prost` and
 //! `prost-build`.
 
-use bytes::{Buf, BufMut};
+use ::bytes::{Buf, BufMut};
 
-use DecodeError;
-use Message;
-use encoding::*;
+use crate::DecodeError;
+use crate::Message;
+use crate::encoding::*;
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {

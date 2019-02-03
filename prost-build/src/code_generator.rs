@@ -18,20 +18,20 @@ use prost_types::{
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 
-use ast::{
+use crate::ast::{
     Comments,
     Method,
     Service,
 };
-use extern_paths::ExternPaths;
-use ident::{
+use crate::extern_paths::ExternPaths;
+use crate::ident::{
     to_snake,
     match_ident,
     to_upper_camel,
 };
-use message_graph::MessageGraph;
-use Config;
-use Module;
+use crate::message_graph::MessageGraph;
+use crate::Config;
+use crate::Module;
 
 pub fn module(file: &FileDescriptorProto) -> Module {
     file.package()
@@ -768,7 +768,7 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     dst.push(0x22);
                     p += 1;
                 },
-                b'0'...b'7' => {
+                b'0'..=b'7' => {
                     eprintln!("another octal: {}, offset: {}", s, &s[p..]);
                     let mut octal = 0;
                     for _ in 0..3 {

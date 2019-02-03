@@ -1,12 +1,4 @@
-extern crate bytes;
-extern crate prost;
-extern crate prost_types;
-extern crate protobuf;
-
 #[macro_use] extern crate prost_derive;
-
-#[cfg(test)] extern crate tempfile;
-#[cfg(test)] extern crate prost_build;
 
 pub mod extern_paths;
 pub mod packages;
@@ -71,7 +63,7 @@ pub enum RoundtripResult {
     /// or it could indicate that the input was bogus.
     DecodeError(prost::DecodeError),
     /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
-    Error(Box<Error + Send + Sync>),
+    Error(Box<dyn Error + Send + Sync>),
 }
 
 impl RoundtripResult {
@@ -252,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_nesting() {
-        use nesting::{A, B};
+        use crate::nesting::{A, B};
         let _ = A {
             a: Some(Box::new(A::default())),
             repeated_a: Vec::<A>::new(),
@@ -265,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_recursive_oneof() {
-        use recursive_oneof::{a, A, B, C};
+        use crate::recursive_oneof::{a, A, B, C};
         let _ = A {
             kind: Some(a::Kind::B(Box::new(B {
                 a: Some(Box::new(A {

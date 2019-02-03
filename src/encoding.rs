@@ -7,13 +7,13 @@ use std::str;
 use std::u32;
 use std::usize;
 
-use bytes::{
+use ::bytes::{
     Buf,
     BufMut,
 };
 
-use DecodeError;
-use Message;
+use crate::DecodeError;
+use crate::Message;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -311,7 +311,7 @@ macro_rules! varint {
      from_uint64($from_uint64_value:ident) $from_uint64:expr) => (
 
          pub mod $proto_ty {
-            use ::encoding::*;
+            use crate::encoding::*;
 
             pub fn encode<B>(tag: u32, $to_uint64_value: &$ty, buf: &mut B) where B: BufMut {
                 encode_key(tag, WireType::Varint, buf);
@@ -371,8 +371,8 @@ macro_rules! varint {
             mod test {
                 use quickcheck::TestResult;
 
-                use ::encoding::$proto_ty::*;
-                use ::encoding::test::{
+                use crate::encoding::$proto_ty::*;
+                use crate::encoding::test::{
                     check_collection_type,
                     check_type,
                 };
@@ -431,7 +431,7 @@ macro_rules! fixed_width {
      $put:ident,
      $get:ident) => (
         pub mod $proto_ty {
-            use ::encoding::*;
+            use crate::encoding::*;
 
             pub fn encode<B>(tag: u32, value: &$ty, buf: &mut B) where B: BufMut {
                 encode_key(tag, $wire_type, buf);
@@ -693,7 +693,7 @@ macro_rules! map {
         use std::collections::$map_ty;
         use std::hash::Hash;
 
-        use ::encoding::*;
+        use crate::encoding::*;
 
         /// Generic protobuf map encode function.
         pub fn encode<K, V, B, KE, KL, VE, VL>(key_encode: KE,
@@ -847,10 +847,10 @@ mod test {
     use std::io::Cursor;
     use std::u64;
 
-    use bytes::{Bytes, BytesMut, IntoBuf};
+    use ::bytes::{Bytes, BytesMut, IntoBuf};
     use quickcheck::TestResult;
 
-    use ::encoding::*;
+    use crate::encoding::*;
 
     pub fn check_type<T, B>(value: T,
                             tag: u32,
@@ -1071,8 +1071,8 @@ mod test {
                     use std::collections::$map_type;
                     use quickcheck::TestResult;
 
-                    use ::encoding::*;
-                    use ::encoding::test::check_collection_type;
+                    use crate::encoding::*;
+                    use crate::encoding::test::check_collection_type;
 
                     map_tests!(@private $map_type, $mod_name, ($key_ty, $key_proto), $vals);
                 }

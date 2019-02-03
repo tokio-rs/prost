@@ -1,6 +1,6 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.4.0")]
 
-extern crate bytes;
+
 
 #[cfg(test)]
 #[macro_use]
@@ -13,15 +13,15 @@ mod types;
 #[doc(hidden)]
 pub mod encoding;
 
-pub use message::Message;
-pub use error::{DecodeError, EncodeError};
+pub use crate::message::Message;
+pub use crate::error::{DecodeError, EncodeError};
 
 use bytes::{
     BufMut,
     IntoBuf,
 };
 
-use encoding::{
+use crate::encoding::{
     decode_varint,
     encode_varint,
     encoded_len_varint,

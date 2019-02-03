@@ -2,7 +2,7 @@ use failure::Error;
 use proc_macro2::TokenStream;
 use syn::Meta;
 
-use field::{
+use crate::field::{
     word_attr,
     tag_attr,
     set_option,

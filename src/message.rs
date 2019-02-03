@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 use std::usize;
 
-use bytes::{Buf, BufMut, IntoBuf};
+use ::bytes::{Buf, BufMut, IntoBuf};
 
-use DecodeError;
-use EncodeError;
-use encoding::*;
+use crate::DecodeError;
+use crate::EncodeError;
+use crate::encoding::*;
 
 /// A Protocol Buffers message.
 pub trait Message: Debug + Send + Sync {

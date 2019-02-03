@@ -1,6 +1,6 @@
-extern crate env_logger;
-extern crate prost_build;
-extern crate protobuf;
+use env_logger;
+use prost_build;
+
 
 use std::env;
 use std::fs;

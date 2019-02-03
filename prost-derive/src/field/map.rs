@@ -11,7 +11,7 @@ use syn::{
     NestedMeta,
 };
 
-use field::{
+use crate::field::{
     scalar,
     tag_attr,
     set_option,

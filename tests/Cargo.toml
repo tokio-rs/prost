@@ -3,6 +3,7 @@ name = "tests"
 version = "0.0.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false
+edition = "2018"
 
 # Cargo treats the tests/ directory as an integration-tests folder[1], so to
 # avoid Cargo executing the build.rs as an integration test, move it into a

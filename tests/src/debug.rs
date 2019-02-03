@@ -4,7 +4,7 @@
 //! actual use.
 
 // Borrow some types from other places.
-use ::message_encoding::{Basic, BasicEnumeration};
+use crate::message_encoding::{Basic, BasicEnumeration};
 
 /// Some real-life message
 #[test]

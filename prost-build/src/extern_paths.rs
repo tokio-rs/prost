@@ -5,7 +5,7 @@ use std::collections::{
 
 use itertools::Itertools;
 
-use ident::{
+use crate::ident::{
     to_snake,
     to_upper_camel,
 };
