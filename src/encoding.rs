@@ -7,10 +7,10 @@ use std::str;
 use std::u32;
 use std::usize;
 
-use bytes::{Buf, BufMut};
+use ::bytes::{Buf, BufMut};
 
-use DecodeError;
-use Message;
+use crate::DecodeError;
+use crate::Message;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -58,30 +58,23 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError>
 where
     B: Buf,
 {
-    // NLL hack.
-    'slow: loop {
-        // Another NLL hack.
-        let (value, advance) = {
-            let bytes = buf.bytes();
-            let len = bytes.len();
-            if len == 0 {
-                return Err(DecodeError::new("invalid varint"));
-            }
-
-            let byte = bytes[0];
-            if byte < 0x80 {
-                (u64::from(byte), 1)
-            } else if len > 10 || bytes[len - 1] < 0x80 {
-                decode_varint_slice(bytes)?
-            } else {
-                break 'slow;
-            }
-        };
-
-        buf.advance(advance);
-        return Ok(value);
+    let bytes = buf.bytes();
+    let len = bytes.len();
+    if len == 0 {
+        return Err(DecodeError::new("invalid varint"));
     }
-    decode_varint_slow(buf)
+
+    let byte = bytes[0];
+    if byte < 0x80 {
+        buf.advance(1);
+        Ok(u64::from(byte))
+    } else if len > 10 || bytes[len - 1] < 0x80 {
+        let (value, advance) = decode_varint_slice(bytes)?;
+        buf.advance(advance);
+        Ok(value)
+    } else {
+        decode_varint_slow(buf)
+    }
 }
 
 /// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
@@ -384,7 +377,7 @@ macro_rules! varint {
      from_uint64($from_uint64_value:ident) $from_uint64:expr) => (
 
          pub mod $proto_ty {
-            use ::encoding::*;
+            use crate::encoding::*;
 
             pub fn encode<B>(tag: u32, $to_uint64_value: &$ty, buf: &mut B) where B: BufMut {
                 encode_key(tag, WireType::Varint, buf);
@@ -442,10 +435,10 @@ macro_rules! varint {
 
             #[cfg(test)]
             mod test {
-                use quickcheck::TestResult;
+                use quickcheck::{quickcheck, TestResult};
 
-                use ::encoding::$proto_ty::*;
-                use ::encoding::test::{
+                use crate::encoding::$proto_ty::*;
+                use crate::encoding::test::{
                     check_collection_type,
                     check_type,
                 };
@@ -504,7 +497,7 @@ macro_rules! fixed_width {
      $put:ident,
      $get:ident) => {
         pub mod $proto_ty {
-            use encoding::*;
+            use crate::encoding::*;
 
             pub fn encode<B>(tag: u32, value: &$ty, buf: &mut B)
             where
@@ -573,7 +566,7 @@ macro_rules! fixed_width {
 
             #[cfg(test)]
             mod test {
-                use quickcheck::TestResult;
+                use quickcheck::{quickcheck, TestResult};
 
                 use super::super::test::{check_collection_type, check_type};
                 use super::*;
@@ -683,7 +676,7 @@ macro_rules! length_delimited {
 
         #[cfg(test)]
         mod test {
-            use quickcheck::TestResult;
+            use quickcheck::{quickcheck, TestResult};
 
             use super::super::test::{check_collection_type, check_type};
             use super::*;
@@ -855,7 +848,7 @@ macro_rules! map {
         use std::collections::$map_ty;
         use std::hash::Hash;
 
-        use encoding::*;
+        use crate::encoding::*;
 
         /// Generic protobuf map encode function.
         pub fn encode<K, V, B, KE, KL, VE, VL>(
@@ -1048,10 +1041,10 @@ mod test {
     use std::io::Cursor;
     use std::u64;
 
-    use bytes::{Bytes, BytesMut, IntoBuf};
+    use ::bytes::{Bytes, BytesMut, IntoBuf};
     use quickcheck::TestResult;
 
-    use encoding::*;
+    use crate::encoding::*;
 
     pub fn check_type<T, B>(
         value: T,
@@ -1311,10 +1304,10 @@ mod test {
             $(
                 mod $key_proto {
                     use std::collections::$map_type;
-                    use quickcheck::TestResult;
+                    use quickcheck::{quickcheck, TestResult};
 
-                    use ::encoding::*;
-                    use ::encoding::test::check_collection_type;
+                    use crate::encoding::*;
+                    use crate::encoding::test::check_collection_type;
 
                     map_tests!(@private $map_type, $mod_name, ($key_ty, $key_proto), $vals);
                 }

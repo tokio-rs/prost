@@ -24,7 +24,7 @@
 //! prost-derive = <prost-version>
 //!
 //! [build-dependencies]
-//! prost-build = <prost-version>
+//! prost-build = { version = <prost-version> }
 //! ```
 //!
 //! Next, add `src/items.proto` to the project:
@@ -51,8 +51,6 @@
 //! `build.rs` build-script:
 //!
 //! ```rust,no_run
-//! extern crate prost_build;
-//!
 //! fn main() {
 //!     prost_build::compile_protos(&["src/items.proto"],
 //!                                 &["src/"]).unwrap();
@@ -62,10 +60,6 @@
 //! And finally, in `lib.rs`, include the generated code:
 //!
 //! ```rust,ignore
-//! extern crate prost;
-//! #[macro_use]
-//! extern crate prost_derive;
-//!
 //! // Include the `items` module, which is generated from items.proto.
 //! pub mod items {
 //!     include!(concat!(env!("OUT_DIR"), "/snazzy.items.rs"));
@@ -111,17 +105,6 @@
 //! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
 //! in the prost-build crate is be used.
 
-extern crate heck;
-extern crate itertools;
-extern crate multimap;
-extern crate petgraph;
-extern crate prost;
-extern crate prost_types;
-extern crate tempfile;
-
-#[macro_use]
-extern crate log;
-
 mod ast;
 mod code_generator;
 mod extern_paths;
@@ -136,13 +119,15 @@ use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use log::trace;
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
-pub use ast::{Comments, Method, Service};
-use code_generator::{module, CodeGenerator};
-use extern_paths::ExternPaths;
-use message_graph::MessageGraph;
+pub use crate::ast::{Comments, Method, Service};
+use crate::code_generator::CodeGenerator;
+use crate::extern_paths::ExternPaths;
+use crate::ident::to_snake;
+use crate::message_graph::MessageGraph;
 
 type Module = Vec<String>;
 
@@ -185,7 +170,7 @@ pub trait ServiceGenerator {
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
-    service_generator: Option<Box<ServiceGenerator>>,
+    service_generator: Option<Box<dyn ServiceGenerator>>,
     btree_map: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
@@ -341,7 +326,7 @@ impl Config {
     }
 
     /// Configures the code generator to use the provided service generator.
-    pub fn service_generator(&mut self, service_generator: Box<ServiceGenerator>) -> &mut Self {
+    pub fn service_generator(&mut self, service_generator: Box<dyn ServiceGenerator>) -> &mut Self {
         self.service_generator = Some(service_generator);
         self
     }
@@ -381,10 +366,6 @@ impl Config {
     /// ```rust,ignore
     /// // lib.rs in the uuid crate
     ///
-    /// extern crate prost;
-    /// #[macro_use]
-    /// extern crate prost_derive;
-    ///
     /// include!(concat!(env!("OUT_DIR"), "/uuid.rs"));
     ///
     /// pub trait DoSomething {
@@ -419,11 +400,6 @@ impl Config {
     ///
     /// ```rust,ignore
     /// // `main.rs` of `my_application`
-    ///
-    /// extern crate prost;
-    /// #[macro_use]
-    /// extern crate prost_derive;
-    /// extern crate uuid;
     ///
     /// use uuid::{DoSomething, Uuid};
     ///
@@ -507,8 +483,6 @@ impl Config {
     /// # Example `build.rs`
     ///
     /// ```rust,no_run
-    /// extern crate prost_build;
-    ///
     /// fn main() {
     ///     let mut prost_build = prost_build::Config::new();
     ///     prost_build.btree_map(&["."]);
@@ -588,11 +562,19 @@ impl Config {
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
         for file in files {
-            let module = module(&file);
+            let module = self.module(&file);
             let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
         Ok(modules)
+    }
+
+    fn module(&self, file: &FileDescriptorProto) -> Module {
+        file.package()
+            .split('.')
+            .filter(|s| !s.is_empty())
+            .map(to_snake)
+            .collect()
     }
 }
 
@@ -641,8 +623,6 @@ impl default::Default for Config {
 /// # Example `build.rs`
 ///
 /// ```rust,no_run
-/// extern crate prost_build;
-///
 /// fn main() {
 ///     prost_build::compile_protos(&["src/frontend.proto", "src/backend.proto"],
 ///                                 &["src"]).unwrap();
@@ -687,8 +667,8 @@ pub fn protoc_include() -> &'static Path {
 
 #[cfg(test)]
 mod tests {
-    extern crate env_logger;
     use super::*;
+    use env_logger;
 
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.

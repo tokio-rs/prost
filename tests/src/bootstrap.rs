@@ -19,11 +19,10 @@ fn bootstrap() {
         .tempdir()
         .unwrap();
 
-    let mut config = prost_build::Config::new();
-    config.compile_well_known_types();
-    config.btree_map(&["."]);
-    config.out_dir(tempdir.path());
-    config
+    prost_build::Config::new()
+        .compile_well_known_types()
+        .btree_map(&["."])
+        .out_dir(tempdir.path())
         .compile_protos(
             &[
                 // Protobuf Plugins.

@@ -1,8 +1,9 @@
-use failure::Error;
+use failure::{bail, Error};
 use proc_macro2::{Span, TokenStream};
+use quote::quote;
 use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
-use field::{scalar, set_option, tag_attr};
+use crate::field::{scalar, set_option, tag_attr};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {

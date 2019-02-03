@@ -1,14 +1,14 @@
 use std::fmt;
 
-use failure::Error;
+use failure::{bail, format_err, Error};
 use proc_macro2::{Span, TokenStream};
-use quote;
+use quote::{quote, ToTokens};
 use syn::{
     self, parse_str, FloatSuffix, Ident, IntSuffix, Lit, LitByteStr, Meta, MetaList, MetaNameValue,
     NestedMeta, Path,
 };
 
-use field::{bool_attr, set_option, tag_attr, Label};
+use crate::field::{bool_attr, set_option, tag_attr, Label};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -273,8 +273,12 @@ impl Field {
 
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
-        let set = Ident::new(&format!("set_{}", ident), Span::call_site());
-        let push = Ident::new(&format!("push_{}", ident), Span::call_site());
+        let mut ident_str = ident.to_string();
+        if ident_str.starts_with("r#") {
+            ident_str = ident_str[2..].to_owned();
+        }
+        let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
+        let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
         if let Ty::Enumeration(ref ty) = self.ty {
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
@@ -503,13 +507,13 @@ impl Ty {
 }
 
 impl fmt::Debug for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
 impl fmt::Display for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
@@ -762,7 +766,7 @@ impl DefaultValue {
     }
 }
 
-impl quote::ToTokens for DefaultValue {
+impl ToTokens for DefaultValue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match *self {
             DefaultValue::F64(value) => value.to_tokens(tokens),

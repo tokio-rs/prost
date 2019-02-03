@@ -1,16 +1,9 @@
-extern crate bytes;
-extern crate criterion;
-extern crate prost;
-extern crate protobuf;
-
-#[macro_use]
-extern crate failure;
-
 use std::fs::File;
 use std::io::Read;
 use std::result;
 
 use criterion::{Benchmark, Criterion, Throughput};
+use failure::bail;
 use prost::Message;
 use protobuf::benchmarks::{proto2, proto3, BenchmarkDataset};
 

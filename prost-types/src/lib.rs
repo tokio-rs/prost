@@ -9,9 +9,6 @@
 //!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
-#[macro_use]
-extern crate prost_derive;
-
 use std::i32;
 use std::i64;
 use std::time;

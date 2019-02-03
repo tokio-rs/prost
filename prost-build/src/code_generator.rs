@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter;
 
 use itertools::{Either, Itertools};
+use log::debug;
 use multimap::MultiMap;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
@@ -12,20 +13,11 @@ use prost_types::{
     FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
 };
 
-use ast::{Comments, Method, Service};
-use extern_paths::ExternPaths;
-use ident::{match_ident, to_snake, to_upper_camel};
-use message_graph::MessageGraph;
-use Config;
-use Module;
-
-pub fn module(file: &FileDescriptorProto) -> Module {
-    file.package()
-        .split('.')
-        .filter(|s| !s.is_empty())
-        .map(to_snake)
-        .collect()
-}
+use crate::ast::{Comments, Method, Service};
+use crate::extern_paths::ExternPaths;
+use crate::ident::{match_ident, to_snake, to_upper_camel};
+use crate::message_graph::MessageGraph;
+use crate::Config;
 
 #[derive(PartialEq)]
 enum Syntax {
@@ -184,7 +176,8 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
+        self.buf
+            .push_str("#[derive(Clone, PartialEq, ::prost_derive::Message)]\n");
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -285,7 +278,7 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
-        let type_ = field.type_();
+        let type_ = field.r#type();
         if type_ == Type::Group {
             return;
         }
@@ -491,7 +484,8 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
+        self.buf
+            .push_str("#[derive(Clone, PartialEq, ::prost_derive::Oneof)]\n");
         let oneof_name = format!("{}.{}", msg_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
@@ -503,7 +497,7 @@ impl<'a> CodeGenerator<'a> {
         self.depth += 1;
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
-            let type_ = field.type_();
+            let type_ = field.r#type();
             if type_ == Type::Group {
                 continue;
             }
@@ -577,7 +571,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]\n",
+            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost_derive::Enumeration)]\n",
         );
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
@@ -720,7 +714,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto) -> String {
-        match field.type_() {
+        match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
@@ -762,7 +756,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.type_() {
+        match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
             Type::Int32 => Cow::Borrowed("int32"),
@@ -788,7 +782,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.type_() {
+        match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
@@ -802,7 +796,7 @@ impl<'a> CodeGenerator<'a> {
             return false;
         }
 
-        match field.type_() {
+        match field.r#type() {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
@@ -811,7 +805,7 @@ impl<'a> CodeGenerator<'a> {
 
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
-    match field.type_() {
+    match field.r#type() {
         Type::Float
         | Type::Double
         | Type::Int32
@@ -896,7 +890,7 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     dst.push(0x22);
                     p += 1;
                 }
-                b'0'...b'7' => {
+                b'0'..=b'7' => {
                     eprintln!("another octal: {}, offset: {}", s, &s[p..]);
                     let mut octal = 0;
                     for _ in 0..3 {

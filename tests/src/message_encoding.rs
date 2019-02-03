@@ -1,7 +1,7 @@
 use prost::Message;
 
-use check_message;
-use check_serialize_equivalent;
+use crate::check_message;
+use crate::check_serialize_equivalent;
 
 #[derive(Clone, PartialEq, Message)]
 pub struct RepeatedFloats {

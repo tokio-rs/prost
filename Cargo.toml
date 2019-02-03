@@ -10,6 +10,7 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "danburkert/prost" }
@@ -23,6 +24,7 @@ members = [
   "prost-types",
   "protobuf",
   "tests",
+  "tests-2015",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,

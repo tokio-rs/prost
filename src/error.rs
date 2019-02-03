@@ -45,7 +45,7 @@ impl DecodeError {
 }
 
 impl fmt::Display for DecodeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("failed to decode Protobuf message: ")?;
         for &(message, field) in &self.stack {
             write!(f, "{}.{}: ", message, field)?;
@@ -98,7 +98,7 @@ impl EncodeError {
 }
 
 impl fmt::Display for EncodeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(error::Error::description(self))?;
         write!(
             f,

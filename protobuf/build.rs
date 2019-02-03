@@ -1,8 +1,6 @@
-extern crate curl;
-extern crate flate2;
-extern crate prost_build;
-extern crate tar;
-extern crate tempfile;
+use prost_build;
+
+use tempfile;
 
 use std::env;
 use std::fs;
@@ -88,9 +86,6 @@ fn main() {
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
-    let mut config = prost_build::Config::new();
-    config.btree_map(&["."]);
-
     prost_build::Config::new()
         .btree_map(&["."])
         .compile_protos(
