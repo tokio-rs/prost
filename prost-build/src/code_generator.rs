@@ -291,7 +291,7 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
-        let type_ = field.type_();
+        let type_ = field.r#type();
         if type_ == Type::Group {
             return;
         }
@@ -514,7 +514,7 @@ impl<'a> CodeGenerator<'a> {
         self.depth += 1;
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
-            let type_ = field.type_();
+            let type_ = field.r#type();
             if type_ == Type::Group {
                 continue;
             }
@@ -735,7 +735,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto) -> String {
-        match field.type_() {
+        match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
@@ -777,7 +777,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.type_() {
+        match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
             Type::Int32 => Cow::Borrowed("int32"),
@@ -803,7 +803,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.type_() {
+        match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
@@ -817,7 +817,7 @@ impl<'a> CodeGenerator<'a> {
             return false;
         }
 
-        match field.type_() {
+        match field.r#type() {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
@@ -826,7 +826,7 @@ impl<'a> CodeGenerator<'a> {
 
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
-    match field.type_() {
+    match field.r#type() {
         Type::Float
         | Type::Double
         | Type::Int32

@@ -113,7 +113,7 @@ pub struct FieldDescriptorProto {
     /// If type_name is set, this need not be set.  If both this and type_name
     /// are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
     #[prost(enumeration="field_descriptor_proto::Type", optional, tag="5")]
-    pub type_: ::std::option::Option<i32>,
+    pub r#type: ::std::option::Option<i32>,
     /// For message and enum types, this is the name of the type.  If the name
     /// starts with a '.', it is fully-qualified.  Otherwise, C++-like scoping
     /// rules are used to find the type (i.e. first the nested types within this

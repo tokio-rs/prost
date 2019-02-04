@@ -5,37 +5,35 @@ use heck::{CamelCase, SnakeCase};
 /// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
 /// identifier.
 pub fn to_snake(s: &str) -> String {
-    let mut ident = s.to_snake_case();
+    let ident = s.to_snake_case();
 
     // Add a trailing underscore if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     match &ident[..] {
-        "crate" if !cfg!(feature = "build-2018") => {
-            ident.push('_');
-        }
+        "crate" if !cfg!(feature = "build-2018") => format!("r#{}", ident),
         "abstract" | "alignof" | "as" | "become" | "box" | "break" | "const" | "continue"
         | "do" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if" | "impl"
         | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut" | "offsetof"
         | "override" | "priv" | "proc" | "pub" | "pure" | "ref" | "return" | "self" | "sizeof"
         | "static" | "struct" | "super" | "trait" | "true" | "type" | "typeof" | "unsafe"
         | "unsized" | "use" | "virtual" | "where" | "while" | "yield" => {
-            ident.push('_');
+            format!("r#{}", ident)
         }
-        _ => (),
+        _ => ident,
     }
-    ident
 }
 
 /// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
 pub fn to_upper_camel(s: &str) -> String {
-    let mut ident = s.to_camel_case();
+    let ident = s.to_camel_case();
 
     // Add a trailing underscore if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     if ident == "Self" {
-        ident.push('_');
+        format!("r#{}", ident)
+    } else {
+        ident
     }
-    ident
 }
 
 /// Matches a 'matcher' against a fully qualified identifier.
@@ -82,7 +80,7 @@ mod tests {
         assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ"));
         assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ"));
         assert_eq!("xml_http_request", &to_snake("XMLHttpRequest"));
-        assert_eq!("while_", &to_snake("While"));
+        assert_eq!("r#while", &to_snake("While"));
         assert_eq!("fuzz_buster", &to_snake("FUZZ_BUSTER"));
         assert_eq!("foo_bar_baz", &to_snake("foo_bar_baz"));
         assert_eq!("fuzz_buster", &to_snake("FUZZ_buster"));
@@ -128,7 +126,7 @@ mod tests {
         assert_eq!("FooBar", &to_upper_camel("_FOO_BAR_"));
         assert_eq!("FuzzBuster", &to_upper_camel("fuzzBuster"));
         assert_eq!("FuzzBuster", &to_upper_camel("FuzzBuster"));
-        assert_eq!("Self_", &to_upper_camel("self"));
+        assert_eq!("r#Self", &to_upper_camel("self"));
     }
 
     #[test]

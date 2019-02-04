@@ -273,8 +273,12 @@ impl Field {
 
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
-        let set = Ident::new(&format!("set_{}", ident), Span::call_site());
-        let push = Ident::new(&format!("push_{}", ident), Span::call_site());
+        let mut ident_str = ident.to_string();
+        if ident_str.starts_with("r#") {
+            ident_str = ident_str[2..].to_owned();
+        }
+        let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
+        let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
         if let Ty::Enumeration(ref ty) = self.ty {
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {

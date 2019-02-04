@@ -342,7 +342,7 @@ pub enum Gender {
 
   ```
   prost-build = { ... , features = ["build-2018"] }
-  ``` 
+  ```
 
 ## License
 
