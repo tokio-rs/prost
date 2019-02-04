@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter;
 
 use itertools::{Either, Itertools};
+use log::debug;
 use multimap::MultiMap;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
@@ -184,7 +185,12 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
+        if cfg!(feature = "build-2018") {
+            self.buf
+                .push_str("#[derive(Clone, PartialEq, prost_derive::Message)]\n");
+        } else {
+            self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
+        }
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -491,7 +497,12 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
+        if cfg!(feature = "build-2018") {
+            self.buf
+                .push_str("#[derive(Clone, prost_derive::Oneof, PartialEq)]\n");
+        } else {
+            self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
+        }
         let oneof_name = format!("{}.{}", msg_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
@@ -576,9 +587,15 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]\n",
-        );
+        if cfg!(feature = "build-2018") {
+            self.buf.push_str(
+                "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost_derive::Enumeration)]\n",
+            );
+        } else {
+            self.buf.push_str(
+                "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]\n",
+            );
+        }
         self.append_type_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str("pub enum ");

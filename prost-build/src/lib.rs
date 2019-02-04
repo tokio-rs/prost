@@ -24,8 +24,11 @@
 //! prost-derive = <prost-version>
 //!
 //! [build-dependencies]
-//! prost-build = <prost-version>
+//! prost-build = { version = <prost-version>, features = ["build-2018"] }
 //! ```
+//!
+//! If you're using the 2015 edition of Rust, don't include the `build-2018`
+//! feature in the dependency declaration.
 //!
 //! Next, add `src/items.proto` to the project:
 //!
@@ -51,8 +54,6 @@
 //! `build.rs` build-script:
 //!
 //! ```rust,no_run
-//! extern crate prost_build;
-//!
 //! fn main() {
 //!     prost_build::compile_protos(&["src/items.proto"],
 //!                                 &["src/"]).unwrap();
@@ -62,10 +63,6 @@
 //! And finally, in `lib.rs`, include the generated code:
 //!
 //! ```rust,ignore
-//! extern crate prost;
-//! #[macro_use]
-//! extern crate prost_derive;
-//!
 //! // Include the `items` module, which is generated from items.proto.
 //! pub mod items {
 //!     include!(concat!(env!("OUT_DIR"), "/snazzy.items.rs"));
@@ -111,17 +108,15 @@
 //! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
 //! in the prost-build crate is be used.
 
-use prost_types;
-use tempdir;
-
-#[macro_use]
-extern crate log;
-
 mod ast;
 mod code_generator;
 mod extern_paths;
 mod ident;
 mod message_graph;
+
+use log::trace;
+use prost_types;
+use tempdir;
 
 use std::collections::HashMap;
 use std::default;
@@ -376,10 +371,6 @@ impl Config {
     /// ```rust,ignore
     /// // lib.rs in the uuid crate
     ///
-    /// extern crate prost;
-    /// #[macro_use]
-    /// extern crate prost_derive;
-    ///
     /// include!(concat!(env!("OUT_DIR"), "/uuid.rs"));
     ///
     /// pub trait DoSomething {
@@ -414,11 +405,6 @@ impl Config {
     ///
     /// ```rust,ignore
     /// // `main.rs` of `my_application`
-    ///
-    /// extern crate prost;
-    /// #[macro_use]
-    /// extern crate prost_derive;
-    /// extern crate uuid;
     ///
     /// use uuid::{DoSomething, Uuid};
     ///

@@ -435,7 +435,7 @@ macro_rules! varint {
 
             #[cfg(test)]
             mod test {
-                use quickcheck::TestResult;
+                use quickcheck::{quickcheck, TestResult};
 
                 use crate::encoding::$proto_ty::*;
                 use crate::encoding::test::{
@@ -566,7 +566,7 @@ macro_rules! fixed_width {
 
             #[cfg(test)]
             mod test {
-                use quickcheck::TestResult;
+                use quickcheck::{quickcheck, TestResult};
 
                 use super::super::test::{check_collection_type, check_type};
                 use super::*;
@@ -676,7 +676,7 @@ macro_rules! length_delimited {
 
         #[cfg(test)]
         mod test {
-            use quickcheck::TestResult;
+            use quickcheck::{quickcheck, TestResult};
 
             use super::super::test::{check_collection_type, check_type};
             use super::*;
@@ -1304,7 +1304,7 @@ mod test {
             $(
                 mod $key_proto {
                     use std::collections::$map_type;
-                    use quickcheck::TestResult;
+                    use quickcheck::{quickcheck, TestResult};
 
                     use crate::encoding::*;
                     use crate::encoding::test::check_collection_type;

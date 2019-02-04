@@ -1,5 +1,6 @@
-use failure::Error;
+use failure::{bail, Error};
 use proc_macro2::{Span, TokenStream};
+use quote::quote;
 use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
 use crate::field::{scalar, set_option, tag_attr};

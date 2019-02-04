@@ -6,8 +6,9 @@ mod scalar;
 use std::fmt;
 use std::slice;
 
-use failure::Error;
+use failure::{bail, Error};
 use proc_macro2::TokenStream;
+use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 
 #[derive(Clone)]

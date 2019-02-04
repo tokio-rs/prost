@@ -1,8 +1,8 @@
 use std::fmt;
 
-use failure::Error;
+use failure::{bail, format_err, Error};
 use proc_macro2::{Span, TokenStream};
-use quote;
+use quote::{quote, ToTokens};
 use syn::{
     self, parse_str, FloatSuffix, Ident, IntSuffix, Lit, LitByteStr, Meta, MetaList, MetaNameValue,
     NestedMeta, Path,
@@ -762,7 +762,7 @@ impl DefaultValue {
     }
 }
 
-impl quote::ToTokens for DefaultValue {
+impl ToTokens for DefaultValue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match *self {
             DefaultValue::F64(value) => value.to_tokens(tokens),

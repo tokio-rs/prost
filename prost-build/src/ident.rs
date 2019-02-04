@@ -10,12 +10,15 @@ pub fn to_snake(s: &str) -> String {
     // Add a trailing underscore if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     match &ident[..] {
+        "crate" if !cfg!(feature = "build-2018") => {
+            ident.push('_');
+        }
         "abstract" | "alignof" | "as" | "become" | "box" | "break" | "const" | "continue"
-        | "crate" | "do" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if"
-        | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut"
-        | "offsetof" | "override" | "priv" | "proc" | "pub" | "pure" | "ref" | "return"
-        | "self" | "sizeof" | "static" | "struct" | "super" | "trait" | "true" | "type"
-        | "typeof" | "unsafe" | "unsized" | "use" | "virtual" | "where" | "while" | "yield" => {
+        | "do" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if" | "impl"
+        | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut" | "offsetof"
+        | "override" | "priv" | "proc" | "pub" | "pure" | "ref" | "return" | "self" | "sizeof"
+        | "static" | "struct" | "super" | "trait" | "true" | "type" | "typeof" | "unsafe"
+        | "unsized" | "use" | "virtual" | "where" | "while" | "yield" => {
             ident.push('_');
         }
         _ => (),

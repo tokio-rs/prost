@@ -4,12 +4,9 @@
 
 extern crate proc_macro;
 
+use failure::bail;
+use quote::quote;
 use syn;
-
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate quote;
 
 use failure::Error;
 use itertools::Itertools;

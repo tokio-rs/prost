@@ -29,7 +29,11 @@ impl ExternPaths {
         };
 
         for (proto_path, rust_path) in paths {
-            extern_paths.insert(proto_path.clone(), rust_path.clone())?;
+            if rust_path.starts_with("::") && cfg!(feature = "build-2018") {
+                extern_paths.insert(proto_path.clone(), format!("crate{}", rust_path))?;
+            } else {
+                extern_paths.insert(proto_path.clone(), rust_path.clone())?;
+            }
         }
 
         if prost_types {
@@ -127,7 +131,17 @@ mod tests {
         .unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
-            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+            #[cfg(feature = "build-2018")]
+            {
+                assert_eq!(
+                    paths.resolve_ident(proto_ident).unwrap(),
+                    format!("crate{}", resolved_ident)
+                );
+            }
+            #[cfg(not(feature = "build-2018"))]
+            {
+                assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+            }
         };
 
         case(".foo", "::foo1");

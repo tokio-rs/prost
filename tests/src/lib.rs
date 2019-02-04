@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate prost_derive;
-
 pub mod extern_paths;
 pub mod packages;
 pub mod unittest;

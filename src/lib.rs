@@ -1,9 +1,5 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.4.0")]
 
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck;
-
 mod error;
 mod message;
 mod types;

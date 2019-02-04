@@ -1,16 +1,11 @@
-use criterion;
-use prost;
-use protobuf;
-
-#[macro_use]
-extern crate failure;
-
 use std::fs::File;
 use std::io::Read;
 use std::result;
 
-use criterion::{Benchmark, Criterion, Throughput};
-use prost::Message;
+use criterion::{self, Benchmark, Criterion, Throughput};
+use failure::bail;
+use prost::{self, Message};
+use protobuf;
 use protobuf::benchmarks::{proto2, proto3, BenchmarkDataset};
 
 type Result = result::Result<(), failure::Error>;

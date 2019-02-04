@@ -1,5 +1,6 @@
-use failure::Error;
+use failure::{bail, Error};
 use proc_macro2::TokenStream;
+use quote::quote;
 use syn::Meta;
 
 use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};

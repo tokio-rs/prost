@@ -336,6 +336,14 @@ pub enum Gender {
   brew install libtool
   ```
 
+3. **I'm getting compile errors when compiling a 2018 edition project**
+
+  If you're using prost-build, you need to use the `build-2018` feature:
+
+  ```
+  prost-build = { ... , features = ["build-2018"] }
+  ``` 
+
 ## License
 
 `prost` is distributed under the terms of the Apache License (Version 2.0).
