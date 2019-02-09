@@ -43,6 +43,11 @@ impl MessageGraph {
         })
     }
 
+    /// Adds message to graph IFF it contains a non-repeated field containing another message.
+    /// The purpose of the message graph is detecting recursively nested messages and co-recursively nested messages.
+    /// Because prost does not box message fields, recursively nested messages would not compile in Rust.
+    /// To allow recursive messages, the message graph is used to detect recursion and automatically box the recursive field.
+    /// Since repeated messages are already put in a Vec, boxing them isn’t necessary even if the reference is recursive.
     fn add_message(&mut self, package: &str, msg: &DescriptorProto) {
         let msg_name = format!("{}.{}", package, msg.name.as_ref().unwrap());
         let msg_index = self.get_or_insert_index(msg_name.clone());
