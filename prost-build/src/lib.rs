@@ -206,6 +206,7 @@ pub struct Config {
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
+    rust_2018: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
@@ -359,6 +360,12 @@ impl Config {
     /// types, and instead generate Protobuf well-known types from their `.proto` definitions.
     pub fn compile_well_known_types(&mut self) -> &mut Self {
         self.prost_types = false;
+        self
+    }
+
+    /// Configures the code generator to output Rust 2018 compatible code.
+    pub fn generate_rust_2018_code(&mut self) -> &mut Self {
+        self.rust_2018 = true;
         self
     }
 
@@ -599,6 +606,7 @@ impl Config {
 impl default::Default for Config {
     fn default() -> Config {
         Config {
+            rust_2018: false,
             service_generator: None,
             btree_map: Vec::new(),
             type_attributes: Vec::new(),
