@@ -10,13 +10,13 @@ pub struct FileDescriptorSet {
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     /// e.g. "foo", "foo.bar", etc.
     #[prost(string, optional, tag="2")]
-    pub package: ::std::option::Option<String>,
+    pub package: ::std::option::Option<std::string::String>,
     /// Names of files imported by this file.
     #[prost(string, repeated, tag="3")]
-    pub dependency: ::std::vec::Vec<String>,
+    pub dependency: ::std::vec::Vec<std::string::String>,
     /// Indexes of the public imported files in the dependency list above.
     #[prost(int32, repeated, packed="false", tag="10")]
     pub public_dependency: ::std::vec::Vec<i32>,
@@ -44,13 +44,13 @@ pub struct FileDescriptorProto {
     /// The syntax of the proto file.
     /// The supported values are "proto2" and "proto3".
     #[prost(string, optional, tag="12")]
-    pub syntax: ::std::option::Option<String>,
+    pub syntax: ::std::option::Option<std::string::String>,
 }
 /// Describes a message type.
 #[derive(Clone, PartialEq, Message)]
 pub struct DescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     #[prost(message, repeated, tag="2")]
     pub field: ::std::vec::Vec<FieldDescriptorProto>,
     #[prost(message, repeated, tag="6")]
@@ -70,7 +70,7 @@ pub struct DescriptorProto {
     /// Reserved field names, which may not be used by fields in the same message.
     /// A given name may only be reserved once.
     #[prost(string, repeated, tag="10")]
-    pub reserved_name: ::std::vec::Vec<String>,
+    pub reserved_name: ::std::vec::Vec<std::string::String>,
 }
 pub mod descriptor_proto {
     #[derive(Clone, PartialEq, Message)]
@@ -105,7 +105,7 @@ pub struct ExtensionRangeOptions {
 #[derive(Clone, PartialEq, Message)]
 pub struct FieldDescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     #[prost(int32, optional, tag="3")]
     pub number: ::std::option::Option<i32>,
     #[prost(enumeration="field_descriptor_proto::Label", optional, tag="4")]
@@ -120,18 +120,18 @@ pub struct FieldDescriptorProto {
     /// message are searched, then within the parent, on up to the root
     /// namespace).
     #[prost(string, optional, tag="6")]
-    pub type_name: ::std::option::Option<String>,
+    pub type_name: ::std::option::Option<std::string::String>,
     /// For extensions, this is the name of the type being extended.  It is
     /// resolved in the same manner as type_name.
     #[prost(string, optional, tag="2")]
-    pub extendee: ::std::option::Option<String>,
+    pub extendee: ::std::option::Option<std::string::String>,
     /// For numeric types, contains the original text representation of the value.
     /// For booleans, "true" or "false".
     /// For strings, contains the default text contents (not escaped in any way).
     /// For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
     /// TODO(kenton):  Base-64 encode?
     #[prost(string, optional, tag="7")]
-    pub default_value: ::std::option::Option<String>,
+    pub default_value: ::std::option::Option<std::string::String>,
     /// If set, gives the index of a oneof in the containing type's oneof_decl
     /// list.  This field is a member of that oneof.
     #[prost(int32, optional, tag="9")]
@@ -141,7 +141,7 @@ pub struct FieldDescriptorProto {
     /// will be used. Otherwise, it's deduced from the field's name by converting
     /// it to camelCase.
     #[prost(string, optional, tag="10")]
-    pub json_name: ::std::option::Option<String>,
+    pub json_name: ::std::option::Option<std::string::String>,
     #[prost(message, optional, tag="8")]
     pub options: ::std::option::Option<FieldOptions>,
 }
@@ -193,7 +193,7 @@ pub mod field_descriptor_proto {
 #[derive(Clone, PartialEq, Message)]
 pub struct OneofDescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     #[prost(message, optional, tag="2")]
     pub options: ::std::option::Option<OneofOptions>,
 }
@@ -201,7 +201,7 @@ pub struct OneofDescriptorProto {
 #[derive(Clone, PartialEq, Message)]
 pub struct EnumDescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     #[prost(message, repeated, tag="2")]
     pub value: ::std::vec::Vec<EnumValueDescriptorProto>,
     #[prost(message, optional, tag="3")]
@@ -214,7 +214,7 @@ pub struct EnumDescriptorProto {
     /// Reserved enum value names, which may not be reused. A given name may only
     /// be reserved once.
     #[prost(string, repeated, tag="5")]
-    pub reserved_name: ::std::vec::Vec<String>,
+    pub reserved_name: ::std::vec::Vec<std::string::String>,
 }
 pub mod enum_descriptor_proto {
     /// Range of reserved numeric values. Reserved values may not be used by
@@ -237,7 +237,7 @@ pub mod enum_descriptor_proto {
 #[derive(Clone, PartialEq, Message)]
 pub struct EnumValueDescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     #[prost(int32, optional, tag="2")]
     pub number: ::std::option::Option<i32>,
     #[prost(message, optional, tag="3")]
@@ -247,7 +247,7 @@ pub struct EnumValueDescriptorProto {
 #[derive(Clone, PartialEq, Message)]
 pub struct ServiceDescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     #[prost(message, repeated, tag="2")]
     pub method: ::std::vec::Vec<MethodDescriptorProto>,
     #[prost(message, optional, tag="3")]
@@ -257,13 +257,13 @@ pub struct ServiceDescriptorProto {
 #[derive(Clone, PartialEq, Message)]
 pub struct MethodDescriptorProto {
     #[prost(string, optional, tag="1")]
-    pub name: ::std::option::Option<String>,
+    pub name: ::std::option::Option<std::string::String>,
     /// Input and output type names.  These are resolved in the same way as
     /// FieldDescriptorProto.type_name, but must refer to a message type.
     #[prost(string, optional, tag="2")]
-    pub input_type: ::std::option::Option<String>,
+    pub input_type: ::std::option::Option<std::string::String>,
     #[prost(string, optional, tag="3")]
-    pub output_type: ::std::option::Option<String>,
+    pub output_type: ::std::option::Option<std::string::String>,
     #[prost(message, optional, tag="4")]
     pub options: ::std::option::Option<MethodOptions>,
     /// Identifies if client streams multiple client messages
@@ -312,14 +312,14 @@ pub struct FileOptions {
     /// inappropriate because proto packages do not normally start with backwards
     /// domain names.
     #[prost(string, optional, tag="1")]
-    pub java_package: ::std::option::Option<String>,
+    pub java_package: ::std::option::Option<std::string::String>,
     /// If set, all the classes from the .proto file are wrapped in a single
     /// outer class with the given name.  This applies to both Proto1
     /// (equivalent to the old "--one_java_file" option) and Proto2 (where
     /// a .proto always translates to a single class, but you may want to
     /// explicitly choose the class name).
     #[prost(string, optional, tag="8")]
-    pub java_outer_classname: ::std::option::Option<String>,
+    pub java_outer_classname: ::std::option::Option<std::string::String>,
     /// If set true, then the Java code generator will generate a separate .java
     /// file for each top-level message, enum, and service defined in the .proto
     /// file.  Thus, these types will *not* be nested inside the outer class
@@ -347,7 +347,7 @@ pub struct FileOptions {
     ///   - Otherwise, the package statement in the .proto file, if present.
     ///   - Otherwise, the basename of the .proto file, without extension.
     #[prost(string, optional, tag="11")]
-    pub go_package: ::std::option::Option<String>,
+    pub go_package: ::std::option::Option<std::string::String>,
     /// Should generic services be generated in each language?  "Generic" services
     /// are not specific to any particular RPC system.  They are generated by the
     /// main code generators in each language (without additional plugins).
@@ -379,35 +379,35 @@ pub struct FileOptions {
     /// Sets the objective c class prefix which is prepended to all objective c
     /// generated classes from this .proto. There is no default.
     #[prost(string, optional, tag="36")]
-    pub objc_class_prefix: ::std::option::Option<String>,
+    pub objc_class_prefix: ::std::option::Option<std::string::String>,
     /// Namespace for generated classes; defaults to the package.
     #[prost(string, optional, tag="37")]
-    pub csharp_namespace: ::std::option::Option<String>,
+    pub csharp_namespace: ::std::option::Option<std::string::String>,
     /// By default Swift generators will take the proto package and CamelCase it
     /// replacing '.' with underscore and use that to prefix the types/symbols
     /// defined. When this options is provided, they will use this value instead
     /// to prefix the types/symbols defined.
     #[prost(string, optional, tag="39")]
-    pub swift_prefix: ::std::option::Option<String>,
+    pub swift_prefix: ::std::option::Option<std::string::String>,
     /// Sets the php class prefix which is prepended to all php generated classes
     /// from this .proto. Default is empty.
     #[prost(string, optional, tag="40")]
-    pub php_class_prefix: ::std::option::Option<String>,
+    pub php_class_prefix: ::std::option::Option<std::string::String>,
     /// Use this option to change the namespace of php generated classes. Default
     /// is empty. When this option is empty, the package name will be used for
     /// determining the namespace.
     #[prost(string, optional, tag="41")]
-    pub php_namespace: ::std::option::Option<String>,
+    pub php_namespace: ::std::option::Option<std::string::String>,
     /// Use this option to change the namespace of php generated metadata classes.
     /// Default is empty. When this option is empty, the proto file name will be used
     /// for determining the namespace.
     #[prost(string, optional, tag="44")]
-    pub php_metadata_namespace: ::std::option::Option<String>,
+    pub php_metadata_namespace: ::std::option::Option<std::string::String>,
     /// Use this option to change the package of ruby generated classes. Default
     /// is empty. When this option is not set, the package name will be used for
     /// determining the ruby package.
     #[prost(string, optional, tag="45")]
-    pub ruby_package: ::std::option::Option<String>,
+    pub ruby_package: ::std::option::Option<std::string::String>,
     /// The parser stores options it doesn't recognize here.
     /// See the documentation for the "Options" section above.
     #[prost(message, repeated, tag="999")]
@@ -672,7 +672,7 @@ pub struct UninterpretedOption {
     /// The value of the uninterpreted option, in whatever type the tokenizer
     /// identified it as during parsing. Exactly one of these should be set.
     #[prost(string, optional, tag="3")]
-    pub identifier_value: ::std::option::Option<String>,
+    pub identifier_value: ::std::option::Option<std::string::String>,
     #[prost(uint64, optional, tag="4")]
     pub positive_int_value: ::std::option::Option<u64>,
     #[prost(int64, optional, tag="5")]
@@ -680,9 +680,9 @@ pub struct UninterpretedOption {
     #[prost(double, optional, tag="6")]
     pub double_value: ::std::option::Option<f64>,
     #[prost(bytes, optional, tag="7")]
-    pub string_value: ::std::option::Option<Vec<u8>>,
+    pub string_value: ::std::option::Option<std::vec::Vec<u8>>,
     #[prost(string, optional, tag="8")]
-    pub aggregate_value: ::std::option::Option<String>,
+    pub aggregate_value: ::std::option::Option<std::string::String>,
 }
 pub mod uninterpreted_option {
     /// The name of the uninterpreted option.  Each string represents a segment in
@@ -693,7 +693,7 @@ pub mod uninterpreted_option {
     #[derive(Clone, PartialEq, Message)]
     pub struct NamePart {
         #[prost(string, required, tag="1")]
-        pub name_part: String,
+        pub name_part: std::string::String,
         #[prost(bool, required, tag="2")]
         pub is_extension: bool,
     }
@@ -834,11 +834,11 @@ pub mod source_code_info {
         ///
         ///   // ignored detached comments.
         #[prost(string, optional, tag="3")]
-        pub leading_comments: ::std::option::Option<String>,
+        pub leading_comments: ::std::option::Option<std::string::String>,
         #[prost(string, optional, tag="4")]
-        pub trailing_comments: ::std::option::Option<String>,
+        pub trailing_comments: ::std::option::Option<std::string::String>,
         #[prost(string, repeated, tag="6")]
-        pub leading_detached_comments: ::std::vec::Vec<String>,
+        pub leading_detached_comments: ::std::vec::Vec<std::string::String>,
     }
 }
 /// Describes the relationship between generated code and its original source
@@ -860,7 +860,7 @@ pub mod generated_code_info {
         pub path: ::std::vec::Vec<i32>,
         /// Identifies the filesystem path to the original source .proto.
         #[prost(string, optional, tag="2")]
-        pub source_file: ::std::option::Option<String>,
+        pub source_file: ::std::option::Option<std::string::String>,
         /// Identifies the starting offset in bytes in the generated code
         /// that relates to the identified object.
         #[prost(int32, optional, tag="3")]
@@ -982,10 +982,10 @@ pub struct Any {
     /// used with implementation specific semantics.
     ///
     #[prost(string, tag="1")]
-    pub type_url: String,
+    pub type_url: std::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
     #[prost(bytes, tag="2")]
-    pub value: Vec<u8>,
+    pub value: std::vec::Vec<u8>,
 }
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.
@@ -994,20 +994,20 @@ pub struct SourceContext {
     /// The path-qualified name of the .proto file that contained the associated
     /// protobuf element.  For example: `"google/protobuf/source_context.proto"`.
     #[prost(string, tag="1")]
-    pub file_name: String,
+    pub file_name: std::string::String,
 }
 /// A protocol buffer message type.
 #[derive(Clone, PartialEq, Message)]
 pub struct Type {
     /// The fully qualified message name.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// The list of fields.
     #[prost(message, repeated, tag="2")]
     pub fields: ::std::vec::Vec<Field>,
     /// The list of types appearing in `oneof` definitions in this type.
     #[prost(string, repeated, tag="3")]
-    pub oneofs: ::std::vec::Vec<String>,
+    pub oneofs: ::std::vec::Vec<std::string::String>,
     /// The protocol buffer options.
     #[prost(message, repeated, tag="4")]
     pub options: ::std::vec::Vec<Option>,
@@ -1032,11 +1032,11 @@ pub struct Field {
     pub number: i32,
     /// The field name.
     #[prost(string, tag="4")]
-    pub name: String,
+    pub name: std::string::String,
     /// The field type URL, without the scheme, for message or enumeration
     /// types. Example: `"type.googleapis.com/google.protobuf.Timestamp"`.
     #[prost(string, tag="6")]
-    pub type_url: String,
+    pub type_url: std::string::String,
     /// The index of the field type in `Type.oneofs`, for message or enumeration
     /// types. The first type has index 1; zero means the type is not in the list.
     #[prost(int32, tag="7")]
@@ -1049,10 +1049,10 @@ pub struct Field {
     pub options: ::std::vec::Vec<Option>,
     /// The field JSON name.
     #[prost(string, tag="10")]
-    pub json_name: String,
+    pub json_name: std::string::String,
     /// The string value of the default value of this field. Proto2 syntax only.
     #[prost(string, tag="11")]
-    pub default_value: String,
+    pub default_value: std::string::String,
 }
 pub mod field {
     /// Basic field types.
@@ -1115,7 +1115,7 @@ pub mod field {
 pub struct Enum {
     /// Enum type name.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// Enum value definitions.
     #[prost(message, repeated, tag="2")]
     pub enumvalue: ::std::vec::Vec<EnumValue>,
@@ -1134,7 +1134,7 @@ pub struct Enum {
 pub struct EnumValue {
     /// Enum value name.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// Enum value number.
     #[prost(int32, tag="2")]
     pub number: i32,
@@ -1151,7 +1151,7 @@ pub struct Option {
     /// For custom options, it should be the fully-qualified name. For example,
     /// `"google.api.http"`.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// The option's value packed in an Any message. If the value is a primitive,
     /// the corresponding wrapper type defined in google/protobuf/wrappers.proto
     /// should be used. If the value is an enum, it should be stored as an int32
@@ -1181,7 +1181,7 @@ pub struct Api {
     /// The fully qualified name of this interface, including package name
     /// followed by the interface's simple name.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// The methods of this interface, in unspecified order.
     #[prost(message, repeated, tag="2")]
     pub methods: ::std::vec::Vec<Method>,
@@ -1210,7 +1210,7 @@ pub struct Api {
     ///
     ///
     #[prost(string, tag="4")]
-    pub version: String,
+    pub version: std::string::String,
     /// Source context for the protocol buffer service represented by this
     /// message.
     #[prost(message, optional, tag="5")]
@@ -1227,16 +1227,16 @@ pub struct Api {
 pub struct Method {
     /// The simple name of this method.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// A URL of the input message type.
     #[prost(string, tag="2")]
-    pub request_type_url: String,
+    pub request_type_url: std::string::String,
     /// If true, the request is streamed.
     #[prost(bool, tag="3")]
     pub request_streaming: bool,
     /// The URL of the output message type.
     #[prost(string, tag="4")]
-    pub response_type_url: String,
+    pub response_type_url: std::string::String,
     /// If true, the response is streamed.
     #[prost(bool, tag="5")]
     pub response_streaming: bool,
@@ -1329,11 +1329,11 @@ pub struct Method {
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
     #[prost(string, tag="1")]
-    pub name: String,
+    pub name: std::string::String,
     /// If non-empty specifies a path under which inherited HTTP paths
     /// are rooted.
     #[prost(string, tag="2")]
-    pub root: String,
+    pub root: std::string::String,
 }
 /// A Duration represents a signed, fixed-length span of time represented
 /// as a count of seconds and fractions of seconds at nanosecond
@@ -1622,7 +1622,7 @@ pub struct Duration {
 pub struct FieldMask {
     /// The set of field mask paths.
     #[prost(string, repeated, tag="1")]
-    pub paths: ::std::vec::Vec<String>,
+    pub paths: ::std::vec::Vec<std::string::String>,
 }
 /// `Struct` represents a structured data value, consisting of fields
 /// which map to dynamically typed values. In some languages, `Struct`
@@ -1636,7 +1636,7 @@ pub struct FieldMask {
 pub struct Struct {
     /// Unordered map of dynamically typed values.
     #[prost(btree_map="string, message", tag="1")]
-    pub fields: ::std::collections::BTreeMap<String, Value>,
+    pub fields: ::std::collections::BTreeMap<std::string::String, Value>,
 }
 /// `Value` represents a dynamically typed value which can be either
 /// null, a number, a string, a boolean, a recursive struct value, or a
@@ -1662,7 +1662,7 @@ pub mod value {
         NumberValue(f64),
         /// Represents a string value.
         #[prost(string, tag="3")]
-        StringValue(String),
+        StringValue(std::string::String),
         /// Represents a boolean value.
         #[prost(bool, tag="4")]
         BoolValue(bool),
