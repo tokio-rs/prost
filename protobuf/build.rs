@@ -1,8 +1,6 @@
-extern crate curl;
-extern crate flate2;
-extern crate prost_build;
-extern crate tar;
-extern crate tempfile;
+use prost_build;
+
+use tempfile;
 
 use std::env;
 use std::fs;

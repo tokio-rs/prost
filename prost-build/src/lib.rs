@@ -116,7 +116,6 @@ mod message_graph;
 
 use log::trace;
 use prost_types;
-use tempdir;
 
 use std::collections::HashMap;
 use std::default;
@@ -515,9 +514,7 @@ impl Config {
         // this figured out.
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
-        let tmp = tempfile::Builder::new()
-            .prefix("prost-build")
-            .tempdir()?;
+        let tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
         let descriptor_set = tmp.path().join("prost-descriptor-set");
 
         let mut cmd = Command::new(protoc());
