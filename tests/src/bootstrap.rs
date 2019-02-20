@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::Path;
 
 use prost_build;
-use tempdir;
 use tempfile;
 
 /// Test which bootstraps protobuf.rs and compiler.rs from the .proto definitions in the Protobuf

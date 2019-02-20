@@ -107,7 +107,6 @@ fn main() {
 }
 
 fn download_tarball(url: &str, out_dir: &Path) {
-    println!("downloading `{}` ...", url);
     let mut data = Vec::new();
     let mut handle = Easy::new();
 
@@ -129,7 +128,6 @@ fn download_tarball(url: &str, out_dir: &Path) {
     Archive::new(GzDecoder::new(Cursor::new(data)))
         .unpack(out_dir)
         .expect("failed to unpack tarball");
-    println!("download complete");
 }
 
 /// Downloads and unpacks a Protobuf release tarball to the provided directory.

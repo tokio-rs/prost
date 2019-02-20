@@ -6,7 +6,6 @@ extern crate proc_macro;
 
 use failure::bail;
 use quote::quote;
-use syn;
 
 use failure::Error;
 use itertools::Itertools;
@@ -14,7 +13,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::punctuated::Punctuated;
 use syn::{
-    Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident,
+    self, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident,
     Variant,
 };
 

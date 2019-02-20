@@ -7,7 +7,7 @@ use heck::{CamelCase, SnakeCase};
 pub fn to_snake(s: &str) -> String {
     let ident = s.to_snake_case();
 
-    // Add a trailing underscore if the identifier matches a Rust keyword
+    // Uses a raw identifier if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     match &ident[..] {
         "crate" if !cfg!(feature = "build-2018") => format!("r#{}", ident),
@@ -25,7 +25,7 @@ pub fn to_snake(s: &str) -> String {
 pub fn to_upper_camel(s: &str) -> String {
     let ident = s.to_camel_case();
 
-    // Add a trailing underscore if the identifier matches a Rust keyword
+    // Uses a raw identifier if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     if ident == "Self" {
         format!("r#{}", ident)

@@ -187,7 +187,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         if cfg!(feature = "build-2018") {
             self.buf
-                .push_str("#[derive(Clone, PartialEq, prost_derive::Message)]\n");
+                .push_str("#[derive(Clone, PartialEq, ::prost_derive::Message)]\n");
         } else {
             self.buf.push_str("#[derive(Clone, PartialEq, Message)]\n");
         }
@@ -499,7 +499,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         if cfg!(feature = "build-2018") {
             self.buf
-                .push_str("#[derive(Clone, prost_derive::Oneof, PartialEq)]\n");
+                .push_str("#[derive(Clone, ::prost_derive::Oneof, PartialEq)]\n");
         } else {
             self.buf.push_str("#[derive(Clone, Oneof, PartialEq)]\n");
         }
@@ -589,7 +589,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         if cfg!(feature = "build-2018") {
             self.buf.push_str(
-                "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost_derive::Enumeration)]\n",
+                "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost_derive::Enumeration)]\n",
             );
         } else {
             self.buf.push_str(

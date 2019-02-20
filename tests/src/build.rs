@@ -73,7 +73,7 @@ fn main() {
 
     prost_build
         .out_dir(extern_path)
-        .extern_path(".packages.gizmo", "::packages::gizmo")
+        .extern_path(".packages.gizmo", "crate::packages::gizmo")
         .compile_protos(&["src/packages/widget_factory.proto"], &["src/packages"])
         .unwrap();
 }
