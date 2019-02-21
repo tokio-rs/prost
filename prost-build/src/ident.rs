@@ -1,16 +1,17 @@
 //! Utility functions for working with identifiers.
 
+use crate::{Config, Edition};
 use heck::{CamelCase, SnakeCase};
 
 /// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
 /// identifier.
-pub fn to_snake(s: &str) -> String {
+pub fn to_snake(s: &str, config: &Config) -> String {
     let ident = s.to_snake_case();
 
     // Uses a raw identifier if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     match &ident[..] {
-        "crate" if !cfg!(feature = "build-2018") => format!("r#{}", ident),
+        "crate" if config.edition == Edition::Rust2015 => format!("r#{}", ident),
         "abstract" | "alignof" | "as" | "become" | "box" | "break" | "const" | "continue"
         | "do" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if" | "impl"
         | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut" | "offsetof"
@@ -74,43 +75,44 @@ mod tests {
 
     #[test]
     fn test_to_snake() {
-        assert_eq!("foo_bar", &to_snake("FooBar"));
-        assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ"));
-        assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ"));
-        assert_eq!("xml_http_request", &to_snake("XMLHttpRequest"));
-        assert_eq!("r#while", &to_snake("While"));
-        assert_eq!("fuzz_buster", &to_snake("FUZZ_BUSTER"));
-        assert_eq!("foo_bar_baz", &to_snake("foo_bar_baz"));
-        assert_eq!("fuzz_buster", &to_snake("FUZZ_buster"));
-        assert_eq!("fuzz", &to_snake("_FUZZ"));
-        assert_eq!("fuzz", &to_snake("_fuzz"));
-        assert_eq!("fuzz", &to_snake("_Fuzz"));
-        assert_eq!("fuzz", &to_snake("FUZZ_"));
-        assert_eq!("fuzz", &to_snake("fuzz_"));
-        assert_eq!("fuzz", &to_snake("Fuzz_"));
-        assert_eq!("fuz_z", &to_snake("FuzZ_"));
+        let config = Config::default();
+        assert_eq!("foo_bar", &to_snake("FooBar", &config));
+        assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ", &config));
+        assert_eq!("foo_bar_baz", &to_snake("FooBarBAZ", &config));
+        assert_eq!("xml_http_request", &to_snake("XMLHttpRequest", &config));
+        assert_eq!("r#while", &to_snake("While", &config));
+        assert_eq!("fuzz_buster", &to_snake("FUZZ_BUSTER", &config));
+        assert_eq!("foo_bar_baz", &to_snake("foo_bar_baz", &config));
+        assert_eq!("fuzz_buster", &to_snake("FUZZ_buster", &config));
+        assert_eq!("fuzz", &to_snake("_FUZZ", &config));
+        assert_eq!("fuzz", &to_snake("_fuzz", &config));
+        assert_eq!("fuzz", &to_snake("_Fuzz", &config));
+        assert_eq!("fuzz", &to_snake("FUZZ_", &config));
+        assert_eq!("fuzz", &to_snake("fuzz_", &config));
+        assert_eq!("fuzz", &to_snake("Fuzz_", &config));
+        assert_eq!("fuz_z", &to_snake("FuzZ_", &config));
 
         // From test_messages_proto3.proto.
-        assert_eq!("fieldname1", &to_snake("fieldname1"));
-        assert_eq!("field_name2", &to_snake("field_name2"));
-        assert_eq!("field_name3", &to_snake("_field_name3"));
-        assert_eq!("field_name4", &to_snake("field__name4_"));
-        assert_eq!("field0name5", &to_snake("field0name5"));
-        assert_eq!("field_0_name6", &to_snake("field_0_name6"));
-        assert_eq!("field_name7", &to_snake("fieldName7"));
-        assert_eq!("field_name8", &to_snake("FieldName8"));
-        assert_eq!("field_name9", &to_snake("field_Name9"));
-        assert_eq!("field_name10", &to_snake("Field_Name10"));
+        assert_eq!("fieldname1", &to_snake("fieldname1", &config));
+        assert_eq!("field_name2", &to_snake("field_name2", &config));
+        assert_eq!("field_name3", &to_snake("_field_name3", &config));
+        assert_eq!("field_name4", &to_snake("field__name4_", &config));
+        assert_eq!("field0name5", &to_snake("field0name5", &config));
+        assert_eq!("field_0_name6", &to_snake("field_0_name6", &config));
+        assert_eq!("field_name7", &to_snake("fieldName7", &config));
+        assert_eq!("field_name8", &to_snake("FieldName8", &config));
+        assert_eq!("field_name9", &to_snake("field_Name9", &config));
+        assert_eq!("field_name10", &to_snake("Field_Name10", &config));
 
         // TODO(withoutboats/heck#3)
         //assert_eq!("field_name11", &to_snake("FIELD_NAME11"));
-        assert_eq!("field_name12", &to_snake("FIELD_name12"));
-        assert_eq!("field_name13", &to_snake("__field_name13"));
-        assert_eq!("field_name14", &to_snake("__Field_name14"));
-        assert_eq!("field_name15", &to_snake("field__name15"));
-        assert_eq!("field_name16", &to_snake("field__Name16"));
-        assert_eq!("field_name17", &to_snake("field_name17__"));
-        assert_eq!("field_name18", &to_snake("Field_name18__"));
+        assert_eq!("field_name12", &to_snake("FIELD_name12", &config));
+        assert_eq!("field_name13", &to_snake("__field_name13", &config));
+        assert_eq!("field_name14", &to_snake("__Field_name14", &config));
+        assert_eq!("field_name15", &to_snake("field__name15", &config));
+        assert_eq!("field_name16", &to_snake("field__Name16", &config));
+        assert_eq!("field_name17", &to_snake("field_name17__", &config));
+        assert_eq!("field_name18", &to_snake("Field_name18__", &config));
     }
 
     #[test]

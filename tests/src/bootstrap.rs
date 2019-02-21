@@ -23,6 +23,7 @@ fn bootstrap() {
     config.compile_well_known_types();
     config.btree_map(&["."]);
     config.out_dir(tempdir.path());
+    config.edition(prost_build::Edition::Rust2018);
     config
         .compile_protos(
             &[

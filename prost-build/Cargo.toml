@@ -31,8 +31,6 @@ env_logger = { version = "0.5", default-features = false }
 # docs.rs depends on an old version of cargo which doesn't support the rustc-env
 # directives used in build.rs. This feature provides a workaround.
 docs-rs = []
-# Build for the 2018 edition
-build-2018 = []
 
 [package.metadata.docs.rs]
 features = [ "docs-rs" ]

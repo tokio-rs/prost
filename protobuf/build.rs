@@ -70,15 +70,21 @@ fn main() {
             .iter()
             .map(|proto| datasets_include_dir.join(proto)),
     );
-    prost_build::compile_protos(&benchmark_protos, &[benchmarks_include_dir.to_path_buf()])
+    let mut config = prost_build::Config::new();
+    config.edition(prost_build::Edition::Rust2018);
+    config
+        .compile_protos(&benchmark_protos, &[benchmarks_include_dir.to_path_buf()])
         .unwrap();
 
     let conformance_include_dir = include_dir.join("conformance");
-    prost_build::compile_protos(
-        &[conformance_include_dir.join("conformance.proto")],
-        &[conformance_include_dir],
-    )
-    .unwrap();
+    let mut config = prost_build::Config::new();
+    config.edition(prost_build::Edition::Rust2018);
+    config
+        .compile_protos(
+            &[conformance_include_dir.join("conformance.proto")],
+            &[conformance_include_dir],
+        )
+        .unwrap();
 
     let test_includes = &include_dir.join("google").join("protobuf");
 
@@ -87,10 +93,9 @@ fn main() {
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
     let mut config = prost_build::Config::new();
+    config.edition(prost_build::Edition::Rust2018);
     config.btree_map(&["."]);
-
-    prost_build::Config::new()
-        .btree_map(&["."])
+    config
         .compile_protos(
             &[
                 test_includes.join("test_messages_proto2.proto"),

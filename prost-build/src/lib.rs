@@ -24,11 +24,8 @@
 //! prost-derive = <prost-version>
 //!
 //! [build-dependencies]
-//! prost-build = { version = <prost-version>, features = ["build-2018"] }
+//! prost-build = { version = <prost-version> }
 //! ```
-//!
-//! If you're using the 2015 edition of Rust, don't include the `build-2018`
-//! feature in the dependency declaration.
 //!
 //! Next, add `src/items.proto` to the project:
 //!
@@ -129,8 +126,9 @@ use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 pub use crate::ast::{Comments, Method, Service};
-use crate::code_generator::{module, CodeGenerator};
+use crate::code_generator::CodeGenerator;
 use crate::extern_paths::ExternPaths;
+use crate::ident::to_snake;
 use crate::message_graph::MessageGraph;
 
 type Module = Vec<String>;
@@ -182,6 +180,7 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
+    edition: Edition,
 }
 
 impl Config {
@@ -477,6 +476,14 @@ impl Config {
         self
     }
 
+    /// Set the target edition for generated code.
+    ///
+    /// The default is to target the 2015 edition.
+    pub fn edition(&mut self, edition: Edition) -> &mut Self {
+        self.edition = edition;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -568,11 +575,19 @@ impl Config {
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
         for file in files {
-            let module = module(&file);
+            let module = self.module(&file);
             let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
         Ok(modules)
+    }
+
+    fn module(&self, file: &FileDescriptorProto) -> Module {
+        file.package()
+            .split('.')
+            .filter(|s| !s.is_empty())
+            .map(|i| to_snake(i, self))
+            .collect()
     }
 }
 
@@ -587,8 +602,15 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
+            edition: Edition::Rust2015,
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Edition {
+    Rust2015,
+    Rust2018,
 }
 
 /// Compile `.proto` files into Rust files during a Cargo build.

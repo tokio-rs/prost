@@ -13,6 +13,7 @@ fn main() {
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
     let mut prost_build = prost_build::Config::new();
+    prost_build.edition(prost_build::Edition::Rust2018);
     prost_build.btree_map(&["."]);
     // Tests for custom attributes
     prost_build.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");

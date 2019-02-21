@@ -338,11 +338,9 @@ pub enum Gender {
 
 3. **I'm getting compile errors when compiling a 2018 edition project**
 
-  If you're using prost-build, you need to use the `build-2018` feature:
+  If you're using prost-build, you will need to set `edition` to `Rust2018` in
+  the `Config`.
 
-  ```
-  prost-build = { ... , features = ["build-2018"] }
-  ```
 
 ## License
 

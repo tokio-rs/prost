@@ -3,6 +3,7 @@ use std::collections::{hash_map, HashMap};
 use itertools::Itertools;
 
 use crate::ident::{to_snake, to_upper_camel};
+use crate::Config;
 
 fn validate_proto_path(path: &str) -> Result<(), String> {
     if path.chars().next().map(|c| c != '.').unwrap_or(true) {
@@ -78,7 +79,7 @@ impl ExternPaths {
         Ok(())
     }
 
-    pub fn resolve_ident(&self, pb_ident: &str) -> Option<String> {
+    pub fn resolve_ident(&self, pb_ident: &str, config: &Config) -> Option<String> {
         // protoc should always give fully qualified identifiers.
         assert_eq!(".", &pb_ident[..1]);
 
@@ -96,7 +97,7 @@ impl ExternPaths {
                     rust_path
                         .split("::")
                         .chain(segments)
-                        .map(|segment| to_snake(&segment))
+                        .map(|segment| to_snake(&segment, config))
                         .chain(ident_type.into_iter())
                         .join("::"),
                 );
@@ -114,6 +115,7 @@ mod tests {
 
     #[test]
     fn test_extern_paths() {
+        let config = Config::new();
         let paths = ExternPaths::new(
             &[
                 (".foo".to_string(), "::foo1".to_string()),
@@ -127,7 +129,10 @@ mod tests {
         .unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
-            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+            assert_eq!(
+                paths.resolve_ident(proto_ident, &config).unwrap(),
+                resolved_ident
+            );
         };
 
         case(".foo", "::foo1");
@@ -141,17 +146,21 @@ mod tests {
         case(".a.b.c.d.e.f", "::abc::def");
         case(".a.b.c.d.e.f.g.FooBar.Baz", "::abc::def::g::foo_bar::Baz");
 
-        assert!(paths.resolve_ident(".a").is_none());
-        assert!(paths.resolve_ident(".a.b").is_none());
-        assert!(paths.resolve_ident(".a.c").is_none());
+        assert!(paths.resolve_ident(".a", &config).is_none());
+        assert!(paths.resolve_ident(".a.b", &config).is_none());
+        assert!(paths.resolve_ident(".a.c", &config).is_none());
     }
 
     #[test]
     fn test_well_known_types() {
+        let config = Config::new();
         let paths = ExternPaths::new(&[], true).unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
-            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+            assert_eq!(
+                paths.resolve_ident(proto_ident, &config).unwrap(),
+                resolved_ident
+            );
         };
 
         case(".google.protobuf.Value", "::prost_types::Value");

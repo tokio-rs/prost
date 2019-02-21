@@ -17,16 +17,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{match_ident, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::Config;
-use crate::Module;
-
-pub fn module(file: &FileDescriptorProto) -> Module {
-    file.package()
-        .split('.')
-        .filter(|s| !s.is_empty())
-        .map(to_snake)
-        .collect()
-}
+use crate::{Config, Edition};
 
 #[derive(PartialEq)]
 enum Syntax {
@@ -133,7 +124,11 @@ impl<'a> CodeGenerator<'a> {
         let fq_message_name = format!(".{}.{}", self.package, message.name());
 
         // Skip external types.
-        if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
+        if self
+            .extern_paths
+            .resolve_ident(&fq_message_name, &self.config)
+            .is_some()
+        {
             return;
         }
 
@@ -185,7 +180,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc();
         self.push_indent();
-        if cfg!(feature = "build-2018") {
+        if self.config.edition == Edition::Rust2018 {
             self.buf
                 .push_str("#[derive(Clone, PartialEq, ::prost_derive::Message)]\n");
         } else {
@@ -381,7 +376,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str("pub ");
-        self.buf.push_str(&to_snake(field.name()));
+        self.buf.push_str(&to_snake(field.name(), &self.config));
         self.buf.push_str(": ");
         if repeated {
             self.buf.push_str("::std::vec::Vec<");
@@ -445,7 +440,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: ::std::collections::{}<{}, {}>,\n",
-            to_snake(field.name()),
+            to_snake(field.name(), &self.config),
             rust_ty,
             key_ty,
             value_ty
@@ -461,7 +456,7 @@ impl<'a> CodeGenerator<'a> {
     ) {
         let name = format!(
             "{}::{}",
-            to_snake(message_name),
+            to_snake(message_name, &self.config),
             to_upper_camel(oneof.name())
         );
         self.append_doc();
@@ -478,7 +473,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: ::std::option::Option<{}>,\n",
-            to_snake(oneof.name()),
+            to_snake(oneof.name(), &self.config),
             name
         ));
     }
@@ -497,7 +492,7 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.push_indent();
-        if cfg!(feature = "build-2018") {
+        if self.config.edition == Edition::Rust2018 {
             self.buf
                 .push_str("#[derive(Clone, ::prost_derive::Oneof, PartialEq)]\n");
         } else {
@@ -581,13 +576,17 @@ impl<'a> CodeGenerator<'a> {
         let enum_name = &desc.name();
         let enum_values = &desc.value;
         let fq_enum_name = format!(".{}.{}", self.package, enum_name);
-        if self.extern_paths.resolve_ident(&fq_enum_name).is_some() {
+        if self
+            .extern_paths
+            .resolve_ident(&fq_enum_name, &self.config)
+            .is_some()
+        {
             return;
         }
 
         self.append_doc();
         self.push_indent();
-        if cfg!(feature = "build-2018") {
+        if self.config.edition == Edition::Rust2018 {
             self.buf.push_str(
                 "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost_derive::Enumeration)]\n",
             );
@@ -675,7 +674,7 @@ impl<'a> CodeGenerator<'a> {
                 let server_streaming = method.server_streaming();
 
                 Method {
-                    name: to_snake(&name),
+                    name: to_snake(&name, &self.config),
                     proto_name: name,
                     comments,
                     input_type,
@@ -715,7 +714,7 @@ impl<'a> CodeGenerator<'a> {
     fn push_mod(&mut self, module: &str) {
         self.push_indent();
         self.buf.push_str("pub mod ");
-        self.buf.push_str(&to_snake(module));
+        self.buf.push_str(&to_snake(module, &self.config));
         self.buf.push_str(" {\n");
 
         self.package.push_str(".");
@@ -753,7 +752,7 @@ impl<'a> CodeGenerator<'a> {
         // protoc should always give fully qualified identifiers.
         assert_eq!(".", &pb_ident[..1]);
 
-        if let Some(proto_ident) = self.extern_paths.resolve_ident(pb_ident) {
+        if let Some(proto_ident) = self.extern_paths.resolve_ident(pb_ident, &self.config) {
             return proto_ident;
         }
 
@@ -771,7 +770,7 @@ impl<'a> CodeGenerator<'a> {
 
         local_path
             .map(|_| "super".to_string())
-            .chain(ident_path.map(to_snake))
+            .chain(ident_path.map(|i| to_snake(i, &self.config)))
             .chain(iter::once(to_upper_camel(ident_type)))
             .join("::")
     }

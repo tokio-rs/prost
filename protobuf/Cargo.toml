@@ -15,6 +15,6 @@ prost-types = { path = "../prost-types" }
 cfg-if = "0.1"
 curl = "0.4"
 flate2 = "1.0"
-prost-build = { path = "../prost-build", features = ["build-2018"] }
+prost-build = { path = "../prost-build" }
 tar = "0.4"
 tempfile = "3"
