@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.5.0")]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
@@ -507,6 +507,15 @@ impl Config {
     where
         P: AsRef<Path>,
     {
+        let descriptor_set = self.generate_descriptor_set(protos, includes)?;
+        self.compile_descriptor_set(descriptor_set)
+    }
+
+    /// Compile a `FileDescriptorSet` into Rust files.
+    ///
+    /// This function is similar to `compile_protos`, but starts with an already
+    /// compiled `FileDescriptorSet` rather than proto files.
+    pub fn compile_descriptor_set(&mut self, descriptor_set: FileDescriptorSet) -> Result<()> {
         let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
             env::var_os("OUT_DIR")
                 .ok_or_else(|| {
@@ -515,6 +524,30 @@ impl Config {
                 .map(Into::into)
         })?;
 
+        let modules = self.generate(descriptor_set.file)?;
+        for (module, content) in modules {
+            let mut filename = module.join(".");
+            filename.push_str(".rs");
+            trace!("writing: {:?}", filename);
+            let mut file = fs::File::create(target.join(filename))?;
+            file.write_all(content.as_bytes())?;
+            file.flush()?;
+        }
+
+        Ok(())
+    }
+
+    /// Generates a `FileDescriptorSet` from `.proto` files.
+    ///
+    /// Similar to `compile_protos`, but does not generate Rust code.
+    pub fn generate_descriptor_set<P>(
+        &mut self,
+        protos: &[P],
+        includes: &[P],
+    ) -> Result<FileDescriptorSet>
+    where
+        P: AsRef<Path>,
+    {
         // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
         // according to [1] if any are output then those paths replace the default crate root,
         // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
@@ -552,19 +585,7 @@ impl Config {
 
         let mut buf = Vec::new();
         fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf)?;
-
-        let modules = self.generate(descriptor_set.file)?;
-        for (module, content) in modules {
-            let mut filename = module.join(".");
-            filename.push_str(".rs");
-            trace!("writing: {:?}", filename);
-            let mut file = fs::File::create(target.join(filename))?;
-            file.write_all(content.as_bytes())?;
-            file.flush()?;
-        }
-
-        Ok(())
+        FileDescriptorSet::decode(&buf).map_err(|e| e.into())
     }
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {

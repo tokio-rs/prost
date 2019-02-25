@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/prost/0.5.0")]
 
 mod error;
 mod message;
