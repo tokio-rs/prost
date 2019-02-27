@@ -147,6 +147,7 @@ pub struct FieldDescriptorProto {
 }
 pub mod field_descriptor_proto {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
@@ -182,6 +183,7 @@ pub mod field_descriptor_proto {
         Sint64 = 18,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum Label {
         /// 0 is reserved for errors
         Optional = 1,
@@ -416,6 +418,7 @@ pub struct FileOptions {
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
         Speed = 1,
@@ -560,6 +563,7 @@ pub struct FieldOptions {
 }
 pub mod field_options {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum CType {
         /// Default mode.
         String = 0,
@@ -567,6 +571,7 @@ pub mod field_options {
         StringPiece = 2,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum JsType {
         /// Use the default type.
         JsNormal = 0,
@@ -651,6 +656,7 @@ pub mod method_options {
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum IdempotencyLevel {
         IdempotencyUnknown = 0,
         /// implies idempotent
@@ -1057,6 +1063,7 @@ pub struct Field {
 pub mod field {
     /// Basic field types.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum Kind {
         /// Field type unknown.
         TypeUnknown = 0,
@@ -1099,6 +1106,7 @@ pub mod field {
     }
     /// Whether a field is optional, required, or repeated.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+    #[repr(i32)]
     pub enum Cardinality {
         /// For fields with unknown cardinality.
         Unknown = 0,
@@ -1161,6 +1169,7 @@ pub struct Option {
 }
 /// The syntax in which a protocol buffer element is defined.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+#[repr(i32)]
 pub enum Syntax {
     /// Syntax `proto2`.
     Proto2 = 0,
@@ -1688,6 +1697,7 @@ pub struct ListValue {
 ///
 ///  The JSON representation for `NullValue` is JSON `null`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]
+#[repr(i32)]
 pub enum NullValue {
     /// Null value.
     NullValue = 0,

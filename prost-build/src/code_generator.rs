@@ -481,6 +481,8 @@ impl <'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]\n");
+        self.push_indent();
+        self.buf.push_str("#[repr(i32)]\n");
         self.append_type_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
