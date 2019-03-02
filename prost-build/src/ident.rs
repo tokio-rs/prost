@@ -10,14 +10,12 @@ pub fn to_snake(s: &str) -> String {
     // Add a trailing underscore if the identifier matches a Rust keyword
     // (https://doc.rust-lang.org/grammar.html#keywords).
     match &ident[..] {
-        "abstract" | "alignof" | "as"     | "become"  | "box"   | "break"   | "const"    |
-        "continue" | "crate"   | "do"     | "else"    | "enum"  | "extern"  | "false"    |
-        "final"    | "fn"      | "for"    | "if"      | "impl"  | "in"      | "let"      |
-        "loop"     | "macro"   | "match"  | "mod"     | "move"  | "mut"     | "offsetof" |
-        "override" | "priv"    | "proc"   | "pub"     | "pure"  | "ref"     | "return"   |
-        "self"     | "sizeof"  | "static" | "struct"  | "super" | "trait"   | "true"     |
-        "type"     | "typeof"  | "unsafe" | "unsized" | "use"   | "virtual" | "where"    |
-        "while"    | "yield" => {
+        "abstract" | "alignof" | "as" | "become" | "box" | "break" | "const" | "continue"
+        | "crate" | "do" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if"
+        | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut"
+        | "offsetof" | "override" | "priv" | "proc" | "pub" | "pure" | "ref" | "return"
+        | "self" | "sizeof" | "static" | "struct" | "super" | "trait" | "true" | "type"
+        | "typeof" | "unsafe" | "unsized" | "use" | "virtual" | "where" | "while" | "yield" => {
             ident.push('_');
         }
         _ => (),
@@ -137,7 +135,11 @@ mod tests {
         assert!(match_ident(".foo", ".foo.bar.Baz", Some("buzz")));
         assert!(match_ident(".foo.bar", ".foo.bar.Baz", Some("buzz")));
         assert!(match_ident(".foo.bar.Baz", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident(".foo.bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident(
+            ".foo.bar.Baz.buzz",
+            ".foo.bar.Baz",
+            Some("buzz")
+        ));
 
         assert!(!match_ident(".fo", ".foo.bar.Baz", Some("buzz")));
         assert!(!match_ident(".foo.", ".foo.bar.Baz", Some("buzz")));
@@ -148,7 +150,11 @@ mod tests {
         assert!(match_ident("buzz", ".foo.bar.Baz", Some("buzz")));
         assert!(match_ident("Baz.buzz", ".foo.bar.Baz", Some("buzz")));
         assert!(match_ident("bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident("foo.bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
+        assert!(match_ident(
+            "foo.bar.Baz.buzz",
+            ".foo.bar.Baz",
+            Some("buzz")
+        ));
 
         assert!(!match_ident("buz", ".foo.bar.Baz", Some("buzz")));
         assert!(!match_ident("uz", ".foo.bar.Baz", Some("buzz")));

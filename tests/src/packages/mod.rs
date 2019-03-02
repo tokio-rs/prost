@@ -19,8 +19,7 @@ pub trait DoIt {
 }
 
 impl DoIt for gizmo::Gizmo {
-    fn do_it(&self) {
-    }
+    fn do_it(&self) {}
 }
 
 #[test]

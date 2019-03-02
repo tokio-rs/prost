@@ -1,5 +1,5 @@
-use prost_types::source_code_info::Location;
 use prost_types;
+use prost_types::source_code_info::Location;
 
 /// Comments on a Protobuf item.
 #[derive(Debug)]
@@ -16,13 +16,26 @@ pub struct Comments {
 
 impl Comments {
     pub(crate) fn from_location(location: &Location) -> Comments {
-        fn get_lines<S>(comments: S) -> Vec<String> where S: AsRef<str> {
+        fn get_lines<S>(comments: S) -> Vec<String>
+        where
+            S: AsRef<str>,
+        {
             comments.as_ref().lines().map(str::to_owned).collect()
         }
 
-        let leading_detached = location.leading_detached_comments.iter().map(get_lines).collect();
-        let leading = location.leading_comments.as_ref().map_or(Vec::new(), get_lines);
-        let trailing = location.trailing_comments.as_ref().map_or(Vec::new(), get_lines);
+        let leading_detached = location
+            .leading_detached_comments
+            .iter()
+            .map(get_lines)
+            .collect();
+        let leading = location
+            .leading_comments
+            .as_ref()
+            .map_or(Vec::new(), get_lines);
+        let trailing = location
+            .trailing_comments
+            .as_ref()
+            .map_or(Vec::new(), get_lines);
         Comments {
             leading_detached: leading_detached,
             leading: leading,

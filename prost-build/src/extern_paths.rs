@@ -1,19 +1,15 @@
-use std::collections::{
-    HashMap,
-    hash_map,
-};
+use std::collections::{hash_map, HashMap};
 
 use itertools::Itertools;
 
-use ident::{
-    to_snake,
-    to_upper_camel,
-};
+use ident::{to_snake, to_upper_camel};
 
 fn validate_proto_path(path: &str) -> Result<(), String> {
     if path.chars().next().map(|c| c != '.').unwrap_or(true) {
-        return Err(format!("Protobuf paths must be fully qualified (begin with a leading '.'): {}",
-                           path));
+        return Err(format!(
+            "Protobuf paths must be fully qualified (begin with a leading '.'): {}",
+            path
+        ));
     }
     if path.split('.').skip(1).any(str::is_empty) {
         return Err(format!("invalid fully-qualified Protobuf path: {}", path));
@@ -27,7 +23,7 @@ pub struct ExternPaths {
 }
 
 impl ExternPaths {
-    pub fn new(paths: &[(String, String)], prost_types: bool)-> Result<ExternPaths, String> {
+    pub fn new(paths: &[(String, String)], prost_types: bool) -> Result<ExternPaths, String> {
         let mut extern_paths = ExternPaths {
             extern_paths: HashMap::new(),
         };
@@ -39,15 +35,30 @@ impl ExternPaths {
         if prost_types {
             extern_paths.insert(".google.protobuf".to_string(), "::prost_types".to_string())?;
             extern_paths.insert(".google.protobuf.BoolValue".to_string(), "bool".to_string())?;
-            extern_paths.insert(".google.protobuf.BytesValue".to_string(), "::std::vec::Vec<u8>".to_string())?;
-            extern_paths.insert(".google.protobuf.DoubleValue".to_string(), "f64".to_string())?;
+            extern_paths.insert(
+                ".google.protobuf.BytesValue".to_string(),
+                "::std::vec::Vec<u8>".to_string(),
+            )?;
+            extern_paths.insert(
+                ".google.protobuf.DoubleValue".to_string(),
+                "f64".to_string(),
+            )?;
             extern_paths.insert(".google.protobuf.Empty".to_string(), "()".to_string())?;
             extern_paths.insert(".google.protobuf.FloatValue".to_string(), "f32".to_string())?;
             extern_paths.insert(".google.protobuf.Int32Value".to_string(), "i32".to_string())?;
             extern_paths.insert(".google.protobuf.Int64Value".to_string(), "i64".to_string())?;
-            extern_paths.insert(".google.protobuf.StringValue".to_string(), "::std::string::String".to_string())?;
-            extern_paths.insert(".google.protobuf.UInt32Value".to_string(), "u32".to_string())?;
-            extern_paths.insert(".google.protobuf.UInt64Value".to_string(), "u64".to_string())?;
+            extern_paths.insert(
+                ".google.protobuf.StringValue".to_string(),
+                "::std::string::String".to_string(),
+            )?;
+            extern_paths.insert(
+                ".google.protobuf.UInt32Value".to_string(),
+                "u32".to_string(),
+            )?;
+            extern_paths.insert(
+                ".google.protobuf.UInt64Value".to_string(),
+                "u64".to_string(),
+            )?;
         }
 
         Ok(extern_paths)
@@ -56,7 +67,12 @@ impl ExternPaths {
     fn insert(&mut self, proto_path: String, rust_path: String) -> Result<(), String> {
         validate_proto_path(&proto_path)?;
         match self.extern_paths.entry(proto_path) {
-            hash_map::Entry::Occupied(occupied) => return Err(format!("duplicate extern Protobuf path: {}", occupied.key())),
+            hash_map::Entry::Occupied(occupied) => {
+                return Err(format!(
+                    "duplicate extern Protobuf path: {}",
+                    occupied.key()
+                ));
+            }
             hash_map::Entry::Vacant(vacant) => vacant.insert(rust_path),
         };
         Ok(())
@@ -67,21 +83,23 @@ impl ExternPaths {
         assert_eq!(".", &pb_ident[..1]);
 
         if let Some(rust_path) = self.extern_paths.get(pb_ident) {
-            return Some(rust_path.clone())
+            return Some(rust_path.clone());
         }
 
         // TODO(danburkert): there must be a more efficient way to do this, maybe a trie?
         for (idx, _) in pb_ident.rmatch_indices('.') {
             if let Some(rust_path) = self.extern_paths.get(&pb_ident[..idx]) {
-
-                let mut segments = pb_ident[idx+1..].split('.');
+                let mut segments = pb_ident[idx + 1..].split('.');
                 let ident_type = segments.next_back().map(|segment| to_upper_camel(&segment));
 
-                return Some(rust_path.split("::")
-                            .chain(segments)
-                            .map(|segment| to_snake(&segment))
-                            .chain(ident_type.into_iter())
-                            .join("::"))
+                return Some(
+                    rust_path
+                        .split("::")
+                        .chain(segments)
+                        .map(|segment| to_snake(&segment))
+                        .chain(ident_type.into_iter())
+                        .join("::"),
+                );
             }
         }
 
@@ -96,13 +114,17 @@ mod tests {
 
     #[test]
     fn test_extern_paths() {
-        let paths = ExternPaths::new(&[
-            (".foo".to_string(), "::foo1".to_string()),
-            (".foo.bar".to_string(), "::foo2".to_string()),
-            (".foo.baz".to_string(), "::foo3".to_string()),
-            (".foo.Fuzz".to_string(), "::foo4::Fuzz".to_string()),
-            (".a.b.c.d.e.f".to_string(), "::abc::def".to_string()),
-        ], false).unwrap();
+        let paths = ExternPaths::new(
+            &[
+                (".foo".to_string(), "::foo1".to_string()),
+                (".foo.bar".to_string(), "::foo2".to_string()),
+                (".foo.baz".to_string(), "::foo3".to_string()),
+                (".foo.Fuzz".to_string(), "::foo4::Fuzz".to_string()),
+                (".a.b.c.d.e.f".to_string(), "::abc::def".to_string()),
+            ],
+            false,
+        )
+        .unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
             assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);

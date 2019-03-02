@@ -1,18 +1,8 @@
 use failure::Error;
 use proc_macro2::TokenStream;
-use syn::{
-    Lit,
-    Meta,
-    MetaNameValue,
-    NestedMeta,
-    Path,
-    parse_str,
-};
+use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use field::{
-    tags_attr,
-    set_option,
-};
+use field::{set_option, tags_attr};
 
 #[derive(Clone)]
 pub struct Field {
@@ -29,9 +19,10 @@ impl Field {
         for attr in attrs {
             if attr.name() == "oneof" {
                 let t = match *attr {
-                    Meta::NameValue(MetaNameValue { lit: Lit::Str(ref lit), .. }) => {
-                        parse_str::<Path>(&lit.value())?
-                    }
+                    Meta::NameValue(MetaNameValue {
+                        lit: Lit::Str(ref lit),
+                        ..
+                    }) => parse_str::<Path>(&lit.value())?,
                     Meta::List(ref list) if list.nested.len() == 1 => {
                         // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
                         if let NestedMeta::Meta(Meta::Word(ref ident)) = list.nested[0] {
@@ -39,7 +30,7 @@ impl Field {
                         } else {
                             bail!("invalid oneof attribute: item must be an identifier");
                         }
-                    },
+                    }
                     _ => bail!("invalid oneof attribute: {:?}", attr),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
@@ -57,7 +48,10 @@ impl Field {
 
         match unknown_attrs.len() {
             0 => (),
-            1 => bail!("unknown attribute for message field: {:?}", unknown_attrs[0]),
+            1 => bail!(
+                "unknown attribute for message field: {:?}",
+                unknown_attrs[0]
+            ),
             _ => bail!("unknown attributes for message field: {:?}", unknown_attrs),
         }
 
@@ -66,10 +60,7 @@ impl Field {
             None => bail!("oneof field is missing a tags attribute"),
         };
 
-        Ok(Some(Field {
-            ty: ty,
-            tags: tags,
-        }))
+        Ok(Some(Field { ty: ty, tags: tags }))
     }
 
     /// Returns a statement which encodes the oneof field.

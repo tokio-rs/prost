@@ -5,14 +5,17 @@ include!(concat!(env!("OUT_DIR"), "/extern_paths/packages.rs"));
 pub mod widget {
     include!(concat!(env!("OUT_DIR"), "/extern_paths/packages.widget.rs"));
     pub mod factory {
-        include!(concat!(env!("OUT_DIR"), "/extern_paths/packages.widget.factory.rs"));
+        include!(concat!(
+            env!("OUT_DIR"),
+            "/extern_paths/packages.widget.factory.rs"
+        ));
     }
 }
 
 #[test]
 fn test() {
-    use packages::DoIt;
     use packages::gizmo;
+    use packages::DoIt;
     use prost::Message;
 
     let mut widget_factory = widget::factory::WidgetFactory::default();

@@ -10,27 +10,27 @@ use std::fs::File;
 use std::io::Read;
 use std::result;
 
-use criterion::{
-    Benchmark,
-    Criterion,
-    Throughput,
-};
+use criterion::{Benchmark, Criterion, Throughput};
 use prost::Message;
-use protobuf::benchmarks::{
-    BenchmarkDataset,
-    proto2,
-    proto3,
-};
+use protobuf::benchmarks::{proto2, proto3, BenchmarkDataset};
 
 type Result = result::Result<(), failure::Error>;
 
 fn benchmark_dataset<M>(criterion: &mut Criterion, dataset: BenchmarkDataset) -> Result
-where M: prost::Message + Default + 'static {
-
+where
+    M: prost::Message + Default + 'static,
+{
     let payload_len = dataset.payload.iter().map(Vec::len).sum::<usize>();
 
-    let messages = dataset.payload.iter().map(|buf| M::decode(buf)).collect::<result::Result<Vec<_>, _>>()?;
-    let encoded_len = messages.iter().map(|message| message.encoded_len()).sum::<usize>();
+    let messages = dataset
+        .payload
+        .iter()
+        .map(|buf| M::decode(buf))
+        .collect::<result::Result<Vec<_>, _>>()?;
+    let encoded_len = messages
+        .iter()
+        .map(|message| message.encoded_len())
+        .sum::<usize>();
 
     let mut buf = Vec::with_capacity(encoded_len);
     let encode = Benchmark::new("encode", move |b| {
@@ -41,7 +41,8 @@ where M: prost::Message + Default + 'static {
             }
             criterion::black_box(&buf);
         })
-    }).throughput(Throughput::Bytes(encoded_len as u32));
+    })
+    .throughput(Throughput::Bytes(encoded_len as u32));
 
     let payload = dataset.payload.clone();
     let decode = Benchmark::new("decode", move |b| {
@@ -50,7 +51,8 @@ where M: prost::Message + Default + 'static {
                 criterion::black_box(M::decode(buf).unwrap());
             }
         })
-    }).throughput(Throughput::Bytes(payload_len as u32));
+    })
+    .throughput(Throughput::Bytes(payload_len as u32));
 
     let payload = dataset.payload.clone();
     let merge = Benchmark::new("merge", move |b| {
@@ -62,7 +64,8 @@ where M: prost::Message + Default + 'static {
                 criterion::black_box(&message);
             }
         })
-    }).throughput(Throughput::Bytes(payload_len as u32));
+    })
+    .throughput(Throughput::Bytes(payload_len as u32));
 
     criterion
         .bench(&dataset.name, encode)
@@ -84,8 +87,12 @@ fn main() -> Result {
         };
 
         match dataset.message_name.as_str() {
-            "benchmarks.proto2.GoogleMessage1" => benchmark_dataset::<proto2::GoogleMessage1>(&mut criterion, dataset)?,
-            "benchmarks.proto3.GoogleMessage1" => benchmark_dataset::<proto3::GoogleMessage1>(&mut criterion, dataset)?,
+            "benchmarks.proto2.GoogleMessage1" => {
+                benchmark_dataset::<proto2::GoogleMessage1>(&mut criterion, dataset)?
+            }
+            "benchmarks.proto3.GoogleMessage1" => {
+                benchmark_dataset::<proto3::GoogleMessage1>(&mut criterion, dataset)?
+            }
 
             /*
              TODO: groups are not yet supported

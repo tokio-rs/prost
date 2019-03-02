@@ -8,16 +8,7 @@ use std::slice;
 
 use failure::Error;
 use proc_macro2::TokenStream;
-use syn::{
-    Attribute,
-    Ident,
-    Lit,
-    LitBool,
-    Meta,
-    MetaList,
-    MetaNameValue,
-    NestedMeta,
-};
+use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 
 #[derive(Clone)]
 pub enum Field {
@@ -32,7 +23,6 @@ pub enum Field {
 }
 
 impl Field {
-
     /// Creates a new `Field` from an iterator of field attributes.
     ///
     /// If the meta items are invalid, an error will be returned.
@@ -147,7 +137,7 @@ impl Field {
                         ScalarWrapper(&#ident)
                     }
                 }
-            },
+            }
             Field::Map(ref map) => {
                 let wrapper = map.debug(quote!(MapWrapper));
                 quote! {
@@ -156,7 +146,7 @@ impl Field {
                         MapWrapper(&#ident)
                     }
                 }
-            },
+            }
             _ => quote!(&#ident),
         }
     }
@@ -190,11 +180,7 @@ impl Label {
     }
 
     fn variants() -> slice::Iter<'static, Label> {
-        const VARIANTS: &'static [Label] = &[
-            Label::Optional,
-            Label::Required,
-            Label::Repeated,
-        ];
+        const VARIANTS: &'static [Label] = &[Label::Optional, Label::Required, Label::Repeated];
         VARIANTS.iter()
     }
 
@@ -226,23 +212,32 @@ impl fmt::Display for Label {
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
 fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
-    Ok(attrs.iter().flat_map(Attribute::interpret_meta).flat_map(|meta| match meta {
-        Meta::List(MetaList { ident, nested, .. }) => if ident == "prost" {
-            nested.into_iter().collect()
-        } else {
-            Vec::new()
-        },
-        _ => Vec::new(),
-    }).flat_map(|attr| -> Result<_, _> {
-        match attr {
-            NestedMeta::Meta(attr) => Ok(attr),
-            NestedMeta::Literal(lit) => bail!("invalid prost attribute: {:?}", lit),
-        }
-    }).collect())
+    Ok(attrs
+        .iter()
+        .flat_map(Attribute::interpret_meta)
+        .flat_map(|meta| match meta {
+            Meta::List(MetaList { ident, nested, .. }) => {
+                if ident == "prost" {
+                    nested.into_iter().collect()
+                } else {
+                    Vec::new()
+                }
+            }
+            _ => Vec::new(),
+        })
+        .flat_map(|attr| -> Result<_, _> {
+            match attr {
+                NestedMeta::Meta(attr) => Ok(attr),
+                NestedMeta::Literal(lit) => bail!("invalid prost attribute: {:?}", lit),
+            }
+        })
+        .collect())
 }
 
 pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<(), Error>
-where T: fmt::Debug {
+where
+    T: fmt::Debug,
+{
     if let Some(ref existing) = *option {
         bail!("{}: {:?} and {:?}", message, existing, value);
     }
@@ -259,7 +254,6 @@ pub fn set_bool(b: &mut bool, message: &str) -> Result<(), Error> {
     }
 }
 
-
 /// Unpacks an attribute into a (key, boolean) pair, returning the boolean value.
 /// If the key doesn't match the attribute, `None` is returned.
 fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
@@ -272,15 +266,23 @@ fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
             // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
             if meta_list.nested.len() == 1 {
                 if let NestedMeta::Literal(Lit::Bool(LitBool { value, .. })) = meta_list.nested[0] {
-                    return Ok(Some(value))
+                    return Ok(Some(value));
                 }
             }
             bail!("invalid {} attribute", key);
-        },
-        Meta::NameValue(MetaNameValue { lit: Lit::Str(ref lit), .. }) => {
-            lit.value().parse::<bool>().map_err(Error::from).map(Option::Some)
-        },
-        Meta::NameValue(MetaNameValue { lit: Lit::Bool(LitBool{ value, .. }), .. }) => Ok(Some(value)),
+        }
+        Meta::NameValue(MetaNameValue {
+            lit: Lit::Str(ref lit),
+            ..
+        }) => lit
+            .value()
+            .parse::<bool>()
+            .map_err(Error::from)
+            .map(Option::Some),
+        Meta::NameValue(MetaNameValue {
+            lit: Lit::Bool(LitBool { value, .. }),
+            ..
+        }) => Ok(Some(value)),
         _ => bail!("invalid {} attribute", key),
     }
 }
@@ -307,16 +309,15 @@ fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
                 }
             }
             bail!("invalid tag attribute: {:?}", attr);
-        },
-        Meta::NameValue(ref meta_name_value) => {
-            match meta_name_value.lit {
-                Lit::Str(ref lit) => lit.value()
-                                        .parse::<u32>()
-                                        .map_err(Error::from)
-                                        .map(Option::Some),
-                Lit::Int(ref lit) => Ok(Some(lit.value() as u32)),
-                _ => bail!("invalid tag attribute: {:?}", attr),
-            }
+        }
+        Meta::NameValue(ref meta_name_value) => match meta_name_value.lit {
+            Lit::Str(ref lit) => lit
+                .value()
+                .parse::<u32>()
+                .map_err(Error::from)
+                .map(Option::Some),
+            Lit::Int(ref lit) => Ok(Some(lit.value() as u32)),
+            _ => bail!("invalid tag attribute: {:?}", attr),
         },
         _ => bail!("invalid tag attribute: {:?}", attr),
     }
@@ -337,14 +338,16 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
                 }
             }
             return Ok(Some(tags));
-        },
-        Meta::NameValue(MetaNameValue { lit: Lit::Str(ref lit), .. }) => {
-            lit.value()
-               .split(',')
-               .map(|s| s.trim().parse::<u32>().map_err(Error::from))
-               .collect::<Result<Vec<u32>, _>>()
-               .map(|tags| Some(tags))
-        },
+        }
+        Meta::NameValue(MetaNameValue {
+            lit: Lit::Str(ref lit),
+            ..
+        }) => lit
+            .value()
+            .split(',')
+            .map(|s| s.trim().parse::<u32>().map_err(Error::from))
+            .collect::<Result<Vec<u32>, _>>()
+            .map(|tags| Some(tags)),
         _ => bail!("invalid tag attribute: {:?}", attr),
     }
 }

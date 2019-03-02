@@ -5,30 +5,16 @@ use std::iter;
 
 use itertools::{Either, Itertools};
 use multimap::MultiMap;
-use prost_types::{
-    DescriptorProto,
-    EnumDescriptorProto,
-    EnumValueDescriptorProto,
-    FieldDescriptorProto,
-    FileDescriptorProto,
-    OneofDescriptorProto,
-    ServiceDescriptorProto,
-    SourceCodeInfo,
-};
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
+use prost_types::{
+    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+    FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
+};
 
-use ast::{
-    Comments,
-    Method,
-    Service,
-};
+use ast::{Comments, Method, Service};
 use extern_paths::ExternPaths;
-use ident::{
-    to_snake,
-    match_ident,
-    to_upper_camel,
-};
+use ident::{match_ident, to_snake, to_upper_camel};
 use message_graph::MessageGraph;
 use Config;
 use Module;
@@ -59,19 +45,24 @@ pub struct CodeGenerator<'a> {
     buf: &'a mut String,
 }
 
-impl <'a> CodeGenerator<'a> {
-    pub fn generate(config: &mut Config,
-                    message_graph: &MessageGraph,
-                    extern_paths: &ExternPaths,
-                    file: FileDescriptorProto,
-                    buf: &mut String) {
-
-        let mut source_info = file.source_code_info.expect("no source code info in request");
+impl<'a> CodeGenerator<'a> {
+    pub fn generate(
+        config: &mut Config,
+        message_graph: &MessageGraph,
+        extern_paths: &ExternPaths,
+        file: FileDescriptorProto,
+        buf: &mut String,
+    ) {
+        let mut source_info = file
+            .source_code_info
+            .expect("no source code info in request");
         source_info.location.retain(|location| {
             let len = location.path.len();
             len > 0 && len % 2 == 0
         });
-        source_info.location.sort_by_key(|location| location.path.clone());
+        source_info
+            .location
+            .sort_by_key(|location| location.path.clone());
 
         let syntax = match file.syntax.as_ref().map(String::as_str) {
             None | Some("proto2") => Syntax::Proto2,
@@ -91,7 +82,11 @@ impl <'a> CodeGenerator<'a> {
             buf,
         };
 
-        debug!("file: {:?}, package: {:?}", file.name.as_ref().unwrap(), code_gen.package);
+        debug!(
+            "file: {:?}, package: {:?}",
+            file.name.as_ref().unwrap(),
+            code_gen.package
+        );
 
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
@@ -118,9 +113,13 @@ impl <'a> CodeGenerator<'a> {
             }
 
             let buf = code_gen.buf;
-            code_gen.config.service_generator.as_mut().map(|service_generator| {
-                service_generator.finalize(buf);
-            });
+            code_gen
+                .config
+                .service_generator
+                .as_mut()
+                .map(|service_generator| {
+                    service_generator.finalize(buf);
+                });
 
             code_gen.path.pop();
         }
@@ -133,16 +132,26 @@ impl <'a> CodeGenerator<'a> {
         let fq_message_name = format!(".{}.{}", self.package, message.name());
 
         // Skip external types.
-        if self.extern_paths.resolve_ident(&fq_message_name).is_some() { return; }
+        if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
+            return;
+        }
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
         // that comments can be retrieved.
         type NestedTypes = Vec<(DescriptorProto, usize)>;
         type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
-        let (nested_types, map_types): (NestedTypes, MapTypes) =
-            message.nested_type.into_iter().enumerate().partition_map(|(idx, nested_type)| {
-                if nested_type.options.as_ref().and_then(|options| options.map_entry).unwrap_or(false) {
+        let (nested_types, map_types): (NestedTypes, MapTypes) = message
+            .nested_type
+            .into_iter()
+            .enumerate()
+            .partition_map(|(idx, nested_type)| {
+                if nested_type
+                    .options
+                    .as_ref()
+                    .and_then(|options| options.map_entry)
+                    .unwrap_or(false)
+                {
                     let key = nested_type.field[0].clone();
                     let value = nested_type.field[1].clone();
                     assert_eq!("key", key.name());
@@ -153,14 +162,17 @@ impl <'a> CodeGenerator<'a> {
                 } else {
                     Either::Left((nested_type, idx))
                 }
-        });
+            });
 
         // Split the fields into a vector of the normal fields, and oneof fields.
         // Path indexes are preserved so that comments can be retrieved.
         type Fields = Vec<(FieldDescriptorProto, usize)>;
         type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
-        let (fields, mut oneof_fields): (Fields, OneofFields) =
-            message.field.into_iter().enumerate().partition_map(|(idx, field)| {
+        let (fields, mut oneof_fields): (Fields, OneofFields) = message
+            .field
+            .into_iter()
+            .enumerate()
+            .partition_map(|(idx, field)| {
                 if let Some(oneof_index) = field.oneof_index {
                     Either::Right((oneof_index, (field, idx)))
                 } else {
@@ -183,8 +195,14 @@ impl <'a> CodeGenerator<'a> {
         self.path.push(2);
         for (field, idx) in fields {
             self.path.push(idx as i32);
-            match field.type_name.as_ref().and_then(|type_name| map_types.get(type_name)) {
-                Some(&(ref key, ref value)) => self.append_map_field(&fq_message_name, field, key, value),
+            match field
+                .type_name
+                .as_ref()
+                .and_then(|type_name| map_types.get(type_name))
+            {
+                Some(&(ref key, ref value)) => {
+                    self.append_map_field(&fq_message_name, field, key, value)
+                }
                 None => self.append_field(&fq_message_name, field),
             }
             self.path.pop();
@@ -195,10 +213,12 @@ impl <'a> CodeGenerator<'a> {
         for (idx, oneof) in message.oneof_decl.iter().enumerate() {
             let idx = idx as i32;
             self.path.push(idx);
-            self.append_oneof_field(&message_name,
-                                    &fq_message_name,
-                                    oneof,
-                                    oneof_fields.get_vec(&idx).unwrap());
+            self.append_oneof_field(
+                &message_name,
+                &fq_message_name,
+                oneof,
+                oneof_fields.get_vec(&idx).unwrap(),
+            );
             self.path.pop();
         }
         self.path.pop();
@@ -227,7 +247,12 @@ impl <'a> CodeGenerator<'a> {
 
             for (idx, oneof) in message.oneof_decl.into_iter().enumerate() {
                 let idx = idx as i32;
-                self.append_oneof(&fq_message_name, oneof, idx, oneof_fields.remove(&idx).unwrap());
+                self.append_oneof(
+                    &fq_message_name,
+                    oneof,
+                    idx,
+                    oneof_fields.remove(&idx).unwrap(),
+                );
             }
 
             self.pop_mod();
@@ -261,17 +286,24 @@ impl <'a> CodeGenerator<'a> {
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         // TODO(danburkert/prost#19): support groups.
         let type_ = field.type_();
-        if type_ == Type::Group { return; }
+        if type_ == Type::Group {
+            return;
+        }
 
         let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
         let boxed = !repeated
-                 && type_ == Type::Message
-                 && self.message_graph.is_nested(field.type_name(), msg_name);
+            && type_ == Type::Message
+            && self.message_graph.is_nested(field.type_name(), msg_name);
 
-        debug!("    field: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
+        debug!(
+            "    field: {:?}, type: {:?}, boxed: {}",
+            field.name(),
+            ty,
+            boxed
+        );
 
         self.append_doc();
         self.push_indent();
@@ -280,20 +312,28 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str(&type_tag);
 
         match field.label() {
-            Label::Optional => if optional {
-                self.buf.push_str(", optional");
-            },
+            Label::Optional => {
+                if optional {
+                    self.buf.push_str(", optional");
+                }
+            }
             Label::Required => self.buf.push_str(", required"),
             Label::Repeated => {
                 self.buf.push_str(", repeated");
-                if can_pack(&field) && !field.options.as_ref().map_or(self.syntax == Syntax::Proto3,
-                                                                      |options| options.packed()) {
+                if can_pack(&field)
+                    && !field
+                        .options
+                        .as_ref()
+                        .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
+                {
                     self.buf.push_str(", packed=\"false\"");
                 }
-            },
+            }
         }
 
-        if boxed { self.buf.push_str(", boxed"); }
+        if boxed {
+            self.buf.push_str(", boxed");
+        }
         self.buf.push_str(", tag=\"");
         self.buf.push_str(&field.number().to_string());
 
@@ -302,7 +342,9 @@ impl <'a> CodeGenerator<'a> {
             if type_ == Type::Bytes {
                 self.buf.push_str("b\\\"");
                 for b in unescape_c_escape_string(default) {
-                    self.buf.extend(ascii::escape_default(b).flat_map(|c| (c as char).escape_default()));
+                    self.buf.extend(
+                        ascii::escape_default(b).flat_map(|c| (c as char).escape_default()),
+                    );
                 }
                 self.buf.push_str("\\\"");
             } else if type_ == Type::Enum {
@@ -335,33 +377,49 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
-        if repeated { self.buf.push_str("::std::vec::Vec<"); }
-        else if optional { self.buf.push_str("::std::option::Option<"); }
-        if boxed { self.buf.push_str("::std::boxed::Box<"); }
+        if repeated {
+            self.buf.push_str("::std::vec::Vec<");
+        } else if optional {
+            self.buf.push_str("::std::option::Option<");
+        }
+        if boxed {
+            self.buf.push_str("::std::boxed::Box<");
+        }
         self.buf.push_str(&ty);
-        if boxed { self.buf.push_str(">"); }
-        if repeated || optional { self.buf.push_str(">"); }
+        if boxed {
+            self.buf.push_str(">");
+        }
+        if repeated || optional {
+            self.buf.push_str(">");
+        }
         self.buf.push_str(",\n");
     }
 
-    fn append_map_field(&mut self,
-                        msg_name: &str,
-                        field: FieldDescriptorProto,
-                        key: &FieldDescriptorProto,
-                        value: &FieldDescriptorProto) {
+    fn append_map_field(
+        &mut self,
+        msg_name: &str,
+        field: FieldDescriptorProto,
+        key: &FieldDescriptorProto,
+        value: &FieldDescriptorProto,
+    ) {
         let key_ty = self.resolve_type(key);
         let value_ty = self.resolve_type(value);
 
-        debug!("    map field: {:?}, key type: {:?}, value type: {:?}",
-               field.name(), key_ty, value_ty);
+        debug!(
+            "    map field: {:?}, key type: {:?}, value type: {:?}",
+            field.name(),
+            key_ty,
+            value_ty
+        );
 
         self.append_doc();
         self.push_indent();
 
-        let btree_map = self.config
-                            .btree_map
-                            .iter()
-                            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+        let btree_map = self
+            .config
+            .btree_map
+            .iter()
+            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
         let (annotation_ty, rust_ty) = if btree_map {
             ("btree_map", "BTreeMap")
         } else {
@@ -370,40 +428,62 @@ impl <'a> CodeGenerator<'a> {
 
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
-        self.buf.push_str(&format!("#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
-                                   annotation_ty,
-                                   key_tag,
-                                   value_tag,
-                                   field.number()));
+        self.buf.push_str(&format!(
+            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+            annotation_ty,
+            key_tag,
+            value_tag,
+            field.number()
+        ));
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: ::std::collections::{}<{}, {}>,\n",
-                                   to_snake(field.name()), rust_ty, key_ty, value_ty));
+        self.buf.push_str(&format!(
+            "pub {}: ::std::collections::{}<{}, {}>,\n",
+            to_snake(field.name()),
+            rust_ty,
+            key_ty,
+            value_ty
+        ));
     }
 
-    fn append_oneof_field(&mut self,
-                          message_name: &str,
-                          fq_message_name: &str,
-                          oneof: &OneofDescriptorProto,
-                          fields: &[(FieldDescriptorProto, usize)]) {
-        let name = format!("{}::{}",
-                           to_snake(message_name),
-                           to_upper_camel(oneof.name()));
+    fn append_oneof_field(
+        &mut self,
+        message_name: &str,
+        fq_message_name: &str,
+        oneof: &OneofDescriptorProto,
+        fields: &[(FieldDescriptorProto, usize)],
+    ) {
+        let name = format!(
+            "{}::{}",
+            to_snake(message_name),
+            to_upper_camel(oneof.name())
+        );
         self.append_doc();
         self.push_indent();
-        self.buf.push_str(&format!("#[prost(oneof=\"{}\", tags=\"{}\")]\n",
-                                   name,
-                                   fields.iter().map(|&(ref field, _)| field.number()).join(", ")));
+        self.buf.push_str(&format!(
+            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
+            name,
+            fields
+                .iter()
+                .map(|&(ref field, _)| field.number())
+                .join(", ")
+        ));
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
-        self.buf.push_str(&format!("pub {}: ::std::option::Option<{}>,\n", to_snake(oneof.name()), name));
+        self.buf.push_str(&format!(
+            "pub {}: ::std::option::Option<{}>,\n",
+            to_snake(oneof.name()),
+            name
+        ));
     }
 
-    fn append_oneof(&mut self,
-                    msg_name: &str,
-                    oneof: OneofDescriptorProto,
-                    idx: i32,
-                    fields: Vec<(FieldDescriptorProto, usize)>) {
+    fn append_oneof(
+        &mut self,
+        msg_name: &str,
+        oneof: OneofDescriptorProto,
+        idx: i32,
+        fields: Vec<(FieldDescriptorProto, usize)>,
+    ) {
         self.path.push(8);
         self.path.push(idx);
         self.append_doc();
@@ -424,7 +504,9 @@ impl <'a> CodeGenerator<'a> {
         for (field, idx) in fields {
             // TODO(danburkert/prost#19): support groups.
             let type_ = field.type_();
-            if type_ == Type::Group { continue; }
+            if type_ == Type::Group {
+                continue;
+            }
 
             self.path.push(idx as i32);
             self.append_doc();
@@ -432,21 +514,32 @@ impl <'a> CodeGenerator<'a> {
 
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
-            self.buf.push_str(&format!("#[prost({}, tag=\"{}\")]\n", ty_tag, field.number()));
+            self.buf.push_str(&format!(
+                "#[prost({}, tag=\"{}\")]\n",
+                ty_tag,
+                field.number()
+            ));
             self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
             let ty = self.resolve_type(&field);
 
-            let boxed = type_ == Type::Message
-                     && self.message_graph.is_nested(field.type_name(), msg_name);
+            let boxed =
+                type_ == Type::Message && self.message_graph.is_nested(field.type_name(), msg_name);
 
-            debug!("    oneof: {:?}, type: {:?}, boxed: {}", field.name(), ty, boxed);
+            debug!(
+                "    oneof: {:?}, type: {:?}, boxed: {}",
+                field.name(),
+                ty,
+                boxed
+            );
 
             if boxed {
-                self.buf.push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
+                self.buf
+                    .push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
             } else {
-                self.buf.push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
+                self.buf
+                    .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
             }
         }
         self.depth -= 1;
@@ -457,10 +550,11 @@ impl <'a> CodeGenerator<'a> {
     }
 
     fn location(&self) -> &Location {
-        let idx = self.source_info
-                      .location
-                      .binary_search_by_key(&&self.path[..], |location| &location.path[..])
-                      .unwrap();
+        let idx = self
+            .source_info
+            .location
+            .binary_search_by_key(&&self.path[..], |location| &location.path[..])
+            .unwrap();
 
         &self.source_info.location[idx]
     }
@@ -476,11 +570,15 @@ impl <'a> CodeGenerator<'a> {
         let enum_name = &desc.name();
         let enum_values = &desc.value;
         let fq_enum_name = format!(".{}.{}", self.package, enum_name);
-        if self.extern_paths.resolve_ident(&fq_enum_name).is_some() { return; }
+        if self.extern_paths.resolve_ident(&fq_enum_name).is_some() {
+            return;
+        }
 
         self.append_doc();
         self.push_indent();
-        self.buf.push_str("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]\n");
+        self.buf.push_str(
+            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enumeration)]\n",
+        );
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
         self.append_type_attributes(&fq_enum_name);
@@ -516,7 +614,12 @@ impl <'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn append_enum_value(&mut self, fq_enum_name: &str, value: &EnumValueDescriptorProto, prefix_to_strip: Option<String>) {
+    fn append_enum_value(
+        &mut self,
+        fq_enum_name: &str,
+        value: &EnumValueDescriptorProto,
+        prefix_to_strip: Option<String>,
+    ) {
         self.append_doc();
         self.append_field_attributes(fq_enum_name, &value.name());
         self.push_indent();
@@ -538,37 +641,38 @@ impl <'a> CodeGenerator<'a> {
         let comments = Comments::from_location(self.location());
 
         self.path.push(2);
-        let methods = service.method
-                             .into_iter()
-                             .enumerate()
-                             .map(|(idx, mut method)| {
-                                 debug!("  method: {:?}", method.name());
-                                 self.path.push(idx as i32);
-                                 let comments = Comments::from_location(self.location());
-                                 self.path.pop();
+        let methods = service
+            .method
+            .into_iter()
+            .enumerate()
+            .map(|(idx, mut method)| {
+                debug!("  method: {:?}", method.name());
+                self.path.push(idx as i32);
+                let comments = Comments::from_location(self.location());
+                self.path.pop();
 
-                                 let name = method.name.take().unwrap();
-                                 let input_proto_type = method.input_type.take().unwrap();
-                                 let output_proto_type = method.output_type.take().unwrap();
-                                 let input_type = self.resolve_ident(&input_proto_type);
-                                 let output_type = self.resolve_ident(&output_proto_type);
-                                 let client_streaming = method.client_streaming();
-                                 let server_streaming = method.server_streaming();
+                let name = method.name.take().unwrap();
+                let input_proto_type = method.input_type.take().unwrap();
+                let output_proto_type = method.output_type.take().unwrap();
+                let input_type = self.resolve_ident(&input_proto_type);
+                let output_type = self.resolve_ident(&output_proto_type);
+                let client_streaming = method.client_streaming();
+                let server_streaming = method.server_streaming();
 
-                                 Method {
-                                     name: to_snake(&name),
-                                     proto_name: name,
-                                     comments,
-                                     input_type,
-                                     output_type,
-                                     input_proto_type,
-                                     output_proto_type,
-                                     options: method.options.unwrap_or_default(),
-                                     client_streaming,
-                                     server_streaming,
-                                 }
-                             })
-                             .collect();
+                Method {
+                    name: to_snake(&name),
+                    proto_name: name,
+                    comments,
+                    input_type,
+                    output_type,
+                    input_proto_type,
+                    output_proto_type,
+                    options: method.options.unwrap_or_default(),
+                    client_streaming,
+                    server_streaming,
+                }
+            })
+            .collect();
         self.path.pop();
 
         let service = Service {
@@ -581,7 +685,10 @@ impl <'a> CodeGenerator<'a> {
         };
 
         let buf = &mut self.buf;
-        self.config.service_generator.as_mut().map(move |service_generator| service_generator.generate(service, buf));
+        self.config
+            .service_generator
+            .as_mut()
+            .map(move |service_generator| service_generator.generate(service, buf));
     }
 
     fn push_indent(&mut self) {
@@ -642,16 +749,16 @@ impl <'a> CodeGenerator<'a> {
         let mut ident_path = ident_path.peekable();
 
         // Skip path elements in common.
-        while local_path.peek().is_some() &&
-              local_path.peek() == ident_path.peek() {
+        while local_path.peek().is_some() && local_path.peek() == ident_path.peek() {
             local_path.next();
             ident_path.next();
         }
 
-        local_path.map(|_| "super".to_string())
-                  .chain(ident_path.map(to_snake))
-                  .chain(iter::once(to_upper_camel(ident_type)))
-                  .join("::")
+        local_path
+            .map(|_| "super".to_string())
+            .chain(ident_path.map(to_snake))
+            .chain(iter::once(to_upper_camel(ident_type)))
+            .join("::")
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
@@ -673,13 +780,19 @@ impl <'a> CodeGenerator<'a> {
             Type::Bytes => Cow::Borrowed("bytes"),
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
-            Type::Enum => Cow::Owned(format!("enumeration={:?}", self.resolve_ident(field.type_name()))),
+            Type::Enum => Cow::Owned(format!(
+                "enumeration={:?}",
+                self.resolve_ident(field.type_name())
+            )),
         }
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.type_() {
-            Type::Enum => Cow::Owned(format!("enumeration({})", self.resolve_ident(field.type_name()))),
+            Type::Enum => Cow::Owned(format!(
+                "enumeration({})",
+                self.resolve_ident(field.type_name())
+            )),
             _ => self.field_type_tag(field),
         }
     }
@@ -698,13 +811,23 @@ impl <'a> CodeGenerator<'a> {
 
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
-        match field.type_() {
-            Type::Float   | Type::Double  | Type::Int32    | Type::Int64    |
-            Type::Uint32  | Type::Uint64  | Type::Sint32   | Type::Sint64   |
-            Type::Fixed32 | Type::Fixed64 | Type::Sfixed32 | Type::Sfixed64 |
-            Type::Bool    | Type::Enum => true,
-            _ => false,
-        }
+    match field.type_() {
+        Type::Float
+        | Type::Double
+        | Type::Int32
+        | Type::Int64
+        | Type::Uint32
+        | Type::Uint64
+        | Type::Sint32
+        | Type::Sint64
+        | Type::Fixed32
+        | Type::Fixed64
+        | Type::Sfixed32
+        | Type::Sfixed64
+        | Type::Bool
+        | Type::Enum => true,
+        _ => false,
+    }
 }
 
 /// Based on [`google::protobuf::UnescapeCEscapeString`][1]
@@ -723,53 +846,56 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
         } else {
             p += 1;
             if p == len {
-                panic!("invalid c-escaped default binary value ({}): ends with '\'", s)
+                panic!(
+                    "invalid c-escaped default binary value ({}): ends with '\'",
+                    s
+                )
             }
             match src[p] {
                 b'a' => {
                     dst.push(0x07);
                     p += 1;
-                },
+                }
                 b'b' => {
                     dst.push(0x08);
                     p += 1;
-                },
+                }
                 b'f' => {
                     dst.push(0x0C);
                     p += 1;
-                },
+                }
                 b'n' => {
                     dst.push(0x0A);
                     p += 1;
-                },
+                }
                 b'r' => {
                     dst.push(0x0D);
                     p += 1;
-                },
+                }
                 b't' => {
                     dst.push(0x09);
                     p += 1;
-                },
+                }
                 b'v' => {
                     dst.push(0x0B);
                     p += 1;
-                },
+                }
                 b'\\' => {
                     dst.push(0x5C);
                     p += 1;
-                },
+                }
                 b'?' => {
                     dst.push(0x3F);
                     p += 1;
-                },
+                }
                 b'\'' => {
                     dst.push(0x27);
                     p += 1;
-                },
+                }
                 b'"' => {
                     dst.push(0x22);
                     p += 1;
-                },
+                }
                 b'0'...b'7' => {
                     eprintln!("another octal: {}, offset: {}", s, &s[p..]);
                     let mut octal = 0;
@@ -783,20 +909,27 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                         }
                     }
                     dst.push(octal);
-                },
+                }
                 b'x' | b'X' => {
                     if p + 2 > len {
-                        panic!("invalid c-escaped default binary value ({}): incomplete hex value", s)
+                        panic!(
+                            "invalid c-escaped default binary value ({}): incomplete hex value",
+                            s
+                        )
                     }
-                    match u8::from_str_radix(&s[p+1..p+3], 16) {
+                    match u8::from_str_radix(&s[p + 1..p + 3], 16) {
                         Ok(b) => dst.push(b),
-                        _ => panic!("invalid c-escaped default binary value ({}): invalid hex value", &s[p..p+2]),
+                        _ => panic!(
+                            "invalid c-escaped default binary value ({}): invalid hex value",
+                            &s[p..p + 2]
+                        ),
                     }
                     p += 3;
-                },
-                _ => {
-                    panic!("invalid c-escaped default binary value ({}): invalid escape", s)
-                },
+                }
+                _ => panic!(
+                    "invalid c-escaped default binary value ({}): invalid escape",
+                    s
+                ),
             }
         }
     }
@@ -837,15 +970,23 @@ mod tests {
 
     #[test]
     fn test_unescape_c_escape_string() {
-        assert_eq!(&b"hello world"[..], &unescape_c_escape_string("hello world")[..]);
+        assert_eq!(
+            &b"hello world"[..],
+            &unescape_c_escape_string("hello world")[..]
+        );
 
         assert_eq!(&b"\0"[..], &unescape_c_escape_string(r#"\0"#)[..]);
 
-        assert_eq!(&[0o012, 0o156], &unescape_c_escape_string(r#"\012\156"#)[..]);
+        assert_eq!(
+            &[0o012, 0o156],
+            &unescape_c_escape_string(r#"\012\156"#)[..]
+        );
         assert_eq!(&[0x01, 0x02], &unescape_c_escape_string(r#"\x01\x02"#)[..]);
 
-        assert_eq!(&b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"[..],
-                   &unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe"#)[..]);
+        assert_eq!(
+            &b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"[..],
+            &unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe"#)[..]
+        );
     }
 
     #[test]

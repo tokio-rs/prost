@@ -21,12 +21,14 @@ pub struct DecodeError {
 }
 
 impl DecodeError {
-
     /// Creates a new `DecodeError` with a 'best effort' root cause description.
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    pub fn new<S>(description: S) -> DecodeError where S: Into<Cow<'static, str>> {
+    pub fn new<S>(description: S) -> DecodeError
+    where
+        S: Into<Cow<'static, str>>,
+    {
         DecodeError {
             description: description.into(),
             stack: Vec::new(),
@@ -76,7 +78,6 @@ pub struct EncodeError {
 }
 
 impl EncodeError {
-
     /// Creates a new `EncodeError`.
     pub(crate) fn new(required: usize, remaining: usize) -> EncodeError {
         EncodeError {
@@ -99,7 +100,11 @@ impl EncodeError {
 impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(error::Error::description(self))?;
-        write!(f, " (required: {}, remaining: {})", self.required, self.remaining)
+        write!(
+            f,
+            " (required: {}, remaining: {})",
+            self.required, self.remaining
+        )
     }
 }
 

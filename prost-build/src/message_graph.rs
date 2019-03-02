@@ -4,11 +4,7 @@ use petgraph::algo::has_path_connecting;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 
-use prost_types::{
-    DescriptorProto,
-    field_descriptor_proto,
-    FileDescriptorProto,
-};
+use prost_types::{field_descriptor_proto, DescriptorProto, FileDescriptorProto};
 
 /// `MessageGraph` builds a graph of messages whose edges correspond to nesting.
 /// The goal is to recognize when message types are recursively nested, so
@@ -36,11 +32,14 @@ impl MessageGraph {
     }
 
     fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {
-        let MessageGraph { ref mut index, ref mut graph } = *self;
+        let MessageGraph {
+            ref mut index,
+            ref mut graph,
+        } = *self;
         assert_eq!(b'.', msg_name.as_bytes()[0]);
-        *index.entry(msg_name.clone()).or_insert_with(|| {
-            graph.add_node(msg_name)
-        })
+        *index
+            .entry(msg_name.clone())
+            .or_insert_with(|| graph.add_node(msg_name))
     }
 
     fn add_message(&mut self, package: &str, msg: &DescriptorProto) {
@@ -49,7 +48,8 @@ impl MessageGraph {
 
         for field in &msg.field {
             if field.type_() == field_descriptor_proto::Type::Message
-                && field.label() != field_descriptor_proto::Label::Repeated {
+                && field.label() != field_descriptor_proto::Label::Repeated
+            {
                 let field_index = self.get_or_insert_index(field.type_name.clone().unwrap());
                 self.graph.add_edge(msg_index, field_index, ());
             }
