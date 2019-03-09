@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate cfg_if;
 
-#[macro_use]
-extern crate prost_derive;
-
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate bytes;

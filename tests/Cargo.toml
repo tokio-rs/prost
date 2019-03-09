@@ -14,7 +14,6 @@ doctest = false
 bytes = "0.4.7"
 cfg-if = "0.1"
 prost = { path = ".." }
-prost-derive = { path = "../prost-derive" }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
 

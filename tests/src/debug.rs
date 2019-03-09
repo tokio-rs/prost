@@ -62,7 +62,7 @@ fn tuple_struct() {
 }
 */
 
-#[derive(Clone, PartialEq, prost_derive::Oneof)]
+#[derive(Clone, PartialEq, prost::Oneof)]
 pub enum OneofWithEnum {
     #[prost(int32, tag = "8")]
     Int(i32),
@@ -72,7 +72,7 @@ pub enum OneofWithEnum {
     Enumeration(i32),
 }
 
-#[derive(Clone, PartialEq, prost_derive::Message)]
+#[derive(Clone, PartialEq, prost::Message)]
 struct MessageWithOneof {
     #[prost(oneof = "OneofWithEnum", tags = "8, 9, 10")]
     of: Option<OneofWithEnum>,

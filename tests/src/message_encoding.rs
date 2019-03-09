@@ -1,4 +1,4 @@
-use prost::Message;
+use prost::{Enumeration, Message, Oneof};
 
 use crate::check_message;
 use crate::check_serialize_equivalent;

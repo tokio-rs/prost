@@ -177,7 +177,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost_derive::Message)]\n");
+            .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -485,7 +485,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost_derive::Oneof)]\n");
+            .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
         let oneof_name = format!("{}.{}", msg_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
@@ -571,7 +571,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost_derive::Enumeration)]\n",
+            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",
         );
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
