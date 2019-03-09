@@ -8,7 +8,6 @@ edition = "2018"
 [dependencies]
 bytes = "0.4.7"
 prost = { path = ".." }
-prost-derive = { path = "../prost-derive" }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]

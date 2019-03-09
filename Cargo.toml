@@ -32,16 +32,19 @@ exclude = [
   "fuzz",
 ]
 
+[features]
+default = ["prost-derive"]
+
 [dependencies]
 byteorder = "1"
 bytes = "0.4.7"
+prost-derive = { version = "0.4.0", path = "prost-derive", optional = true }
 
 [dev-dependencies]
 criterion = "0.2"
 env_logger = { version = "0.5", default-features = false }
 failure = "0.1"
 log = "0.4"
-prost-derive = { version = "0.4.0", path = "prost-derive" }
 protobuf = { path = "protobuf" }
 quickcheck = "0.6"
 

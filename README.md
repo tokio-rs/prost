@@ -31,10 +31,9 @@ First, add `prost` and its public dependencies to your `Cargo.toml` (see
 ```
 [dependencies]
 prost = <prost-version>
-prost-derive = <prost-version>
+bytes = <bytes-version>
 # Only necessary if using Protobuf well-known types:
 prost-types = <prost-version>
-bytes = <bytes-version>
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the

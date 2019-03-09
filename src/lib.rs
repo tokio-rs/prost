@@ -66,3 +66,15 @@ where
     }
     Ok(length as usize)
 }
+
+// Re-export #[derive(Message, Enumeration, Oneof)].
+// Based on serde's equivalent re-export [1], but enabled by default.
+//
+// [1]: https://github.com/serde-rs/serde/blob/v1.0.89/serde/src/lib.rs#L245-L256
+#[cfg(feature = "prost-derive")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate prost_derive;
+#[cfg(feature = "prost-derive")]
+#[doc(hidden)]
+pub use prost_derive::*;
