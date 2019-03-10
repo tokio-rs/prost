@@ -18,4 +18,4 @@ failure = { version = "0.1", default-features = false, features = ["std"] }
 itertools = "0.8"
 proc-macro2 = "0.4.4"
 quote = "0.6.3"
-syn = { version = "0.14.1", features = [ "extra-traits" ] }
+syn = { version = "0.15" }
