@@ -120,8 +120,8 @@ where
     let encoded_len = all_types.encoded_len();
 
     // TODO: Reenable this once sign-extension in negative int32s is figured out.
-    //assert!(encoded_len <= len, "encoded_len: {}, len: {}, all_types: {:?}",
-    //encoded_len, len, all_types);
+    // assert!(encoded_len <= data.len(), "encoded_len: {}, len: {}, all_types: {:?}",
+    //         encoded_len, data.len(), all_types);
 
     let mut buf1 = Vec::new();
     if let Err(error) = all_types.encode(&mut buf1) {
