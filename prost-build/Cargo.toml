@@ -13,7 +13,7 @@ edition = "2018"
 [dependencies]
 bytes = "0.4.7"
 heck = "0.3"
-itertools = "0.7"
+itertools = "0.8"
 log = "0.4"
 multimap = { version = "0.4", default-features = false }
 petgraph = { version = "0.4", default-features = false }
@@ -25,7 +25,7 @@ tempfile = "3"
 which = "2"
 
 [dev-dependencies]
-env_logger = { version = "0.5", default-features = false }
+env_logger = { version = "0.6", default-features = false }
 
 [features]
 # docs.rs depends on an old version of cargo which doesn't support the rustc-env
