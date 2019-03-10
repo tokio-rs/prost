@@ -640,28 +640,12 @@ where
 
 /// Returns the path to the `protoc` binary.
 pub fn protoc() -> &'static Path {
-    #[cfg(not(feature = "docs-rs"))]
-    fn inner() -> &'static Path {
-        Path::new(env!("PROTOC"))
-    }
-    #[cfg(feature = "docs-rs")]
-    fn inner() -> &'static Path {
-        Path::new("")
-    }
-    inner()
+    Path::new(env!("PROTOC"))
 }
 
 /// Returns the path to the Protobuf include directory.
 pub fn protoc_include() -> &'static Path {
-    #[cfg(not(feature = "docs-rs"))]
-    fn inner() -> &'static Path {
-        Path::new(env!("PROTOC_INCLUDE"))
-    }
-    #[cfg(feature = "docs-rs")]
-    fn inner() -> &'static Path {
-        Path::new("")
-    }
-    inner()
+    Path::new(env!("PROTOC_INCLUDE"))
 }
 
 #[cfg(test)]
