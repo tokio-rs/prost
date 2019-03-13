@@ -1,3 +1,4 @@
+mod group;
 mod map;
 mod message;
 mod oneof;
@@ -21,6 +22,8 @@ pub enum Field {
     Map(map::Field),
     /// A oneof field.
     Oneof(oneof::Field),
+    /// A group field.
+    Group(group::Field),
 }
 
 impl Field {
@@ -41,6 +44,8 @@ impl Field {
             Field::Map(field)
         } else if let Some(field) = oneof::Field::new(&attrs)? {
             Field::Oneof(field)
+        } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
+            Field::Group(field)
         } else {
             bail!("no type attribute");
         };
@@ -63,6 +68,8 @@ impl Field {
             Field::Message(field)
         } else if let Some(field) = map::Field::new_oneof(&attrs)? {
             Field::Map(field)
+        } else if let Some(field) = group::Field::new_oneof(&attrs)? {
+            Field::Group(field)
         } else {
             bail!("no type attribute for oneof field");
         };
@@ -76,6 +83,7 @@ impl Field {
             Field::Message(ref message) => vec![message.tag],
             Field::Map(ref map) => vec![map.tag],
             Field::Oneof(ref oneof) => oneof.tags.clone(),
+            Field::Group(ref group) => vec![group.tag],
         }
     }
 
@@ -86,6 +94,7 @@ impl Field {
             Field::Message(ref message) => message.encode(ident),
             Field::Map(ref map) => map.encode(ident),
             Field::Oneof(ref oneof) => oneof.encode(ident),
+            Field::Group(ref group) => group.encode(ident),
         }
     }
 
@@ -97,6 +106,7 @@ impl Field {
             Field::Message(ref message) => message.merge(ident),
             Field::Map(ref map) => map.merge(ident),
             Field::Oneof(ref oneof) => oneof.merge(ident),
+            Field::Group(ref group) => group.merge(ident),
         }
     }
 
@@ -107,6 +117,7 @@ impl Field {
             Field::Map(ref map) => map.encoded_len(ident),
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
+            Field::Group(ref group) => group.encoded_len(ident),
         }
     }
 
@@ -117,6 +128,7 @@ impl Field {
             Field::Message(ref message) => message.clear(ident),
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),
+            Field::Group(ref group) => group.clear(ident),
         }
     }
 
@@ -212,7 +224,7 @@ impl fmt::Display for Label {
 }
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
-fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
+pub(super) fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
     Ok(attrs
         .iter()
         .flat_map(Attribute::interpret_meta)
@@ -297,7 +309,7 @@ fn word_attr(key: &str, attr: &Meta) -> bool {
     }
 }
 
-fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
+pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
     if attr.name() != "tag" {
         return Ok(None);
     }
