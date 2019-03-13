@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.5.0")]
 
 mod error;
+mod group;
 mod message;
 mod types;
 
@@ -8,6 +9,7 @@ mod types;
 pub mod encoding;
 
 pub use crate::error::{DecodeError, EncodeError};
+pub use crate::group::Group;
 pub use crate::message::Message;
 
 use bytes::{BufMut, IntoBuf};
