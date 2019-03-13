@@ -10,6 +10,7 @@ use std::usize;
 use ::bytes::{Buf, BufMut};
 
 use crate::DecodeError;
+use crate::Group;
 use crate::Message;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
@@ -193,6 +194,8 @@ pub enum WireType {
     Varint = 0,
     SixtyFourBit = 1,
     LengthDelimited = 2,
+    StartGroup = 3,
+    EndGroup = 4,
     ThirtyTwoBit = 5,
 }
 
@@ -207,6 +210,8 @@ impl WireType {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
+            3 => Ok(WireType::StartGroup),
+            4 => Ok(WireType::EndGroup),
             5 => Ok(WireType::ThirtyTwoBit),
             _ => Err(DecodeError::new(format!(
                 "invalid wire type value: {}",
@@ -293,7 +298,7 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, buf: &mut B) -> Result<(), DecodeError>
+pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B) -> Result<(), DecodeError>
 where
     B: Buf,
 {
@@ -302,6 +307,11 @@ where
         WireType::ThirtyTwoBit => 4,
         WireType::SixtyFourBit => 8,
         WireType::LengthDelimited => decode_varint(buf)?,
+        WireType::StartGroup => {
+            skip_until_endgroup(tag, buf)?;
+            0
+        },
+        WireType::EndGroup => 0,
     };
 
     if len > buf.remaining() as u64 {
@@ -309,6 +319,24 @@ where
     }
 
     buf.advance(len as usize);
+    Ok(())
+}
+
+fn skip_until_endgroup<B>(group_tag: u32, buf: &mut B) -> Result<(), DecodeError>
+where
+    B: Buf,
+{
+    while buf.remaining() > 0 {
+        let (tag, wire_type) = decode_key(buf)?;
+        match wire_type {
+            WireType::EndGroup => {
+                if tag == group_tag {
+                    break;
+                }
+            },
+            _ => skip_field(wire_type, tag, buf)?,
+        }
+    }
     Ok(())
 }
 
@@ -841,6 +869,81 @@ pub mod message {
     }
 }
 
+pub mod group {
+    use super::*;
+
+    pub fn encode<G, B>(tag: u32, grp: &G, buf: &mut B)
+    where
+        G: Group,
+        B: BufMut,
+    {
+        encode_key(tag, WireType::StartGroup, buf);
+        grp.encode_raw(buf);
+        encode_key(tag, WireType::EndGroup, buf);
+    }
+
+    pub fn merge<G, B>(wire_type: WireType, grp: &mut G, buf: &mut B) -> Result<(), DecodeError>
+    where
+        G: Group,
+        B: Buf,
+    {
+        check_wire_type(WireType::StartGroup, wire_type)?;
+        while buf.remaining() > 0 {
+            if G::merge_field(grp, buf)? {
+                return Ok(());
+            }
+        }
+        return Err(DecodeError::new("group end not found"));
+    }
+
+    pub fn encode_repeated<G, B>(tag: u32, groups: &[G], buf: &mut B)
+    where
+        G: Group,
+        B: BufMut,
+    {
+        for grp in groups {
+            encode(tag, grp, buf);
+        }
+    }
+
+    pub fn merge_repeated<G, B>(
+        wire_type: WireType,
+        groups: &mut Vec<G>,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
+    where
+        G: Group + Default,
+        B: Buf,
+    {
+        check_wire_type(WireType::StartGroup, wire_type)?;
+        let mut grp = G::default();
+        merge(WireType::StartGroup, &mut grp, buf)?;
+        groups.push(grp);
+        Ok(())
+    }
+
+    #[inline]
+    pub fn encoded_len<G>(tag: u32, grp: &G) -> usize
+    where
+        G: Group,
+    {
+        key_len(tag) + grp.encoded_len() + key_len(tag)
+    }
+
+    #[inline]
+    pub fn encoded_len_repeated<G>(tag: u32, groups: &[G]) -> usize
+    where
+        G: Group,
+    {
+        key_len(tag) * groups.len()
+            + groups
+                .iter()
+                .map(Group::encoded_len)
+                .sum::<usize>()
+        + key_len(tag) * groups.len()
+    }
+}
+
 /// Rust doesn't have a `Map` trait, so macros are currently the best way to be
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
@@ -980,7 +1083,7 @@ macro_rules! map {
                     match tag {
                         1 => key_merge(wire_type, key, buf),
                         2 => val_merge(wire_type, val, buf),
-                        _ => skip_field(wire_type, buf),
+                        _ => skip_field(wire_type, tag, buf),
                     }
                 },
             )?;
