@@ -67,6 +67,10 @@ pub mod default_enum_value {
     include!(concat!(env!("OUT_DIR"), "/default_enum_value.rs"));
 }
 
+pub mod group_test {
+    include!(concat!(env!("OUT_DIR"), "/group_test.rs"));
+}
+
 use std::error::Error;
 
 use bytes::{Buf, IntoBuf};
@@ -306,5 +310,46 @@ mod tests {
             msg.privacy_level_4(),
             default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour
         );
+    }
+
+    #[test]
+    fn test_group() {
+        // optional group
+        let msg1_bytes = &[0x0B, 0x10, 0x20, 0x0C];
+
+        let mut msg1 = group_test::Test1::default();
+        msg1.groupa = Some(group_test::test1::GroupA { i2: Some(32) });
+
+        let mut bytes = Vec::new();
+        msg1.encode(&mut bytes).unwrap();
+        assert_eq!(&bytes, msg1_bytes);
+
+        // skip group while decoding
+        let data = &[0x0B,
+                     0x30, 0x01, // unused int32
+                     0x2B, 0x30, 0xFF, 0x01, 0x2C, // unused group
+                     0x10, 0x20, // f3, 32
+                     0x0C];
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(data);
+        assert_eq!(group_test::Test1::decode(&bytes), Ok(msg1));
+
+        // repeated group
+        let msg2_bytes = &[0x20, 0x40, 0x2B, 0x30, 0xFF, 0x01, 0x2C,
+                           0x2B, 0x30, 0x01, 0x2C, 0x38, 0x64];
+
+        let mut msg2 = group_test::Test2::default();
+        msg2.i14 = Some(64);
+        msg2.groupb.push(group_test::test2::GroupB { i16: Some(255) });
+        msg2.groupb.push(group_test::test2::GroupB { i16: Some(1) });
+        msg2.i17 = Some(100);
+
+        let mut bytes = Vec::new();
+        msg2.encode(&mut bytes).unwrap();
+        assert_eq!(&bytes, msg2_bytes);
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(msg2_bytes);
+        assert_eq!(group_test::Test2::decode(&bytes), Ok(msg2));
     }
 }
