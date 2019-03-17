@@ -520,6 +520,20 @@ impl Config {
         Ok(())
     }
 
+    /// Compile a `.proto` file into Rust code in String during a Cargo build with additional code generator
+    /// configuration options.
+    pub fn compile_one<P>(&mut self, proto: P, includes: &[P]) -> Result<String>
+    where
+        P: AsRef<Path>,
+    {
+        let modules = self.compile(&[proto], includes)?;
+        let (_, content) = modules.into_iter().next().ok_or(Error::new(
+            ErrorKind::Other,
+            "no compiled proto return, this is a bug",
+        ))?;
+        Ok(content)
+    }
+
     fn compile<P>(&mut self, protos: &[P], includes: &[P]) -> Result<HashMap<Module, String>>
     where
         P: AsRef<Path>,
@@ -662,6 +676,7 @@ mod tests {
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
     struct ServiceTraitGenerator;
+
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
@@ -693,5 +708,17 @@ mod tests {
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
+    }
+
+    #[test]
+    fn compile_one_test() {
+        let code = Config::new()
+            .service_generator(Box::new(ServiceTraitGenerator))
+            .compile_one("src/smoke_test.proto", &["src"])
+            .unwrap();
+        assert_eq!(
+            "#[derive(Clone, PartialEq, ::prost::Message)]\npub struct SmokeRequest {\n}\n#[derive(Clone, PartialEq, ::prost::Message)]\npub struct SmokeResponse {\n}\n/// Just a smoke test service.\ntrait SmokeService {\n    // A detached comment block.\n\n    /// Blow some smoke.\n    fn blow_smoke(SmokeRequest) -> SmokeResponse;\n}\npub mod utils { }\n",
+            &code
+        );
     }
 }
