@@ -507,6 +507,23 @@ impl Config {
         // this figured out.
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
+        let modules = self.compile(protos, includes)?;
+        for (module, content) in modules {
+            let mut filename = module.join(".");
+            filename.push_str(".rs");
+            trace!("writing: {:?}", filename);
+            let mut file = fs::File::create(target.join(filename))?;
+            file.write_all(content.as_bytes())?;
+            file.flush()?;
+        }
+
+        Ok(())
+    }
+
+    fn compile<P>(&mut self, protos: &[P], includes: &[P]) -> Result<HashMap<Module, String>>
+    where
+        P: AsRef<Path>,
+    {
         let tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
         let descriptor_set = tmp.path().join("prost-descriptor-set");
 
@@ -539,18 +556,7 @@ impl Config {
         let mut buf = Vec::new();
         fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
         let descriptor_set = FileDescriptorSet::decode(&buf)?;
-
-        let modules = self.generate(descriptor_set.file)?;
-        for (module, content) in modules {
-            let mut filename = module.join(".");
-            filename.push_str(".rs");
-            trace!("writing: {:?}", filename);
-            let mut file = fs::File::create(target.join(filename))?;
-            file.write_all(content.as_bytes())?;
-            file.flush()?;
-        }
-
-        Ok(())
+        self.generate(descriptor_set.file)
     }
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
