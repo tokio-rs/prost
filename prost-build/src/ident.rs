@@ -11,9 +11,9 @@ pub fn to_snake(s: &str) -> String {
     // https://doc.rust-lang.org/reference/keywords.html.
     match ident.as_str() {
         // 2015 strict keywords.
-        | "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern" | "false"
+        | "as" | "break" | "const" | "continue" | "else" | "enum" | "false"
         | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "match" | "mod" | "move" | "mut"
-        | "pub" | "ref" | "return" | "self" | "static" | "struct" | "super" | "trait" | "true"
+        | "pub" | "ref" | "return" | "static" | "struct" | "trait" | "true"
         | "type" | "unsafe" | "use" | "where" | "while"
         // 2018 strict keywords.
         | "dyn"
@@ -24,6 +24,11 @@ pub fn to_snake(s: &str) -> String {
         | "async" | "await" | "try" => ident.insert_str(0, "r#"),
         _ => (),
     }
+    // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
+    match ident.as_str() {
+        "self" | "super" | "extern" | "crate" => ident += "_",
+        _ => (),
+    }
     ident
 }
 
@@ -31,10 +36,9 @@ pub fn to_snake(s: &str) -> String {
 pub fn to_upper_camel(s: &str) -> String {
     let mut ident = s.to_camel_case();
 
-    // Use a raw identifier if the identifier matches a Rust keyword:
-    // https://doc.rust-lang.org/reference/keywords.html.
+    // Suffix an underscore for the `Self` Rust keyword as it is not allowed as raw identifier.
     if ident == "Self" {
-        ident.insert_str(0, "r#");
+        ident += "_";
     }
     ident
 }
@@ -119,6 +123,65 @@ mod tests {
     }
 
     #[test]
+    fn test_to_snake_raw_keyword() {
+        assert_eq!("r#as", &to_snake("as"));
+        assert_eq!("r#break", &to_snake("break"));
+        assert_eq!("r#const", &to_snake("const"));
+        assert_eq!("r#continue", &to_snake("continue"));
+        assert_eq!("r#else", &to_snake("else"));
+        assert_eq!("r#enum", &to_snake("enum"));
+        assert_eq!("r#false", &to_snake("false"));
+        assert_eq!("r#fn", &to_snake("fn"));
+        assert_eq!("r#for", &to_snake("for"));
+        assert_eq!("r#if", &to_snake("if"));
+        assert_eq!("r#impl", &to_snake("impl"));
+        assert_eq!("r#in", &to_snake("in"));
+        assert_eq!("r#let", &to_snake("let"));
+        assert_eq!("r#loop", &to_snake("loop"));
+        assert_eq!("r#match", &to_snake("match"));
+        assert_eq!("r#mod", &to_snake("mod"));
+        assert_eq!("r#move", &to_snake("move"));
+        assert_eq!("r#mut", &to_snake("mut"));
+        assert_eq!("r#pub", &to_snake("pub"));
+        assert_eq!("r#ref", &to_snake("ref"));
+        assert_eq!("r#return", &to_snake("return"));
+        assert_eq!("r#static", &to_snake("static"));
+        assert_eq!("r#struct", &to_snake("struct"));
+        assert_eq!("r#trait", &to_snake("trait"));
+        assert_eq!("r#true", &to_snake("true"));
+        assert_eq!("r#type", &to_snake("type"));
+        assert_eq!("r#unsafe", &to_snake("unsafe"));
+        assert_eq!("r#use", &to_snake("use"));
+        assert_eq!("r#where", &to_snake("where"));
+        assert_eq!("r#while", &to_snake("while"));
+        assert_eq!("r#dyn", &to_snake("dyn"));
+        assert_eq!("r#abstract", &to_snake("abstract"));
+        assert_eq!("r#become", &to_snake("become"));
+        assert_eq!("r#box", &to_snake("box"));
+        assert_eq!("r#do", &to_snake("do"));
+        assert_eq!("r#final", &to_snake("final"));
+        assert_eq!("r#final", &to_snake("final"));
+        assert_eq!("r#macro", &to_snake("macro"));
+        assert_eq!("r#override", &to_snake("override"));
+        assert_eq!("r#priv", &to_snake("priv"));
+        assert_eq!("r#typeof", &to_snake("typeof"));
+        assert_eq!("r#unsized", &to_snake("unsized"));
+        assert_eq!("r#virtual", &to_snake("virtual"));
+        assert_eq!("r#yield", &to_snake("yield"));
+        assert_eq!("r#async", &to_snake("async"));
+        assert_eq!("r#await", &to_snake("await"));
+        assert_eq!("r#try", &to_snake("try"));
+    }
+
+    #[test]
+    fn test_to_snake_non_raw_keyword() {
+        assert_eq!("self_", &to_snake("self"));
+        assert_eq!("super_", &to_snake("super"));
+        assert_eq!("extern_", &to_snake("extern"));
+        assert_eq!("crate_", &to_snake("crate"));
+    }
+
+    #[test]
     fn test_to_upper_camel() {
         assert_eq!("", &to_upper_camel(""));
         assert_eq!("F", &to_upper_camel("F"));
@@ -129,7 +192,7 @@ mod tests {
         assert_eq!("FooBar", &to_upper_camel("_FOO_BAR_"));
         assert_eq!("FuzzBuster", &to_upper_camel("fuzzBuster"));
         assert_eq!("FuzzBuster", &to_upper_camel("FuzzBuster"));
-        assert_eq!("r#Self", &to_upper_camel("self"));
+        assert_eq!("Self_", &to_upper_camel("self"));
     }
 
     #[test]
