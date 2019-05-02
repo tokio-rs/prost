@@ -22,10 +22,7 @@ pub fn to_snake(s: &str) -> String {
         | "unsized" | "virtual" | "yield"
         // 2018 reserved keywords.
         | "async" | "await" | "try" => ident.insert_str(0, "r#"),
-        _ => (),
-    }
-    // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
-    match ident.as_str() {
+        // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
         "self" | "super" | "extern" | "crate" => ident += "_",
         _ => (),
     }
