@@ -157,7 +157,6 @@ mod tests {
         assert_eq!("r#box", &to_snake("box"));
         assert_eq!("r#do", &to_snake("do"));
         assert_eq!("r#final", &to_snake("final"));
-        assert_eq!("r#final", &to_snake("final"));
         assert_eq!("r#macro", &to_snake("macro"));
         assert_eq!("r#override", &to_snake("override"));
         assert_eq!("r#priv", &to_snake("priv"));
