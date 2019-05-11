@@ -11,6 +11,61 @@ message Foo_barBaz {
 
   StrawberryRhubarbPIE p_iE = 3;
 
+  // Rust Keywords:
+  int32 as = 4;
+  int32 break = 5;
+  int32 const = 6;
+  int32 continue = 7;
+  int32 else = 8;
+  int32 enum = 9;
+  int32 false = 10;
+  int32 fn = 11;
+  int32 for = 12;
+  int32 if = 13;
+  int32 impl = 14;
+  int32 in = 15;
+  int32 let = 16;
+  int32 loop = 17;
+  int32 match = 18;
+  int32 mod = 19;
+  int32 move = 20;
+  int32 mut = 21;
+  int32 pub = 22;
+  int32 ref = 23;
+  int32 return = 24;
+  int32 static = 25;
+  int32 struct = 26;
+  int32 trait = 27;
+  int32 true = 28;
+  int32 type = 29;
+  int32 unsafe = 30;
+  int32 use = 31;
+  int32 where = 32;
+  int32 while = 33;
+  int32 dyn = 34;
+  int32 abstract = 35;
+  int32 become = 36;
+  int32 box = 37;
+  int32 do = 38;
+  int32 final = 39;
+  int32 macro = 40;
+  int32 override = 41;
+  int32 priv = 42;
+  int32 typeof = 43;
+  int32 unsized = 44;
+  int32 virtual = 45;
+  int32 yield = 46;
+  int32 async = 47;
+  int32 await = 48;
+  int32 try = 49;
+  int32 self = 50;
+  int32 super = 51;
+  int32 extern = 52;
+  int32 crate = 53;
+
+  message Self {
+  }
+
   message fuzz_buster {
     map<int32, Foo_barBaz> t = 1;
     fuzz_buster NestedSelf = 2;
