@@ -67,8 +67,8 @@ pub mod default_enum_value {
     include!(concat!(env!("OUT_DIR"), "/default_enum_value.rs"));
 }
 
-pub mod group_test {
-    include!(concat!(env!("OUT_DIR"), "/group_test.rs"));
+pub mod groups {
+    include!(concat!(env!("OUT_DIR"), "/groups.rs"));
 }
 
 use std::error::Error;
@@ -369,8 +369,8 @@ mod tests {
         // optional group
         let msg1_bytes = &[0x0B, 0x10, 0x20, 0x0C];
 
-        let msg1 = group_test::Test1 {
-            groupa: Some(group_test::test1::GroupA { i2: Some(32) }),
+        let msg1 = groups::Test1 {
+            groupa: Some(groups::test1::GroupA { i2: Some(32) }),
         };
 
         let mut bytes = Vec::new();
@@ -385,26 +385,59 @@ mod tests {
             0x10, 0x20, // int32 (tag=2)
             0x0C, // end group (tag=1)
         ];
-        assert_eq!(group_test::Test1::decode(data), Ok(msg1));
+        assert_eq!(groups::Test1::decode(data), Ok(msg1));
 
         // repeated group
-        let msg2_bytes = &[
+        let msg2_bytes: &[u8] = &[
             0x20, 0x40, 0x2B, 0x30, 0xFF, 0x01, 0x2C, 0x2B, 0x30, 0x01, 0x2C, 0x38, 0x64,
         ];
 
-        let mut msg2 = group_test::Test2::default();
-        msg2.i14 = Some(64);
-        msg2.groupb
-            .push(group_test::test2::GroupB { i16: Some(255) });
-        msg2.groupb.push(group_test::test2::GroupB { i16: Some(1) });
-        msg2.i17 = Some(100);
+        let msg2 = groups::Test2 {
+            i14: Some(64),
+            groupb: vec![
+                groups::test2::GroupB { i16: Some(255) },
+                groups::test2::GroupB { i16: Some(1) },
+            ],
+            i17: Some(100),
+        };
 
         let mut bytes = Vec::new();
         msg2.encode(&mut bytes).unwrap();
-        assert_eq!(&bytes, msg2_bytes);
+        assert_eq!(&*bytes, msg2_bytes);
 
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(msg2_bytes);
-        assert_eq!(group_test::Test2::decode(&bytes), Ok(msg2));
+        assert_eq!(groups::Test2::decode(msg2_bytes), Ok(msg2));
+    }
+
+    #[test]
+    fn test_group_oneof() {
+        let msg = groups::OneofGroup {
+            i1: Some(42),
+            field: Some(groups::oneof_group::Field::S2("foo".to_string())),
+        };
+        check_message(&msg);
+
+        let msg = groups::OneofGroup {
+            i1: Some(42),
+            field: Some(groups::oneof_group::Field::G(groups::oneof_group::G {
+                i2: None,
+                s1: "foo".to_string(),
+                t1: None,
+            })),
+        };
+        check_message(&msg);
+
+        let msg = groups::OneofGroup {
+            i1: Some(42),
+            field: Some(groups::oneof_group::Field::G(groups::oneof_group::G {
+                i2: Some(99),
+                s1: "foo".to_string(),
+                t1: Some(groups::Test1 {
+                    groupa: Some(groups::test1::GroupA { i2: None }),
+                }),
+            })),
+        };
+        check_message(&msg);
+
+        check_message(&groups::OneofGroup::default());
     }
 }
