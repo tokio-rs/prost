@@ -66,7 +66,9 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     let buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
         Some(conformance_request::Payload::JsonPayload(_)) => {
-            return conformance_response::Result::Skipped("JSON input is not supported".to_string());
+            return conformance_response::Result::Skipped(
+                "JSON input is not supported".to_string(),
+            );
         }
         Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
     };

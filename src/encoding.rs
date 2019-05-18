@@ -10,7 +10,6 @@ use std::usize;
 use ::bytes::{Buf, BufMut};
 
 use crate::DecodeError;
-use crate::Group;
 use crate::Message;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
@@ -307,11 +306,19 @@ where
         WireType::ThirtyTwoBit => 4,
         WireType::SixtyFourBit => 8,
         WireType::LengthDelimited => decode_varint(buf)?,
-        WireType::StartGroup => {
-            skip_until_endgroup(tag, buf)?;
-            0
+        WireType::StartGroup => loop {
+            let (inner_tag, inner_wire_type) = decode_key(buf)?;
+            match inner_wire_type {
+                WireType::EndGroup => {
+                    if inner_tag != tag {
+                        return Err(DecodeError::new("unexpected end group tag"));
+                    }
+                    break 0;
+                }
+                _ => skip_field(inner_wire_type, inner_tag, buf)?,
+            }
         },
-        WireType::EndGroup => 0,
+        WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
     };
 
     if len > buf.remaining() as u64 {
@@ -319,24 +326,6 @@ where
     }
 
     buf.advance(len as usize);
-    Ok(())
-}
-
-fn skip_until_endgroup<B>(group_tag: u32, buf: &mut B) -> Result<(), DecodeError>
-where
-    B: Buf,
-{
-    while buf.remaining() > 0 {
-        let (tag, wire_type) = decode_key(buf)?;
-        match wire_type {
-            WireType::EndGroup => {
-                if tag == group_tag {
-                    break;
-                }
-            },
-            _ => skip_field(wire_type, tag, buf)?,
-        }
-    }
     Ok(())
 }
 
@@ -817,7 +806,10 @@ pub mod message {
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-        merge_loop(msg, buf, M::merge_field)
+        merge_loop(msg, buf, |msg: &mut M, buf: &mut B| {
+            let (tag, wire_type) = decode_key(buf)?;
+            msg.merge_field(tag, wire_type, buf)
+        })
     }
 
     pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
@@ -872,75 +864,82 @@ pub mod message {
 pub mod group {
     use super::*;
 
-    pub fn encode<G, B>(tag: u32, grp: &G, buf: &mut B)
+    pub fn encode<M, B>(tag: u32, msg: &M, buf: &mut B)
     where
-        G: Group,
+        M: Message,
         B: BufMut,
     {
         encode_key(tag, WireType::StartGroup, buf);
-        grp.encode_raw(buf);
+        msg.encode_raw(buf);
         encode_key(tag, WireType::EndGroup, buf);
     }
 
-    pub fn merge<G, B>(wire_type: WireType, grp: &mut G, buf: &mut B) -> Result<(), DecodeError>
-    where
-        G: Group,
-        B: Buf,
-    {
-        check_wire_type(WireType::StartGroup, wire_type)?;
-        while buf.remaining() > 0 {
-            if G::merge_field(grp, buf)? {
-                return Ok(());
-            }
-        }
-        return Err(DecodeError::new("group end not found"));
-    }
-
-    pub fn encode_repeated<G, B>(tag: u32, groups: &[G], buf: &mut B)
-    where
-        G: Group,
-        B: BufMut,
-    {
-        for grp in groups {
-            encode(tag, grp, buf);
-        }
-    }
-
-    pub fn merge_repeated<G, B>(
+    pub fn merge<M, B>(
+        tag: u32,
         wire_type: WireType,
-        groups: &mut Vec<G>,
+        msg: &mut M,
         buf: &mut B,
     ) -> Result<(), DecodeError>
     where
-        G: Group + Default,
+        M: Message,
         B: Buf,
     {
         check_wire_type(WireType::StartGroup, wire_type)?;
-        let mut grp = G::default();
-        merge(WireType::StartGroup, &mut grp, buf)?;
-        groups.push(grp);
+
+        loop {
+            let (field_tag, field_wire_type) = decode_key(buf)?;
+            if field_wire_type == WireType::EndGroup {
+                if field_tag != tag {
+                    return Err(DecodeError::new("unexpected end group tag"));
+                }
+                return Ok(());
+            }
+
+            M::merge_field(msg, field_tag, field_wire_type, buf)?;
+        }
+    }
+
+    pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
+    where
+        M: Message,
+        B: BufMut,
+    {
+        for msg in messages {
+            encode(tag, msg, buf);
+        }
+    }
+
+    pub fn merge_repeated<M, B>(
+        tag: u32,
+        wire_type: WireType,
+        messages: &mut Vec<M>,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
+    where
+        M: Message + Default,
+        B: Buf,
+    {
+        check_wire_type(WireType::StartGroup, wire_type)?;
+        let mut msg = M::default();
+        merge(tag, WireType::StartGroup, &mut msg, buf)?;
+        messages.push(msg);
         Ok(())
     }
 
     #[inline]
-    pub fn encoded_len<G>(tag: u32, grp: &G) -> usize
+    pub fn encoded_len<M>(tag: u32, msg: &M) -> usize
     where
-        G: Group,
+        M: Message,
     {
-        key_len(tag) + grp.encoded_len() + key_len(tag)
+        2 * key_len(tag) + msg.encoded_len()
     }
 
     #[inline]
-    pub fn encoded_len_repeated<G>(tag: u32, groups: &[G]) -> usize
+    pub fn encoded_len_repeated<M>(tag: u32, messages: &[M]) -> usize
     where
-        G: Group,
+        M: Message,
     {
-        key_len(tag) * groups.len()
-            + groups
-                .iter()
-                .map(Group::encoded_len)
-                .sum::<usize>()
-        + key_len(tag) * groups.len()
+        2 * key_len(tag) * messages.len() + messages.iter().map(Message::encoded_len).sum::<usize>()
     }
 }
 

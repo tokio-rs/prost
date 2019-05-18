@@ -369,30 +369,33 @@ mod tests {
         // optional group
         let msg1_bytes = &[0x0B, 0x10, 0x20, 0x0C];
 
-        let mut msg1 = group_test::Test1::default();
-        msg1.groupa = Some(group_test::test1::GroupA { i2: Some(32) });
+        let msg1 = group_test::Test1 {
+            groupa: Some(group_test::test1::GroupA { i2: Some(32) }),
+        };
 
         let mut bytes = Vec::new();
         msg1.encode(&mut bytes).unwrap();
         assert_eq!(&bytes, msg1_bytes);
 
         // skip group while decoding
-        let data = &[0x0B,
-                     0x30, 0x01, // unused int32
-                     0x2B, 0x30, 0xFF, 0x01, 0x2C, // unused group
-                     0x10, 0x20, // f3, 32
-                     0x0C];
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(data);
-        assert_eq!(group_test::Test1::decode(&bytes), Ok(msg1));
+        let data: &[u8] = &[
+            0x0B, // start group (tag=1)
+            0x30, 0x01, // unused int32 (tag=6)
+            0x2B, 0x30, 0xFF, 0x01, 0x2C, // unused group (tag=5)
+            0x10, 0x20, // int32 (tag=2)
+            0x0C, // end group (tag=1)
+        ];
+        assert_eq!(group_test::Test1::decode(data), Ok(msg1));
 
         // repeated group
-        let msg2_bytes = &[0x20, 0x40, 0x2B, 0x30, 0xFF, 0x01, 0x2C,
-                           0x2B, 0x30, 0x01, 0x2C, 0x38, 0x64];
+        let msg2_bytes = &[
+            0x20, 0x40, 0x2B, 0x30, 0xFF, 0x01, 0x2C, 0x2B, 0x30, 0x01, 0x2C, 0x38, 0x64,
+        ];
 
         let mut msg2 = group_test::Test2::default();
         msg2.i14 = Some(64);
-        msg2.groupb.push(group_test::test2::GroupB { i16: Some(255) });
+        msg2.groupb
+            .push(group_test::test2::GroupB { i16: Some(255) });
         msg2.groupb.push(group_test::test2::GroupB { i16: Some(1) });
         msg2.i17 = Some(100);
 

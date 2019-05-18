@@ -25,12 +25,6 @@ enum Syntax {
     Proto3,
 }
 
-#[derive(Debug, PartialEq)]
-enum MessageType {
-    Message,
-    Group(i32), // with tag
-}
-
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
     package: String,
@@ -89,7 +83,7 @@ impl<'a> CodeGenerator<'a> {
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
             code_gen.path.push(idx as i32);
-            code_gen.append_message(message, MessageType::Message);
+            code_gen.append_message(message);
             code_gen.path.pop();
         }
         code_gen.path.pop();
@@ -123,7 +117,7 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_message(&mut self, message: DescriptorProto, msg_type: MessageType) {
+    fn append_message(&mut self, message: DescriptorProto) {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
@@ -179,26 +173,11 @@ impl<'a> CodeGenerator<'a> {
             });
 
         assert_eq!(oneof_fields.len(), message.oneof_decl.len());
-        let group_fields: Vec<_> = fields
-            .iter()
-            .filter(|(field, _)| field.r#type() == Type::Group)
-            .map(|v| v.clone())
-            .collect();
 
         self.append_doc();
         self.push_indent();
-        match msg_type {
-            MessageType::Message =>
-                self.buf
-                    .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n"),
-            MessageType::Group(tag) => {
-                self.buf
-                    .push_str(&format!("#[prost(group, tag=\"{}\")]\n", tag));
-                self.push_indent();
-                self.buf
-                    .push_str("#[derive(Clone, PartialEq, ::prost::Group)]\n");
-            }
-        }
+        self.buf
+            .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -245,23 +224,8 @@ impl<'a> CodeGenerator<'a> {
             self.push_mod(&message_name);
             self.path.push(3);
             for (nested_type, idx) in nested_types {
-                let full_name = Some(format!("{}.{}", fq_message_name, nested_type.name().to_string()));
-                let msg_type = group_fields
-                    .iter()
-                    .find_map(|(field, _idx)| {
-                        if field.type_name == full_name {
-                            if field.r#type() == Type::Group && field.number.is_some() {
-                                Some(MessageType::Group(field.number.unwrap()))
-                            } else {
-                                Some(MessageType::Message)
-                            }
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(MessageType::Message);
                 self.path.push(idx as i32);
-                self.append_message(nested_type, msg_type);
+                self.append_message(nested_type);
                 self.path.pop();
             }
             self.path.pop();

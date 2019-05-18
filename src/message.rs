@@ -24,7 +24,12 @@ pub trait Message: Debug + Send + Sync {
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
         Self: Sized;
@@ -102,7 +107,8 @@ pub trait Message: Debug + Send + Sync {
     {
         let mut buf = buf.into_buf();
         while buf.has_remaining() {
-            self.merge_field(&mut buf)?;
+            let (tag, wire_type) = decode_key(&mut buf)?;
+            self.merge_field(tag, wire_type, &mut buf)?;
         }
         Ok(())
     }
@@ -131,11 +137,16 @@ where
     {
         (**self).encode_raw(buf)
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        (**self).merge_field(buf)
+        (**self).merge_field(tag, wire_type, buf)
     }
     fn encoded_len(&self) -> usize {
         (**self).encoded_len()
