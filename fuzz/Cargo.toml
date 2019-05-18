@@ -3,6 +3,7 @@ name = "fuzz"
 version = "0.0.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 publish = false
+edition = "2018"
 
 [package.metadata]
 cargo-fuzz = true
@@ -15,3 +16,7 @@ tests = { path = "../tests" }
 [[bin]]
 name = "proto3"
 path = "fuzzers/proto3.rs"
+
+[[bin]]
+name = "proto2"
+path = "fuzzers/proto2.rs"
