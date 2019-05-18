@@ -40,10 +40,7 @@ impl Field {
 
         match unknown_attrs.len() {
             0 => (),
-            1 => bail!(
-                "unknown attribute for group field: {:?}",
-                unknown_attrs[0]
-            ),
+            1 => bail!("unknown attribute for group field: {:?}", unknown_attrs[0]),
             _ => bail!("unknown attributes for group field: {:?}", unknown_attrs),
         }
 
@@ -92,15 +89,15 @@ impl Field {
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => quote! {
-                _prost::encoding::group::merge(wire_type,
+                _prost::encoding::group::merge(tag, wire_type,
                                                  #ident.get_or_insert_with(Default::default),
                                                  buf)
             },
             Label::Required => quote! {
-                _prost::encoding::group::merge(wire_type, &mut #ident, buf)
+                _prost::encoding::group::merge(tag, wire_type, &mut #ident, buf)
             },
             Label::Repeated => quote! {
-                _prost::encoding::group::merge_repeated(wire_type, &mut #ident, buf)
+                _prost::encoding::group::merge_repeated(tag, wire_type, &mut #ident, buf)
             },
         }
     }

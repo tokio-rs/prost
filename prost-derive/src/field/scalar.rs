@@ -737,7 +737,9 @@ impl DefaultValue {
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
             Ty::Bytes => DefaultValue::Bytes(Vec::new()),
-            Ty::Enumeration(ref path) => return DefaultValue::Enumeration(quote!(#path::default())),
+            Ty::Enumeration(ref path) => {
+                return DefaultValue::Enumeration(quote!(#path::default()))
+            }
         }
     }
 

@@ -21,11 +21,15 @@ impl Message for bool {
             bool::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             bool::merge(wire_type, self, buf)
         } else {
@@ -54,11 +58,15 @@ impl Message for u32 {
             uint32::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             uint32::merge(wire_type, self, buf)
         } else {
@@ -87,11 +95,15 @@ impl Message for u64 {
             uint64::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             uint64::merge(wire_type, self, buf)
         } else {
@@ -120,11 +132,15 @@ impl Message for i32 {
             int32::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             int32::merge(wire_type, self, buf)
         } else {
@@ -153,11 +169,15 @@ impl Message for i64 {
             int64::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             int64::merge(wire_type, self, buf)
         } else {
@@ -186,11 +206,15 @@ impl Message for f32 {
             float::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             float::merge(wire_type, self, buf)
         } else {
@@ -219,11 +243,15 @@ impl Message for f64 {
             double::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             double::merge(wire_type, self, buf)
         } else {
@@ -252,11 +280,15 @@ impl Message for String {
             string::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             string::merge(wire_type, self, buf)
         } else {
@@ -285,11 +317,15 @@ impl Message for Vec<u8> {
             bytes::encode(1, self, buf)
         }
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         if tag == 1 {
             bytes::merge(wire_type, self, buf)
         } else {
@@ -315,11 +351,15 @@ impl Message for () {
         B: BufMut,
     {
     }
-    fn merge_field<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        let (tag, wire_type) = decode_key(buf)?;
         skip_field(wire_type, tag, buf)
     }
     fn encoded_len(&self) -> usize {
