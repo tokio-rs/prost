@@ -74,7 +74,7 @@ fn main() {
         .unwrap();
 
     config
-        .compile_protos(&[src.join("group.proto")], includes)
+        .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 
     config

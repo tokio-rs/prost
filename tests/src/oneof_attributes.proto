@@ -7,8 +7,8 @@ syntax = "proto3";
 package Foo.Custom.OneOfAttrs;
 
 message Msg {
-	oneof field {
-		string a = 1;
-		bytes b = 2;
-	}
+    oneof field {
+        string a = 1;
+        bytes b = 2;
+    }
 }

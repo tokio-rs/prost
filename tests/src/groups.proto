@@ -1,0 +1,51 @@
+syntax = "proto2";
+
+package groups;
+
+message Test1 {
+    optional group GroupA = 1 {
+        optional int32 i2 = 2;
+    }
+}
+
+message Test2 {
+    optional int32 i14 = 4;
+    repeated group GroupB = 5 {
+        optional int32 i16 = 6;
+    }
+    optional int32 i17 = 7;
+}
+
+message OneofGroup {
+    optional int32 i1 = 1;
+
+    oneof field {
+        group G = 2 {
+            optional int32 i2 = 1;
+            required string s1 = 2;
+            optional Test1 t1 = 3;
+        }
+
+        string s2 = 3;
+    }
+}
+
+message NestedGroup {
+    optional group OptionalGroup = 1 {
+        optional NestedGroup nested_group = 1;
+    }
+
+    required group RequiredGroup = 2 {
+        required NestedGroup nested_group = 1;
+    }
+
+    repeated group RepeatedGroup = 3 {
+        repeated NestedGroup nested_groups = 1;
+    }
+
+    oneof o {
+        group G = 4 {
+            optional NestedGroup nested_group = 1;
+        }
+    }
+}
