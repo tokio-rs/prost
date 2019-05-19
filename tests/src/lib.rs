@@ -5,6 +5,7 @@ cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate bytes;
         extern crate prost;
+        extern crate prost_types;
         extern crate protobuf;
         #[cfg(test)]
         extern crate prost_build;
