@@ -224,7 +224,7 @@ impl Field {
                 struct #wrap_name<'a>(&'a i32);
                 impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
                     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        match super::#ty::from_i32(*self.0) {
+                        match #ty::from_i32(*self.0) {
                             None => ::std::fmt::Debug::fmt(&self.0, f),
                             Some(en) => ::std::fmt::Debug::fmt(&en, f),
                         }
@@ -283,22 +283,22 @@ impl Field {
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
                     quote! {
-                        pub fn #ident(&self) -> super::#ty {
-                            super::#ty::from_i32(self.#ident).unwrap_or(super::#default)
+                        pub fn #ident(&self) -> #ty {
+                            #ty::from_i32(self.#ident).unwrap_or(#default)
                         }
 
-                        pub fn #set(&mut self, value: super::#ty) {
+                        pub fn #set(&mut self, value: #ty) {
                             self.#ident = value as i32;
                         }
                     }
                 }
                 Kind::Optional(ref default) => {
                     quote! {
-                        pub fn #ident(&self) -> super::#ty {
-                            self.#ident.and_then(super::#ty::from_i32).unwrap_or(super::#default)
+                        pub fn #ident(&self) -> #ty {
+                            self.#ident.and_then(#ty::from_i32).unwrap_or(#default)
                         }
 
-                        pub fn #set(&mut self, value: super::#ty) {
+                        pub fn #set(&mut self, value: #ty) {
                             self.#ident = ::std::option::Option::Some(value as i32);
                         }
                     }
@@ -306,10 +306,10 @@ impl Field {
                 Kind::Repeated | Kind::Packed => {
                     quote! {
                         pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                       fn(i32) -> Option<super::#ty>> {
-                            self.#ident.iter().cloned().filter_map(super::#ty::from_i32)
+                                                                       fn(i32) -> Option<#ty>> {
+                            self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
-                        pub fn #push(&mut self, value: super::#ty) {
+                        pub fn #push(&mut self, value: #ty) {
                             self.#ident.push(value as i32);
                         }
                     }
@@ -761,7 +761,7 @@ impl DefaultValue {
 
     pub fn typed(&self) -> TokenStream {
         if let DefaultValue::Enumeration(_) = *self {
-            quote!(super::#self as i32)
+            quote!(#self as i32)
         } else {
             quote!(#self)
         }

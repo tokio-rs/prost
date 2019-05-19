@@ -94,8 +94,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         bail!("message {} has fields with duplicate tags", ident);
     }
 
-    // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::new(&format!("{}_MESSAGE", ident), Span::call_site());
+    // Put impls in a const, so that 'extern crate' can be used.
+    let dummy_const = Ident::new(&format!("{}_MESSAGE", ident), Span::call_site());
 
     let encoded_len = fields
         .iter()
@@ -175,10 +175,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
-        mod #module {
+        const #dummy_const: () = {
             extern crate prost as _prost;
             extern crate bytes as _bytes;
-            use super::*;
 
             impl _prost::Message for #ident {
                 #[allow(unused_variables)]
@@ -279,8 +278,8 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     let default = variants[0].0.clone();
 
-    // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::new(&format!("{}_ENUMERATION", ident), Span::call_site());
+    // Put impls in a const, so that 'extern crate' can be used.
+    let dummy_const = Ident::new(&format!("{}_ENUMERATION", ident), Span::call_site());
     let is_valid = variants
         .iter()
         .map(|&(_, ref value)| quote!(#value => true));
@@ -296,9 +295,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
-        mod #module {
-            use super::*;
-
+        const #dummy_const: () = {
             impl #ident {
 
                 #[doc=#is_valid_doc]
@@ -399,8 +396,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         panic!("invalid oneof {}: variants have duplicate tags", ident);
     }
 
-    // Put impls in a special module, so that 'extern crate' can be used.
-    let module = Ident::new(&format!("{}_ONEOF", ident), Span::call_site());
+    // Put impls in a const, so that 'extern crate' can be used.
+    let dummy_const = Ident::new(&format!("{}_ONEOF", ident), Span::call_site());
 
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encode = field.encode(quote!(*value));
@@ -435,10 +432,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
-        mod #module {
+        const #dummy_const: () = {
             extern crate bytes as _bytes;
             extern crate prost as _prost;
-            use super::*;
 
             impl #ident {
                 pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
