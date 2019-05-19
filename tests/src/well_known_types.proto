@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+package well_known_types;
+
+message Foo {
+    // enum
+    google.protobuf.NullValue null = 1;
+    // message
+    google.protobuf.Timestamp timestamp = 2;
+}

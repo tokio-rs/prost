@@ -5,6 +5,7 @@ cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate bytes;
         extern crate prost;
+        extern crate prost_types;
         extern crate protobuf;
         #[cfg(test)]
         extern crate prost_build;
@@ -25,6 +26,8 @@ mod debug;
 mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;
+#[cfg(test)]
+mod well_known_types;
 
 pub mod foo {
     pub mod bar_baz {

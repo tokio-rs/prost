@@ -78,6 +78,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("well_known_types.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(
             &[src.join("packages/widget_factory.proto")],
             &[src.join("packages")],
