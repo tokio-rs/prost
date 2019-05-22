@@ -33,7 +33,8 @@ exclude = [
 ]
 
 [features]
-default = ["prost-derive"]
+default = ["prost-derive", "recursion-limit"]
+recursion-limit = []
 
 [dependencies]
 byteorder = "1"
