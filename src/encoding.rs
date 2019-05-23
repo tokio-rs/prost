@@ -927,7 +927,7 @@ pub mod message {
         M: Message,
     {
         let len = msg.encoded_len();
-        key_len(tag) + encoded_len_varint(len as u64) + msg.encoded_len()
+        key_len(tag) + encoded_len_varint(len as u64) + len
     }
 
     #[inline]
