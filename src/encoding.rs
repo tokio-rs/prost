@@ -78,15 +78,70 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct DecodeContext {}
+pub struct DecodeContext {
+    #[cfg(feature = "recursion-limit")]
+    recurse_count: u32,
+}
+
+pub(crate) struct RecursionGuard {
+    #[cfg(feature = "recursion-limit")]
+    ctx: *mut DecodeContext,
+}
 
 impl Default for DecodeContext {
+    #[cfg(feature = "recursion-limit")]
     fn default() -> DecodeContext {
         DecodeContext {
+            recurse_count: crate::RECURSION_LIMIT,
+        }
+    }
+    #[cfg(not(feature = "recursion-limit"))]
+    fn default() -> DecodeContext {
+        DecodeContext {}
+    }
+}
+
+#[cfg(feature = "recursion-limit")]
+impl Drop for RecursionGuard {
+    fn drop(&mut self) {
+        unsafe {
+            (*self.ctx).recurse_count += 1;
         }
     }
 }
 
+impl DecodeContext {
+    #[cfg(feature = "recursion-limit")]
+    pub(crate) fn enter_recursion(&mut self) -> RecursionGuard {
+        self.recurse_count -= 1;
+        RecursionGuard { ctx: self }
+    }
+
+    #[cfg(not(feature = "recursion-limit"))]
+    #[inline(always)]
+    pub(crate) fn enter_recursion(&mut self) -> RecursionGuard {
+        RecursionGuard {}
+    }
+}
+
+impl RecursionGuard {
+    #[cfg(feature = "recursion-limit")]
+    pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
+        unsafe {
+            if (*self.ctx).recurse_count == 0 {
+                Err(DecodeError::new("Recursion limit reached"))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    #[cfg(not(feature = "recursion-limit"))]
+    #[inline(always)]
+    pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
+        Ok(())
+    }
+}
 /// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
 /// number of bytes read.
 ///
@@ -831,6 +886,8 @@ pub mod message {
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let recursion_guard = ctx.enter_recursion();
+        recursion_guard.limit_reached()?;
         merge_loop(msg, buf, ctx, |msg: &mut M, buf: &mut B, ctx| {
             let (tag, wire_type) = decode_key(buf)?;
             msg.merge_field(tag, wire_type, buf, ctx)
@@ -913,6 +970,8 @@ pub mod group {
     {
         check_wire_type(WireType::StartGroup, wire_type)?;
 
+        let recursion_guard = ctx.enter_recursion();
+        recursion_guard.limit_reached()?;
         loop {
             let (field_tag, field_wire_type) = decode_key(buf)?;
             if field_wire_type == WireType::EndGroup {
@@ -1104,6 +1163,8 @@ macro_rules! map {
         {
             let mut key = Default::default();
             let mut val = val_default;
+            let recursion_guard = ctx.enter_recursion();
+            recursion_guard.limit_reached()?;
             merge_loop(
                 &mut (&mut key, &mut val),
                 buf,

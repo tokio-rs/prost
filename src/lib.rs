@@ -14,8 +14,9 @@ use bytes::{BufMut, IntoBuf};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
 
+// 100 is the default recursion limit in the C++ implementation.
 #[cfg(feature = "recursion-limit")]
-const RECURSION_LIMIT: u32 = 128;
+const RECURSION_LIMIT: u32 = 100;
 
 /// Encodes a length delimiter to the buffer.
 ///

@@ -5,6 +5,7 @@ use std::result;
 use criterion::{Benchmark, Criterion, Throughput};
 use failure::bail;
 use prost::Message;
+use prost::encoding::DecodeContext;
 use protobuf::benchmarks::{google_message3, google_message4, proto2, proto3, BenchmarkDataset};
 
 type Result = result::Result<(), failure::Error>;
@@ -48,12 +49,13 @@ where
     .throughput(Throughput::Bytes(payload_len as u32));
 
     let payload = dataset.payload.clone();
+    let mut ctx = DecodeContext::default();
     let merge = Benchmark::new("merge", move |b| {
         let mut message = M::default();
         b.iter(|| {
             for buf in &payload {
                 message.clear();
-                message.merge(buf).unwrap();
+                message.merge(buf, &mut ctx).unwrap();
                 criterion::black_box(&message);
             }
         })
