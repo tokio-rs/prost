@@ -29,6 +29,7 @@ pub trait Message: Debug + Send + Sync {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
+        ctx: &mut DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -83,7 +84,12 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        Self::merge(&mut message, &mut buf.into_buf()).map(|_| message)
+        Self::merge(
+            &mut message,
+            &mut buf.into_buf(),
+            &mut DecodeContext::default(),
+        )
+        .map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
@@ -93,14 +99,14 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        message.merge_length_delimited(buf)?;
+        message.merge_length_delimited(buf, &mut DecodeContext::default())?;
         Ok(message)
     }
 
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    fn merge<B>(&mut self, buf: B, ctx: &mut DecodeContext) -> Result<(), DecodeError>
     where
         B: IntoBuf,
         Self: Sized,
@@ -108,19 +114,23 @@ pub trait Message: Debug + Send + Sync {
         let mut buf = buf.into_buf();
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
-            self.merge_field(tag, wire_type, &mut buf)?;
+            self.merge_field(tag, wire_type, &mut buf, ctx)?;
         }
         Ok(())
     }
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    fn merge_length_delimited<B>(
+        &mut self,
+        buf: B,
+        ctx: &mut DecodeContext,
+    ) -> Result<(), DecodeError>
     where
         B: IntoBuf,
         Self: Sized,
     {
-        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf())
+        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf(), ctx)
     }
 
     /// Clears the message, resetting all fields to their default.
@@ -142,11 +152,12 @@ where
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
+        ctx: &mut DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        (**self).merge_field(tag, wire_type, buf)
+        (**self).merge_field(tag, wire_type, buf, ctx)
     }
     fn encoded_len(&self) -> usize {
         (**self).encoded_len()

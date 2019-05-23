@@ -15,7 +15,7 @@ use bytes::{BufMut, IntoBuf};
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
 
 #[cfg(feature = "recursion-limit")]
-const RECURSION_LIMIT: u32 = 128
+const RECURSION_LIMIT: u32 = 128;
 
 /// Encodes a length delimiter to the buffer.
 ///

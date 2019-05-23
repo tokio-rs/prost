@@ -189,7 +189,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 fn merge_field<B>(&mut self,
                                   tag: u32,
                                   wire_type: _prost::encoding::WireType,
-                                  buf: &mut B) -> ::std::result::Result<(), _prost::DecodeError>
+                                  buf: &mut B,
+                                  ctx: &mut _prost::encoding::DecodeContext,
+                ) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     #struct_name
                     match tag {
@@ -446,8 +448,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 pub fn merge<B>(field: &mut ::std::option::Option<#ident>,
                                 tag: u32,
                                 wire_type: _prost::encoding::WireType,
-                                buf: &mut B)
-                                -> ::std::result::Result<(), _prost::DecodeError>
+                                buf: &mut B,
+                                ctx: &mut _prost::encoding::DecodeContext,
+                ) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     match tag {
                         #(#merge,)*
