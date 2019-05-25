@@ -276,9 +276,9 @@ pub const MIN_TAG: u32 = 1;
 pub const MAX_TAG: u32 = (1 << 29) - 1;
 
 impl WireType {
-    // TODO: impl TryFrom<u8> when stable.
-    #[inline]
-    pub fn try_from(val: u8) -> Result<WireType, DecodeError> {
+    // TODO: impl TryFrom<u64> when stable.
+    #[inline(always)]
+    pub fn try_from(val: u64) -> Result<WireType, DecodeError> {
         match val {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
@@ -308,7 +308,7 @@ where
 
 /// Decodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
-#[inline]
+#[inline(always)]
 pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError>
 where
     B: Buf,
@@ -317,7 +317,7 @@ where
     if key > u64::from(u32::MAX) {
         return Err(DecodeError::new(format!("invalid key value: {}", key)));
     }
-    let wire_type = WireType::try_from(key as u8 & 0x07)?;
+    let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key as u32 >> 3;
 
     if tag < MIN_TAG {
