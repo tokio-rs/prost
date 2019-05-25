@@ -422,7 +422,7 @@ macro_rules! encode_repeated {
     };
 }
 
-/// Helper macro which emits a `merge_repeated_numeric` function for the numeric type.
+/// Helper macro which emits a `merge_repeated` function for the numeric type.
 macro_rules! merge_repeated_numeric {
     ($ty:ty,
      $wire_type:expr,
@@ -846,6 +846,16 @@ pub mod bytes {
     where
         B: Buf,
     {
+        // Append `s` to `v` using a `memcpy`.
+        // Safety: `v` must have enough capacity to accommodate `s`.
+        unsafe fn copy_bytes_to_vec(v: &mut Vec<u8>, s: &[u8]) {
+            let v_len = v.len();
+            let s_len = s.len();
+            let dst = v.as_mut_slice().get_unchecked_mut(v_len) as *mut u8;
+            ::std::ptr::copy_nonoverlapping::<u8>(&s[0] as *const u8, dst, s_len);
+            v.set_len(v_len + s_len);
+        }
+
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
@@ -853,13 +863,21 @@ pub mod bytes {
         }
 
         let mut remaining = len as usize;
+        value.reserve(remaining);
+
         while remaining > 0 {
             let len = {
                 let bytes = buf.bytes();
                 debug_assert!(!bytes.is_empty(), "Buf::bytes returned empty slice");
                 let len = min(remaining, bytes.len());
                 let bytes = &bytes[..len];
-                value.extend_from_slice(bytes);
+                unsafe {
+                    debug_assert!(
+                        value.capacity() >= bytes.len(),
+                        "Should be ensured by the `reserve` statement above",
+                    );
+                    copy_bytes_to_vec(value, bytes);
+                }
                 len
             };
             remaining -= len;
