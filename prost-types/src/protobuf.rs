@@ -686,7 +686,7 @@ pub struct UninterpretedOption {
     #[prost(double, optional, tag="6")]
     pub double_value: ::std::option::Option<f64>,
     #[prost(bytes, optional, tag="7")]
-    pub string_value: ::std::option::Option<std::vec::Vec<u8>>,
+    pub string_value: ::std::option::Option<::bytes::Bytes>,
     #[prost(string, optional, tag="8")]
     pub aggregate_value: ::std::option::Option<std::string::String>,
 }
@@ -992,7 +992,7 @@ pub struct Any {
     pub type_url: std::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
     #[prost(bytes, tag="2")]
-    pub value: std::vec::Vec<u8>,
+    pub value: ::bytes::Bytes,
 }
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.

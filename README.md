@@ -102,7 +102,7 @@ Scalar value types are converted as follows:
 | `sfixed64` | `i64` |
 | `bool` | `bool` |
 | `string` | `String` |
-| `bytes` | `Vec<u8>` |
+| `bytes` | `Bytes` |
 
 #### Enumerations
 

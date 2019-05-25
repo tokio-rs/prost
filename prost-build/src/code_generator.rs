@@ -714,7 +714,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => String::from("std::string::String"),
-            Type::Bytes => String::from("std::vec::Vec<u8>"),
+            Type::Bytes => String::from("::bytes::Bytes"),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

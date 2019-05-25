@@ -5,7 +5,7 @@
 //! the `prost-types` crate in order to avoid a cyclic dependency between `prost` and
 //! `prost-build`.
 
-use ::bytes::{Buf, BufMut};
+use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::encoding::*;
 use crate::DecodeError;
@@ -308,7 +308,7 @@ impl Message for String {
 }
 
 /// `google.protobuf.BytesValue`
-impl Message for Vec<u8> {
+impl Message for Bytes {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,

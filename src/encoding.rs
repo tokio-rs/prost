@@ -7,10 +7,16 @@ use std::str;
 use std::u32;
 use std::usize;
 
-use ::bytes::{Buf, BufMut};
+use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::DecodeError;
 use crate::Message;
+
+// TODO
+// tests/bench
+// profile with large byte strings
+// strings
+// anywhere where we're converting back and forth?
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -732,7 +738,27 @@ pub mod string {
             // String::as_mut_vec is unsafe because it doesn't check that the bytes
             // inserted into it the resulting vec are valid UTF-8. We check
             // explicitly in order to ensure this is safe.
-            super::bytes::merge(wire_type, value.as_mut_vec(), buf)?;
+
+            check_wire_type(WireType::LengthDelimited, wire_type)?;
+            let len = decode_varint(buf)?;
+            if len > buf.remaining() as u64 {
+                return Err(DecodeError::new("buffer underflow"));
+            }
+
+            let vec_value = value.as_mut_vec();
+            let mut remaining = len as usize;
+            while remaining > 0 {
+                let len = {
+                    let bytes = buf.bytes();
+                    debug_assert!(!bytes.is_empty(), "Buf::bytes returned empty slice");
+                    let len = min(remaining, bytes.len());
+                    let bytes = &bytes[..len];
+                    vec_value.extend_from_slice(bytes);
+                    len
+                };
+                remaining -= len;
+                buf.advance(len);
+            }
             str::from_utf8(value.as_bytes())
                 .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
         }
@@ -745,18 +771,18 @@ pub mod string {
 pub mod bytes {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &Vec<u8>, buf: &mut B)
+    pub fn encode<B>(tag: u32, value: &Bytes, buf: &mut B)
     where
         B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
-        buf.put_slice(value);
+        buf.put(value);
     }
 
     pub fn merge<B>(
         wire_type: WireType,
-        value: &mut Vec<u8>,
+        value: &mut Bytes,
         buf: &mut B,
     ) -> Result<(), DecodeError>
     where
@@ -784,7 +810,7 @@ pub mod bytes {
         Ok(())
     }
 
-    length_delimited!(Vec<u8>);
+    length_delimited!(Bytes);
 }
 
 pub mod message {
@@ -1481,6 +1507,6 @@ mod test {
                    (i64, sfixed64),
                    (bool, bool),
                    (String, string),
-                   (Vec<u8>, bytes)
+                   (Bytes, bytes)
                ]);
 }

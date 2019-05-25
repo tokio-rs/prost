@@ -2,7 +2,7 @@ use std::fmt;
 
 use failure::{bail, format_err, Error};
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{
     self, parse_str, FloatSuffix, Ident, IntSuffix, Lit, LitByteStr, Meta, MetaList, MetaNameValue,
     NestedMeta, Path,
@@ -466,7 +466,7 @@ impl Ty {
     pub fn rust_type(&self) -> TokenStream {
         match *self {
             Ty::String => quote!(::std::string::String),
-            Ty::Bytes => quote!(::std::vec::Vec<u8>),
+            Ty::Bytes => quote!(::bytes::Bytes),
             _ => self.rust_ref_type(),
         }
     }
@@ -749,10 +749,10 @@ impl DefaultValue {
                 quote!(::std::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::bytes::Bytes::new()),
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
-                quote!(#lit.to_owned())
+                quote!(::bytes::Bytes::from(#lit))
             }
 
             ref other => other.typed(),
@@ -780,7 +780,8 @@ impl ToTokens for DefaultValue {
             DefaultValue::Bool(value) => value.to_tokens(tokens),
             DefaultValue::String(ref value) => value.to_tokens(tokens),
             DefaultValue::Bytes(ref value) => {
-                LitByteStr::new(value, Span::call_site()).to_tokens(tokens)
+                let byte_str = LitByteStr::new(value, Span::call_site());
+                tokens.append_all(quote!(#byte_str as &[u8]));
             }
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),

@@ -112,7 +112,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             .into_iter()
             .map(|tag| quote!(#tag))
             .intersperse(quote!(|));
-        quote!(#(#tags)* => #merge.map_err(|mut error| {
+        quote!(#(#tags)* => #merge.map_err(|mut error: _prost::DecodeError| {
             error.push(STRUCT_NAME, stringify!(#field_ident));
             error
         }),)
