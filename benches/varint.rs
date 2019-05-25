@@ -58,7 +58,7 @@ macro_rules! varint_bench {
     };
 }
 
-/// Benchmark encoding and decoding 100 varints of mixed width (average 5.5 bytes).
+// Benchmark encoding and decoding 100 varints of mixed width (average 5.5 bytes).
 varint_bench!(
     encode_varint_mixed,
     decode_varint_mixed,
@@ -71,7 +71,7 @@ varint_bench!(
     }
 );
 
-/// Benchmark encoding and decoding 100 small (1 byte) varints.
+// Benchmark encoding and decoding 100 small (1 byte) varints.
 varint_bench!(
     encode_varint_small,
     decode_varint_small,
@@ -81,7 +81,7 @@ varint_bench!(
     }
 );
 
-/// Benchmark encoding and decoding 100 medium (5 byte) varints.
+// Benchmark encoding and decoding 100 medium (5 byte) varints.
 varint_bench!(
     encode_varint_medium,
     decode_varint_medium,
@@ -94,7 +94,7 @@ varint_bench!(
     }
 );
 
-/// Benchmark encoding and decoding 100 large (10 byte) varints.
+// Benchmark encoding and decoding 100 large (10 byte) varints.
 varint_bench!(
     encode_varint_large,
     decode_varint_large,

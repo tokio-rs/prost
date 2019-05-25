@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::Read;
 use std::result;
-use std::time::Duration;
 
 use criterion::{Benchmark, Criterion, Throughput};
 use failure::bail;
