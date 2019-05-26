@@ -60,12 +60,32 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 "JSON output is not supported".to_string(),
             );
         }
+        WireFormat::Jspb => {
+            return conformance_response::Result::Skipped(
+                "JSPB output is not supported".to_string(),
+            );
+        }
+        WireFormat::TextFormat => {
+            return conformance_response::Result::Skipped(
+                "TEXT_FORMAT output is not supported".to_string(),
+            );
+        }
         WireFormat::Protobuf => (),
     };
 
     let buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
         Some(conformance_request::Payload::JsonPayload(_)) => {
+            return conformance_response::Result::Skipped(
+                "JSON input is not supported".to_string(),
+            );
+        }
+        Some(conformance_request::Payload::JspbPayload(_)) => {
+            return conformance_response::Result::Skipped(
+                "JSON input is not supported".to_string(),
+            );
+        }
+        Some(conformance_request::Payload::TextPayload(_)) => {
             return conformance_response::Result::Skipped(
                 "JSON input is not supported".to_string(),
             );
