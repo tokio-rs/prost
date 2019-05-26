@@ -9,14 +9,7 @@ use std::usize;
 
 use ::bytes::{Buf, BufMut, Bytes};
 
-use crate::DecodeError;
-use crate::Message;
-
-// TODO
-// tests/bench
-// profile with large byte strings
-// strings
-// anywhere where we're converting back and forth?
+use crate::{BytesString, DecodeError, Message};
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -722,50 +715,35 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &String, buf: &mut B)
+    pub fn encode<B>(tag: u32, value: &BytesString, buf: &mut B)
     where
         B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
-        buf.put_slice(value.as_bytes());
+        buf.put_slice(value.into());
     }
-    pub fn merge<B>(wire_type: WireType, value: &mut String, buf: &mut B) -> Result<(), DecodeError>
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut BytesString,
+        buf: &mut B,
+    ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
         unsafe {
-            // String::as_mut_vec is unsafe because it doesn't check that the bytes
+            // BytesString::as_bytes_mut is unsafe because it doesn't check that the bytes
             // inserted into it the resulting vec are valid UTF-8. We check
             // explicitly in order to ensure this is safe.
 
-            check_wire_type(WireType::LengthDelimited, wire_type)?;
-            let len = decode_varint(buf)?;
-            if len > buf.remaining() as u64 {
-                return Err(DecodeError::new("buffer underflow"));
-            }
-
-            let vec_value = value.as_mut_vec();
-            let mut remaining = len as usize;
-            while remaining > 0 {
-                let len = {
-                    let bytes = buf.bytes();
-                    debug_assert!(!bytes.is_empty(), "Buf::bytes returned empty slice");
-                    let len = min(remaining, bytes.len());
-                    let bytes = &bytes[..len];
-                    vec_value.extend_from_slice(bytes);
-                    len
-                };
-                remaining -= len;
-                buf.advance(len);
-            }
+            super::bytes::merge(wire_type, value.as_bytes_mut(), buf)?;
             str::from_utf8(value.as_bytes())
                 .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
         }
         Ok(())
     }
 
-    length_delimited!(String);
+    length_delimited!(BytesString);
 }
 
 pub mod bytes {
@@ -780,11 +758,7 @@ pub mod bytes {
         buf.put(value);
     }
 
-    pub fn merge<B>(
-        wire_type: WireType,
-        value: &mut Bytes,
-        buf: &mut B,
-    ) -> Result<(), DecodeError>
+    pub fn merge<B>(wire_type: WireType, value: &mut Bytes, buf: &mut B) -> Result<(), DecodeError>
     where
         B: Buf,
     {

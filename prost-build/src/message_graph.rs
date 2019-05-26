@@ -4,14 +4,15 @@ use petgraph::algo::has_path_connecting;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 
+use prost::BytesString;
 use prost_types::{field_descriptor_proto, DescriptorProto, FileDescriptorProto};
 
 /// `MessageGraph` builds a graph of messages whose edges correspond to nesting.
 /// The goal is to recognize when message types are recursively nested, so
 /// that fields can be boxed when necessary.
 pub struct MessageGraph {
-    index: HashMap<String, NodeIndex>,
-    graph: Graph<String, ()>,
+    index: HashMap<BytesString, NodeIndex>,
+    graph: Graph<BytesString, ()>,
 }
 
 impl MessageGraph {
@@ -31,7 +32,7 @@ impl MessageGraph {
         msg_graph
     }
 
-    fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {
+    fn get_or_insert_index(&mut self, msg_name: BytesString) -> NodeIndex {
         let MessageGraph {
             ref mut index,
             ref mut graph,
@@ -49,7 +50,7 @@ impl MessageGraph {
     /// Since repeated messages are already put in a Vec, boxing them isn’t necessary even if the reference is recursive.
     fn add_message(&mut self, package: &str, msg: &DescriptorProto) {
         let msg_name = format!("{}.{}", package, msg.name.as_ref().unwrap());
-        let msg_index = self.get_or_insert_index(msg_name.clone());
+        let msg_index = self.get_or_insert_index(msg_name.clone().into());
 
         for field in &msg.field {
             if field.r#type() == field_descriptor_proto::Type::Message

@@ -2,6 +2,7 @@
 
 mod error;
 mod message;
+mod string;
 mod types;
 
 #[doc(hidden)]
@@ -9,6 +10,7 @@ pub mod encoding;
 
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
+pub use crate::string::{BytesMutString, BytesString, StringError};
 
 use bytes::{BufMut, IntoBuf};
 

@@ -9,7 +9,7 @@ use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::encoding::*;
 use crate::DecodeError;
-use crate::Message;
+use crate::{BytesString, Message};
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {
@@ -271,7 +271,7 @@ impl Message for f64 {
 }
 
 /// `google.protobuf.StringValue`
-impl Message for String {
+impl Message for BytesString {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,

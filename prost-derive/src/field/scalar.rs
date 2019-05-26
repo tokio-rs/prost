@@ -124,8 +124,13 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
+                let deref_ident = if self.ty == Ty::String {
+                    quote!(&*#ident)
+                } else {
+                    ident.clone()
+                };
                 quote! {
-                    if #ident != #default {
+                    if #deref_ident != #default {
                         #encode_fn(#tag, &#ident, buf);
                     }
                 }
@@ -177,8 +182,13 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
+                let deref_ident = if self.ty == Ty::String {
+                    quote!(&*#ident)
+                } else {
+                    ident.clone()
+                };
                 quote! {
-                    if #ident != #default {
+                    if #deref_ident != #default {
                         #encoded_len_fn(#tag, &#ident)
                     } else {
                         0
@@ -196,13 +206,13 @@ impl Field {
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.kind {
-            Kind::Plain(ref default) | Kind::Required(ref default) => {
-                let default = default.typed();
-                match self.ty {
-                    Ty::String | Ty::Bytes => quote!(#ident.clear()),
-                    _ => quote!(#ident = #default),
+            Kind::Plain(ref default) | Kind::Required(ref default) => match self.ty {
+                Ty::String | Ty::Bytes => quote!(#ident.clear()),
+                _ => {
+                    let default = default.typed();
+                    quote!(#ident = #default)
                 }
-            }
+            },
             Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
@@ -465,7 +475,7 @@ impl Ty {
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self) -> TokenStream {
         match *self {
-            Ty::String => quote!(::std::string::String),
+            Ty::String => quote!(::prost::BytesString),
             Ty::Bytes => quote!(::bytes::Bytes),
             _ => self.rust_ref_type(),
         }
@@ -746,9 +756,14 @@ impl DefaultValue {
     pub fn owned(&self) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::std::string::String::new())
+                quote!(::prost::BytesString::new())
             }
-            DefaultValue::String(ref value) => quote!(#value.to_owned()),
+            DefaultValue::String(ref value) if value.is_empty() => {
+                quote!(::prost::BytesString::new())
+            }
+            DefaultValue::String(ref value) => {
+                quote!(::prost::BytesString::from(#value.to_owned()))
+            }
             DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::bytes::Bytes::new()),
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
@@ -760,10 +775,9 @@ impl DefaultValue {
     }
 
     pub fn typed(&self) -> TokenStream {
-        if let DefaultValue::Enumeration(_) = *self {
-            quote!(#self as i32)
-        } else {
-            quote!(#self)
+        match *self {
+            DefaultValue::Enumeration(_) => quote!(#self as i32),
+            _ => quote!(#self),
         }
     }
 }

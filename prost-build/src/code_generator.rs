@@ -6,6 +6,7 @@ use std::iter;
 use itertools::{Either, Itertools};
 use log::debug;
 use multimap::MultiMap;
+use prost::BytesString;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
@@ -56,7 +57,7 @@ impl<'a> CodeGenerator<'a> {
             .location
             .sort_by_key(|location| location.path.clone());
 
-        let syntax = match file.syntax.as_ref().map(String::as_str) {
+        let syntax = match file.syntax.as_ref().map(BytesString::as_ref) {
             None | Some("proto2") => Syntax::Proto2,
             Some("proto3") => Syntax::Proto3,
             Some(s) => panic!("unknown syntax: {}", s),
@@ -64,7 +65,7 @@ impl<'a> CodeGenerator<'a> {
 
         let mut code_gen = CodeGenerator {
             config,
-            package: file.package.unwrap(),
+            package: file.package.unwrap().to_string(),
             source_info,
             syntax,
             message_graph,
@@ -191,7 +192,7 @@ impl<'a> CodeGenerator<'a> {
             match field
                 .type_name
                 .as_ref()
-                .and_then(|type_name| map_types.get(type_name))
+                .and_then(|type_name| map_types.get::<str>(type_name.as_ref()))
             {
                 Some(&(ref key, ref value)) => {
                     self.append_map_field(&fq_message_name, field, key, value)
@@ -636,9 +637,9 @@ impl<'a> CodeGenerator<'a> {
                 let comments = Comments::from_location(self.location());
                 self.path.pop();
 
-                let name = method.name.take().unwrap();
-                let input_proto_type = method.input_type.take().unwrap();
-                let output_proto_type = method.output_type.take().unwrap();
+                let name = method.name.take().unwrap().to_string();
+                let input_proto_type = method.input_type.take().unwrap().to_string();
+                let output_proto_type = method.output_type.take().unwrap().to_string();
                 let input_type = self.resolve_ident(&input_proto_type);
                 let output_type = self.resolve_ident(&output_proto_type);
                 let client_streaming = method.client_streaming();
@@ -713,7 +714,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("std::string::String"),
+            Type::String => String::from("::prost::BytesString"),
             Type::Bytes => String::from("::bytes::Bytes"),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }

@@ -10,7 +10,7 @@ pub struct Version {
     /// A suffix for alpha, beta or rc release, e.g., "alpha-1", "rc2". It should
     /// be empty for mainline stable releases.
     #[prost(string, optional, tag="4")]
-    pub suffix: ::std::option::Option<std::string::String>,
+    pub suffix: ::std::option::Option<::prost::BytesString>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -19,10 +19,10 @@ pub struct CodeGeneratorRequest {
     /// code generator should generate code only for these files.  Each file's
     /// descriptor will be included in proto_file, below.
     #[prost(string, repeated, tag="1")]
-    pub file_to_generate: ::std::vec::Vec<std::string::String>,
+    pub file_to_generate: ::std::vec::Vec<::prost::BytesString>,
     /// The generator parameter passed on the command-line.
     #[prost(string, optional, tag="2")]
-    pub parameter: ::std::option::Option<std::string::String>,
+    pub parameter: ::std::option::Option<::prost::BytesString>,
     /// FileDescriptorProtos for all files in files_to_generate and everything
     /// they import.  The files will appear in topological order, so each file
     /// appears before any file that imports it.
@@ -55,7 +55,7 @@ pub struct CodeGeneratorResponse {
     /// unparseable -- should be reported by writing a message to stderr and
     /// exiting with a non-zero status code.
     #[prost(string, optional, tag="1")]
-    pub error: ::std::option::Option<std::string::String>,
+    pub error: ::std::option::Option<::prost::BytesString>,
     #[prost(message, repeated, tag="15")]
     pub file: ::std::vec::Vec<code_generator_response::File>,
 }
@@ -75,7 +75,7 @@ pub mod code_generator_response {
         /// this writing protoc does not optimize for this -- it will read the entire
         /// CodeGeneratorResponse before writing files to disk.
         #[prost(string, optional, tag="1")]
-        pub name: ::std::option::Option<std::string::String>,
+        pub name: ::std::option::Option<::prost::BytesString>,
         /// If non-empty, indicates that the named file should already exist, and the
         /// content here is to be inserted into that file at a defined insertion
         /// point.  This feature allows a code generator to extend the output
@@ -114,9 +114,9 @@ pub mod code_generator_response {
         ///
         /// If |insertion_point| is present, |name| must also be present.
         #[prost(string, optional, tag="2")]
-        pub insertion_point: ::std::option::Option<std::string::String>,
+        pub insertion_point: ::std::option::Option<::prost::BytesString>,
         /// The file contents.
         #[prost(string, optional, tag="15")]
-        pub content: ::std::option::Option<std::string::String>,
+        pub content: ::std::option::Option<::prost::BytesString>,
     }
 }
