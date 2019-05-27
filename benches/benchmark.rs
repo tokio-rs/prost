@@ -5,7 +5,7 @@ use std::result;
 use criterion::{Benchmark, Criterion, Throughput};
 use failure::bail;
 use prost::Message;
-use protobuf::benchmarks::{proto2, proto3, BenchmarkDataset};
+use protobuf::benchmarks::{google_message3, google_message4, proto2, proto3, BenchmarkDataset};
 
 type Result = result::Result<(), failure::Error>;
 
@@ -69,7 +69,10 @@ where
 }
 
 fn main() -> Result {
-    let mut criterion = Criterion::default().configure_from_args();
+    let mut criterion = Criterion::default()
+        .configure_from_args()
+        // TODO(bheisler/criterion.rs#295): switch to a time-based limit.
+        .sample_size(10);
 
     for dataset in protobuf::benchmarks::datasets() {
         let dataset = {
@@ -86,17 +89,15 @@ fn main() -> Result {
             "benchmarks.proto3.GoogleMessage1" => {
                 benchmark_dataset::<proto3::GoogleMessage1>(&mut criterion, dataset)?
             }
-
-            /*
-             TODO: groups are not yet supported
-            "benchmarks.proto2.GoogleMessage2" => benchmark_dataset::<proto2::GoogleMessage2>(&mut criterion, dataset)?,
-            "benchmarks.google_message3.GoogleMessage3" => benchmark_dataset::<GoogleMessage3>(&mut criterion, dataset)?,
-            "benchmarks.google_message4.GoogleMessage4" => benchmark_dataset::<GoogleMessage4>(&mut criterion, dataset)?,
-            */
-            "benchmarks.proto2.GoogleMessage2" => (),
-            "benchmarks.google_message3.GoogleMessage3" => (),
-            "benchmarks.google_message4.GoogleMessage4" => (),
-
+            "benchmarks.proto2.GoogleMessage2" => {
+                benchmark_dataset::<proto2::GoogleMessage2>(&mut criterion, dataset)?
+            }
+            "benchmarks.google_message3.GoogleMessage3" => {
+                benchmark_dataset::<google_message3::GoogleMessage3>(&mut criterion, dataset)?
+            }
+            "benchmarks.google_message4.GoogleMessage4" => {
+                benchmark_dataset::<google_message4::GoogleMessage4>(&mut criterion, dataset)?
+            }
             _ => bail!("unknown dataset message type: {}", dataset.message_name),
         }
     }
