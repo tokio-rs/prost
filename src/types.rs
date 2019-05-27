@@ -26,7 +26,7 @@ impl Message for bool {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -64,7 +64,7 @@ impl Message for u32 {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -102,7 +102,7 @@ impl Message for u64 {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -140,7 +140,7 @@ impl Message for i32 {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -178,7 +178,7 @@ impl Message for i64 {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -216,7 +216,7 @@ impl Message for f32 {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -254,7 +254,7 @@ impl Message for f64 {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -292,7 +292,7 @@ impl Message for String {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -330,7 +330,7 @@ impl Message for Vec<u8> {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -365,7 +365,7 @@ impl Message for () {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        _ctx: &mut DecodeContext,
+        _ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,

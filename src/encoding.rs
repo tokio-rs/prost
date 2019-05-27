@@ -112,7 +112,7 @@ impl DecodeContext {
     /// the recursion counter when it is destroyed by going out of scope.
     ///
     /// See the safety note on `RecursionGuard` for important information.
-    pub(crate) fn enter_recursion(&mut self) -> DecodeContext {
+    pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {
             recurse_count: self.recurse_count - 1,
         }
@@ -120,7 +120,7 @@ impl DecodeContext {
 
     #[cfg(not(feature = "recursion-limit"))]
     #[inline(always)]
-    pub(crate) fn enter_recursion(&mut self) -> DecodeContext {
+    pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {}
     }
 
@@ -131,12 +131,10 @@ impl DecodeContext {
     /// Returns `Ok<()>` if it is ok to continue recursing.
     /// Returns `Err<DecodeError>` if the recursion limit has been reached.
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
-        unsafe {
-            if self.recurse_count == 0 {
-                Err(DecodeError::new("Recursion limit reached"))
-            } else {
-                Ok(())
-            }
+        if self.recurse_count == 0 {
+            Err(DecodeError::new("Recursion limit reached"))
+        } else {
+            Ok(())
         }
     }
 
@@ -348,11 +346,11 @@ pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), Decod
 pub fn merge_loop<T, M, B>(
     value: &mut T,
     buf: &mut B,
-    ctx: &mut DecodeContext,
+    ctx: DecodeContext,
     mut merge: M,
 ) -> Result<(), DecodeError>
 where
-    M: FnMut(&mut T, &mut B, &mut DecodeContext) -> Result<(), DecodeError>,
+    M: FnMut(&mut T, &mut B, DecodeContext) -> Result<(), DecodeError>,
     B: Buf,
 {
     let len = decode_varint(buf)?;
@@ -363,7 +361,7 @@ where
 
     let limit = remaining - len as usize;
     while buf.remaining() > limit {
-        merge(value, buf, ctx)?;
+        merge(value, buf, ctx.clone())?;
     }
 
     if buf.remaining() != limit {
@@ -428,7 +426,7 @@ macro_rules! merge_repeated_numeric {
             wire_type: WireType,
             values: &mut Vec<$ty>,
             buf: &mut B,
-            ctx: &mut DecodeContext,
+            ctx: DecodeContext,
         ) -> Result<(), DecodeError>
         where
             B: Buf,
@@ -477,7 +475,7 @@ macro_rules! varint {
                 encode_varint($to_uint64, buf);
             }
 
-            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B, _ctx: &mut DecodeContext) -> Result<(), DecodeError> where B: Buf {
+            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B, _ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf {
                 check_wire_type(WireType::Varint, wire_type)?;
                 let $from_uint64_value = decode_varint(buf)?;
                 *value = $from_uint64;
@@ -604,7 +602,7 @@ macro_rules! fixed_width {
                 wire_type: WireType,
                 value: &mut $ty,
                 buf: &mut B,
-                _ctx: &mut DecodeContext,
+                _ctx: DecodeContext,
             ) -> Result<(), DecodeError>
             where
                 B: Buf,
@@ -743,7 +741,7 @@ macro_rules! length_delimited {
             wire_type: WireType,
             values: &mut Vec<$ty>,
             buf: &mut B,
-            ctx: &mut DecodeContext,
+            ctx: DecodeContext,
         ) -> Result<(), DecodeError>
         where
             B: Buf,
@@ -806,7 +804,7 @@ pub mod string {
         wire_type: WireType,
         value: &mut String,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -837,7 +835,7 @@ pub mod bytes {
         wire_type: WireType,
         value: &mut Vec<u8>,
         buf: &mut B,
-        _ctx: &mut DecodeContext,
+        _ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -884,19 +882,23 @@ pub mod message {
         wire_type: WireType,
         msg: &mut M,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message,
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let recursion_guard = ctx.enter_recursion();
-        recursion_guard.limit_reached()?;
-        merge_loop(msg, buf, ctx, |msg: &mut M, buf: &mut B, ctx| {
-            let (tag, wire_type) = decode_key(buf)?;
-            msg.merge_field(tag, wire_type, buf, ctx)
-        })
+        ctx.limit_reached()?;
+        merge_loop(
+            msg,
+            buf,
+            ctx.enter_recursion(),
+            |msg: &mut M, buf: &mut B, ctx| {
+                let (tag, wire_type) = decode_key(buf)?;
+                msg.merge_field(tag, wire_type, buf, ctx)
+            },
+        )
     }
 
     pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
@@ -913,7 +915,7 @@ pub mod message {
         wire_type: WireType,
         messages: &mut Vec<M>,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message + Default,
@@ -967,7 +969,7 @@ pub mod group {
         wire_type: WireType,
         msg: &mut M,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message,
@@ -975,8 +977,7 @@ pub mod group {
     {
         check_wire_type(WireType::StartGroup, wire_type)?;
 
-        let recursion_guard = ctx.enter_recursion();
-        recursion_guard.limit_reached()?;
+        ctx.limit_reached()?;
         loop {
             let (field_tag, field_wire_type) = decode_key(buf)?;
             if field_wire_type == WireType::EndGroup {
@@ -986,7 +987,7 @@ pub mod group {
                 return Ok(());
             }
 
-            M::merge_field(msg, field_tag, field_wire_type, buf, ctx)?;
+            M::merge_field(msg, field_tag, field_wire_type, buf, ctx.enter_recursion())?;
         }
     }
 
@@ -1005,7 +1006,7 @@ pub mod group {
         wire_type: WireType,
         messages: &mut Vec<M>,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message + Default,
@@ -1080,14 +1081,14 @@ macro_rules! map {
             val_merge: VM,
             values: &mut $map_ty<K, V>,
             buf: &mut B,
-            ctx: &mut DecodeContext,
+            ctx: DecodeContext,
         ) -> Result<(), DecodeError>
         where
             K: Default + Eq + Hash + Ord,
             V: Default,
             B: Buf,
-            KM: Fn(WireType, &mut K, &mut B, &mut DecodeContext) -> Result<(), DecodeError>,
-            VM: Fn(WireType, &mut V, &mut B, &mut DecodeContext) -> Result<(), DecodeError>,
+            KM: Fn(WireType, &mut K, &mut B, DecodeContext) -> Result<(), DecodeError>,
+            VM: Fn(WireType, &mut V, &mut B, DecodeContext) -> Result<(), DecodeError>,
         {
             merge_with_default(key_merge, val_merge, V::default(), values, buf, ctx)
         }
@@ -1158,22 +1159,21 @@ macro_rules! map {
             val_default: V,
             values: &mut $map_ty<K, V>,
             buf: &mut B,
-            ctx: &mut DecodeContext,
+            ctx: DecodeContext,
         ) -> Result<(), DecodeError>
         where
             K: Default + Eq + Hash + Ord,
             B: Buf,
-            KM: Fn(WireType, &mut K, &mut B, &mut DecodeContext) -> Result<(), DecodeError>,
-            VM: Fn(WireType, &mut V, &mut B, &mut DecodeContext) -> Result<(), DecodeError>,
+            KM: Fn(WireType, &mut K, &mut B, DecodeContext) -> Result<(), DecodeError>,
+            VM: Fn(WireType, &mut V, &mut B, DecodeContext) -> Result<(), DecodeError>,
         {
             let mut key = Default::default();
             let mut val = val_default;
-            let recursion_guard = ctx.enter_recursion();
-            recursion_guard.limit_reached()?;
+            ctx.limit_reached()?;
             merge_loop(
                 &mut (&mut key, &mut val),
                 buf,
-                ctx,
+                ctx.enter_recursion(),
                 |&mut (ref mut key, ref mut val), buf, ctx| {
                     let (tag, wire_type) = decode_key(buf)?;
                     match tag {
@@ -1250,12 +1250,7 @@ mod test {
         tag: u32,
         wire_type: WireType,
         encode: fn(u32, &B, &mut BytesMut),
-        merge: fn(
-            WireType,
-            &mut T,
-            &mut Cursor<Bytes>,
-            &mut DecodeContext,
-        ) -> Result<(), DecodeError>,
+        merge: fn(WireType, &mut T, &mut Cursor<Bytes>, DecodeContext) -> Result<(), DecodeError>,
         encoded_len: fn(u32, &B) -> usize,
     ) -> TestResult
     where
@@ -1328,7 +1323,7 @@ mod test {
             wire_type,
             &mut roundtrip_value,
             &mut buf,
-            &mut DecodeContext::default(),
+            DecodeContext::default(),
         ) {
             return TestResult::error(error.to_string());
         };
@@ -1359,12 +1354,7 @@ mod test {
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
         E: FnOnce(u32, &B, &mut BytesMut),
-        M: FnMut(
-            WireType,
-            &mut T,
-            &mut Cursor<Bytes>,
-            &mut DecodeContext,
-        ) -> Result<(), DecodeError>,
+        M: FnMut(WireType, &mut T, &mut Cursor<Bytes>, DecodeContext) -> Result<(), DecodeError>,
         L: FnOnce(u32, &B) -> usize,
     {
         if tag > MAX_TAG || tag < MIN_TAG {
@@ -1411,7 +1401,7 @@ mod test {
                 wire_type,
                 &mut roundtrip_value,
                 &mut buf,
-                &mut DecodeContext::default(),
+                DecodeContext::default(),
             ) {
                 return TestResult::error(error.to_string());
             };

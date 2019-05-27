@@ -190,7 +190,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                                   tag: u32,
                                   wire_type: _prost::encoding::WireType,
                                   buf: &mut B,
-                                  ctx: &mut _prost::encoding::DecodeContext,
+                                  ctx: _prost::encoding::DecodeContext,
                 ) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     #struct_name
@@ -449,7 +449,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                                 tag: u32,
                                 wire_type: _prost::encoding::WireType,
                                 buf: &mut B,
-                                ctx: &mut _prost::encoding::DecodeContext,
+                                ctx: _prost::encoding::DecodeContext,
                 ) -> ::std::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     match tag {

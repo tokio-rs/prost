@@ -29,7 +29,7 @@ pub trait Message: Debug + Send + Sync {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -84,12 +84,7 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        Self::merge(
-            &mut message,
-            &mut buf.into_buf(),
-            &mut DecodeContext::default(),
-        )
-        .map(|_| message)
+        Self::merge(&mut message, &mut buf.into_buf(), DecodeContext::default()).map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
@@ -99,14 +94,14 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        message.merge_length_delimited(buf, &mut DecodeContext::default())?;
+        message.merge_length_delimited(buf, DecodeContext::default())?;
         Ok(message)
     }
 
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: B, ctx: &mut DecodeContext) -> Result<(), DecodeError>
+    fn merge<B>(&mut self, buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
     where
         B: IntoBuf,
         Self: Sized,
@@ -114,18 +109,14 @@ pub trait Message: Debug + Send + Sync {
         let mut buf = buf.into_buf();
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
-            self.merge_field(tag, wire_type, &mut buf, ctx)?;
+            self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
         }
         Ok(())
     }
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(
-        &mut self,
-        buf: B,
-        ctx: &mut DecodeContext,
-    ) -> Result<(), DecodeError>
+    fn merge_length_delimited<B>(&mut self, buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
     where
         B: IntoBuf,
         Self: Sized,
@@ -152,7 +143,7 @@ where
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        ctx: &mut DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,

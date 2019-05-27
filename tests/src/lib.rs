@@ -358,8 +358,8 @@ mod tests {
             A::decode(buf).map(|_| ())
         }
 
-        assert!(build_and_roundtrip(99).is_ok());
-        assert!(build_and_roundtrip(100).is_err());
+        assert!(build_and_roundtrip(100).is_ok());
+        assert!(build_and_roundtrip(101).is_err());
     }
 
     #[test]

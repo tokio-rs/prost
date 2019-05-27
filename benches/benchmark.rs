@@ -4,7 +4,6 @@ use std::result;
 
 use criterion::{Benchmark, Criterion, Throughput};
 use failure::bail;
-use prost::Message;
 use prost::encoding::DecodeContext;
 use protobuf::benchmarks::{google_message3, google_message4, proto2, proto3, BenchmarkDataset};
 
