@@ -94,7 +94,7 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        message.merge_length_delimited(buf, DecodeContext::default())?;
+        message.merge_length_delimited(buf)?;
         Ok(message)
     }
 
@@ -116,12 +116,12 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
+    fn merge_length_delimited<B>(&mut self, buf: B) -> Result<(), DecodeError>
     where
         B: IntoBuf,
         Self: Sized,
     {
-        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf(), ctx)
+        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf(), DecodeContext::default())
     }
 
     /// Clears the message, resetting all fields to their default.
