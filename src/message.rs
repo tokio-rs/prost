@@ -121,7 +121,12 @@ pub trait Message: Debug + Send + Sync {
         B: IntoBuf,
         Self: Sized,
     {
-        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf(), DecodeContext::default())
+        message::merge(
+            WireType::LengthDelimited,
+            self,
+            &mut buf.into_buf(),
+            DecodeContext::default(),
+        )
     }
 
     /// Clears the message, resetting all fields to their default.

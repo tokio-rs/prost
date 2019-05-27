@@ -179,6 +179,9 @@ where
 }
 
 /// Additional information passed to every decode/merge function.
+///
+/// The context should be passed by value and can be freely cloned. When passing
+/// to a function which is decoding a nested object, then use `enter_recursion`.
 #[derive(Clone, Debug)]
 pub struct DecodeContext {
     #[cfg(not(feature = "no-recursion-limit"))]
@@ -187,7 +190,7 @@ pub struct DecodeContext {
     ///
     /// The recursion limit is defined by `RECURSION_LIMIT` and cannot be
     /// customized. The recursion limit can be ignored by building the Prost
-    /// crate without the `no-recursion-limit` feature (which is set by default).
+    /// crate with the `no-recursion-limit` feature (which is set by default).
     recurse_count: u32,
 }
 
@@ -211,10 +214,9 @@ impl DecodeContext {
     #[cfg(not(feature = "no-recursion-limit"))]
     /// Call this function before recursively decoding.
     ///
-    /// This function returns a guard object which will automatically restore
-    /// the recursion counter when it is destroyed by going out of scope.
-    ///
-    /// See the safety note on `RecursionGuard` for important information.
+    /// There is no `exit` function since this function creates a new `DecodeContext`
+    /// to be used at the next level of recursion. Continue to use the old context
+    // at the previous level of recursion.
     #[inline(always)]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {

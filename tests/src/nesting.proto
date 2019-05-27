@@ -15,3 +15,11 @@ message A {
 message B {
     A a = 1;
 }
+
+message C {
+    repeated C r = 1;
+}
+
+message D {
+    map<string, D> m = 1;
+}
