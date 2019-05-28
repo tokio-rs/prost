@@ -961,7 +961,8 @@ pub mod generated_code_info {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Any {
     /// A URL/resource name that uniquely identifies the type of the serialized
-    /// protocol buffer message. The last segment of the URL's path must represent
+    /// protocol buffer message. This string must contain at least
+    /// one "/" character. The last segment of the URL's path must represent
     /// the fully qualified name of the type (as in
     /// `path/google.protobuf.Duration`). The name should be in a canonical form
     /// (e.g., leading "." is not accepted).
@@ -1488,57 +1489,49 @@ pub struct Duration {
 /// describe the updated values, the API ignores the values of all
 /// fields not covered by the mask.
 ///
-/// If a repeated field is specified for an update operation, the existing
-/// repeated values in the target resource will be overwritten by the new values.
-/// Note that a repeated field is only allowed in the last position of a `paths`
-/// string.
+/// If a repeated field is specified for an update operation, new values will
+/// be appended to the existing repeated field in the target resource. Note that
+/// a repeated field is only allowed in the last position of a `paths` string.
 ///
 /// If a sub-message is specified in the last position of the field mask for an
-/// update operation, then the existing sub-message in the target resource is
-/// overwritten. Given the target message:
+/// update operation, then new value will be merged into the existing sub-message
+/// in the target resource.
+///
+/// For example, given the target message:
 ///
 ///     f {
 ///       b {
-///         d : 1
-///         x : 2
+///         d: 1
+///         x: 2
 ///       }
-///       c : 1
+///       c: [1]
 ///     }
 ///
 /// And an update message:
 ///
 ///     f {
 ///       b {
-///         d : 10
+///         d: 10
 ///       }
+///       c: [2]
 ///     }
 ///
 /// then if the field mask is:
 ///
-///  paths: "f.b"
+///  paths: ["f.b", "f.c"]
 ///
 /// then the result will be:
 ///
 ///     f {
 ///       b {
-///         d : 10
+///         d: 10
+///         x: 2
 ///       }
-///       c : 1
+///       c: [1, 2]
 ///     }
 ///
-/// However, if the update mask was:
-///
-///  paths: "f.b.d"
-///
-/// then the result would be:
-///
-///     f {
-///       b {
-///         d : 10
-///         x : 2
-///       }
-///       c : 1
-///     }
+/// An implementation may provide options to override this default behavior for
+/// repeated and message fields.
 ///
 /// In order to reset a field's value to the default, the field must
 /// be in the mask and set to the default value in the provided resource.
@@ -1702,17 +1695,19 @@ pub enum NullValue {
     /// Null value.
     NullValue = 0,
 }
-/// A Timestamp represents a point in time independent of any time zone
-/// or calendar, represented as seconds and fractions of seconds at
-/// nanosecond resolution in UTC Epoch time. It is encoded using the
-/// Proleptic Gregorian Calendar which extends the Gregorian calendar
-/// backwards to year one. It is encoded assuming all minutes are 60
-/// seconds long, i.e. leap seconds are "smeared" so that no leap second
-/// table is needed for interpretation. Range is from
-/// 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z.
-/// By restricting to that range, we ensure that we can convert to
-/// and from  RFC 3339 date strings.
-/// See [https://www.ietf.org/rfc/rfc3339.txt](https://www.ietf.org/rfc/rfc3339.txt).
+/// A Timestamp represents a point in time independent of any time zone or local
+/// calendar, encoded as a count of seconds and fractions of seconds at
+/// nanosecond resolution. The count is relative to an epoch at UTC midnight on
+/// January 1, 1970, in the proleptic Gregorian calendar which extends the
+/// Gregorian calendar backwards to year one.
+///
+/// All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+/// second table is needed for interpretation, using a [24-hour linear
+/// smear](https://developers.google.com/time/smear).
+///
+/// The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+/// restricting to that range, we ensure that we can convert to and from [RFC
+/// 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
 ///
 /// # Examples
 ///
@@ -1773,12 +1768,12 @@ pub enum NullValue {
 /// 01:30 UTC on January 15, 2017.
 ///
 /// In JavaScript, one can convert a Date object to this format using the
-/// standard [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString]
+/// standard [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
 /// method. In Python, a standard `datetime.datetime` object can be converted
 /// to this format using [`strftime`](https://docs.python.org/2/library/time.html#time.strftime)
 /// with the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one
 /// can use the Joda Time's [`ISODateTimeFormat.dateTime()`](
-/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime--
+/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D
 /// ) to obtain a formatter capable of generating timestamps in this format.
 ///
 ///
