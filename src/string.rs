@@ -8,9 +8,13 @@
 //! UTF8 invariants are checked when strings are created (or bytes are added).
 
 use bytes::{BufMut, Bytes, BytesMut};
+#[cfg(test)]
+use quickcheck::{Arbitrary, Gen};
 use std::borrow::Borrow;
 use std::convert::{AsRef, Infallible, TryFrom};
 use std::fmt;
+use std::hash;
+use std::iter::FromIterator;
 use std::ops::Deref;
 use std::str::{self, FromStr};
 
@@ -27,7 +31,7 @@ impl From<Bytes> for StringError {
     }
 }
 
-#[derive(Clone, Debug, Default, Hash, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct BytesString {
     bytes: Bytes,
 }
@@ -171,6 +175,45 @@ impl fmt::Display for BytesString {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let s: &str = self.into();
         write!(f, "{}", s)
+    }
+}
+
+impl hash::Hash for BytesString {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        let s: &str = self.as_ref();
+        s.hash(state);
+    }
+}
+
+impl FromIterator<char> for BytesString {
+    fn from_iter<T>(iter: T) -> BytesString
+    where
+        T: IntoIterator<Item = char>,
+    {
+        let iter = iter.into_iter();
+        let s: String = iter.collect();
+        s.into()
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for BytesString {
+    fn arbitrary<G: Gen>(g: &mut G) -> BytesString {
+        let s: String = String::arbitrary(g);
+        s.into()
+    }
+
+    fn shrink(&self) -> Box<Iterator<Item = BytesString>> {
+        // Follows the String impl.
+        let chars: Vec<char> = self.chars().collect();
+        Box::new(
+            chars
+                .shrink()
+                .map(|x| x.into_iter().collect::<BytesString>()),
+        )
     }
 }
 
@@ -349,5 +392,41 @@ impl fmt::Display for BytesMutString {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let s: &str = self.into();
         write!(f, "{}", s)
+    }
+}
+
+impl hash::Hash for BytesMutString {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        let s: &str = self.as_ref();
+        s.hash(state);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_eq_hash() {
+        let s = "Hello, world";
+
+        let b1: BytesString = s.to_owned().into();
+        let mut b2 = BytesMutString::new();
+        b2.reserve(s.len());
+        for c in s.chars() {
+            b2.push(c);
+        }
+        let b2 = b2.freeze();
+
+        assert_eq!(b1, b2);
+
+        let mut map = HashMap::new();
+        map.insert(b1, "Hi");
+        assert_eq!(map.get(&b2), Some(&"Hi"));
+        assert_eq!(map.get(s), Some(&"Hi"));
     }
 }

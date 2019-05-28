@@ -37,7 +37,7 @@ default = ["prost-derive"]
 
 [dependencies]
 byteorder = "1"
-bytes = "0.4.7"
+bytes = "0.4"
 prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
 
 [dev-dependencies]

@@ -50,7 +50,8 @@ impl MessageGraph {
     /// Since repeated messages are already put in a Vec, boxing them isn’t necessary even if the reference is recursive.
     fn add_message(&mut self, package: &str, msg: &DescriptorProto) {
         let msg_name = format!("{}.{}", package, msg.name.as_ref().unwrap());
-        let msg_index = self.get_or_insert_index(msg_name.clone().into());
+        let k = msg_name.clone().into();
+        let msg_index = self.get_or_insert_index(k);
 
         for field in &msg.field {
             if field.r#type() == field_descriptor_proto::Type::Message
@@ -67,12 +68,12 @@ impl MessageGraph {
     }
 
     /// Returns true if message type `inner` is nested in message type `outer`.
-    pub fn is_nested(&self, outer: &str, inner: &str) -> bool {
-        let outer = match self.index.get(outer) {
+    pub fn is_nested(&self, _outer: &str, _inner: &str) -> bool {
+        let outer = match self.index.get(_outer) {
             Some(outer) => *outer,
             None => return false,
         };
-        let inner = match self.index.get(inner) {
+        let inner = match self.index.get(_inner) {
             Some(inner) => *inner,
             None => return false,
         };

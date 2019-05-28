@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Read;
 use std::result;
 
+use bytes::Bytes;
 use criterion::{Benchmark, Criterion, Throughput};
 use failure::bail;
 use prost::Message;
@@ -13,7 +14,7 @@ fn benchmark_dataset<M>(criterion: &mut Criterion, dataset: BenchmarkDataset) ->
 where
     M: prost::Message + Default + 'static,
 {
-    let payload_len = dataset.payload.iter().map(Vec::len).sum::<usize>();
+    let payload_len = dataset.payload.iter().map(Bytes::len).sum::<usize>();
 
     let messages = dataset
         .payload
@@ -82,7 +83,7 @@ fn main() -> Result {
             protobuf::benchmarks::BenchmarkDataset::decode(buf)?
         };
 
-        match dataset.message_name.as_str() {
+        match dataset.message_name.as_ref() {
             "benchmarks.proto2.GoogleMessage1" => {
                 benchmark_dataset::<proto2::GoogleMessage1>(&mut criterion, dataset)?
             }

@@ -58,9 +58,9 @@ pub struct ScalarTypes {
     #[prost(bool, tag = "013")]
     pub _bool: bool,
     #[prost(string, tag = "014")]
-    pub string: String,
+    pub string: ::prost::BytesString,
     #[prost(bytes, tag = "015")]
-    pub bytes: Vec<u8>,
+    pub bytes: ::bytes::Bytes,
 
     #[prost(int32, required, tag = "101")]
     pub required_int32: i32,
@@ -89,9 +89,9 @@ pub struct ScalarTypes {
     #[prost(bool, required, tag = "113")]
     pub required_bool: bool,
     #[prost(string, required, tag = "114")]
-    pub required_string: String,
+    pub required_string: ::prost::BytesString,
     #[prost(bytes, required, tag = "115")]
-    pub required_bytes: Vec<u8>,
+    pub required_bytes: ::bytes::Bytes,
 
     #[prost(int32, optional, tag = "201")]
     pub optional_int32: Option<i32>,
@@ -121,9 +121,9 @@ pub struct ScalarTypes {
     #[prost(bool, optional, tag = "213")]
     pub optional_bool: Option<bool>,
     #[prost(string, optional, tag = "214")]
-    pub optional_string: Option<String>,
+    pub optional_string: Option<::prost::BytesString>,
     #[prost(bytes, optional, tag = "215")]
-    pub optional_bytes: Option<Vec<u8>>,
+    pub optional_bytes: Option<::bytes::Bytes>,
 
     #[prost(int32, repeated, packed = "false", tag = "301")]
     pub repeated_int32: Vec<i32>,
@@ -152,9 +152,9 @@ pub struct ScalarTypes {
     #[prost(bool, repeated, packed = "false", tag = "313")]
     pub repeated_bool: Vec<bool>,
     #[prost(string, repeated, packed = "false", tag = "315")]
-    pub repeated_string: Vec<String>,
+    pub repeated_string: Vec<::prost::BytesString>,
     #[prost(bytes, repeated, packed = "false", tag = "316")]
-    pub repeated_bytes: Vec<Vec<u8>>,
+    pub repeated_bytes: Vec<::bytes::Bytes>,
 
     #[prost(int32, repeated, tag = "401")]
     pub packed_int32: Vec<i32>,
@@ -184,9 +184,9 @@ pub struct ScalarTypes {
     #[prost(bool, repeated, tag = "413")]
     pub packed_bool: Vec<bool>,
     #[prost(string, repeated, tag = "415")]
-    pub packed_string: Vec<String>,
+    pub packed_string: Vec<::prost::BytesString>,
     #[prost(bytes, repeated, tag = "416")]
-    pub packed_bytes: Vec<Vec<u8>>,
+    pub packed_bytes: Vec<::bytes::Bytes>,
 }
 
 #[test]
@@ -205,14 +205,14 @@ pub struct TagsInferred {
     pub three: Vec<f32>,
 
     #[prost(tag = "9", string, required)]
-    pub skip_to_nine: String,
+    pub skip_to_nine: ::prost::BytesString,
     #[prost(enumeration = "BasicEnumeration", default = "ONE")]
     pub ten: i32,
     #[prost(map = "string, string")]
-    pub eleven: ::std::collections::HashMap<String, String>,
+    pub eleven: ::std::collections::HashMap<::prost::BytesString, ::prost::BytesString>,
 
     #[prost(tag = "5", bytes)]
-    pub back_to_five: Vec<u8>,
+    pub back_to_five: ::bytes::Bytes,
     #[prost(message, required)]
     pub six: Basic,
 }
@@ -227,16 +227,16 @@ pub struct TagsQualified {
     pub three: Vec<f32>,
 
     #[prost(tag = "5", bytes)]
-    pub five: Vec<u8>,
+    pub five: ::bytes::Bytes,
     #[prost(tag = "6", message, required)]
     pub six: Basic,
 
     #[prost(tag = "9", string, required)]
-    pub nine: String,
+    pub nine: ::prost::BytesString,
     #[prost(tag = "10", enumeration = "BasicEnumeration", default = "ONE")]
     pub ten: i32,
     #[prost(tag = "11", map = "string, string")]
-    pub eleven: ::std::collections::HashMap<String, String>,
+    pub eleven: ::std::collections::HashMap<::prost::BytesString, ::prost::BytesString>,
 }
 
 /// A prost message with default value.
@@ -249,7 +249,7 @@ pub struct DefaultValues {
     pub optional_int32: Option<i32>,
 
     #[prost(string, tag = "3", default = "fourty two")]
-    pub string: String,
+    pub string: ::prost::BytesString,
 
     #[prost(enumeration = "BasicEnumeration", tag = "4", default = "ONE")]
     pub enumeration: i32,
@@ -266,7 +266,7 @@ fn check_default_values() {
     let default = DefaultValues::default();
     assert_eq!(default.int32, 42);
     assert_eq!(default.optional_int32, None);
-    assert_eq!(&default.string, "fourty two");
+    assert_eq!(&*default.string, "fourty two");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);
@@ -291,10 +291,10 @@ pub struct Basic {
     pub bools: Vec<bool>,
 
     #[prost(string, tag = "3")]
-    pub string: String,
+    pub string: ::prost::BytesString,
 
     #[prost(string, optional, tag = "4")]
-    pub optional_string: Option<String>,
+    pub optional_string: Option<::prost::BytesString>,
 
     #[prost(enumeration = "BasicEnumeration", tag = "5")]
     pub enumeration: i32,
@@ -303,13 +303,13 @@ pub struct Basic {
     pub enumeration_map: ::std::collections::HashMap<i32, i32>,
 
     #[prost(hash_map = "string, string", tag = "7")]
-    pub string_map: ::std::collections::HashMap<String, String>,
+    pub string_map: ::std::collections::HashMap<::prost::BytesString, ::prost::BytesString>,
 
     #[prost(btree_map = "int32, enumeration(BasicEnumeration)", tag = "10")]
     pub enumeration_btree_map: ::std::collections::BTreeMap<i32, i32>,
 
     #[prost(btree_map = "string, string", tag = "11")]
-    pub string_btree_map: ::std::collections::BTreeMap<String, String>,
+    pub string_btree_map: ::std::collections::BTreeMap<::prost::BytesString, ::prost::BytesString>,
 
     #[prost(oneof = "BasicOneof", tags = "8, 9")]
     pub oneof: Option<BasicOneof>,
@@ -338,5 +338,5 @@ pub enum BasicOneof {
     #[prost(int32, tag = "8")]
     Int(i32),
     #[prost(string, tag = "9")]
-    String(String),
+    String(::prost::BytesString),
 }

@@ -15,7 +15,7 @@ fn basic() {
         "Basic { \
          int32: 0, \
          bools: [], \
-         string: \"\", \
+         string: BytesString { bytes: b\"\" }, \
          optional_string: None, \
          enumeration: ZERO, \
          enumeration_map: {}, \
@@ -34,7 +34,7 @@ fn basic() {
         "Basic { \
          int32: 0, \
          bools: [], \
-         string: \"\", \
+         string: BytesString { bytes: b\"\" }, \
          optional_string: None, \
          enumeration: 42, \
          enumeration_map: {0: TWO}, \
@@ -67,7 +67,7 @@ pub enum OneofWithEnum {
     #[prost(int32, tag = "8")]
     Int(i32),
     #[prost(string, tag = "9")]
-    String(String),
+    String(::prost::BytesString),
     #[prost(enumeration = "BasicEnumeration", tag = "10")]
     Enumeration(i32),
 }

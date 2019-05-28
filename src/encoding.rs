@@ -689,26 +689,6 @@ macro_rules! length_delimited {
                     .map(|value| encoded_len_varint(value.len() as u64) + value.len())
                     .sum::<usize>()
         }
-
-        #[cfg(test)]
-        mod test {
-            use quickcheck::{quickcheck, TestResult};
-
-            use super::super::test::{check_collection_type, check_type};
-            use super::*;
-
-            quickcheck! {
-                fn check(value: $ty, tag: u32) -> TestResult {
-                    super::test::check_type(value, tag, WireType::LengthDelimited,
-                                            encode, merge, encoded_len)
-                }
-                fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                    super::test::check_collection_type(value, tag, WireType::LengthDelimited,
-                                                       encode_repeated, merge_repeated,
-                                                       encoded_len_repeated)
-                }
-            }
-        }
     };
 }
 
@@ -744,6 +724,26 @@ pub mod string {
     }
 
     length_delimited!(BytesString);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check(value: BytesString, tag: u32) -> TestResult {
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)
+            }
+            fn check_repeated(value: Vec<BytesString>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
 }
 
 pub mod bytes {
@@ -1464,7 +1464,7 @@ mod test {
                    (i32, sfixed32),
                    (i64, sfixed64),
                    (bool, bool),
-                   (String, string)
+                   (BytesString, string)
                ],
                vals: [
                    (f32, float),
@@ -1480,7 +1480,6 @@ mod test {
                    (i32, sfixed32),
                    (i64, sfixed64),
                    (bool, bool),
-                   (String, string),
-                   (Bytes, bytes)
+                   (BytesString, string)
                ]);
 }

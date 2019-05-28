@@ -415,7 +415,7 @@ mod tests {
     fn test_group_oneof() {
         let msg = groups::OneofGroup {
             i1: Some(42),
-            field: Some(groups::oneof_group::Field::S2("foo".to_string())),
+            field: Some(groups::oneof_group::Field::S2("foo".to_string().into())),
         };
         check_message(&msg);
 
@@ -423,7 +423,7 @@ mod tests {
             i1: Some(42),
             field: Some(groups::oneof_group::Field::G(groups::oneof_group::G {
                 i2: None,
-                s1: "foo".to_string(),
+                s1: "foo".to_string().into(),
                 t1: None,
             })),
         };
@@ -433,7 +433,7 @@ mod tests {
             i1: Some(42),
             field: Some(groups::oneof_group::Field::G(groups::oneof_group::G {
                 i2: Some(99),
-                s1: "foo".to_string(),
+                s1: "foo".to_string().into(),
                 t1: Some(groups::Test1 {
                     groupa: Some(groups::test1::GroupA { i2: None }),
                 }),
