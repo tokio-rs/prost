@@ -169,6 +169,9 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) {
             .expect("failed to execute make protobuf");
         assert!(rc.success(), "failed to make protobuf");
 
+        // Workaround for protocolbuffers/protobuf#6210.
+        fs::create_dir(src_dir.join("conformance").join("google-protobuf")).unwrap();
+
         let rc = Command::new("make")
             .arg("-j")
             .arg(&num_jobs)

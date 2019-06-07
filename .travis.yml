@@ -1,5 +1,5 @@
 language: rust
-dist: trusty
+dist: xenial
 
 # Even though this build script doesn't use sudo, we enable it in order to get
 # more memory. Previously on the container infrastructure the OOM killer would
