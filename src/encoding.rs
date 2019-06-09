@@ -1343,6 +1343,15 @@ mod test {
     }
 
     #[test]
+    fn string_merge_failure() {
+        let mut s = String::new();
+        let mut buf = Cursor::new(b"\x80\x80");
+        let r = string::merge(WireType::LengthDelimited, &mut s, &mut buf);
+        r.expect_err("must be an error");
+        assert!(s.is_empty());
+    }
+
+    #[test]
     fn varint() {
         fn check(value: u64, encoded: &[u8]) {
             // Small buffer.
