@@ -3,7 +3,7 @@
 //! Meant to be used only from `Message` implementations.
 
 use std::cmp::min;
-use std::str;
+use std::mem;
 use std::u32;
 use std::usize;
 
@@ -716,44 +716,6 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    // String::as_mut_vec is unsafe because it doesn't check that the bytes
-    // inserted into the resulting vec are valid UTF-8. We check
-    // after fully extending the buffer in order to ensure this is safe.
-    // If an unwind happens before the check is performed and the result
-    // is committed, the string is truncated to the previously valid length.
-    struct StringGuard<'a> {
-        string: &'a mut String,
-        committed_len: usize,
-    }
-
-    impl<'a> Drop for StringGuard<'a> {
-        fn drop(&mut self) {
-            self.string.truncate(self.committed_len);
-        }
-    }
-
-    impl<'a> StringGuard<'a> {
-        fn new(string: &'a mut String) -> Self {
-            let committed_len = string.len();
-            StringGuard {
-                string,
-                committed_len,
-            }
-        }
-
-        unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-            self.string.as_mut_vec()
-        }
-
-        fn commit(mut self) -> Result<(), DecodeError> {
-            let new_bytes = &self.string.as_bytes()[self.committed_len..];
-            str::from_utf8(new_bytes)
-                .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
-            self.committed_len += new_bytes.len();
-            Ok(())
-        }
-    }
-
     pub fn encode<B>(tag: u32, value: &String, buf: &mut B)
     where
         B: BufMut,
@@ -766,11 +728,10 @@ pub mod string {
     where
         B: Buf,
     {
-        let mut guard = StringGuard::new(value);
-        unsafe {
-            super::bytes::merge(wire_type, guard.as_mut_vec(), buf)?;
-        }
-        guard.commit()?;
+        let mut value_bytes = mem::replace(value, String::new()).into_bytes();
+        bytes::merge(wire_type, &mut value_bytes, buf)?;
+        *value = String::from_utf8(value_bytes)
+            .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
         Ok(())
     }
 
