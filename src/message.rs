@@ -84,7 +84,7 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        Self::merge(&mut message, &mut buf.into_buf(), DecodeContext::default()).map(|_| message)
+        Self::merge(&mut message, &mut buf.into_buf()).map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
@@ -101,7 +101,20 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
+    fn merge<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    where
+        B: IntoBuf,
+        Self: Sized,
+    {
+        self.merge_with_context(buf, DecodeContext::default())
+    }
+
+    /// Decodes an instance of the message from a buffer, and merges it into `self`.
+    /// This version takes a `DecodeContext` which contains some state for the
+    /// current decoding. Most users will want to use `merge` without the context.
+    ///
+    /// The entire buffer will be consumed.
+    fn merge_with_context<B>(&mut self, buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
     where
         B: IntoBuf,
         Self: Sized,

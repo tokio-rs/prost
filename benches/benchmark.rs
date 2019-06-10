@@ -54,7 +54,7 @@ where
         b.iter(|| {
             for buf in &payload {
                 message.clear();
-                message.merge(buf, DecodeContext::default()).unwrap();
+                message.merge(buf).unwrap();
                 criterion::black_box(&message);
             }
         })

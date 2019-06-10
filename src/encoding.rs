@@ -184,13 +184,13 @@ where
 /// to a function which is decoding a nested object, then use `enter_recursion`.
 #[derive(Clone, Debug)]
 pub struct DecodeContext {
-    #[cfg(not(feature = "no-recursion-limit"))]
     /// How many times we can recurse in the current decode stack before we hit
     /// the recursion limit.
     ///
     /// The recursion limit is defined by `RECURSION_LIMIT` and cannot be
     /// customized. The recursion limit can be ignored by building the Prost
     /// crate with the `no-recursion-limit` feature (which is set by default).
+    #[cfg(not(feature = "no-recursion-limit"))]
     recurse_count: u32,
 }
 
@@ -211,12 +211,12 @@ impl Default for DecodeContext {
 }
 
 impl DecodeContext {
-    #[cfg(not(feature = "no-recursion-limit"))]
     /// Call this function before recursively decoding.
     ///
     /// There is no `exit` function since this function creates a new `DecodeContext`
     /// to be used at the next level of recursion. Continue to use the old context
     // at the previous level of recursion.
+    #[cfg(not(feature = "no-recursion-limit"))]
     #[inline(always)]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {
@@ -230,12 +230,12 @@ impl DecodeContext {
         DecodeContext {}
     }
 
-    #[cfg(not(feature = "no-recursion-limit"))]
     /// Checks whether the recursion limit has been reached in the stack of
     /// decodes described by the `DecodeContext` at `self.ctx`.
     ///
     /// Returns `Ok<()>` if it is ok to continue recursing.
     /// Returns `Err<DecodeError>` if the recursion limit has been reached.
+    #[cfg(not(feature = "no-recursion-limit"))]
     #[inline(always)]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         if self.recurse_count == 0 {
