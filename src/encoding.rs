@@ -3,7 +3,7 @@
 //! Meant to be used only from `Message` implementations.
 
 use std::cmp::min;
-use std::str;
+use std::mem;
 use std::u32;
 use std::usize;
 
@@ -728,14 +728,10 @@ pub mod string {
     where
         B: Buf,
     {
-        unsafe {
-            // String::as_mut_vec is unsafe because it doesn't check that the bytes
-            // inserted into it the resulting vec are valid UTF-8. We check
-            // explicitly in order to ensure this is safe.
-            super::bytes::merge(wire_type, value.as_mut_vec(), buf)?;
-            str::from_utf8(value.as_bytes())
-                .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
-        }
+        let mut value_bytes = mem::replace(value, String::new()).into_bytes();
+        bytes::merge(wire_type, &mut value_bytes, buf)?;
+        *value = String::from_utf8(value_bytes)
+            .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
         Ok(())
     }
 
@@ -1305,6 +1301,15 @@ mod test {
         } else {
             TestResult::failed()
         }
+    }
+
+    #[test]
+    fn string_merge_failure() {
+        let mut s = String::new();
+        let mut buf = Cursor::new(b"\x80\x80");
+        let r = string::merge(WireType::LengthDelimited, &mut s, &mut buf);
+        r.expect_err("must be an error");
+        assert!(s.is_empty());
     }
 
     #[test]
