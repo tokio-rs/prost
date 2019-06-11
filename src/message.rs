@@ -106,20 +106,8 @@ pub trait Message: Debug + Send + Sync {
         B: IntoBuf,
         Self: Sized,
     {
-        self.merge_with_context(buf, DecodeContext::default())
-    }
-
-    /// Decodes an instance of the message from a buffer, and merges it into `self`.
-    /// This version takes a `DecodeContext` which contains some state for the
-    /// current decoding. Most users will want to use `merge` without the context.
-    ///
-    /// The entire buffer will be consumed.
-    fn merge_with_context<B>(&mut self, buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
-    where
-        B: IntoBuf,
-        Self: Sized,
-    {
         let mut buf = buf.into_buf();
+        let ctx = DecodeContext::default();
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
             self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;

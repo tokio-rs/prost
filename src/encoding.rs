@@ -189,14 +189,14 @@ pub struct DecodeContext {
     ///
     /// The recursion limit is defined by `RECURSION_LIMIT` and cannot be
     /// customized. The recursion limit can be ignored by building the Prost
-    /// crate with the `no-recursion-limit` feature (which is set by default).
+    /// crate with the `no-recursion-limit` feature.
     #[cfg(not(feature = "no-recursion-limit"))]
     recurse_count: u32,
 }
 
 impl Default for DecodeContext {
     #[cfg(not(feature = "no-recursion-limit"))]
-    #[inline(always)]
+    #[inline]
     fn default() -> DecodeContext {
         DecodeContext {
             recurse_count: crate::RECURSION_LIMIT,
@@ -204,7 +204,7 @@ impl Default for DecodeContext {
     }
 
     #[cfg(feature = "no-recursion-limit")]
-    #[inline(always)]
+    #[inline]
     fn default() -> DecodeContext {
         DecodeContext {}
     }
@@ -217,7 +217,7 @@ impl DecodeContext {
     /// to be used at the next level of recursion. Continue to use the old context
     // at the previous level of recursion.
     #[cfg(not(feature = "no-recursion-limit"))]
-    #[inline(always)]
+    #[inline]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {
             recurse_count: self.recurse_count - 1,
@@ -225,7 +225,7 @@ impl DecodeContext {
     }
 
     #[cfg(feature = "no-recursion-limit")]
-    #[inline(always)]
+    #[inline]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {}
     }
@@ -236,17 +236,17 @@ impl DecodeContext {
     /// Returns `Ok<()>` if it is ok to continue recursing.
     /// Returns `Err<DecodeError>` if the recursion limit has been reached.
     #[cfg(not(feature = "no-recursion-limit"))]
-    #[inline(always)]
+    #[inline]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         if self.recurse_count == 0 {
-            Err(DecodeError::new("Recursion limit reached"))
+            Err(DecodeError::new("recursion limit reached"))
         } else {
             Ok(())
         }
     }
 
     #[cfg(feature = "no-recursion-limit")]
-    #[inline(always)]
+    #[inline]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         Ok(())
     }
@@ -1424,7 +1424,12 @@ mod test {
     fn string_merge_failure() {
         let mut s = String::new();
         let mut buf = Cursor::new(b"\x80\x80");
-        let r = string::merge(WireType::LengthDelimited, &mut s, &mut buf);
+        let r = string::merge(
+            WireType::LengthDelimited,
+            &mut s,
+            &mut buf,
+            DecodeContext::default(),
+        );
         r.expect_err("must be an error");
         assert!(s.is_empty());
     }
