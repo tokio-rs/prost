@@ -17,3 +17,14 @@ flate2 = "1.0"
 prost-build = { path = "../prost-build" }
 tar = "0.4"
 tempfile = "3"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[lib]
+# https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+
+[[bench]]
+name = "dataset"
+harness = false
