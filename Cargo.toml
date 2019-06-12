@@ -32,6 +32,10 @@ exclude = [
   "fuzz",
 ]
 
+[lib]
+# https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+
 [features]
 default = ["prost-derive"]
 no-recursion-limit = []
@@ -43,14 +47,13 @@ prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
 [dev-dependencies]
 criterion = "0.2"
 env_logger = { version = "0.6", default-features = false }
-failure = "0.1"
 log = "0.4"
-protobuf = { version = "0", path = "protobuf" }
 quickcheck = "0.8"
+rand = "0.6"
+
+[profile.bench]
+debug = true
 
 [[bench]]
 name = "varint"
-
-[[bench]]
-name = "benchmark"
 harness = false
