@@ -153,12 +153,13 @@ impl Field {
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(wire_type, &mut #ident, buf)
+                #merge_fn(wire_type, &mut #ident, buf, ctx)
             },
             Kind::Optional(..) => quote! {
                 #merge_fn(wire_type,
                           #ident.get_or_insert_with(Default::default),
-                          buf)
+                          buf,
+                          ctx)
             },
         }
     }

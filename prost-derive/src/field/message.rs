@@ -94,13 +94,14 @@ impl Field {
             Label::Optional => quote! {
                 _prost::encoding::message::merge(wire_type,
                                                  #ident.get_or_insert_with(Default::default),
-                                                 buf)
+                                                 buf,
+                                                 ctx)
             },
             Label::Required => quote! {
-                _prost::encoding::message::merge(wire_type, &mut #ident, buf)
+                _prost::encoding::message::merge(wire_type, &mut #ident, buf, ctx)
             },
             Label::Repeated => quote! {
-                _prost::encoding::message::merge_repeated(wire_type, &mut #ident, buf)
+                _prost::encoding::message::merge_repeated(wire_type, &mut #ident, buf, ctx)
             },
         }
     }

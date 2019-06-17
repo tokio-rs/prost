@@ -49,3 +49,9 @@ message NestedGroup {
         }
     }
 }
+
+message NestedGroup2 {
+    optional group OptionalGroup = 1 {
+        optional NestedGroup2 nested_group = 1;
+    }
+}

@@ -342,6 +342,115 @@ mod tests {
     }
 
     #[test]
+    fn test_deep_nesting() {
+        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+            use crate::nesting::A;
+
+            let mut a = Box::new(A::default());
+            for _ in 0..depth {
+                let mut next = Box::new(A::default());
+                next.a = Some(a);
+                a = next;
+            }
+
+            let mut buf = Vec::new();
+            a.encode(&mut buf).unwrap();
+            A::decode(buf).map(|_| ())
+        }
+
+        assert!(build_and_roundtrip(100).is_ok());
+        assert!(build_and_roundtrip(101).is_err());
+    }
+
+    #[test]
+    fn test_deep_nesting_oneof() {
+        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+            use crate::recursive_oneof::{a, A, C};
+
+            let mut a = Box::new(A {
+                kind: Some(a::Kind::C(C {})),
+            });
+            for _ in 0..depth {
+                a = Box::new(A {
+                    kind: Some(a::Kind::A(a)),
+                });
+            }
+
+            let mut buf = Vec::new();
+            a.encode(&mut buf).unwrap();
+            A::decode(buf).map(|_| ())
+        }
+
+        assert!(build_and_roundtrip(99).is_ok());
+        assert!(build_and_roundtrip(100).is_err());
+    }
+
+    #[test]
+    fn test_deep_nesting_group() {
+        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+            use crate::groups::{nested_group2::OptionalGroup, NestedGroup2};
+
+            let mut a = NestedGroup2::default();
+            for _ in 0..depth {
+                a = NestedGroup2 {
+                    optionalgroup: Some(Box::new(OptionalGroup {
+                        nested_group: Some(a),
+                    })),
+                };
+            }
+
+            let mut buf = Vec::new();
+            a.encode(&mut buf).unwrap();
+            NestedGroup2::decode(buf).map(|_| ())
+        }
+
+        assert!(build_and_roundtrip(50).is_ok());
+        assert!(build_and_roundtrip(51).is_err());
+    }
+
+    #[test]
+    fn test_deep_nesting_repeated() {
+        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+            use crate::nesting::C;
+
+            let mut c = C::default();
+            for _ in 0..depth {
+                let mut next = C::default();
+                next.r.push(c);
+                c = next;
+            }
+
+            let mut buf = Vec::new();
+            c.encode(&mut buf).unwrap();
+            C::decode(buf).map(|_| ())
+        }
+
+        assert!(build_and_roundtrip(100).is_ok());
+        assert!(build_and_roundtrip(101).is_err());
+    }
+
+    #[test]
+    fn test_deep_nesting_map() {
+        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+            use crate::nesting::D;
+
+            let mut d = D::default();
+            for _ in 0..depth {
+                let mut next = D::default();
+                next.m.insert("foo".to_owned(), d);
+                d = next;
+            }
+
+            let mut buf = Vec::new();
+            d.encode(&mut buf).unwrap();
+            D::decode(buf).map(|_| ())
+        }
+
+        assert!(build_and_roundtrip(50).is_ok());
+        assert!(build_and_roundtrip(51).is_err());
+    }
+
+    #[test]
     fn test_recursive_oneof() {
         use crate::recursive_oneof::{a, A, B, C};
         let _ = A {

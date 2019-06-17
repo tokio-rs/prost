@@ -162,17 +162,17 @@ impl Field {
                 let default = quote!(#ty::default() as i32);
                 quote! {
                     _prost::encoding::#module::merge_with_default(#km, _prost::encoding::int32::merge,
-                                                                  #default, &mut #ident, buf)
+                                                                  #default, &mut #ident, buf, ctx)
                 }
             }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
                 let vm = quote!(_prost::encoding::#val_mod::merge);
-                quote!(_prost::encoding::#module::merge(#km, #vm, &mut #ident, buf))
+                quote!(_prost::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
             }
             ValueTy::Message => {
                 quote!(_prost::encoding::#module::merge(#km, _prost::encoding::message::merge,
-                                                        &mut #ident, buf))
+                                                        &mut #ident, buf, ctx))
             }
         }
     }

@@ -29,6 +29,7 @@ pub trait Message: Debug + Send + Sync {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
@@ -106,9 +107,10 @@ pub trait Message: Debug + Send + Sync {
         Self: Sized,
     {
         let mut buf = buf.into_buf();
+        let ctx = DecodeContext::default();
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
-            self.merge_field(tag, wire_type, &mut buf)?;
+            self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
         }
         Ok(())
     }
@@ -120,7 +122,12 @@ pub trait Message: Debug + Send + Sync {
         B: IntoBuf,
         Self: Sized,
     {
-        message::merge(WireType::LengthDelimited, self, &mut buf.into_buf())
+        message::merge(
+            WireType::LengthDelimited,
+            self,
+            &mut buf.into_buf(),
+            DecodeContext::default(),
+        )
     }
 
     /// Clears the message, resetting all fields to their default.
@@ -142,11 +149,12 @@ where
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        (**self).merge_field(tag, wire_type, buf)
+        (**self).merge_field(tag, wire_type, buf, ctx)
     }
     fn encoded_len(&self) -> usize {
         (**self).encoded_len()

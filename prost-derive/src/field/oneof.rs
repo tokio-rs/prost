@@ -77,7 +77,7 @@ impl Field {
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let ty = &self.ty;
         quote! {
-            #ty::merge(&mut #ident, tag, wire_type, buf)
+            #ty::merge(&mut #ident, tag, wire_type, buf, ctx)
         }
     }
 
