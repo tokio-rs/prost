@@ -5,6 +5,7 @@
 use std::cmp::min;
 use std::convert::TryFrom;
 use std::mem;
+use std::str;
 use std::u32;
 use std::usize;
 
@@ -819,11 +820,41 @@ pub mod string {
     where
         B: Buf,
     {
-        let mut value_bytes = mem::replace(value, String::new()).into_bytes();
-        bytes::merge(wire_type, &mut value_bytes, buf, ctx)?;
-        *value = String::from_utf8(value_bytes)
-            .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
-        Ok(())
+        // ## Unsafety
+        //
+        // `string::merge` reuses `bytes::merge`, with an additional check of utf-8
+        // well-formedness. If the utf-8 is not well-formed, or if any other error occurs, then the
+        // string is cleared, so as to avoid leaking a string field with invalid data.
+        //
+        // This implementation uses the unsafe `String::as_mut_vec` method instead of the safe
+        // alternative of temporarily swapping an empty `String` into the field, because it results
+        // in up to 10% better performance on the protobuf message decoding benchmarks.
+        //
+        // It's required when using `String::as_mut_vec` that invalid utf-8 data not be leaked into
+        // the backing `String`. To enforce this, even in the event of a panic in `bytes::merge` or
+        // in the buf implementation, a drop guard is used.
+        unsafe {
+            struct DropGuard<'a>(&'a mut Vec<u8>);
+            impl<'a> Drop for DropGuard<'a> {
+                #[inline]
+                fn drop(&mut self) {
+                    self.0.clear();
+                }
+            }
+
+            let drop_guard = DropGuard(value.as_mut_vec());
+            bytes::merge(wire_type, drop_guard.0, buf, ctx)?;
+            match str::from_utf8(drop_guard.0) {
+                Ok(_) => {
+                    // Success; do not clear the bytes.
+                    mem::forget(drop_guard);
+                    Ok(())
+                }
+                Err(_) => Err(DecodeError::new(
+                    "invalid string value: data is not UTF-8 encoded",
+                )),
+            }
+        }
     }
 
     length_delimited!(String);
@@ -861,8 +892,8 @@ pub mod bytes {
         //
         // > Normally, an encoded message would never have more than one instance of a non-repeated
         // > field. However, parsers are expected to handle the case in which they do. For numeric
-        // > types and strings, if the same field appears multiple times, the parser accepts the last
-        // > value it sees.
+        // > types and strings, if the same field appears multiple times, the parser accepts the
+        // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
         value.clear();
@@ -1424,9 +1455,10 @@ mod test {
     }
 
     #[test]
-    fn string_merge_failure() {
+    fn string_merge_invalid_utf8() {
         let mut s = String::new();
-        let mut buf = Cursor::new(b"\x80\x80");
+        let mut buf = Cursor::new(b"\x02\x80\x80");
+
         let r = string::merge(
             WireType::LengthDelimited,
             &mut s,
