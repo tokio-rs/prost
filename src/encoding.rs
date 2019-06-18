@@ -851,43 +851,14 @@ pub mod bytes {
     where
         B: Buf,
     {
-        // Append `s` to `v` using a `memcpy`.
-        // Safety: `v` must have enough capacity to accommodate `s`.
-        unsafe fn copy_bytes_to_vec(v: &mut Vec<u8>, s: &[u8]) {
-            let v_len = v.len();
-            let s_len = s.len();
-            let dst = v.as_mut_slice().get_unchecked_mut(v_len) as *mut u8;
-            ::std::ptr::copy_nonoverlapping::<u8>(&s[0] as *const u8, dst, s_len);
-            v.set_len(v_len + s_len);
-        }
-
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
             return Err(DecodeError::new("buffer underflow"));
         }
-
-        let mut remaining = len as usize;
-        value.reserve(remaining);
-
-        while remaining > 0 {
-            let len = {
-                let bytes = buf.bytes();
-                debug_assert!(!bytes.is_empty(), "Buf::bytes returned empty slice");
-                let len = min(remaining, bytes.len());
-                let bytes = &bytes[..len];
-                unsafe {
-                    debug_assert!(
-                        value.capacity() >= bytes.len(),
-                        "Should be ensured by the `reserve` statement above",
-                    );
-                    copy_bytes_to_vec(value, bytes);
-                }
-                len
-            };
-            remaining -= len;
-            buf.advance(len);
-        }
+        let len = len as usize;
+        value.reserve(len);
+        value.put(buf.take(len));
         Ok(())
     }
 
