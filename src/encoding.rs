@@ -64,12 +64,12 @@ where
         return Err(DecodeError::new("invalid varint"));
     }
 
-    let byte = bytes[0];
+    let byte = unsafe { *bytes.get_unchecked(0) };
     if byte < 0x80 {
         buf.advance(1);
         Ok(u64::from(byte))
     } else if len > 10 || bytes[len - 1] < 0x80 {
-        let (value, advance) = decode_varint_slice(bytes)?;
+        let (value, advance) = unsafe { decode_varint_slice(bytes) }?;
         buf.advance(advance);
         Ok(value)
     } else {
@@ -82,32 +82,37 @@ where
 ///
 /// Based loosely on [`ReadVarint64FromArray`][1].
 ///
+/// ## Safety
+///
+/// The caller must ensure that `bytes` is non-empty and either `bytes.len() >= 10` or the last
+/// element in bytes is < `0x80`.
+///
 /// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.cc#L365-L406
 #[inline]
-fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
+unsafe fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     // Fully unrolled varint decoding loop. Splitting into 32-bit pieces gives better performance.
 
     let mut b: u8;
     let mut part0: u32;
-    b = bytes[0];
+    b = *bytes.get_unchecked(0);
     part0 = u32::from(b);
     if b < 0x80 {
         return Ok((u64::from(part0), 1));
     };
     part0 -= 0x80;
-    b = bytes[1];
+    b = *bytes.get_unchecked(1);
     part0 += u32::from(b) << 7;
     if b < 0x80 {
         return Ok((u64::from(part0), 2));
     };
     part0 -= 0x80 << 7;
-    b = bytes[2];
+    b = *bytes.get_unchecked(2);
     part0 += u32::from(b) << 14;
     if b < 0x80 {
         return Ok((u64::from(part0), 3));
     };
     part0 -= 0x80 << 14;
-    b = bytes[3];
+    b = *bytes.get_unchecked(3);
     part0 += u32::from(b) << 21;
     if b < 0x80 {
         return Ok((u64::from(part0), 4));
@@ -116,25 +121,25 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     let value = u64::from(part0);
 
     let mut part1: u32;
-    b = bytes[4];
+    b = *bytes.get_unchecked(4);
     part1 = u32::from(b);
     if b < 0x80 {
         return Ok((value + (u64::from(part1) << 28), 5));
     };
     part1 -= 0x80;
-    b = bytes[5];
+    b = *bytes.get_unchecked(5);
     part1 += u32::from(b) << 7;
     if b < 0x80 {
         return Ok((value + (u64::from(part1) << 28), 6));
     };
     part1 -= 0x80 << 7;
-    b = bytes[6];
+    b = *bytes.get_unchecked(6);
     part1 += u32::from(b) << 14;
     if b < 0x80 {
         return Ok((value + (u64::from(part1) << 28), 7));
     };
     part1 -= 0x80 << 14;
-    b = bytes[7];
+    b = *bytes.get_unchecked(7);
     part1 += u32::from(b) << 21;
     if b < 0x80 {
         return Ok((value + (u64::from(part1) << 28), 8));
@@ -143,13 +148,13 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     let value = value + ((u64::from(part1)) << 28);
 
     let mut part2: u32;
-    b = bytes[8];
+    b = *bytes.get_unchecked(8);
     part2 = u32::from(b);
     if b < 0x80 {
         return Ok((value + (u64::from(part2) << 56), 9));
     };
     part2 -= 0x80;
-    b = bytes[9];
+    b = *bytes.get_unchecked(9);
     part2 += u32::from(b) << 7;
     if b < 0x80 {
         return Ok((value + (u64::from(part2) << 56), 10));
@@ -276,9 +281,9 @@ pub const MIN_TAG: u32 = 1;
 pub const MAX_TAG: u32 = (1 << 29) - 1;
 
 impl WireType {
-    // TODO: impl TryFrom<u8> when stable.
-    #[inline]
-    pub fn try_from(val: u8) -> Result<WireType, DecodeError> {
+    // TODO: impl TryFrom<u64> when stable.
+    #[inline(always)]
+    pub fn try_from(val: u64) -> Result<WireType, DecodeError> {
         match val {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
@@ -308,7 +313,7 @@ where
 
 /// Decodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
-#[inline]
+#[inline(always)]
 pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError>
 where
     B: Buf,
@@ -317,7 +322,7 @@ where
     if key > u64::from(u32::MAX) {
         return Err(DecodeError::new(format!("invalid key value: {}", key)));
     }
-    let wire_type = WireType::try_from(key as u8 & 0x07)?;
+    let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key as u32 >> 3;
 
     if tag < MIN_TAG {
@@ -422,7 +427,7 @@ macro_rules! encode_repeated {
     };
 }
 
-/// Helper macro which emits a `merge_repeated_numeric` function for the numeric type.
+/// Helper macro which emits a `merge_repeated` function for the numeric type.
 macro_rules! merge_repeated_numeric {
     ($ty:ty,
      $wire_type:expr,
@@ -851,20 +856,9 @@ pub mod bytes {
         if len > buf.remaining() as u64 {
             return Err(DecodeError::new("buffer underflow"));
         }
-
-        let mut remaining = len as usize;
-        while remaining > 0 {
-            let len = {
-                let bytes = buf.bytes();
-                debug_assert!(!bytes.is_empty(), "Buf::bytes returned empty slice");
-                let len = min(remaining, bytes.len());
-                let bytes = &bytes[..len];
-                value.extend_from_slice(bytes);
-                len
-            };
-            remaining -= len;
-            buf.advance(len);
-        }
+        let len = len as usize;
+        value.reserve(len);
+        value.put(buf.take(len));
         Ok(())
     }
 
