@@ -193,6 +193,30 @@ pub struct ScalarTypes {
 fn check_tags_inferred() {
     check_message(&TagsInferred::default());
     check_serialize_equivalent(&TagsInferred::default(), &TagsQualified::default());
+
+    let tags_inferred = TagsInferred {
+        one: true,
+        two: Some(42),
+        three: vec![0.0, 1.0, 1.0],
+        skip_to_nine: "nine".to_owned(),
+        ten: 0,
+        eleven: ::std::collections::HashMap::new(),
+        back_to_five: vec![1, 0, 1],
+        six: Basic::default(),
+    };
+    check_message(&tags_inferred);
+
+    let tags_qualified = TagsQualified {
+        one: true,
+        two: Some(42),
+        three: vec![0.0, 1.0, 1.0],
+        five: vec![1, 0, 1],
+        six: Basic::default(),
+        nine: "nine".to_owned(),
+        ten: 0,
+        eleven: ::std::collections::HashMap::new(),
+    };
+    check_serialize_equivalent(&tags_inferred, &tags_qualified);
 }
 
 #[derive(Clone, PartialEq, Message)]

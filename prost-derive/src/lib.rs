@@ -52,7 +52,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         } => Vec::new(),
     };
 
-    let mut next_tag: u32 = 0;
+    let mut next_tag: u32 = 1;
     let mut fields = fields
         .into_iter()
         .enumerate()
