@@ -488,6 +488,10 @@ impl Config {
     ///     prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"],
     ///                                &["src"]).unwrap();
     /// }
+    ///
+    /// # Panics
+    ///
+    /// Panics if a proto file lacks a package declaration.
     /// ```
     pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()>
     where
