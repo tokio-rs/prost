@@ -122,7 +122,7 @@ the Rust field:
 | --- | --- | --- |
 | `proto2` | `optional` | `Option<T>` |
 | `proto2` | `required` | `T` |
-| `proto3` | default | `T` |
+| `proto3` | default | `Option<T>` |
 | `proto2`/`proto3` | repeated | `Vec<T>` |
 
 #### Map Fields
