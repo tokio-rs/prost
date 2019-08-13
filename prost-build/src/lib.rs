@@ -225,7 +225,7 @@ impl Config {
     /// // Match all map fields in a package.
     /// config.btree_map(&[".my_messages"]);
     ///
-    /// // Match all map fields.
+    /// // Match all map fields. Expecially useful in `no_std` contexts.
     /// config.btree_map(&["."]);
     ///
     /// // Match all map fields in a nested message.

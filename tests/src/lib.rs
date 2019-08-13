@@ -3,13 +3,18 @@
     clippy::module_inception,
     clippy::unreadable_literal
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
 extern crate cfg_if;
 
+extern crate alloc;
+
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
+        extern crate anyhow;
         extern crate bytes;
+        extern crate core;
         extern crate prost;
         extern crate prost_types;
         extern crate protobuf;
@@ -82,8 +87,10 @@ pub mod groups {
     include!(concat!(env!("OUT_DIR"), "/groups.rs"));
 }
 
-use std::error::Error;
+use alloc::format;
+use alloc::vec::Vec;
 
+use anyhow::anyhow;
 use bytes::Buf;
 
 use prost::Message;
@@ -95,7 +102,7 @@ pub enum RoundtripResult {
     /// or it could indicate that the input was bogus.
     DecodeError(prost::DecodeError),
     /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
-    Error(Box<dyn Error + Send + Sync>),
+    Error(anyhow::Error),
 }
 
 impl RoundtripResult {
@@ -143,19 +150,16 @@ where
         return RoundtripResult::Error(error.into());
     }
     if encoded_len != buf1.len() {
-        return RoundtripResult::Error(
-            format!(
-                "expected encoded len ({}) did not match actual encoded len ({})",
-                encoded_len,
-                buf1.len()
-            )
-            .into(),
-        );
+        return RoundtripResult::Error(anyhow!(
+            "expected encoded len ({}) did not match actual encoded len ({})",
+            encoded_len,
+            buf1.len()
+        ));
     }
 
     let roundtrip = match M::decode(&*buf1) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(error.into()),
+        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
     };
 
     let mut buf2 = Vec::new();
@@ -171,7 +175,7 @@ where
     */
 
     if buf1 != buf2 {
-        return RoundtripResult::Error("roundtripped encoded buffers do not match".into());
+        return RoundtripResult::Error(anyhow!("roundtripped encoded buffers do not match"));
     }
 
     RoundtripResult::Ok(buf1)
@@ -192,7 +196,7 @@ where
     let roundtrip = M::decode(&mut buf).unwrap();
 
     if buf.has_remaining() {
-        panic!(format!("expected buffer to be empty: {}", buf.remaining()));
+        panic!("expected buffer to be empty: {}", buf.remaining());
     }
 
     assert_eq!(msg, &roundtrip);
@@ -214,9 +218,14 @@ where
 #[cfg(test)]
 mod tests {
 
-    use std::collections::{BTreeMap, BTreeSet};
+    use alloc::borrow::ToOwned;
+    use alloc::boxed::Box;
+    use alloc::collections::{BTreeMap, BTreeSet};
+    use alloc::string::ToString;
+    use alloc::vec;
 
     use super::*;
+
     use protobuf::test_messages::proto3::TestAllTypesProto3;
 
     #[test]

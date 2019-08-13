@@ -1,3 +1,5 @@
+use alloc::string::ToString;
+
 mod deprecated_field {
     // #![deny(unused_results)]
     include!(concat!(env!("OUT_DIR"), "/deprecated_field.rs"));

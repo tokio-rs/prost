@@ -9,10 +9,12 @@
 //!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
-use std::convert::TryFrom;
-use std::i32;
-use std::i64;
-use std::time;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::convert::TryFrom;
+use core::i32;
+use core::i64;
+use core::time;
 
 include!("protobuf.rs");
 pub mod compiler {
@@ -98,6 +100,7 @@ impl Timestamp {
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+    #[cfg(feature = "std")]
     fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
@@ -118,9 +121,10 @@ impl Timestamp {
 }
 
 /// Converts a `std::time::SystemTime` to a `Timestamp`.
-impl From<time::SystemTime> for Timestamp {
-    fn from(time: time::SystemTime) -> Timestamp {
-        let duration = Duration::from(time.duration_since(time::UNIX_EPOCH).unwrap());
+#[cfg(feature = "std")]
+impl From<std::time::SystemTime> for Timestamp {
+    fn from(time: std::time::SystemTime) -> Timestamp {
+        let duration = Duration::from(time.duration_since(std::time::UNIX_EPOCH).unwrap());
         Timestamp {
             seconds: duration.seconds,
             nanos: duration.nanos,
@@ -128,15 +132,16 @@ impl From<time::SystemTime> for Timestamp {
     }
 }
 
-impl TryFrom<Timestamp> for time::SystemTime {
+#[cfg(feature = "std")]
+impl TryFrom<Timestamp> for std::time::SystemTime {
     type Error = time::Duration;
 
     /// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch,
     /// a duration containing the difference.
-    fn try_from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
+    fn try_from(mut timestamp: Timestamp) -> Result<std::time::SystemTime, time::Duration> {
         timestamp.normalize();
         if timestamp.seconds >= 0 {
-            Ok(time::UNIX_EPOCH
+            Ok(std::time::UNIX_EPOCH
                 + time::Duration::new(timestamp.seconds as u64, timestamp.nanos as u32))
         } else {
             let mut duration = Duration {
