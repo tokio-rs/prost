@@ -11,6 +11,9 @@ use crate::encoding::*;
 use crate::DecodeError;
 use crate::Message;
 
+use alloc::string::String;
+use alloc::vec::Vec;
+
 /// `google.protobuf.BoolValue`
 impl Message for bool {
     fn encode_raw<B>(&self, buf: &mut B)

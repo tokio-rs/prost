@@ -1,3 +1,5 @@
+extern crate alloc;
+
 pub mod benchmarks {
     include!(concat!(env!("OUT_DIR"), "/benchmarks.rs"));
 

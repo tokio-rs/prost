@@ -11,7 +11,7 @@ description = "A Protocol Buffers implementation for the Rust Language."
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
+bytes = { version = "0.5", default-features = false }
 heck = "0.3"
 itertools = "0.8"
 log = "0.4"

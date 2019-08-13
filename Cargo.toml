@@ -25,6 +25,7 @@ members = [
   "protobuf",
   "tests",
   "tests-2015",
+  "tests-alloc",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,
@@ -33,11 +34,15 @@ exclude = [
 ]
 
 [features]
-default = ["prost-derive"]
+default = ["prost-derive", "std"]
 no-recursion-limit = []
+std = []
+   # When std is disabled, we attempt to provide no_std support in prost
+   # Config::use_alloc_collections() should be set when using prost_build in your build.rs
+   # so that generated files will not have std:: either, and will use alloc crate instead
 
 [dependencies]
-bytes = "0.4.7"
+bytes = { version = "0.5", default-features = false }
 prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
 
 [dev-dependencies]
@@ -54,3 +59,6 @@ name = "varint"
 [[bench]]
 name = "benchmark"
 harness = false
+
+[patch.crates-io]
+bytes = { git = "https://github.com/tokio-rs/bytes", rev = "c17e40115f5bb2a2db71ed90dceae6ec643dc024" }

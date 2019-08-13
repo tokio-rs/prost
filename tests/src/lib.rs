@@ -76,7 +76,7 @@ pub mod groups {
 
 use std::error::Error;
 
-use bytes::{Buf, IntoBuf};
+use bytes::{Buf};
 
 use prost::Message;
 

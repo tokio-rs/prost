@@ -17,6 +17,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{match_ident, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
+use crate::CollectionsLib;
 use crate::Config;
 
 #[derive(PartialEq)]
@@ -366,12 +367,14 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated {
-            self.buf.push_str("::std::vec::Vec<");
+            self.buf.push_str(self.config.collections_lib.to_str());
+            self.buf.push_str("::vec::Vec<");
         } else if optional {
-            self.buf.push_str("::std::option::Option<");
+            self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf.push_str("::std::boxed::Box<");
+            self.buf.push_str(self.config.collections_lib.to_str());
+            self.buf.push_str("::boxed::Box<");
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -403,7 +406,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
 
-        let btree_map = self
+        let btree_map = (self.config.collections_lib != CollectionsLib::Std) || self
             .config
             .btree_map
             .iter()
@@ -426,8 +429,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::collections::{}<{}, {}>,\n",
+            "pub {}: {}::collections::{}<{}, {}>,\n",
             to_snake(field.name()),
+            self.config.collections_lib.to_str(),
             rust_ty,
             key_ty,
             value_ty
@@ -459,7 +463,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::option::Option<{}>,\n",
+            "pub {}: ::core::option::Option<{}>,\n",
             to_snake(oneof.name()),
             name
         ));
@@ -713,8 +717,8 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("std::string::String"),
-            Type::Bytes => String::from("std::vec::Vec<u8>"),
+            Type::String => format!("{}::string::String", self.config.collections_lib.to_str()),
+            Type::Bytes => format!("{}::vec::Vec<u8>", self.config.collections_lib.to_str()),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

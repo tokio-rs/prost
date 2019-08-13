@@ -1,5 +1,12 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.5.0")]
 
+#![no_std]
+
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
+
 mod error;
 mod message;
 mod types;
@@ -10,7 +17,7 @@ pub mod encoding;
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
 
-use bytes::{BufMut, IntoBuf};
+use bytes::{Buf, BufMut};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
 
@@ -58,12 +65,11 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///    input is required to decode the full delimiter.
 ///  * If the supplied buffer contains more than 10 bytes, then the buffer contains an invalid
 ///    delimiter, and typically the buffer should be considered corrupt.
-pub fn decode_length_delimiter<B>(buf: B) -> Result<usize, DecodeError>
+pub fn decode_length_delimiter<B>(buf: &mut B) -> Result<usize, DecodeError>
 where
-    B: IntoBuf,
+    B: Buf,
 {
-    let mut buf = buf.into_buf();
-    let length = decode_varint(&mut buf)?;
+    let length = decode_varint(buf)?;
     if length > usize::max_value() as u64 {
         return Err(DecodeError::new(
             "length delimiter exceeds maximum usize value",

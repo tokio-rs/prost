@@ -165,11 +165,32 @@ pub trait ServiceGenerator {
     fn finalize(&mut self, _buf: &mut String) {}
 }
 
+/// Configuration enum for whether to use `std` prefixes or `alloc` prefixes in generated code
+///
+/// This option also forces Btree everywhere, overriding the BtreeMap options,
+/// since HashMap is not in alloc::collections, only std (it requires randomness)
+/// 
+#[derive(PartialEq)]
+pub enum CollectionsLib {
+    Std,
+    Alloc,
+}
+
+impl CollectionsLib {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            CollectionsLib::Std => { "::std" },
+            CollectionsLib::Alloc => { "::alloc" },
+        }
+    }
+}
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
+    collections_lib: CollectionsLib,
     btree_map: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
@@ -460,6 +481,15 @@ impl Config {
         self
     }
 
+    /// Configure the code generator to use the `::alloc` namespace rather than `::std`, and Btree everywhere
+    /// rather than `std`.
+    ///
+    /// This allows generated code to be used in a `#![no_std]` crate
+    pub fn use_alloc_collections_lib(&mut self) -> &mut Self {
+        self.collections_lib = CollectionsLib::Alloc;
+        self
+    }
+
     /// Configures the output directory where generated Rust files will be written.
     ///
     /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
@@ -538,7 +568,7 @@ impl Config {
 
         let mut buf = Vec::new();
         fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf)?;
+        let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
@@ -581,6 +611,7 @@ impl default::Default for Config {
     fn default() -> Config {
         Config {
             service_generator: None,
+            collections_lib: CollectionsLib::Std,
             btree_map: Vec::new(),
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),

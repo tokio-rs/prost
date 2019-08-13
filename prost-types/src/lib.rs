@@ -9,8 +9,15 @@
 //!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
-use std::i32;
-use std::i64;
+#![no_std]
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
+use core::i32;
+use core::i64;
+
+#[cfg(feature = "std")]
 use std::time;
 
 include!("protobuf.rs");
@@ -51,6 +58,7 @@ impl Duration {
 }
 
 /// Converts a `std::time::Duration` to a `Duration`.
+#[cfg(feature = "std")]
 impl From<time::Duration> for Duration {
     fn from(duration: time::Duration) -> Duration {
         let seconds = duration.as_secs();
@@ -74,6 +82,7 @@ impl From<time::Duration> for Duration {
 /// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
 /// `std::time::Duration`.
 // TODO: convert this to TryFrom when it's stable.
+#[cfg(feature = "std")]
 impl From<Duration> for Result<time::Duration, time::Duration> {
     fn from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
         duration.normalize();
@@ -116,6 +125,7 @@ impl Timestamp {
 }
 
 /// Converts a `std::time::SystemTime` to a `Timestamp`.
+#[cfg(feature = "std")]
 impl From<time::SystemTime> for Timestamp {
     fn from(time: time::SystemTime) -> Timestamp {
         let duration = Duration::from(time.duration_since(time::UNIX_EPOCH).unwrap());
@@ -129,6 +139,7 @@ impl From<time::SystemTime> for Timestamp {
 /// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch, a
 /// duration containing the difference.
 // TODO: convert this to TryFrom when it's stable.
+#[cfg(feature = "std")]
 impl From<Timestamp> for Result<time::SystemTime, time::Duration> {
     fn from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
         timestamp.normalize();

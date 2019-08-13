@@ -2,10 +2,14 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-use std::cmp::min;
-use std::mem;
-use std::u32;
-use std::usize;
+use core::cmp::min;
+use core::mem;
+use core::u32;
+use core::usize;
+
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use ::bytes::{Buf, BufMut};
 
@@ -1040,10 +1044,8 @@ pub mod group {
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
     ($map_ty:ident) => {
-        use std::collections::$map_ty;
-        use std::hash::Hash;
-
         use crate::encoding::*;
+        use core::hash::Hash;
 
         /// Generic protobuf map encode function.
         pub fn encode<K, V, B, KE, KL, VE, VL>(
@@ -1225,11 +1227,17 @@ macro_rules! map {
     };
 }
 
+#[cfg(feature = "std")]
 pub mod hash_map {
+    use std::collections::HashMap;
     map!(HashMap);
 }
 
 pub mod btree_map {
+    #[cfg(feature = "std")]
+    use std::collections::BTreeMap;
+    #[cfg(not(feature = "std"))]
+    use alloc::collections::BTreeMap;
     map!(BTreeMap);
 }
 
@@ -1240,7 +1248,7 @@ mod test {
     use std::io::Cursor;
     use std::u64;
 
-    use ::bytes::{Bytes, BytesMut, IntoBuf};
+    use ::bytes::{Bytes, BytesMut};
     use quickcheck::TestResult;
 
     use crate::encoding::*;
@@ -1266,7 +1274,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, value.borrow(), &mut buf);
 
-        let mut buf = buf.freeze().into_buf();
+        let mut buf = buf.freeze().to_bytes();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!(
