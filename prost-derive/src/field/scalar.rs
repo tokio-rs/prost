@@ -4,8 +4,7 @@ use failure::{bail, format_err, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
-    self, parse_str, FloatSuffix, Ident, IntSuffix, Lit, LitByteStr, Meta, MetaList, MetaNameValue,
-    NestedMeta, Path,
+    self, parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
 };
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
@@ -363,35 +362,35 @@ pub enum Ty {
 impl Ty {
     pub fn from_attr(attr: &Meta) -> Result<Option<Ty>, Error> {
         let ty = match *attr {
-            Meta::Word(ref name) if name == "float" => Ty::Float,
-            Meta::Word(ref name) if name == "double" => Ty::Double,
-            Meta::Word(ref name) if name == "int32" => Ty::Int32,
-            Meta::Word(ref name) if name == "int64" => Ty::Int64,
-            Meta::Word(ref name) if name == "uint32" => Ty::Uint32,
-            Meta::Word(ref name) if name == "uint64" => Ty::Uint64,
-            Meta::Word(ref name) if name == "sint32" => Ty::Sint32,
-            Meta::Word(ref name) if name == "sint64" => Ty::Sint64,
-            Meta::Word(ref name) if name == "fixed32" => Ty::Fixed32,
-            Meta::Word(ref name) if name == "fixed64" => Ty::Fixed64,
-            Meta::Word(ref name) if name == "sfixed32" => Ty::Sfixed32,
-            Meta::Word(ref name) if name == "sfixed64" => Ty::Sfixed64,
-            Meta::Word(ref name) if name == "bool" => Ty::Bool,
-            Meta::Word(ref name) if name == "string" => Ty::String,
-            Meta::Word(ref name) if name == "bytes" => Ty::Bytes,
+            Meta::Path(ref name) if name.is_ident("float") => Ty::Float,
+            Meta::Path(ref name) if name.is_ident("double") => Ty::Double,
+            Meta::Path(ref name) if name.is_ident("int32") => Ty::Int32,
+            Meta::Path(ref name) if name.is_ident("int64") => Ty::Int64,
+            Meta::Path(ref name) if name.is_ident("uint32") => Ty::Uint32,
+            Meta::Path(ref name) if name.is_ident("uint64") => Ty::Uint64,
+            Meta::Path(ref name) if name.is_ident("sint32") => Ty::Sint32,
+            Meta::Path(ref name) if name.is_ident("sint64") => Ty::Sint64,
+            Meta::Path(ref name) if name.is_ident("fixed32") => Ty::Fixed32,
+            Meta::Path(ref name) if name.is_ident("fixed64") => Ty::Fixed64,
+            Meta::Path(ref name) if name.is_ident("sfixed32") => Ty::Sfixed32,
+            Meta::Path(ref name) if name.is_ident("sfixed64") => Ty::Sfixed64,
+            Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
+            Meta::Path(ref name) if name.is_ident("string") => Ty::String,
+            Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes,
             Meta::NameValue(MetaNameValue {
-                ref ident,
+                ref path,
                 lit: Lit::Str(ref l),
                 ..
-            }) if ident == "enumeration" => Ty::Enumeration(parse_str::<Path>(&l.value())?),
+            }) if path.is_ident("enumeration") => Ty::Enumeration(parse_str::<Path>(&l.value())?),
             Meta::List(MetaList {
-                ref ident,
+                ref path,
                 ref nested,
                 ..
-            }) if ident == "enumeration" => {
+            }) if path.is_ident("enumeration") => {
                 // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
                 if nested.len() == 1 {
-                    if let NestedMeta::Meta(Meta::Word(ref ident)) = nested[0] {
-                        Ty::Enumeration(Path::from(ident.clone()))
+                    if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
+                        Ty::Enumeration(path.clone())
                     } else {
                         bail!("invalid enumeration attribute: item must be an identifier");
                     }
@@ -552,7 +551,7 @@ pub enum DefaultValue {
 
 impl DefaultValue {
     pub fn from_attr(attr: &Meta) -> Result<Option<Lit>, Error> {
-        if attr.name() != "default" {
+        if !attr.path().is_ident("default") {
             return Ok(None);
         } else if let Meta::NameValue(ref name_value) = *attr {
             Ok(Some(name_value.lit.clone()))
@@ -569,46 +568,32 @@ impl DefaultValue {
         let is_u64 = *ty == Ty::Uint64 || *ty == Ty::Fixed64;
 
         let default = match lit {
-            Lit::Int(ref lit)
-                if is_i32
-                    && (lit.suffix() == IntSuffix::I32 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::I32(lit.value() as _)
+            Lit::Int(ref lit) if is_i32 && (lit.suffix() == "i32" || lit.suffix() == "") => {
+                DefaultValue::I32(lit.base10_parse::<i32>()?)
             }
-            Lit::Int(ref lit)
-                if is_i64
-                    && (lit.suffix() == IntSuffix::I64 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::I64(lit.value() as _)
+            Lit::Int(ref lit) if is_i64 && (lit.suffix() == "i64" || lit.suffix() == "") => {
+                DefaultValue::I64(lit.base10_parse::<i64>()?)
             }
-            Lit::Int(ref lit)
-                if is_u32
-                    && (lit.suffix() == IntSuffix::U32 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::U32(lit.value() as _)
+            Lit::Int(ref lit) if is_u32 && (lit.suffix() == "u32" || lit.suffix() == "") => {
+                DefaultValue::U32(lit.base10_parse::<u32>()?)
             }
-            Lit::Int(ref lit)
-                if is_u64
-                    && (lit.suffix() == IntSuffix::U64 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::U64(lit.value())
+            Lit::Int(ref lit) if is_u64 && (lit.suffix() == "u64" || lit.suffix() == "") => {
+                DefaultValue::U64(lit.base10_parse::<u64>()?)
             }
 
             Lit::Float(ref lit)
-                if *ty == Ty::Float
-                    && (lit.suffix() == FloatSuffix::F32 || lit.suffix() == FloatSuffix::None) =>
+                if *ty == Ty::Float && (lit.suffix() == "f32" || lit.suffix() == "") =>
             {
-                DefaultValue::F32(lit.value() as _)
+                DefaultValue::F32(lit.base10_parse::<f32>()?)
             }
-            Lit::Int(ref lit) if *ty == Ty::Float => DefaultValue::F32(lit.value() as _),
+            Lit::Int(ref lit) if *ty == Ty::Float => DefaultValue::F32(lit.base10_parse::<f32>()?),
 
             Lit::Float(ref lit)
-                if *ty == Ty::Double
-                    && (lit.suffix() == FloatSuffix::F64 || lit.suffix() == FloatSuffix::None) =>
+                if *ty == Ty::Double && (lit.suffix() == "f64" || lit.suffix() == "") =>
             {
-                DefaultValue::F64(lit.value())
+                DefaultValue::F64(lit.base10_parse()?)
             }
-            Lit::Int(ref lit) if *ty == Ty::Double => DefaultValue::F64(lit.value() as _),
+            Lit::Int(ref lit) if *ty == Ty::Double => DefaultValue::F64(lit.base10_parse::<f64>()?),
 
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
             Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value().clone()),
@@ -666,47 +651,49 @@ impl DefaultValue {
                     if let Ok(lit) = syn::parse_str::<Lit>(&value[1..]) {
                         match lit {
                             Lit::Int(ref lit)
-                                if is_i32
-                                    && (lit.suffix() == IntSuffix::I32
-                                        || lit.suffix() == IntSuffix::None) =>
+                                if is_i32 && (lit.suffix() == "i32" || lit.suffix() == "") =>
                             {
-                                return Ok(DefaultValue::I32((!lit.value() + 1) as i32));
+                                return Ok(DefaultValue::I32(
+                                    format!("-{}", lit.base10_digits()).parse::<i32>()?,
+                                ));
                             }
 
                             Lit::Int(ref lit)
-                                if is_i64
-                                    && (lit.suffix() == IntSuffix::I64
-                                        || lit.suffix() == IntSuffix::None) =>
+                                if is_i64 && (lit.suffix() == "i64" || lit.suffix() == "") =>
                             {
-                                return Ok(DefaultValue::I64((!lit.value() + 1) as i64));
+                                return Ok(DefaultValue::I64(
+                                    format!("-{}", lit.base10_digits()).parse::<i64>()?,
+                                ));
                             }
 
                             Lit::Float(ref lit)
                                 if *ty == Ty::Float
-                                    && (lit.suffix() == FloatSuffix::F32
-                                        || lit.suffix() == FloatSuffix::None) =>
+                                    && (lit.suffix() == "f32" || lit.suffix() == "") =>
                             {
-                                return Ok(DefaultValue::F32(-lit.value() as f32));
+                                return Ok(DefaultValue::F32(
+                                    format!("-{}", lit.base10_digits()).parse::<f32>()?,
+                                ));
                             }
 
                             Lit::Float(ref lit)
                                 if *ty == Ty::Double
-                                    && (lit.suffix() == FloatSuffix::F64
-                                        || lit.suffix() == FloatSuffix::None) =>
+                                    && (lit.suffix() == "f64" || lit.suffix() == "") =>
                             {
-                                return Ok(DefaultValue::F64(-lit.value()));
+                                return Ok(DefaultValue::F64(
+                                    format!("-{}", lit.base10_digits()).parse::<f64>()?,
+                                ));
                             }
 
-                            Lit::Int(ref lit)
-                                if *ty == Ty::Float && lit.suffix() == IntSuffix::None =>
-                            {
-                                return Ok(DefaultValue::F32(-(lit.value() as f32)));
+                            Lit::Int(ref lit) if *ty == Ty::Float && lit.suffix() == "" => {
+                                return Ok(DefaultValue::F32(
+                                    format!("-{}", lit.base10_digits()).parse::<f32>()?,
+                                ));
                             }
 
-                            Lit::Int(ref lit)
-                                if *ty == Ty::Double && lit.suffix() == IntSuffix::None =>
-                            {
-                                return Ok(DefaultValue::F64(-(lit.value() as f64)));
+                            Lit::Int(ref lit) if *ty == Ty::Double && lit.suffix() == "" => {
+                                return Ok(DefaultValue::F64(
+                                    format!("-{}", lit.base10_digits()).parse::<f64>()?,
+                                ));
                             }
 
                             _ => (),

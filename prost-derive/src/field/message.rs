@@ -1,9 +1,9 @@
 use failure::{bail, Error};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::Meta;
 
-use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
+use crate::field::{path_attr, set_bool, set_option, tag_attr, Label};
 
 #[derive(Clone)]
 pub struct Field {
@@ -21,9 +21,9 @@ impl Field {
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
-            if word_attr("message", attr) {
+            if path_attr("message", attr) {
                 set_bool(&mut message, "duplicate message attribute")?;
-            } else if word_attr("boxed", attr) {
+            } else if path_attr("boxed", attr) {
                 set_bool(&mut boxed, "duplicate boxed attribute")?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
@@ -61,7 +61,10 @@ impl Field {
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs, None)? {
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
-                bail!("invalid atribute for oneof field: {}", attr.name());
+                bail!(
+                    "invalid atribute for oneof field: {}",
+                    attr.path().into_token_stream()
+                );
             }
             field.label = Label::Required;
             Ok(Some(field))
