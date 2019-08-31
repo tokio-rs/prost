@@ -307,7 +307,7 @@ impl Field {
                 Kind::Repeated | Kind::Packed => {
                     quote! {
                         pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                       fn(i32) -> Option<#ty>> {
+                                                                       fn(i32) -> ::std::option::Option<#ty>> {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
                         pub fn #push(&mut self, value: #ty) {
