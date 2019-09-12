@@ -3,6 +3,7 @@
 #![recursion_limit = "4096"]
 
 extern crate proc_macro;
+extern crate alloc;
 
 use failure::bail;
 use quote::quote;

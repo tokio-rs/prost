@@ -4,11 +4,11 @@ mod message;
 mod oneof;
 mod scalar;
 
-use std::fmt;
-use std::slice;
+use core::fmt;
+use core::slice;
 
 use failure::{bail, Error};
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 
@@ -135,7 +135,7 @@ impl Field {
     pub fn default(&self) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
-            _ => quote!(::std::default::Default::default()),
+            _ => quote!(::core::default::Default::default()),
         }
     }
 
@@ -363,4 +363,14 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .map(|tags| Some(tags)),
         _ => bail!("invalid tag attribute: {:?}", attr),
     }
+}
+
+// Helper which builds an identifier corresponding `std` or `alloc` depending
+// on feature selection
+fn collections_lib_name() -> Ident {
+        if cfg!(std) {
+            Ident::new("std", Span::call_site())
+        } else {
+            Ident::new("alloc", Span::call_site())
+        }
 }

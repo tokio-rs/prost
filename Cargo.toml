@@ -36,7 +36,7 @@ exclude = [
 [features]
 default = ["prost-derive", "std"]
 no-recursion-limit = []
-std = []
+std = ["prost-derive/std"]
    # When std is disabled, we attempt to provide no_std support in prost
    # Config::use_alloc_collections() should be set when using prost_build in your build.rs
    # so that generated files will not have std:: either, and will use alloc crate instead
@@ -60,5 +60,6 @@ name = "varint"
 name = "benchmark"
 harness = false
 
+# TODO: Remove this after bytes releases 0.5, and before we make a release
 [patch.crates-io]
 bytes = { git = "https://github.com/tokio-rs/bytes", rev = "c17e40115f5bb2a2db71ed90dceae6ec643dc024" }

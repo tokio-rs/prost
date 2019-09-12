@@ -240,6 +240,8 @@ impl Field {
     /// The Debug tries to convert any enumerations met into the variants if possible, instead of
     /// outputting the raw numbers.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
+        let libname = super::collections_lib_name();
+
         let type_name = match self.map_ty {
             MapTy::HashMap => Ident::new("HashMap", Span::call_site()),
             MapTy::BTreeMap => Ident::new("BTreeMap", Span::call_site()),
@@ -263,14 +265,14 @@ impl Field {
             ValueTy::Scalar(ref ty) => {
                 let value = ty.rust_type();
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::alloc::collections::#type_name<#key, #value>);
+                    struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         #fmt
                     }
                 }
             }
             ValueTy::Message => quote! {
-                struct #wrapper_name<'a, V: 'a>(&'a ::alloc::collections::#type_name<#key, V>);
+                struct #wrapper_name<'a, V: 'a>(&'a ::#libname::collections::#type_name<#key, V>);
                 impl<'a, V> ::core::fmt::Debug for #wrapper_name<'a, V>
                 where
                     V: ::core::fmt::Debug + 'a,

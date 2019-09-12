@@ -174,7 +174,7 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) {
 
         let rc = Command::new("make")
             .arg("-j")
-            .arg(&num_jobs)
+            .arg("1") // Note: 1 instead of NUM_JOBS to work around bugs in makefile
             .arg("install")
             .current_dir(src_dir.join("conformance"))
             .status()

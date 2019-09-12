@@ -1,13 +1,6 @@
 #[macro_use]
 extern crate cfg_if;
 
-cfg_if! {
-    if #[cfg(feature = "edition-2015")] {
-        extern crate env_logger;
-        extern crate prost_build;
-    }
-}
-
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -15,8 +8,7 @@ use std::path::PathBuf;
 fn main() {
     let _ = env_logger::init();
 
-    // The source directory. The indirection is necessary in order to support the tests-2015 crate,
-    // which sets the current directory to tests-2015 during build script evaluation.
+    // The source directory.
     let src = PathBuf::from("../tests/src");
     let includes = &[src.clone()];
 
@@ -26,7 +18,9 @@ fn main() {
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
-    config.btree_map(&["."]);
+    //
+    // Note nostd collections implies Btree everywhere anyways
+    config.use_alloc_collections_lib();
 
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");

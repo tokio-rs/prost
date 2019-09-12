@@ -90,6 +90,6 @@ impl Field {
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident = ::std::option::Option::None)
+        quote!(#ident = ::core::option::Option::None)
     }
 }

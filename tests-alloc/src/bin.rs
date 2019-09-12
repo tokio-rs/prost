@@ -1,37 +1,8 @@
-#[macro_use]
-extern crate cfg_if;
+#![no_std]
 
 extern crate alloc;
 
-cfg_if! {
-    if #[cfg(feature = "edition-2015")] {
-        extern crate bytes;
-        extern crate prost;
-        extern crate prost_types;
-        extern crate protobuf;
-        #[cfg(test)]
-        extern crate prost_build;
-        #[cfg(test)]
-        extern crate tempfile;
-        #[cfg(test)]
-        extern crate tests_infra;
-    }
-}
-
-pub mod extern_paths;
-pub mod packages;
-pub mod unittest;
-
-#[cfg(test)]
-mod bootstrap;
-#[cfg(test)]
-mod debug;
-#[cfg(test)]
-mod message_encoding;
-#[cfg(test)]
-mod no_unused_results;
-#[cfg(test)]
-mod well_known_types;
+extern crate tests_infra;
 
 pub mod foo {
     pub mod bar_baz {
@@ -78,15 +49,14 @@ pub mod groups {
     include!(concat!(env!("OUT_DIR"), "/groups.rs"));
 }
 
-#[cfg(test)]
-mod tests {
+use tests_infra::*;
 
-    use std::collections::{BTreeMap, BTreeSet};
+use alloc::collections::{BTreeMap, BTreeSet};
 
-    use super::*;
-    use protobuf::test_messages::proto3::TestAllTypesProto3;
+use protobuf::test_messages::proto3::TestAllTypesProto3;
 
-    #[test]
+// Tests
+
     fn test_all_types_proto3() {
         // Some selected encoded messages, mostly collected from failed fuzz runs.
         let msgs: &[&[u8]] = &[
@@ -115,7 +85,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn test_ident_conversions() {
         let msg = foo::bar_baz::FooBarBaz {
             foo_bar_baz: 42,
@@ -190,7 +159,6 @@ mod tests {
         roundtrip::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
     }
 
-    #[test]
     fn test_custom_type_attributes() {
         // We abuse the ident conversion protobuf for the custom attribute additions. We placed
         // `Ord` on the FooBarBaz (which is not implemented by ordinary messages).
@@ -203,7 +171,6 @@ mod tests {
         set2.insert(msg2.field);
     }
 
-    #[test]
     fn test_nesting() {
         use crate::nesting::{A, B};
         let _ = A {
@@ -216,7 +183,6 @@ mod tests {
         };
     }
 
-    #[test]
     fn test_deep_nesting() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::A;
@@ -237,7 +203,6 @@ mod tests {
         assert!(build_and_roundtrip(101).is_err());
     }
 
-    #[test]
     fn test_deep_nesting_oneof() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::recursive_oneof::{a, A, C};
@@ -260,7 +225,6 @@ mod tests {
         assert!(build_and_roundtrip(100).is_err());
     }
 
-    #[test]
     fn test_deep_nesting_group() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::groups::{nested_group2::OptionalGroup, NestedGroup2};
@@ -283,7 +247,6 @@ mod tests {
         assert!(build_and_roundtrip(51).is_err());
     }
 
-    #[test]
     fn test_deep_nesting_repeated() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::C;
@@ -304,7 +267,6 @@ mod tests {
         assert!(build_and_roundtrip(101).is_err());
     }
 
-    #[test]
     fn test_deep_nesting_map() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::D;
@@ -325,7 +287,6 @@ mod tests {
         assert!(build_and_roundtrip(51).is_err());
     }
 
-    #[test]
     fn test_recursive_oneof() {
         use crate::recursive_oneof::{a, A, B, C};
         let _ = A {
@@ -337,7 +298,6 @@ mod tests {
         };
     }
 
-    #[test]
     fn test_default_enum() {
         let msg = default_enum_value::Test::default();
         assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
@@ -351,7 +311,6 @@ mod tests {
         );
     }
 
-    #[test]
     fn test_group() {
         // optional group
         let msg1_bytes = &[0x0B, 0x10, 0x20, 0x0C];
@@ -395,7 +354,6 @@ mod tests {
         assert_eq!(groups::Test2::decode(msg2_bytes), Ok(msg2));
     }
 
-    #[test]
     fn test_group_oneof() {
         let msg = groups::OneofGroup {
             i1: Some(42),
@@ -427,4 +385,19 @@ mod tests {
 
         check_message(&groups::OneofGroup::default());
     }
+
+fn main() {
+    test_all_types_proto3();
+    test_ident_conversions();
+    test_custom_type_attributes();
+    test_nesting();
+    test_deep_nesting();
+    test_deep_nesting_oneof();
+    test_deep_nesting_group();
+    test_deep_nesting_repeated();
+    test_deep_nesting_map();
+    test_recursive_oneof();
+    test_default_enum();
+    test_group();
+    test_group_oneof();   
 }

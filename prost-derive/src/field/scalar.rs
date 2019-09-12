@@ -1,4 +1,4 @@
-use std::fmt;
+use core::fmt;
 
 use failure::{bail, format_err, Error};
 use proc_macro2::{Span, TokenStream};
@@ -131,7 +131,7 @@ impl Field {
                 }
             }
             Kind::Optional(..) => quote! {
-                if let ::std::option::Option::Some(ref value) = #ident {
+                if let ::core::option::Option::Some(ref value) = #ident {
                     #encode_fn(#tag, value, buf);
                 }
             },
@@ -204,17 +204,18 @@ impl Field {
                     _ => quote!(#ident = #default),
                 }
             }
-            Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
+            Kind::Optional(_) => quote!(#ident = ::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
     }
 
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
+        let libname = super::collections_lib_name();
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
-            Kind::Optional(_) => quote!(::std::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
+            Kind::Optional(_) => quote!(::core::option::Option::None),
+            Kind::Repeated | Kind::Packed => quote!(::#libname::vec::Vec::new()),
         }
     }
 
@@ -223,11 +224,11 @@ impl Field {
         if let Ty::Enumeration(ref ty) = self.ty {
             quote! {
                 struct #wrap_name<'a>(&'a i32);
-                impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                         match #ty::from_i32(*self.0) {
-                            None => ::std::fmt::Debug::fmt(&self.0, f),
-                            Some(en) => ::std::fmt::Debug::fmt(&en, f),
+                            None => ::core::fmt::Debug::fmt(&self.0, f),
+                            Some(en) => ::core::fmt::Debug::fmt(&en, f),
                         }
                     }
                 }
@@ -242,23 +243,24 @@ impl Field {
     /// Returns a fragment for formatting the field `ident` in `Debug`.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
+        let libname = super::collections_lib_name();
         let inner_ty = self.ty.rust_type();
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
-                struct #wrapper_name<'a>(&'a ::std::option::Option<#inner_ty>);
-                impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                struct #wrapper_name<'a>(&'a ::core::option::Option<#inner_ty>);
+                impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                         #wrapper
-                        ::std::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                        ::core::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
                     }
                 }
             },
             Kind::Repeated | Kind::Packed => {
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::std::vec::Vec<#inner_ty>);
-                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    struct #wrapper_name<'a>(&'a ::#libname::vec::Vec<#inner_ty>);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
                             for v in self.0 {
                                 #wrapper
@@ -300,13 +302,13 @@ impl Field {
                         }
 
                         pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::std::option::Option::Some(value as i32);
+                            self.#ident = ::core::option::Option::Some(value as i32);
                         }
                     }
                 }
                 Kind::Repeated | Kind::Packed => {
                     quote! {
-                        pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
+                        pub fn #ident(&self) -> ::core::iter::FilterMap<::core::iter::Cloned<::core::slice::Iter<i32>>,
                                                                        fn(i32) -> Option<#ty>> {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
@@ -320,16 +322,16 @@ impl Field {
             let ty = self.ty.rust_ref_type();
 
             let match_some = if self.ty.is_numeric() {
-                quote!(::std::option::Option::Some(val) => val,)
+                quote!(::core::option::Option::Some(val) => val,)
             } else {
-                quote!(::std::option::Option::Some(ref val) => &val[..],)
+                quote!(::core::option::Option::Some(ref val) => &val[..],)
             };
 
             Some(quote! {
                 pub fn #ident(&self) -> #ty {
                     match self.#ident {
                         #match_some
-                        ::std::option::Option::None => #default,
+                        ::core::option::Option::None => #default,
                     }
                 }
             })
@@ -465,9 +467,10 @@ impl Ty {
 
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self) -> TokenStream {
+        let libname = super::collections_lib_name();
         match *self {
-            Ty::String => quote!(::std::string::String),
-            Ty::Bytes => quote!(::std::vec::Vec<u8>),
+            Ty::String => quote!(::#libname::string::String),
+            Ty::Bytes => quote!(::#libname::vec::Vec<u8>),
             _ => self.rust_ref_type(),
         }
     }
@@ -628,16 +631,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::INFINITY",
+                                "::core::f32::INFINITY",
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::NEG_INFINITY",
+                                "::core::f32::NEG_INFINITY",
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f32::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>("::core::f32::NAN")?));
                         }
                         _ => (),
                     }
@@ -646,16 +649,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::INFINITY",
+                                "::core::f64::INFINITY",
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::NEG_INFINITY",
+                                "::core::f64::NEG_INFINITY",
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f64::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>("::core::f64::NAN")?));
                         }
                         _ => (),
                     }
@@ -745,12 +748,13 @@ impl DefaultValue {
     }
 
     pub fn owned(&self) -> TokenStream {
+        let libname = super::collections_lib_name();
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::std::string::String::new())
+                quote!(::#libname::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::#libname::vec::Vec::new()),
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.to_owned())
