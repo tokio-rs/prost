@@ -14,7 +14,7 @@ edition = "2018"
 proc_macro = true
 
 [features]
-use_std = [ "failure/std" ]
+use_std = []
 # std feature means that prost-derive attempts to use std collections
 #
 # When this feature is disabled, we attempt to use alloc.
@@ -29,7 +29,7 @@ use_std = [ "failure/std" ]
 default = []
 
 [dependencies]
-failure = { version = "0.1", default-features = false }
+failure = { package = "alt-failure" , version = "0.1.5" }
 itertools = "0.8"
 proc-macro2 = "0.4.4"
 quote = "0.6.3"
