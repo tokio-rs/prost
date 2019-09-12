@@ -9,6 +9,6 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-bytes = "0.5"
+bytes = { version = "0.5", default-features = false }
 cfg-if = "0.1"
 prost = { path = "..", default-features = false }

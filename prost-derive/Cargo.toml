@@ -14,7 +14,7 @@ edition = "2018"
 proc_macro = true
 
 [features]
-std = [ "failure/std" ]
+use_std = [ "failure/std" ]
 # std feature means that prost-derive attempts to use std collections
 #
 # When this feature is disabled, we attempt to use alloc.
@@ -22,7 +22,11 @@ std = [ "failure/std" ]
 # prost-build config
 #
 # Generated code assumes that user's crate has `extern crate alloc` somewhere
-default = ["std"]
+#
+# Note that prost/std => prost-derive/std, so we don't default prost-derive/std
+# This makes it so that prost with default-features = false => prost-derive
+# without std.
+default = []
 
 [dependencies]
 failure = { version = "0.1", default-features = false }

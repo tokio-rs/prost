@@ -85,6 +85,8 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
+
+    use prost::Message;
     use protobuf::test_messages::proto3::TestAllTypesProto3;
     use tests_infra::*;
 
@@ -232,7 +234,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -255,7 +257,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(99).is_ok());
@@ -278,7 +280,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            NestedGroup2::decode(buf).map(|_| ())
+            NestedGroup2::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
@@ -299,7 +301,7 @@ mod tests {
 
             let mut buf = Vec::new();
             c.encode(&mut buf).unwrap();
-            C::decode(buf).map(|_| ())
+            C::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -320,7 +322,7 @@ mod tests {
 
             let mut buf = Vec::new();
             d.encode(&mut buf).unwrap();
-            D::decode(buf).map(|_| ())
+            D::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
