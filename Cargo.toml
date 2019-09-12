@@ -42,7 +42,9 @@ std = ["prost-derive/use_std"]
    # so that generated files will not have std:: either, and will use alloc crate instead
 
 [dependencies]
-bytes = { version = "0.5", default-features = false }
+#TODO bytes = { version = "0.5", default-features = false }
+# Not using patch because it makes it harder for downstream projects
+bytes = { git = "https://github.com/tokio-rs/bytes", rev = "c17e40115f5bb2a2db71ed90dceae6ec643dc024", default-features = false }
 prost-derive = { version = "0.5.0", path = "prost-derive", default-features = false, optional = true }
 
 [dev-dependencies]
@@ -59,7 +61,3 @@ name = "varint"
 [[bench]]
 name = "benchmark"
 harness = false
-
-# TODO: Remove this after bytes releases 0.5, and before we make a release
-[patch.crates-io]
-bytes = { git = "https://github.com/tokio-rs/bytes", rev = "c17e40115f5bb2a2db71ed90dceae6ec643dc024" }

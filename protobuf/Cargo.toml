@@ -6,7 +6,9 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = { version = "0.5", default-features = false }
+#TODO bytes = { version = "0.5", default-features = false }
+# Not using patch because it makes it harder for downstream projects
+bytes = { git = "https://github.com/tokio-rs/bytes", rev = "c17e40115f5bb2a2db71ed90dceae6ec643dc024", default-features = false }
 prost = { path = "..", default-features = false }
 prost-types = { path = "../prost-types", default-features = false }
 
