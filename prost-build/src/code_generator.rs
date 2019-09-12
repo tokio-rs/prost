@@ -525,7 +525,7 @@ impl<'a> CodeGenerator<'a> {
 
             if boxed {
                 self.buf
-                    .push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
+                    .push_str(&format!("{}({}::boxed::Box<{}>),\n",to_upper_camel(field.name()), self.config.collections_lib.to_str(), ty));
             } else {
                 self.buf
                     .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));

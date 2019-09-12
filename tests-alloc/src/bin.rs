@@ -2,6 +2,14 @@
 
 extern crate alloc;
 
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
+
+use prost::Message;
+
 extern crate tests_infra;
 
 pub mod foo {
@@ -57,7 +65,10 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
 // Tests
 
-    fn test_all_types_proto3() {
+mod tests {
+    use super::*;
+
+    pub fn test_all_types_proto3() {
         // Some selected encoded messages, mostly collected from failed fuzz runs.
         let msgs: &[&[u8]] = &[
             &[0x28, 0x28, 0x28, 0xFF, 0xFF, 0xFF, 0xFF, 0x68],
@@ -85,7 +96,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         }
     }
 
-    fn test_ident_conversions() {
+    pub fn test_ident_conversions() {
         let msg = foo::bar_baz::FooBarBaz {
             foo_bar_baz: 42,
             fuzz_busters: vec![foo::bar_baz::foo_bar_baz::FuzzBuster {
@@ -159,7 +170,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         roundtrip::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
     }
 
-    fn test_custom_type_attributes() {
+    pub fn test_custom_type_attributes() {
         // We abuse the ident conversion protobuf for the custom attribute additions. We placed
         // `Ord` on the FooBarBaz (which is not implemented by ordinary messages).
         let mut set1 = BTreeSet::new();
@@ -171,7 +182,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         set2.insert(msg2.field);
     }
 
-    fn test_nesting() {
+    pub fn test_nesting() {
         use crate::nesting::{A, B};
         let _ = A {
             a: Some(Box::new(A::default())),
@@ -183,7 +194,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         };
     }
 
-    fn test_deep_nesting() {
+    pub fn test_deep_nesting() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::A;
 
@@ -196,14 +207,14 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
         assert!(build_and_roundtrip(101).is_err());
     }
 
-    fn test_deep_nesting_oneof() {
+    pub fn test_deep_nesting_oneof() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::recursive_oneof::{a, A, C};
 
@@ -218,14 +229,14 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(99).is_ok());
         assert!(build_and_roundtrip(100).is_err());
     }
 
-    fn test_deep_nesting_group() {
+    pub fn test_deep_nesting_group() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::groups::{nested_group2::OptionalGroup, NestedGroup2};
 
@@ -240,14 +251,14 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            NestedGroup2::decode(buf).map(|_| ())
+            NestedGroup2::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
         assert!(build_and_roundtrip(51).is_err());
     }
 
-    fn test_deep_nesting_repeated() {
+    pub fn test_deep_nesting_repeated() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::C;
 
@@ -260,14 +271,14 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
             let mut buf = Vec::new();
             c.encode(&mut buf).unwrap();
-            C::decode(buf).map(|_| ())
+            C::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
         assert!(build_and_roundtrip(101).is_err());
     }
 
-    fn test_deep_nesting_map() {
+    pub fn test_deep_nesting_map() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::D;
 
@@ -280,14 +291,14 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
             let mut buf = Vec::new();
             d.encode(&mut buf).unwrap();
-            D::decode(buf).map(|_| ())
+            D::decode(&buf[..]).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
         assert!(build_and_roundtrip(51).is_err());
     }
 
-    fn test_recursive_oneof() {
+    pub fn test_recursive_oneof() {
         use crate::recursive_oneof::{a, A, B, C};
         let _ = A {
             kind: Some(a::Kind::B(Box::new(B {
@@ -298,7 +309,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         };
     }
 
-    fn test_default_enum() {
+    pub fn test_default_enum() {
         let msg = default_enum_value::Test::default();
         assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
         assert_eq!(
@@ -311,7 +322,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         );
     }
 
-    fn test_group() {
+    pub fn test_group() {
         // optional group
         let msg1_bytes = &[0x0B, 0x10, 0x20, 0x0C];
 
@@ -354,7 +365,7 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
         assert_eq!(groups::Test2::decode(msg2_bytes), Ok(msg2));
     }
 
-    fn test_group_oneof() {
+    pub fn test_group_oneof() {
         let msg = groups::OneofGroup {
             i1: Some(42),
             field: Some(groups::oneof_group::Field::S2("foo".to_string())),
@@ -385,8 +396,10 @@ use protobuf::test_messages::proto3::TestAllTypesProto3;
 
         check_message(&groups::OneofGroup::default());
     }
+}
 
 fn main() {
+    use tests::*;
     test_all_types_proto3();
     test_ident_conversions();
     test_custom_type_attributes();

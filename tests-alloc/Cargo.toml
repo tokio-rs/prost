@@ -20,6 +20,7 @@ prost = { path = "..", default-features = false }
 prost-derive = { path = "../prost-derive", default-features = false }
 prost-types = { path = "../prost-types", default-features = false }
 protobuf = { path = "../protobuf" }
+tests-infra = { path = "../tests-infra" }
 
 [dev-dependencies]
 diff = "0.1"
