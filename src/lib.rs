@@ -17,6 +17,10 @@ pub mod encoding;
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
 
+// This allows people to use prost and prost-derive without declaring dependency
+// on bytes in their Cargo.toml
+pub use bytes as _bytes;
+
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};

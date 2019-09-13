@@ -436,8 +436,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         #[allow(non_snake_case, unused_attributes)]
         const #dummy_const: () = {
-            extern crate bytes as _bytes;
             extern crate prost as _prost;
+            use _prost::_bytes;
 
             impl #ident {
                 pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
