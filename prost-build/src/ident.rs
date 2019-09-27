@@ -23,7 +23,7 @@ pub fn to_snake(s: &str) -> String {
         // 2018 reserved keywords.
         | "async" | "await" | "try" => ident.insert_str(0, "r#"),
         // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
-        "self" | "super" | "extern" | "crate" => ident += "_",
+        "self" | "super" | "extern" | "crate" | "Self" => ident += "_",
         _ => (),
     }
     ident
