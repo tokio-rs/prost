@@ -2,10 +2,17 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-use std::cmp::min;
-use std::mem;
-use std::u32;
-use std::usize;
+#[cfg(not(feature = "std"))]
+use alloc::format;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
+use core::cmp::min;
+use core::mem;
+use core::u32;
+use core::usize;
 
 use ::bytes::{Buf, BufMut};
 
@@ -1040,8 +1047,11 @@ pub mod group {
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
     ($map_ty:ident) => {
+        #[cfg(not(feature = "std"))]
+        use alloc::collections::$map_ty;
+        #[cfg(feature = "std")]
         use std::collections::$map_ty;
-        use std::hash::Hash;
+        use core::hash::Hash;
 
         use crate::encoding::*;
 
@@ -1225,6 +1235,7 @@ macro_rules! map {
     };
 }
 
+#[cfg(feature = "std")]
 pub mod hash_map {
     map!(HashMap);
 }
@@ -1240,7 +1251,7 @@ mod test {
     use std::io::Cursor;
     use std::u64;
 
-    use ::bytes::{Bytes, BytesMut, IntoBuf};
+    use ::bytes::{Bytes, BytesMut};
     use quickcheck::TestResult;
 
     use crate::encoding::*;

@@ -33,19 +33,20 @@ exclude = [
 ]
 
 [features]
-default = ["prost-derive"]
+default = ["prost-derive", "std"]
+std = ["bytes/std", "prost-derive/std"]
 no-recursion-limit = []
 
 [dependencies]
-bytes = "0.4.7"
-prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
+bytes = { git = "https://github.com/tokio-rs/bytes.git", default-features = false }
+prost-derive = { version = "0.5.0", path = "prost-derive", default-features = false, optional = true }
 
 [dev-dependencies]
 criterion = "0.2"
 env_logger = { version = "0.6", default-features = false }
 failure = "0.1"
 log = "0.4"
-protobuf = { version = "0", path = "protobuf" }
+protobuf = { version = "0", path = "protobuf", default-features = false }
 quickcheck = "0.8"
 
 [[bench]]

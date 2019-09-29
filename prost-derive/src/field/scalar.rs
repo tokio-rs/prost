@@ -9,6 +9,7 @@ use syn::{
 };
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
+use crate::{alloc_crate, core_crate};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -120,6 +121,7 @@ impl Field {
         };
         let encode_fn = quote!(_prost::encoding::#module::#encode_fn);
         let tag = self.tag;
+        let core_crate = core_crate();
 
         match self.kind {
             Kind::Plain(ref default) => {
@@ -131,7 +133,7 @@ impl Field {
                 }
             }
             Kind::Optional(..) => quote! {
-                if let ::std::option::Option::Some(ref value) = #ident {
+                if let #core_crate::option::Option::Some(ref value) = #ident {
                     #encode_fn(#tag, value, buf);
                 }
             },
@@ -196,6 +198,7 @@ impl Field {
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
+        let core_crate = core_crate();
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
                 let default = default.typed();
@@ -204,30 +207,33 @@ impl Field {
                     _ => quote!(#ident = #default),
                 }
             }
-            Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
+            Kind::Optional(_) => quote!(#ident = #core_crate::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
     }
 
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
+        let core_crate = core_crate();
+        let alloc_crate = alloc_crate();
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
-            Kind::Optional(_) => quote!(::std::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
+            Kind::Optional(_) => quote!(#core_crate::option::Option::None),
+            Kind::Repeated | Kind::Packed => quote!(#alloc_crate::vec::Vec::new()),
         }
     }
 
     /// An inner debug wrapper, around the base type.
     fn debug_inner(&self, wrap_name: TokenStream) -> TokenStream {
+        let core_crate = core_crate();
         if let Ty::Enumeration(ref ty) = self.ty {
             quote! {
                 struct #wrap_name<'a>(&'a i32);
-                impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                impl<'a> #core_crate::fmt::Debug for #wrap_name<'a> {
+                    fn fmt(&self, f: &mut #core_crate::fmt::Formatter) -> #core_crate::fmt::Result {
                         match #ty::from_i32(*self.0) {
-                            None => ::std::fmt::Debug::fmt(&self.0, f),
-                            Some(en) => ::std::fmt::Debug::fmt(&en, f),
+                            None => #core_crate::fmt::Debug::fmt(&self.0, f),
+                            Some(en) => #core_crate::fmt::Debug::fmt(&en, f),
                         }
                     }
                 }
@@ -243,22 +249,24 @@ impl Field {
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
         let inner_ty = self.ty.rust_type();
+        let core_crate = core_crate();
+        let alloc_crate = alloc_crate();
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
-                struct #wrapper_name<'a>(&'a ::std::option::Option<#inner_ty>);
-                impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                struct #wrapper_name<'a>(&'a #core_crate::option::Option<#inner_ty>);
+                impl<'a> #core_crate::fmt::Debug for #wrapper_name<'a> {
+                    fn fmt(&self, f: &mut #core_crate::fmt::Formatter) -> #core_crate::fmt::Result {
                         #wrapper
-                        ::std::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                        #core_crate::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
                     }
                 }
             },
             Kind::Repeated | Kind::Packed => {
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::std::vec::Vec<#inner_ty>);
-                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    struct #wrapper_name<'a>(&'a #alloc_crate::vec::Vec<#inner_ty>);
+                    impl<'a> #core_crate::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut #core_crate::fmt::Formatter) -> #core_crate::fmt::Result {
                             let mut vec_builder = f.debug_list();
                             for v in self.0 {
                                 #wrapper
@@ -280,6 +288,7 @@ impl Field {
         }
         let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
         let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+        let core_crate = core_crate();
         if let Ty::Enumeration(ref ty) = self.ty {
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
@@ -300,13 +309,13 @@ impl Field {
                         }
 
                         pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::std::option::Option::Some(value as i32);
+                            self.#ident = #core_crate::option::Option::Some(value as i32);
                         }
                     }
                 }
                 Kind::Repeated | Kind::Packed => {
                     quote! {
-                        pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
+                        pub fn #ident(&self) -> #core_crate::iter::FilterMap<#core_crate::iter::Cloned<#core_crate::slice::Iter<i32>>,
                                                                        fn(i32) -> Option<#ty>> {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
@@ -320,16 +329,16 @@ impl Field {
             let ty = self.ty.rust_ref_type();
 
             let match_some = if self.ty.is_numeric() {
-                quote!(::std::option::Option::Some(val) => val,)
+                quote!(#core_crate::option::Option::Some(val) => val,)
             } else {
-                quote!(::std::option::Option::Some(ref val) => &val[..],)
+                quote!(#core_crate::option::Option::Some(ref val) => &val[..],)
             };
 
             Some(quote! {
                 pub fn #ident(&self) -> #ty {
                     match self.#ident {
                         #match_some
-                        ::std::option::Option::None => #default,
+                        #core_crate::option::Option::None => #default,
                     }
                 }
             })
@@ -465,9 +474,10 @@ impl Ty {
 
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self) -> TokenStream {
+        let alloc_crate = alloc_crate();
         match *self {
-            Ty::String => quote!(::std::string::String),
-            Ty::Bytes => quote!(::std::vec::Vec<u8>),
+            Ty::String => quote!(#alloc_crate::string::String),
+            Ty::Bytes => quote!(#alloc_crate::vec::Vec<u8>),
             _ => self.rust_ref_type(),
         }
     }
@@ -562,6 +572,7 @@ impl DefaultValue {
     }
 
     pub fn from_lit(ty: &Ty, lit: Lit) -> Result<DefaultValue, Error> {
+        let core_crate = core_crate();
         let is_i32 = *ty == Ty::Int32 || *ty == Ty::Sint32 || *ty == Ty::Sfixed32;
         let is_i64 = *ty == Ty::Int64 || *ty == Ty::Sint64 || *ty == Ty::Sfixed64;
 
@@ -628,16 +639,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::INFINITY",
+                                &format!("{}::f32::INFINITY", core_crate),
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::NEG_INFINITY",
+                                &format!("{}::f32::NEG_INFINITY", core_crate),
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f32::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>(&format!("{}::f32::NAN", core_crate))?));
                         }
                         _ => (),
                     }
@@ -646,16 +657,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::INFINITY",
+                                &format!("{}::f64::INFINITY", core_crate),
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::NEG_INFINITY",
+                                &format!("{}::f64::NEG_INFINITY", core_crate),
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f64::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>(&format!("{}::f64::NAN", core_crate))?));
                         }
                         _ => (),
                     }
@@ -745,12 +756,13 @@ impl DefaultValue {
     }
 
     pub fn owned(&self) -> TokenStream {
+        let alloc_crate = alloc_crate();
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::std::string::String::new())
+                quote!(#alloc_crate::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(#alloc_crate::vec::Vec::new()),
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.to_owned())

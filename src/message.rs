@@ -1,7 +1,10 @@
-use std::fmt::Debug;
-use std::usize;
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
 
-use ::bytes::{Buf, BufMut, IntoBuf};
+use core::fmt::Debug;
+use core::usize;
+
+use ::bytes::{Buf, BufMut};
 
 use crate::encoding::*;
 use crate::DecodeError;
@@ -78,19 +81,19 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer.
     ///
     /// The entire buffer will be consumed.
-    fn decode<B>(buf: B) -> Result<Self, DecodeError>
+    fn decode<B>(mut buf: B) -> Result<Self, DecodeError>
     where
-        B: IntoBuf,
+        B: Buf,
         Self: Default,
     {
         let mut message = Self::default();
-        Self::merge(&mut message, &mut buf.into_buf()).map(|_| message)
+        Self::merge(&mut message, &mut buf).map(|_| message)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
     fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
     where
-        B: IntoBuf,
+        B: Buf,
         Self: Default,
     {
         let mut message = Self::default();
@@ -101,12 +104,11 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    fn merge<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
-        B: IntoBuf,
+        B: Buf,
         Self: Sized,
     {
-        let mut buf = buf.into_buf();
         let ctx = DecodeContext::default();
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
@@ -117,15 +119,15 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    fn merge_length_delimited<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
-        B: IntoBuf,
+        B: Buf,
         Self: Sized,
     {
         message::merge(
             WireType::LengthDelimited,
             self,
-            &mut buf.into_buf(),
+            &mut buf,
             DecodeContext::default(),
         )
     }

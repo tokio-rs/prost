@@ -4,6 +4,7 @@ use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
 use crate::field::{set_option, tags_attr};
+use crate::core_crate;
 
 #[derive(Clone)]
 pub struct Field {
@@ -90,6 +91,7 @@ impl Field {
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident = ::std::option::Option::None)
+        let core_crate = core_crate();
+        quote!(#ident = #core_crate::option::Option::None)
     }
 }

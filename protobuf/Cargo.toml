@@ -6,14 +6,18 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
-prost = { path = ".." }
-prost-types = { path = "../prost-types" }
+bytes = { git = "https://github.com/tokio-rs/bytes.git", default-features = false }
+prost = { path = ".." , default-features = false }
+prost-types = { path = "../prost-types", default-features = false }
 
 [build-dependencies]
 cfg-if = "0.1"
 curl = "0.4"
 flate2 = "1.0"
-prost-build = { path = "../prost-build" }
+prost-build = { path = "../prost-build", default-features = false }
 tar = "0.4"
 tempfile = "3"
+
+[features]
+default = ["std"]
+std = ["bytes/std", "prost/std", "prost-types/std", "prost-build/std"]

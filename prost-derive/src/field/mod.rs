@@ -11,6 +11,7 @@ use failure::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
+use crate::core_crate;
 
 #[derive(Clone)]
 pub enum Field {
@@ -133,9 +134,10 @@ impl Field {
     }
 
     pub fn default(&self) -> TokenStream {
+        let core_crate = core_crate();
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
-            _ => quote!(::std::default::Default::default()),
+            _ => quote!(#core_crate::default::Default::default()),
         }
     }
 

@@ -1,8 +1,15 @@
 //! Protobuf encoding and decoding errors.
 
+#[cfg(not(feature = "std"))]
+use alloc::borrow::Cow;
+#[cfg(feature = "std")]
 use std::borrow::Cow;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
 use std::error;
-use std::fmt;
+use core::fmt;
+#[cfg(feature = "std")]
 use std::io;
 
 /// A Protobuf message decoding error.
@@ -54,12 +61,14 @@ impl fmt::Display for DecodeError {
     }
 }
 
+#[cfg(feature = "std")]
 impl error::Error for DecodeError {
     fn description(&self) -> &str {
         &self.description
     }
 }
 
+#[cfg(feature = "std")]
 impl From<DecodeError> for io::Error {
     fn from(error: DecodeError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidData, error)
@@ -95,11 +104,15 @@ impl EncodeError {
     pub fn remaining(&self) -> usize {
         self.remaining
     }
+
+    fn description(&self) -> &str {
+        "failed to encode Protobuf message: insufficient buffer capacity"
+    }
 }
 
 impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(error::Error::description(self))?;
+        f.write_str(self.description())?;
         write!(
             f,
             " (required: {}, remaining: {})",
@@ -108,12 +121,14 @@ impl fmt::Display for EncodeError {
     }
 }
 
+#[cfg(feature = "std")]
 impl error::Error for EncodeError {
     fn description(&self) -> &str {
-        "failed to encode Protobuf message: insufficient buffer capacity"
+        EncodeError::description(self)
     }
 }
 
+#[cfg(feature = "std")]
 impl From<EncodeError> for io::Error {
     fn from(error: EncodeError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput, error)

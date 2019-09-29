@@ -10,8 +10,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
-protobuf = { path = "../protobuf" }
-tests = { path = "../tests" }
+protobuf = { path = "../protobuf", default-features = false }
+tests = { path = "../tests", default-features = false }
 
 [[bin]]
 name = "proto3"
@@ -20,3 +20,7 @@ path = "fuzzers/proto3.rs"
 [[bin]]
 name = "proto2"
 path = "fuzzers/proto2.rs"
+
+[features]
+default = ["std"]
+std = ["protobuf/std", "tests/std"]

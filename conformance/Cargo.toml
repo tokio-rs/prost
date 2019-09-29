@@ -6,9 +6,13 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
+bytes = { git = "https://github.com/tokio-rs/bytes.git", default-features = false }
 env_logger = { version = "0.6", default-features = false }
 log = "0.3"
-prost = { path = ".." }
-protobuf = { path = "../protobuf" }
-tests = { path = "../tests" }
+prost = { path = "..", default-features = false }
+protobuf = { path = "../protobuf", default-features = false }
+tests = { path = "../tests", default-features = false }
+
+[features]
+default = ["std"]
+std = ["bytes/std", "prost/std", "protobuf/std", "tests/std"]

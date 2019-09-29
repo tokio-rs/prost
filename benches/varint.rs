@@ -2,7 +2,7 @@
 
 extern crate test;
 
-use bytes::IntoBuf;
+use bytes::Buf;
 use prost::encoding::{decode_varint, encode_varint, encoded_len_varint};
 
 macro_rules! varint_bench {
@@ -21,14 +21,12 @@ macro_rules! varint_bench {
         fn $decode_name(b: &mut test::Bencher) {
             let mut buf = Vec::with_capacity(100 * 10);
             $encode(&mut buf);
-            let buf = &buf[..];
 
             let mut values = [0u64; 100];
 
             b.iter(|| {
-                let mut buf = buf.into_buf();
                 for i in 0..100 {
-                    values[i] = decode_varint(&mut buf).unwrap();
+                    values[i] = decode_varint(&buf).unwrap();
                 }
                 test::black_box(&values[..]);
             });
@@ -40,9 +38,8 @@ macro_rules! varint_bench {
             {
                 let mut buf = Vec::with_capacity(100 * 10);
                 $encode(&mut buf);
-                let mut buf = (&buf[..]).into_buf();
                 for i in 0..100 {
-                    values[i] = decode_varint(&mut buf).unwrap();
+                    values[i] = decode_varint(&buf).unwrap();
                 }
             }
 

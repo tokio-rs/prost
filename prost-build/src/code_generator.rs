@@ -32,6 +32,7 @@ pub struct CodeGenerator<'a> {
     syntax: Syntax,
     message_graph: &'a MessageGraph,
     extern_paths: &'a ExternPaths,
+    no_std: bool,
     depth: u8,
     path: Vec<i32>,
     buf: &'a mut String,
@@ -62,6 +63,8 @@ impl<'a> CodeGenerator<'a> {
             Some(s) => panic!("unknown syntax: {}", s),
         };
 
+        let no_std = if cfg!(feature = "std") { false } else { true };
+
         let mut code_gen = CodeGenerator {
             config,
             package: file.package.unwrap(),
@@ -69,6 +72,7 @@ impl<'a> CodeGenerator<'a> {
             syntax,
             message_graph,
             extern_paths,
+            no_std,
             depth: 0,
             path: Vec::new(),
             buf,
@@ -192,12 +196,12 @@ impl<'a> CodeGenerator<'a> {
                 .type_name
                 .as_ref()
                 .and_then(|type_name| map_types.get(type_name))
-            {
-                Some(&(ref key, ref value)) => {
-                    self.append_map_field(&fq_message_name, field, key, value)
+                {
+                    Some(&(ref key, ref value)) => {
+                        self.append_map_field(&fq_message_name, field, key, value)
+                    }
+                    None => self.append_field(&fq_message_name, field),
                 }
-                None => self.append_field(&fq_message_name, field),
-            }
             self.path.pop();
         }
         self.path.pop();
@@ -310,9 +314,9 @@ impl<'a> CodeGenerator<'a> {
                 self.buf.push_str(", repeated");
                 if can_pack(&field)
                     && !field
-                        .options
-                        .as_ref()
-                        .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
+                    .options
+                    .as_ref()
+                    .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
                 {
                     self.buf.push_str(", packed=\"false\"");
                 }
@@ -366,12 +370,24 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated {
-            self.buf.push_str("::std::vec::Vec<");
+            if self.no_std {
+                self.buf.push_str("::alloc::vec::Vec<");
+            } else {
+                self.buf.push_str("::std::vec::Vec<");
+            }
         } else if optional {
-            self.buf.push_str("::std::option::Option<");
+            if self.no_std {
+                self.buf.push_str("::core::option::Option<");
+            } else {
+                self.buf.push_str("::std::option::Option<");
+            }
         }
         if boxed {
-            self.buf.push_str("::std::boxed::Box<");
+            if self.no_std {
+                self.buf.push_str("::alloc::boxed::Box<");
+            } else {
+                self.buf.push_str("::std::boxed::Box<");
+            }
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -408,7 +424,7 @@ impl<'a> CodeGenerator<'a> {
             .btree_map
             .iter()
             .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
-        let (annotation_ty, rust_ty) = if btree_map {
+        let (annotation_ty, rust_ty) = if btree_map || self.no_std {
             ("btree_map", "BTreeMap")
         } else {
             ("map", "HashMap")
@@ -426,8 +442,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::collections::{}<{}, {}>,\n",
+            "pub {}: ::{}::collections::{}<{}, {}>,\n",
             to_snake(field.name()),
+            if self.no_std { "alloc" } else { "std" },
             rust_ty,
             key_ty,
             value_ty
@@ -459,8 +476,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::option::Option<{}>,\n",
+            "pub {}: ::{}::option::Option<{}>,\n",
             to_snake(oneof.name()),
+            if self.no_std { "alloc" } else { "std" },
             name
         ));
     }

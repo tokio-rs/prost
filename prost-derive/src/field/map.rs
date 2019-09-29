@@ -4,6 +4,7 @@ use quote::quote;
 use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
 use crate::field::{scalar, set_option, tag_attr};
+use crate::{alloc_crate, core_crate};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -210,6 +211,7 @@ impl Field {
 
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
+        let core_crate = core_crate();
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {
             let key_ty = self.key_ty.rust_type();
             let key_ref_ty = self.key_ty.rust_ref_type();
@@ -223,10 +225,10 @@ impl Field {
             };
 
             Some(quote! {
-                pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
+                pub fn #get(&self, key: #key_ref_ty) -> #core_crate::option::Option<#ty> {
                     self.#ident.get(#take_ref key).cloned().and_then(#ty::from_i32)
                 }
-                pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
+                pub fn #insert(&mut self, key: #key_ty, value: #ty) -> #core_crate::option::Option<#ty> {
                     self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
                 }
             })
@@ -240,6 +242,8 @@ impl Field {
     /// The Debug tries to convert any enumerations met into the variants if possible, instead of
     /// outputting the raw numbers.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
+        let core_crate = core_crate();
+        let alloc_crate = alloc_crate();
         let type_name = match self.map_ty {
             MapTy::HashMap => Ident::new("HashMap", Span::call_site()),
             MapTy::BTreeMap => Ident::new("BTreeMap", Span::call_site()),
@@ -249,7 +253,7 @@ impl Field {
         let key = self.key_ty.rust_type();
         let value_wrapper = self.value_ty.debug();
         let fmt = quote! {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut #core_crate::fmt::Formatter) -> #core_crate::fmt::Result {
                 #key_wrapper
                 #value_wrapper
                 let mut builder = f.debug_map();
@@ -263,17 +267,17 @@ impl Field {
             ValueTy::Scalar(ref ty) => {
                 let value = ty.rust_type();
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::std::collections::#type_name<#key, #value>);
-                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
+                    struct #wrapper_name<'a>(&'a #alloc_crate::collections::#type_name<#key, #value>);
+                    impl<'a> #core_crate::fmt::Debug for #wrapper_name<'a> {
                         #fmt
                     }
                 }
             }
             ValueTy::Message => quote! {
-                struct #wrapper_name<'a, V: 'a>(&'a ::std::collections::#type_name<#key, V>);
-                impl<'a, V> ::std::fmt::Debug for #wrapper_name<'a, V>
+                struct #wrapper_name<'a, V: 'a>(&'a #alloc_crate::collections::#type_name<#key, V>);
+                impl<'a, V> #core_crate::fmt::Debug for #wrapper_name<'a, V>
                 where
-                    V: ::std::fmt::Debug + 'a,
+                    V: #core_crate::fmt::Debug + 'a,
                 {
                     #fmt
                 }

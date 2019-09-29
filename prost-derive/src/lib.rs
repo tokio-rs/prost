@@ -19,6 +19,22 @@ use syn::{
 mod field;
 use crate::field::Field;
 
+fn core_crate() -> proc_macro2::TokenStream {
+    if cfg!(feature = "std") {
+        quote!(::std)
+    } else {
+        quote!(::core)
+    }
+}
+
+fn alloc_crate() -> proc_macro2::TokenStream {
+    if cfg!(feature = "std") {
+        quote!(::std)
+    } else {
+        quote!(::alloc)
+    }
+}
+
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
@@ -33,6 +49,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
     }
+
+    let core_crate = core_crate();
 
     let fields = match variant_data {
         DataStruct {
@@ -191,7 +209,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                                   wire_type: _prost::encoding::WireType,
                                   buf: &mut B,
                                   ctx: _prost::encoding::DecodeContext,
-                ) -> ::std::result::Result<(), _prost::DecodeError>
+                ) -> #core_crate::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     #struct_name
                     match tag {
@@ -218,8 +236,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 }
             }
 
-            impl ::std::fmt::Debug for #ident {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            impl #core_crate::fmt::Debug for #ident {
+                fn fmt(&self, f: &mut #core_crate::fmt::Formatter) -> #core_crate::fmt::Result {
                     let mut builder = #debug_builder;
                     #(#debugs;)*
                     builder.finish()
@@ -278,6 +296,8 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         panic!("Enumeration must have at least one variant");
     }
 
+    let core_crate = core_crate();
+
     let default = variants[0].0.clone();
 
     // Put impls in a const, so that 'extern crate' can be used.
@@ -286,7 +306,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|&(_, ref value)| quote!(#value => true));
     let from = variants.iter().map(
-        |&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)),
+        |&(ref variant, ref value)| quote!(#value => #core_crate::option::Option::Some(#ident::#variant)),
     );
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
@@ -309,21 +329,21 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
                 }
 
                 #[doc=#from_i32_doc]
-                pub fn from_i32(value: i32) -> ::std::option::Option<#ident> {
+                pub fn from_i32(value: i32) -> #core_crate::option::Option<#ident> {
                     match value {
                         #(#from,)*
-                        _ => ::std::option::Option::None,
+                        _ => #core_crate::option::Option::None,
                     }
                 }
             }
 
-            impl ::std::default::Default for #ident {
+            impl #core_crate::default::Default for #ident {
                 fn default() -> #ident {
                     #ident::#default
                 }
             }
 
-            impl ::std::convert::From<#ident> for i32 {
+            impl #core_crate::convert::From<#ident> for i32 {
                 fn from(value: #ident) -> i32 {
                     value as i32
                 }
@@ -353,6 +373,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
     }
+
+    let core_crate = core_crate();
 
     // Map the variants into 'fields'.
     let mut fields: Vec<(Ident, Field)> = Vec::new();
@@ -411,8 +433,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         let merge = field.merge(quote!(value));
         quote! {
             #tag => {
-                let mut value = ::std::default::Default::default();
-                #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(value)))
+                let mut value = #core_crate::default::Default::default();
+                #merge.map(|_| *field = #core_crate::option::Option::Some(#ident::#variant_ident(value)))
             }
         }
     });
@@ -445,12 +467,12 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                     }
                 }
 
-                pub fn merge<B>(field: &mut ::std::option::Option<#ident>,
+                pub fn merge<B>(field: &mut #core_crate::option::Option<#ident>,
                                 tag: u32,
                                 wire_type: _prost::encoding::WireType,
                                 buf: &mut B,
                                 ctx: _prost::encoding::DecodeContext,
-                ) -> ::std::result::Result<(), _prost::DecodeError>
+                ) -> #core_crate::result::Result<(), _prost::DecodeError>
                 where B: _bytes::Buf {
                     match tag {
                         #(#merge,)*
@@ -466,8 +488,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 }
             }
 
-            impl ::std::fmt::Debug for #ident {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            impl #core_crate::fmt::Debug for #ident {
+                fn fmt(&self, f: &mut #core_crate::fmt::Formatter) -> #core_crate::fmt::Result {
                     match *self {
                         #(#debug,)*
                     }

@@ -4,6 +4,7 @@ use quote::quote;
 use syn::Meta;
 
 use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
+use crate::core_crate;
 
 #[derive(Clone)]
 pub struct Field {
@@ -122,8 +123,9 @@ impl Field {
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
+        let core_crate = core_crate();
         match self.label {
-            Label::Optional => quote!(#ident = ::std::option::Option::None),
+            Label::Optional => quote!(#ident = #core_crate::option::Option::None),
             Label::Required => quote!(#ident.clear()),
             Label::Repeated => quote!(#ident.clear()),
         }

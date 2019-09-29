@@ -15,5 +15,9 @@ doctest = false
 test = false
 
 [dependencies]
-bytes = "0.4.7"
-prost = { version = "0.5.0", path = ".." }
+bytes = { git = "https://github.com/tokio-rs/bytes.git", default-features = false }
+prost = { version = "0.5.0", path = "..", default-features = false, features = ["prost-derive"] }
+
+[features]
+default = ["std"]
+std = ["bytes/std", "prost/std"]

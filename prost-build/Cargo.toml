@@ -11,14 +11,14 @@ description = "A Protocol Buffers implementation for the Rust Language."
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
+bytes = { git = "https://github.com/tokio-rs/bytes.git", default-features = false }
 heck = "0.3"
 itertools = "0.8"
 log = "0.4"
 multimap = { version = "0.4", default-features = false }
 petgraph = { version = "0.4", default-features = false }
-prost = { version = "0.5.0", path = ".." }
-prost-types = { version = "0.5.0", path = "../prost-types" }
+prost = { version = "0.5.0", path = "..", default-features = false }
+prost-types = { version = "0.5.0", path = "../prost-types", default-features = false }
 tempfile = "3"
 
 [build-dependencies]
@@ -26,3 +26,8 @@ which = "2"
 
 [dev-dependencies]
 env_logger = { version = "0.6", default-features = false }
+
+
+[features]
+default = ["std"]
+std = ["bytes/std", "prost/std", "prost-types/std"]

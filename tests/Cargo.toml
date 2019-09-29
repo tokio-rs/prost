@@ -11,19 +11,23 @@ build = "src/build.rs"
 doctest = false
 
 [dependencies]
-bytes = "0.4.7"
+bytes = { git = "https://github.com/tokio-rs/bytes.git", default-features = false }
 cfg-if = "0.1"
-prost = { path = ".." }
-prost-types = { path = "../prost-types" }
-protobuf = { path = "../protobuf" }
+prost = { path = "..", default-features = false }
+prost-types = { path = "../prost-types", default-features = false }
+protobuf = { path = "../protobuf", default-features = false }
 
 [dev-dependencies]
 diff = "0.1"
-prost-build = { path = "../prost-build" }
+prost-build = { path = "../prost-build", default-features = false }
 tempfile = "3"
 
 [build-dependencies]
 cfg-if = "0.1"
 env_logger = { version = "0.6", default-features = false }
-prost-build = { path = "../prost-build" }
-protobuf = { path = "../protobuf" }
+prost-build = { path = "../prost-build", default-features = false }
+protobuf = { path = "../protobuf", default-features = false }
+
+[features]
+default = ["std"]
+std = ["bytes/std", "prost/std", "prost-types/std", "prost-build/std"]
