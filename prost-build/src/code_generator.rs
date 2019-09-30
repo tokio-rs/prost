@@ -731,8 +731,16 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("std::string::String"),
-            Type::Bytes => String::from("std::vec::Vec<u8>"),
+            Type::String => String::from(if self.no_std {
+                "::alloc::string::String"
+            } else {
+                "::std::string::String"
+            }),
+            Type::Bytes => String::from(if self.no_std {
+                "::alloc::vec::Vec<u8>"
+            } else {
+                "::std::vec::Vec<u8>"
+            }),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
