@@ -478,7 +478,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "pub {}: ::{}::option::Option<{}>,\n",
             to_snake(oneof.name()),
-            if self.no_std { "alloc" } else { "std" },
+            if self.no_std { "core" } else { "std" },
             name
         ));
     }
