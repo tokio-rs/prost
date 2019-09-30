@@ -538,7 +538,10 @@ impl Config {
 
         let mut buf = Vec::new();
         fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
+        // We cannot rely on Into<io::Error> here because we might be in no_std mode
+        let descriptor_set =
+            FileDescriptorSet::decode(&buf[..])
+                .map_err(|error| Error::new(ErrorKind::InvalidData, error))?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
