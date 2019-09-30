@@ -541,7 +541,7 @@ impl Config {
         // We cannot rely on Into<io::Error> here because we might be in no_std mode
         let descriptor_set =
             FileDescriptorSet::decode(&buf[..])
-                .map_err(|error| Error::new(ErrorKind::InvalidData, error))?;
+                .map_err(|error| Error::new(ErrorKind::InvalidData, error.to_string()))?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
