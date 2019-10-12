@@ -3,6 +3,7 @@
 //! Meant to be used only from `Message` implementations.
 
 use std::cmp::min;
+use std::convert::TryFrom;
 use std::mem;
 use std::u32;
 use std::usize;
@@ -280,11 +281,11 @@ pub enum WireType {
 pub const MIN_TAG: u32 = 1;
 pub const MAX_TAG: u32 = (1 << 29) - 1;
 
-impl WireType {
-    // TODO: impl TryFrom<u64> when stable.
-    #[inline(always)]
-    pub fn try_from(val: u64) -> Result<WireType, DecodeError> {
-        match val {
+impl TryFrom<u64> for WireType {
+    type Error = DecodeError;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        match value {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
@@ -293,7 +294,7 @@ impl WireType {
             5 => Ok(WireType::ThirtyTwoBit),
             _ => Err(DecodeError::new(format!(
                 "invalid wire type value: {}",
-                val
+                value
             ))),
         }
     }
