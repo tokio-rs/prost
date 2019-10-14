@@ -114,7 +114,7 @@ use std::collections::HashMap;
 use std::default;
 use std::env;
 use std::fs;
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -546,18 +546,27 @@ impl Config {
             ));
         }
 
-        let mut buf = Vec::new();
-        fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
+        let buf = fs::read(descriptor_set)?;
+        let descriptor_set = FileDescriptorSet::decode(&*buf)?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
-            trace!("writing: {:?}", filename);
-            let mut file = fs::File::create(target.join(filename))?;
-            file.write_all(content.as_bytes())?;
-            file.flush()?;
+
+            let output_path = target.join(&filename);
+
+            let previous_content = fs::read(&output_path);
+
+            if previous_content
+                .map(|previous_content| previous_content == content.as_bytes())
+                .unwrap_or(false)
+            {
+                trace!("unchanged: {:?}", filename);
+            } else {
+                trace!("writing: {:?}", filename);
+                fs::write(output_path, content)?;
+            }
         }
 
         Ok(())
