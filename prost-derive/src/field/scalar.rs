@@ -280,14 +280,20 @@ impl Field {
         }
         let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
         let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+        let get_doc = format!("Returns the enum variant representation of {:?}.", ident_str);
+        let set_doc = format!("Sets {:?} from its enum variant representation.", ident_str);
+        let push_doc = format!("Pushes an enum variant onto the end of {:?}.", ident_str);
+
         if let Ty::Enumeration(ref ty) = self.ty {
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
                             #ty::from_i32(self.#ident).unwrap_or(#default)
                         }
 
+                        #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = value as i32;
                         }
@@ -295,10 +301,12 @@ impl Field {
                 }
                 Kind::Optional(ref default) => {
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
                             self.#ident.and_then(#ty::from_i32).unwrap_or(#default)
                         }
 
+                        #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = ::std::option::Option::Some(value as i32);
                         }
@@ -306,10 +314,12 @@ impl Field {
                 }
                 Kind::Repeated | Kind::Packed => {
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
                                                                        fn(i32) -> Option<#ty>> {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
+                        #[doc=#push_doc]
                         pub fn #push(&mut self, value: #ty) {
                             self.#ident.push(value as i32);
                         }
@@ -326,6 +336,7 @@ impl Field {
             };
 
             Some(quote! {
+                #[doc=#get_doc]
                 pub fn #ident(&self) -> #ty {
                     match self.#ident {
                         #match_some
