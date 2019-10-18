@@ -256,10 +256,14 @@ impl Field {
                 quote!()
             };
 
+            let get_doc = format!("Look up the given key in {:?}.", ident);
+            let insert_doc = format!("Inserts a key value pair into {:?}.", ident);
             Some(quote! {
+                #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
                     self.#ident.get(#take_ref key).cloned().and_then(#ty::from_i32)
                 }
+                #[doc=#insert_doc]
                 pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
                     self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
                 }
