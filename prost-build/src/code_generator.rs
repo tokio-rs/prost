@@ -683,7 +683,6 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn push_mod(&mut self, module: &str) {
-        self.push_indent();
         self.append_doc();
         self.push_indent();
         self.buf.push_str("pub mod ");
