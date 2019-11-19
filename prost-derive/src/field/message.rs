@@ -1,6 +1,6 @@
 use failure::{bail, Error};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::Meta;
 
 use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
@@ -61,7 +61,10 @@ impl Field {
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs, None)? {
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
-                bail!("invalid atribute for oneof field: {}", attr.name());
+                bail!(
+                    "invalid attribute for oneof field: {}",
+                    attr.path().into_token_stream()
+                );
             }
             field.label = Label::Required;
             Ok(Some(field))
