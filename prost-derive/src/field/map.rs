@@ -53,7 +53,11 @@ impl Field {
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
-            } else if let Some(map_ty) = MapTy::from_str(&attr.name().to_string()) {
+            } else if let Some(map_ty) = attr
+                .path()
+                .get_ident()
+                .and_then(|i| MapTy::from_str(&i.to_string()))
+            {
                 let (k, v): (String, String) = match *attr {
                     Meta::NameValue(MetaNameValue {
                         lit: Lit::Str(ref lit),
@@ -77,11 +81,15 @@ impl Field {
                             bail!("invalid map attribute: must contain key and value types");
                         }
                         let k = match &meta_list.nested[0] {
-                            &NestedMeta::Meta(Meta::Word(ref k)) => k.to_string(),
+                            &NestedMeta::Meta(Meta::Path(ref k)) if k.get_ident().is_some() => {
+                                k.get_ident().unwrap().to_string()
+                            }
                             _ => bail!("invalid map attribute: key must be an identifier"),
                         };
                         let v = match &meta_list.nested[1] {
-                            &NestedMeta::Meta(Meta::Word(ref v)) => v.to_string(),
+                            &NestedMeta::Meta(Meta::Path(ref v)) if v.get_ident().is_some() => {
+                                v.get_ident().unwrap().to_string()
+                            }
                             _ => bail!("invalid map attribute: value must be an identifier"),
                         };
                         (k, v)

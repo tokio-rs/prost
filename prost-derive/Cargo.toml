@@ -16,6 +16,6 @@ proc_macro = true
 [dependencies]
 failure = { version = "0.1", default-features = false, features = ["std"] }
 itertools = "0.8"
-proc-macro2 = "0.4.4"
-quote = "0.6.3"
-syn = { version = "0.15", features = [ "extra-traits" ] }
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = [ "extra-traits" ] }
