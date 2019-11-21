@@ -163,6 +163,16 @@ pub trait ServiceGenerator {
     ///
     /// The default implementation is empty and does nothing.
     fn finalize(&mut self, _buf: &mut String) {}
+
+    /// Finalizes the generation process for an entire protobuf package.
+    ///
+    /// This differs from [`finalize`](#method.finalize) by where (and how often) it is called
+    /// during the service generator life cycle. This method is called once per protobuf package,
+    /// making it ideal for grouping services within a single package spread across multiple
+    /// `.proto` files.
+    ///
+    /// The default implementation is empty and does nothing.
+    fn finalize_package(&mut self, _buf: &mut String) {}
 }
 
 /// Configuration options for Protobuf code generation.
@@ -565,6 +575,13 @@ impl Config {
             let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
+
+        if let Some(ref mut service_generator) = self.service_generator {
+            for buf in modules.values_mut() {
+                service_generator.finalize_package(buf);
+            }
+        }
+
         Ok(modules)
     }
 
