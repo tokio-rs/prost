@@ -172,7 +172,7 @@ pub trait ServiceGenerator {
     /// `.proto` files.
     ///
     /// The default implementation is empty and does nothing.
-    fn finalize_package(&mut self, _buf: &mut String) {}
+    fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
 }
 
 /// Configuration options for Protobuf code generation.
@@ -565,6 +565,7 @@ impl Config {
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
+        let mut packages = HashMap::new();
 
         let message_graph = MessageGraph::new(&files);
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
@@ -572,13 +573,20 @@ impl Config {
 
         for file in files {
             let module = self.module(&file);
+
+            // Only record packages that have services
+            if !file.service.is_empty() {
+                packages.insert(module.clone(), file.package().to_string());
+            }
+
             let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
 
         if let Some(ref mut service_generator) = self.service_generator {
-            for buf in modules.values_mut() {
-                service_generator.finalize_package(buf);
+            for (module, package) in packages {
+                let buf = modules.get_mut(&module).unwrap();
+                service_generator.finalize_package(&package, buf);
             }
         }
 
