@@ -1,7 +1,10 @@
+extern crate test;
+
 use std::mem;
 
 use bytes::{Buf, IntoBuf};
 use criterion::{Benchmark, Criterion, Throughput};
+
 use prost::encoding::{decode_varint, encode_varint, encoded_len_varint};
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 
