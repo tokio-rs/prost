@@ -1,6 +1,6 @@
 use std::mem;
 
-use bytes::{Buf, IntoBuf};
+use bytes::Buf;
 use criterion::{Benchmark, Criterion, Throughput};
 use prost::encoding::{decode_varint, encode_varint, encoded_len_varint};
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
@@ -38,7 +38,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
 
         b.iter(|| {
             decode_values.clear();
-            let mut buf = buf[..].into_buf();
+            let mut buf = &mut buf.as_slice();
             while buf.has_remaining() {
                 let value = decode_varint(&mut buf).unwrap();
                 decode_values.push(value);

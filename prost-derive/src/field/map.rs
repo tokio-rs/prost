@@ -162,7 +162,7 @@ impl Field {
                     &#ident,
                     buf,
                 );
-            }
+            },
         }
     }
 
@@ -199,7 +199,7 @@ impl Field {
                     buf,
                     ctx,
                 )
-            }
+            },
         }
     }
 
@@ -234,7 +234,7 @@ impl Field {
                     #tag,
                     &#ident,
                 )
-            }
+            },
         }
     }
 

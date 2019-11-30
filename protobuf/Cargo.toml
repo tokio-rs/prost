@@ -6,7 +6,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
+bytes = "0.5"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
