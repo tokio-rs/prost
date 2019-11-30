@@ -7,7 +7,7 @@ use std::mem;
 use std::u32;
 use std::usize;
 
-use ::bytes::{Buf, BufMut};
+use bytes1::{buf::ext::BufExt, Buf, BufMut};
 
 use crate::DecodeError;
 use crate::Message;
@@ -21,9 +21,6 @@ where
 {
     // Safety notes:
     //
-    // - bytes_mut is unsafe because it may return an uninitialized slice.
-    //   The use here is safe because the slice is only written to, never read from.
-    //
     // - advance_mut is unsafe because it could cause uninitialized memory to be
     //   advanced over. The use here is safe since each byte which is advanced over
     //   has been written to in the previous loop iteration.
@@ -31,13 +28,13 @@ where
     'outer: loop {
         i = 0;
 
-        for byte in unsafe { buf.bytes_mut() } {
+        for byte in buf.bytes_mut() {
             i += 1;
             if value < 0x80 {
-                *byte = value as u8;
+                *byte = mem::MaybeUninit::new(value as u8);
                 break 'outer;
             } else {
-                *byte = ((value & 0x7F) | 0x80) as u8;
+                *byte = mem::MaybeUninit::new(((value & 0x7F) | 0x80) as u8);
                 value >>= 7;
             }
         }
@@ -1240,7 +1237,7 @@ mod test {
     use std::io::Cursor;
     use std::u64;
 
-    use ::bytes::{Bytes, BytesMut, IntoBuf};
+    use bytes1::{Bytes, BytesMut};
     use quickcheck::TestResult;
 
     use crate::encoding::*;
@@ -1250,7 +1247,7 @@ mod test {
         tag: u32,
         wire_type: WireType,
         encode: fn(u32, &B, &mut BytesMut),
-        merge: fn(WireType, &mut T, &mut Cursor<Bytes>, DecodeContext) -> Result<(), DecodeError>,
+        merge: fn(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         encoded_len: fn(u32, &B) -> usize,
     ) -> TestResult
     where
@@ -1266,7 +1263,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, value.borrow(), &mut buf);
 
-        let mut buf = buf.freeze().into_buf();
+        let mut buf = buf.freeze();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!(
@@ -1354,7 +1351,7 @@ mod test {
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
         E: FnOnce(u32, &B, &mut BytesMut),
-        M: FnMut(WireType, &mut T, &mut Cursor<Bytes>, DecodeContext) -> Result<(), DecodeError>,
+        M: FnMut(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         L: FnOnce(u32, &B) -> usize,
     {
         if tag > MAX_TAG || tag < MIN_TAG {
@@ -1366,7 +1363,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, value.borrow(), &mut buf);
 
-        let mut buf = buf.freeze().into_buf();
+        let mut buf = buf.freeze();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!(
@@ -1430,7 +1427,7 @@ mod test {
 
     #[test]
     fn varint() {
-        fn check(value: u64, encoded: &[u8]) {
+        fn check(value: u64, mut encoded: &[u8]) {
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1443,11 +1440,11 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value = decode_varint(&mut encoded.into_buf()).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            let roundtrip_value =
-                decode_varint_slow(&mut encoded.into_buf()).expect("slow decoding failed");
+            println!("encoding {:?}", encoded);
+            let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 

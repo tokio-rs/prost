@@ -4,7 +4,6 @@ use std::result;
 
 use criterion::{Benchmark, Criterion, Throughput};
 use failure::bail;
-use prost::encoding::DecodeContext;
 use prost::Message;
 use protobuf::benchmarks::{google_message3, google_message4, proto2, proto3, BenchmarkDataset};
 
@@ -19,7 +18,7 @@ where
     let messages = dataset
         .payload
         .iter()
-        .map(|buf| M::decode(buf))
+        .map(|buf| M::decode(&buf[..]))
         .collect::<result::Result<Vec<_>, _>>()?;
     let encoded_len = messages
         .iter()
@@ -42,7 +41,7 @@ where
     let decode = Benchmark::new("decode", move |b| {
         b.iter(|| {
             for buf in &payload {
-                criterion::black_box(M::decode(buf).unwrap());
+                criterion::black_box(M::decode(&buf[..]).unwrap());
             }
         })
     })
@@ -54,7 +53,7 @@ where
         b.iter(|| {
             for buf in &payload {
                 message.clear();
-                message.merge(buf).unwrap();
+                message.merge(&buf[..]).unwrap();
                 criterion::black_box(&message);
             }
         })
@@ -80,7 +79,7 @@ fn main() -> Result {
             let mut f = File::open(dataset)?;
             let mut buf = Vec::new();
             f.read_to_end(&mut buf)?;
-            protobuf::benchmarks::BenchmarkDataset::decode(buf)?
+            protobuf::benchmarks::BenchmarkDataset::decode(&buf[..])?
         };
 
         match dataset.message_name.as_str() {

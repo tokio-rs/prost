@@ -5,7 +5,7 @@
 //! the `prost-types` crate in order to avoid a cyclic dependency between `prost` and
 //! `prost-build`.
 
-use ::bytes::{Buf, BufMut};
+use bytes1::{Buf, BufMut};
 
 use crate::encoding::*;
 use crate::DecodeError;
