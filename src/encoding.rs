@@ -21,9 +21,6 @@ where
 {
     // Safety notes:
     //
-    // - bytes_mut is unsafe because it may return an uninitialized slice.
-    //   The use here is safe because the slice is only written to, never read from.
-    //
     // - advance_mut is unsafe because it could cause uninitialized memory to be
     //   advanced over. The use here is safe since each byte which is advanced over
     //   has been written to in the previous loop iteration.
