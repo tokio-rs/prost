@@ -15,7 +15,7 @@ os:
   - osx
 
 rust:
-  - 1.34.0
+  - 1.39.0
   - nightly
 
 script:
