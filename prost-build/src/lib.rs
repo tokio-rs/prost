@@ -677,6 +677,8 @@ pub fn protoc_include() -> &'static Path {
 mod tests {
     use super::*;
     use env_logger;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
@@ -705,12 +707,66 @@ mod tests {
         }
     }
 
+    /// Implements `ServiceGenerator` and provides some state for assertions.
+    struct MockServiceGenerator {
+        state: Rc<RefCell<MockState>>,
+    }
+
+    /// Holds state for `MockServiceGenerator`
+    #[derive(Default)]
+    struct MockState {
+        service_names: Vec<String>,
+        package_names: Vec<String>,
+        finalized: u32,
+    }
+
+    impl MockServiceGenerator {
+        fn new(state: Rc<RefCell<MockState>>) -> Self {
+            Self { state }
+        }
+    }
+
+    impl ServiceGenerator for MockServiceGenerator {
+        fn generate(&mut self, service: Service, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.service_names.push(service.name.clone());
+        }
+
+        fn finalize(&mut self, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.finalized += 1;
+        }
+
+        fn finalize_package(&mut self, package: &str, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.package_names.push(package.to_string());
+        }
+    }
+
     #[test]
     fn smoke_test() {
-        let _ = env_logger::init();
+        let _ = env_logger::try_init();
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
+    }
+
+    #[test]
+    fn finalize_package() {
+        let _ = env_logger::try_init();
+
+        let state = Rc::new(RefCell::new(MockState::default()));
+        let gen = MockServiceGenerator::new(Rc::clone(&state));
+
+        Config::new()
+            .service_generator(Box::new(gen))
+            .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
+            .unwrap();
+
+        let state = state.borrow();
+        assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
+        assert_eq!(&state.package_names, &["helloworld"]);
+        assert_eq!(state.finalized, 3);
     }
 }
