@@ -22,7 +22,15 @@ impl MessageGraph {
         };
 
         for file in files {
-            let package = format!(".{}", file.package.as_ref().expect("expected a package"));
+            let package = format!(
+                ".{}",
+                file.package.as_ref().expect(&format!(
+                    "prost requires a package specifier in all .proto files \
+                     (https://developers.google.com/protocol-buffers/docs/proto#packages); \
+                     file with missing package specifier: {}",
+                    file.name.as_ref().map_or("(unknown)", String::as_ref),
+                ))
+            );
             for msg in &file.message_type {
                 msg_graph.add_message(&package, msg);
             }
