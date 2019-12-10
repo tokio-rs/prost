@@ -22,7 +22,13 @@ impl MessageGraph {
         };
 
         for file in files {
-            let package = format!(".{}", file.package.as_ref().expect("expected a package"));
+            let package = format!(
+                ".{}",
+                file.package.as_ref().expect(&format!(
+                    "prost expected a package definition for file {}",
+                    &file.name.as_ref().unwrap_or(&"(unknown)".to_string())
+                ))
+            );
             for msg in &file.message_type {
                 msg_graph.add_message(&package, msg);
             }
