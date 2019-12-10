@@ -18,7 +18,7 @@ Compared to other Protocol Buffers implementations, `prost`
   and deserialized by adding attributes.
 * Uses the [`bytes::{Buf, BufMut}`](https://github.com/carllerche/bytes)
   abstractions for serialization instead of `std::io::{Read, Write}`.
-* Respects the Protobuf `package` declaration when organizing generated code
+* Respects the Protobuf `package` specifier when organizing generated code
   into Rust modules.
 * Preserves unknown enum values during deserialization.
 * Does not include support for runtime reflection or message descriptors.
@@ -48,9 +48,11 @@ possible.
 
 ### Packages
 
-Currently, all `.proto` files used with `prost` must contain a `package`
-declaration. `prost` will translate the Protobuf package into a Rust module.
-For example, given the `package` declaration:
+All `.proto` files used with `prost` must contain a
+[`package` specifier][package]. `prost` will translate the Protobuf package into
+a Rust module. For example, given the `package` specifier:
+
+[package]: https://developers.google.com/protocol-buffers/docs/proto#packages
 
 ```proto
 package foo.bar;
