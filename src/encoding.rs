@@ -35,13 +35,13 @@ where
     'outer: loop {
         i = 0;
 
-        for byte in unsafe { buf.bytes_mut() } {
+        for byte in buf.bytes_mut() {
             i += 1;
             if value < 0x80 {
-                *byte = value as u8;
+                *byte = mem::MaybeUninit::new(value as u8);
                 break 'outer;
             } else {
-                *byte = ((value & 0x7F) | 0x80) as u8;
+                *byte =  mem::MaybeUninit::new(((value & 0x7F) | 0x80) as u8);
                 value >>= 7;
             }
         }
@@ -862,6 +862,7 @@ pub mod bytes {
         }
         let len = len as usize;
         value.reserve(len);
+        use ::bytes::buf::ext::BufExt;
         value.put(buf.take(len));
         Ok(())
     }
