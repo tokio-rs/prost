@@ -13,8 +13,8 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
         .iter()
         .cloned()
         .map(encoded_len_varint)
-        .sum::<usize>();
-    let decoded_len = values.len() * mem::size_of::<u64>();
+        .sum::<usize>() as u64;
+    let decoded_len = (values.len() * mem::size_of::<u64>()) as u64;
 
     let encode_values = values.clone();
     let encode = Benchmark::new("encode", move |b| {
@@ -27,7 +27,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
             criterion::black_box(&buf);
         })
     })
-    .throughput(Throughput::Bytes(encoded_len as u32));
+    .throughput(Throughput::Bytes(encoded_len));
 
     let mut decode_values = values.clone();
     let decode = Benchmark::new("decode", move |b| {
@@ -46,7 +46,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
             criterion::black_box(&decode_values);
         })
     })
-    .throughput(Throughput::Bytes(decoded_len as u32));
+    .throughput(Throughput::Bytes(decoded_len));
 
     let encoded_len_values = values.clone();
     let encoded_len = Benchmark::new("encoded_len", move |b| {
@@ -58,7 +58,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
             criterion::black_box(sum);
         })
     })
-    .throughput(Throughput::Bytes(decoded_len as u32));
+    .throughput(Throughput::Bytes(decoded_len));
 
     let name = format!("varint/{}", name);
     criterion
