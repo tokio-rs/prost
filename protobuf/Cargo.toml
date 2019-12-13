@@ -19,7 +19,7 @@ tar = "0.4"
 tempfile = "3"
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
 
 [lib]
 # https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
