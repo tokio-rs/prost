@@ -118,7 +118,7 @@ impl Field {
             Kind::Repeated => quote!(encode_repeated),
             Kind::Packed => quote!(encode_packed),
         };
-        let encode_fn = quote!(_prost::encoding::#module::#encode_fn);
+        let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
         let tag = self.tag;
 
         match self.kind {
@@ -149,7 +149,7 @@ impl Field {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
         };
-        let merge_fn = quote!(_prost::encoding::#module::#merge_fn);
+        let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
@@ -172,7 +172,7 @@ impl Field {
             Kind::Repeated => quote!(encoded_len_repeated),
             Kind::Packed => quote!(encoded_len_packed),
         };
-        let encoded_len_fn = quote!(_prost::encoding::#module::#encoded_len_fn);
+        let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
         let tag = self.tag;
 
         match self.kind {
