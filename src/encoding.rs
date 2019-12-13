@@ -7,7 +7,7 @@ use std::mem;
 use std::u32;
 use std::usize;
 
-use bytes1::{buf::ext::BufExt, Buf, BufMut};
+use ::bytes::{buf::ext::BufExt, Buf, BufMut};
 
 use crate::DecodeError;
 use crate::Message;
@@ -1237,7 +1237,7 @@ mod test {
     use std::io::Cursor;
     use std::u64;
 
-    use bytes1::{Bytes, BytesMut};
+    use ::bytes::{Bytes, BytesMut};
     use quickcheck::TestResult;
 
     use crate::encoding::*;

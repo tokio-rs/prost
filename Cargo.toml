@@ -41,7 +41,7 @@ default = ["prost-derive"]
 no-recursion-limit = []
 
 [dependencies]
-bytes1 = { version = "0.5.2", package = "bytes" }
+bytes = "0.5"
 prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
 
 [dev-dependencies]

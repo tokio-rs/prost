@@ -15,7 +15,7 @@ fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
     let mut f = File::open(dataset)?;
     let mut buf = Vec::new();
     f.read_to_end(&mut buf)?;
-    Ok(BenchmarkDataset::decode(buf)?)
+    Ok(BenchmarkDataset::decode(&*buf)?)
 }
 
 fn benchmark_dataset<M>(criterion: &mut Criterion, name: &str, dataset: &'static Path)
@@ -28,7 +28,7 @@ where
         b.iter(|| {
             for buf in &dataset.payload {
                 message.clear();
-                message.merge(buf).unwrap();
+                message.merge(buf.as_slice()).unwrap();
                 criterion::black_box(&message);
             }
         });
@@ -39,6 +39,7 @@ where
             .unwrap()
             .payload
             .iter()
+            .map(Vec::as_slice)
             .map(M::decode)
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
@@ -57,6 +58,7 @@ where
             .unwrap()
             .payload
             .iter()
+            .map(Vec::as_slice)
             .map(M::decode)
             .collect::<Result<Vec<_>, _>>()
             .unwrap();

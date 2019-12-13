@@ -1,9 +1,11 @@
 use std::fmt::Debug;
 use std::usize;
 
-use bytes1::{Buf, BufMut};
+use bytes::{Buf, BufMut};
 
-use crate::encoding::*;
+use crate::encoding::{
+    decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
+};
 use crate::DecodeError;
 use crate::EncodeError;
 

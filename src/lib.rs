@@ -10,7 +10,7 @@ pub mod encoding;
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
 
-use bytes1::{Buf, BufMut};
+use bytes::{Buf, BufMut};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
 

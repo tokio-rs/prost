@@ -15,5 +15,5 @@ doctest = false
 test = false
 
 [dependencies]
-bytes = "0.5.2"
+bytes = "0.5"
 prost = { version = "0.5.0", path = ".." }
