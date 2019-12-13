@@ -1,6 +1,6 @@
 use std::io::{self, Read, Write};
 
-use bytes::{ByteOrder, LittleEndian};
+use bytes::{Buf, BufMut};
 use prost::Message;
 
 use protobuf::conformance::{
@@ -10,24 +10,24 @@ use protobuf::test_messages::proto2::TestAllTypesProto2;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
 use tests::{roundtrip, RoundtripResult};
 
-fn main() {
+fn main() -> io::Result<()> {
     env_logger::init();
     let mut bytes = Vec::new();
 
     loop {
         bytes.resize(4, 0);
 
-        if io::stdin().read_exact(&mut bytes[..]).is_err() {
+        if io::stdin().read_exact(&mut *bytes).is_err() {
             // No more test cases.
-            break;
+            return Ok(());
         }
 
-        let len = LittleEndian::read_u32(&bytes[..]) as usize;
+        let len = bytes.as_slice().get_u32_le() as usize;
 
         bytes.resize(len, 0);
-        io::stdin().read_exact(&mut bytes[..]).unwrap();
+        io::stdin().read_exact(&mut *bytes)?;
 
-        let result = match ConformanceRequest::decode(&bytes) {
+        let result = match ConformanceRequest::decode(&*bytes) {
             Ok(request) => handle_request(request),
             Err(error) => conformance_response::Result::ParseError(format!("{:?}", error)),
         };
@@ -36,15 +36,14 @@ fn main() {
         response.result = Some(result);
 
         let len = response.encoded_len();
-        bytes.resize(4, 0);
-
-        LittleEndian::write_u32(&mut bytes[..4], len as u32);
-        response.encode(&mut bytes).unwrap();
+        bytes.clear();
+        bytes.put_u32_le(len as u32);
+        response.encode(&mut bytes)?;
         assert_eq!(len + 4, bytes.len());
 
         let mut stdout = io::stdout();
-        stdout.lock().write_all(&bytes).unwrap();
-        stdout.flush().unwrap();
+        stdout.lock().write_all(&bytes)?;
+        stdout.flush()?;
     }
 }
 

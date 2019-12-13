@@ -118,7 +118,7 @@ impl Field {
             Kind::Repeated => quote!(encode_repeated),
             Kind::Packed => quote!(encode_packed),
         };
-        let encode_fn = quote!(_prost::encoding::#module::#encode_fn);
+        let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
         let tag = self.tag;
 
         match self.kind {
@@ -149,7 +149,7 @@ impl Field {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
         };
-        let merge_fn = quote!(_prost::encoding::#module::#merge_fn);
+        let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
@@ -172,7 +172,7 @@ impl Field {
             Kind::Repeated => quote!(encoded_len_repeated),
             Kind::Packed => quote!(encoded_len_packed),
         };
-        let encoded_len_fn = quote!(_prost::encoding::#module::#encoded_len_fn);
+        let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
         let tag = self.tag;
 
         match self.kind {
@@ -278,38 +278,63 @@ impl Field {
         if ident_str.starts_with("r#") {
             ident_str = ident_str[2..].to_owned();
         }
-        let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
-        let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+
         if let Ty::Enumeration(ref ty) = self.ty {
+            let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
+            let set_doc = format!("Sets `{}` to the provided enum value.", ident_str);
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or the default if the field is set to an invalid enum value.",
+                        ident_str,
+                    );
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
                             #ty::from_i32(self.#ident).unwrap_or(#default)
                         }
 
+                        #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = value as i32;
                         }
                     }
                 }
                 Kind::Optional(ref default) => {
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or the default if the field is unset or set to an invalid enum value.",
+                        ident_str,
+                    );
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
                             self.#ident.and_then(#ty::from_i32).unwrap_or(#default)
                         }
 
+                        #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = ::std::option::Option::Some(value as i32);
                         }
                     }
                 }
                 Kind::Repeated | Kind::Packed => {
+                    let iter_doc = format!(
+                        "Returns an iterator which yields the valid enum values contained in `{}`.",
+                        ident_str,
+                    );
+                    let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+                    let push_doc = format!("Appends the provided enum value to `{}`.", ident_str);
                     quote! {
-                        pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                       fn(i32) -> Option<#ty>> {
+                        #[doc=#iter_doc]
+                        pub fn #ident(&self) -> ::std::iter::FilterMap<
+                            ::std::iter::Cloned<::std::slice::Iter<i32>>,
+                            fn(i32) -> Option<#ty>,
+                        > {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
+                        #[doc=#push_doc]
                         pub fn #push(&mut self, value: #ty) {
                             self.#ident.push(value as i32);
                         }
@@ -325,7 +350,13 @@ impl Field {
                 quote!(::std::option::Option::Some(ref val) => &val[..],)
             };
 
+            let get_doc = format!(
+                "Returns the value of `{0}`, or the default value if `{0}` is unset.",
+                ident_str,
+            );
+
             Some(quote! {
+                #[doc=#get_doc]
                 pub fn #ident(&self) -> #ty {
                     match self.#ident {
                         #match_some

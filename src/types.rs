@@ -7,9 +7,13 @@
 
 use ::bytes::{Buf, BufMut};
 
-use crate::encoding::*;
-use crate::DecodeError;
-use crate::Message;
+use crate::{
+    encoding::{
+        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
+        DecodeContext, WireType,
+    },
+    DecodeError, Message,
+};
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {

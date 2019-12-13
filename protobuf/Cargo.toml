@@ -6,7 +6,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
+bytes = "0.5"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
@@ -17,3 +17,14 @@ flate2 = "1.0"
 prost-build = { path = "../prost-build" }
 tar = "0.4"
 tempfile = "3"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[lib]
+# https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+
+[[bench]]
+name = "dataset"
+harness = false
