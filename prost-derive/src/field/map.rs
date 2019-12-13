@@ -256,8 +256,12 @@ impl Field {
                 quote!()
             };
 
-            let get_doc = format!("Look up the given key in {:?}.", ident);
-            let insert_doc = format!("Inserts a key value pair into {:?}.", ident);
+            let get_doc = format!(
+                "Returns the enum value for the corresponding key in `{}`, \
+                 or `None` if the entry does not exist or it is not a valid enum value.",
+                ident,
+            );
+            let insert_doc = format!("Inserts a key value pair into `{}`.", ident);
             Some(quote! {
                 #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {

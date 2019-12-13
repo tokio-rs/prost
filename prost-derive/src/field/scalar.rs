@@ -278,15 +278,17 @@ impl Field {
         if ident_str.starts_with("r#") {
             ident_str = ident_str[2..].to_owned();
         }
-        let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
-        let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
-        let get_doc = format!("Returns the enum variant representation of {:?}.", ident_str);
-        let set_doc = format!("Sets {:?} from its enum variant representation.", ident_str);
-        let push_doc = format!("Pushes an enum variant onto the end of {:?}.", ident_str);
 
         if let Ty::Enumeration(ref ty) = self.ty {
+            let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
+            let set_doc = format!("Sets `{}` to the provided enum value.", ident_str);
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or the default if the field is set to an invalid enum value.",
+                        ident_str,
+                    );
                     quote! {
                         #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
@@ -300,6 +302,11 @@ impl Field {
                     }
                 }
                 Kind::Optional(ref default) => {
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or the default if the field is unset or set to an invalid enum value.",
+                        ident_str,
+                    );
                     quote! {
                         #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
@@ -313,10 +320,18 @@ impl Field {
                     }
                 }
                 Kind::Repeated | Kind::Packed => {
+                    let iter_doc = format!(
+                        "Returns an iterator which yields the valid enum values contained in `{}`.",
+                        ident_str,
+                    );
+                    let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+                    let push_doc = format!("Appends the provided enum value to `{}`.", ident_str);
                     quote! {
-                        #[doc=#get_doc]
-                        pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                       fn(i32) -> Option<#ty>> {
+                        #[doc=#iter_doc]
+                        pub fn #ident(&self) -> ::std::iter::FilterMap<
+                            ::std::iter::Cloned<::std::slice::Iter<i32>>,
+                            fn(i32) -> Option<#ty>,
+                        > {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
                         #[doc=#push_doc]
@@ -334,6 +349,11 @@ impl Field {
             } else {
                 quote!(::std::option::Option::Some(ref val) => &val[..],)
             };
+
+            let get_doc = format!(
+                "Returns the value of `{0}`, or the default value if `{0}` is unset.",
+                ident_str,
+            );
 
             Some(quote! {
                 #[doc=#get_doc]
