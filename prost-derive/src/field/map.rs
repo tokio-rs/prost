@@ -258,7 +258,7 @@ impl Field {
 
             let get_doc = format!(
                 "Returns the enum value for the corresponding key in `{}`, \
-                 or `None` if the entry does not exist or it is not a valid enum value.",
+                 or `None` if the entry does not exist or is not a valid enum value.",
                 ident,
             );
             let insert_doc = format!("Inserts a key value pair into `{}`.", ident);
