@@ -11,7 +11,7 @@ build = "src/build.rs"
 doctest = false
 
 [dependencies]
-bytes = "0.4.7"
+bytes = "0.5"
 cfg-if = "0.1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
@@ -24,6 +24,6 @@ tempfile = "3"
 
 [build-dependencies]
 cfg-if = "0.1"
-env_logger = { version = "0.6", default-features = false }
+env_logger = { version = "0.7", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }

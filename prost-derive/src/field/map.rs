@@ -117,37 +117,52 @@ impl Field {
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         let key_mod = self.key_ty.module();
-        let ke = quote!(_prost::encoding::#key_mod::encode);
-        let kl = quote!(_prost::encoding::#key_mod::encoded_len);
+        let ke = quote!(::prost::encoding::#key_mod::encode);
+        let kl = quote!(::prost::encoding::#key_mod::encoded_len);
         let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
-                    _prost::encoding::#module::encode_with_default(#ke, #kl,
-                                                                   _prost::encoding::int32::encode,
-                                                                   _prost::encoding::int32::encoded_len,
-                                                                   &(#default),
-                                                                   #tag, &#ident, buf);
+                    ::prost::encoding::#module::encode_with_default(
+                        #ke,
+                        #kl,
+                        ::prost::encoding::int32::encode,
+                        ::prost::encoding::int32::encoded_len,
+                        &(#default),
+                        #tag,
+                        &#ident,
+                        buf,
+                    );
                 }
             }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
-                let ve = quote!(_prost::encoding::#val_mod::encode);
-                let vl = quote!(_prost::encoding::#val_mod::encoded_len);
+                let ve = quote!(::prost::encoding::#val_mod::encode);
+                let vl = quote!(::prost::encoding::#val_mod::encoded_len);
                 quote! {
-                    _prost::encoding::#module::encode(#ke, #kl, #ve, #vl,
-                                                      #tag, &#ident, buf);
+                    ::prost::encoding::#module::encode(
+                        #ke,
+                        #kl,
+                        #ve,
+                        #vl,
+                        #tag,
+                        &#ident,
+                        buf,
+                    );
                 }
             }
-            ValueTy::Message => {
-                quote! {
-                    _prost::encoding::#module::encode(#ke, #kl,
-                                                      _prost::encoding::message::encode,
-                                                      _prost::encoding::message::encoded_len,
-                                                      #tag, &#ident, buf);
-                }
-            }
+            ValueTy::Message => quote! {
+                ::prost::encoding::#module::encode(
+                    #ke,
+                    #kl,
+                    ::prost::encoding::message::encode,
+                    ::prost::encoding::message::encoded_len,
+                    #tag,
+                    &#ident,
+                    buf,
+                );
+            },
         }
     }
 
@@ -155,25 +170,36 @@ impl Field {
     /// into the map.
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let key_mod = self.key_ty.module();
-        let km = quote!(_prost::encoding::#key_mod::merge);
+        let km = quote!(::prost::encoding::#key_mod::merge);
         let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
-                    _prost::encoding::#module::merge_with_default(#km, _prost::encoding::int32::merge,
-                                                                  #default, &mut #ident, buf, ctx)
+                    ::prost::encoding::#module::merge_with_default(
+                        #km,
+                        ::prost::encoding::int32::merge,
+                        #default,
+                        &mut #ident,
+                        buf,
+                        ctx,
+                    )
                 }
             }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
-                let vm = quote!(_prost::encoding::#val_mod::merge);
-                quote!(_prost::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
+                let vm = quote!(::prost::encoding::#val_mod::merge);
+                quote!(::prost::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
             }
-            ValueTy::Message => {
-                quote!(_prost::encoding::#module::merge(#km, _prost::encoding::message::merge,
-                                                        &mut #ident, buf, ctx))
-            }
+            ValueTy::Message => quote! {
+                ::prost::encoding::#module::merge(
+                    #km,
+                    ::prost::encoding::message::merge,
+                    &mut #ident,
+                    buf,
+                    ctx,
+                )
+            },
         }
     }
 
@@ -181,26 +207,34 @@ impl Field {
     pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         let key_mod = self.key_ty.module();
-        let kl = quote!(_prost::encoding::#key_mod::encoded_len);
+        let kl = quote!(::prost::encoding::#key_mod::encoded_len);
         let module = self.map_ty.module();
         match self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
-                    _prost::encoding::#module::encoded_len_with_default(
-                        #kl, _prost::encoding::int32::encoded_len,
-                        &(#default), #tag, &#ident)
+                    ::prost::encoding::#module::encoded_len_with_default(
+                        #kl,
+                        ::prost::encoding::int32::encoded_len,
+                        &(#default),
+                        #tag,
+                        &#ident,
+                    )
                 }
             }
             ValueTy::Scalar(ref value_ty) => {
                 let val_mod = value_ty.module();
-                let vl = quote!(_prost::encoding::#val_mod::encoded_len);
-                quote!(_prost::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
+                let vl = quote!(::prost::encoding::#val_mod::encoded_len);
+                quote!(::prost::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
             }
-            ValueTy::Message => {
-                quote!(_prost::encoding::#module::encoded_len(#kl, _prost::encoding::message::encoded_len,
-                                                              #tag, &#ident))
-            }
+            ValueTy::Message => quote! {
+                ::prost::encoding::#module::encoded_len(
+                    #kl,
+                    ::prost::encoding::message::encoded_len,
+                    #tag,
+                    &#ident,
+                )
+            },
         }
     }
 
@@ -222,10 +256,18 @@ impl Field {
                 quote!()
             };
 
+            let get_doc = format!(
+                "Returns the enum value for the corresponding key in `{}`, \
+                 or `None` if the entry does not exist or it is not a valid enum value.",
+                ident,
+            );
+            let insert_doc = format!("Inserts a key value pair into `{}`.", ident);
             Some(quote! {
+                #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::std::option::Option<#ty> {
                     self.#ident.get(#take_ref key).cloned().and_then(#ty::from_i32)
                 }
+                #[doc=#insert_doc]
                 pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::std::option::Option<#ty> {
                     self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
                 }

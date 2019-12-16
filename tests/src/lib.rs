@@ -76,7 +76,7 @@ pub mod groups {
 
 use std::error::Error;
 
-use bytes::{Buf, IntoBuf};
+use bytes::Buf;
 
 use prost::Message;
 
@@ -145,7 +145,7 @@ where
         );
     }
 
-    let roundtrip = match M::decode(&buf1) {
+    let roundtrip = match M::decode(&*buf1) {
         Ok(roundtrip) => roundtrip,
         Err(error) => return RoundtripResult::Error(error.into()),
     };
@@ -180,7 +180,7 @@ where
     msg.encode(&mut buf).unwrap();
     assert_eq!(expected_len, buf.len());
 
-    let mut buf = buf.into_buf();
+    let mut buf = &*buf;
     let roundtrip = M::decode(&mut buf).unwrap();
 
     if buf.has_remaining() {
@@ -355,7 +355,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -378,7 +378,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(99).is_ok());
@@ -401,7 +401,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            NestedGroup2::decode(buf).map(|_| ())
+            NestedGroup2::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
@@ -422,7 +422,7 @@ mod tests {
 
             let mut buf = Vec::new();
             c.encode(&mut buf).unwrap();
-            C::decode(buf).map(|_| ())
+            C::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -443,7 +443,7 @@ mod tests {
 
             let mut buf = Vec::new();
             d.encode(&mut buf).unwrap();
-            D::decode(buf).map(|_| ())
+            D::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());

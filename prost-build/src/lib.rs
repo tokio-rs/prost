@@ -163,6 +163,16 @@ pub trait ServiceGenerator {
     ///
     /// The default implementation is empty and does nothing.
     fn finalize(&mut self, _buf: &mut String) {}
+
+    /// Finalizes the generation process for an entire protobuf package.
+    ///
+    /// This differs from [`finalize`](#method.finalize) by where (and how often) it is called
+    /// during the service generator life cycle. This method is called once per protobuf package,
+    /// making it ideal for grouping services within a single package spread across multiple
+    /// `.proto` files.
+    ///
+    /// The default implementation is empty and does nothing.
+    fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
 }
 
 /// Configuration options for Protobuf code generation.
@@ -538,7 +548,7 @@ impl Config {
 
         let mut buf = Vec::new();
         fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf)?;
+        let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
@@ -555,6 +565,7 @@ impl Config {
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
+        let mut packages = HashMap::new();
 
         let message_graph = MessageGraph::new(&files);
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
@@ -562,9 +573,23 @@ impl Config {
 
         for file in files {
             let module = self.module(&file);
+
+            // Only record packages that have services
+            if !file.service.is_empty() {
+                packages.insert(module.clone(), file.package().to_string());
+            }
+
             let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
+
+        if let Some(ref mut service_generator) = self.service_generator {
+            for (module, package) in packages {
+                let buf = modules.get_mut(&module).unwrap();
+                service_generator.finalize_package(&package, buf);
+            }
+        }
+
         Ok(modules)
     }
 
@@ -652,6 +677,8 @@ pub fn protoc_include() -> &'static Path {
 mod tests {
     use super::*;
     use env_logger;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
@@ -680,12 +707,66 @@ mod tests {
         }
     }
 
+    /// Implements `ServiceGenerator` and provides some state for assertions.
+    struct MockServiceGenerator {
+        state: Rc<RefCell<MockState>>,
+    }
+
+    /// Holds state for `MockServiceGenerator`
+    #[derive(Default)]
+    struct MockState {
+        service_names: Vec<String>,
+        package_names: Vec<String>,
+        finalized: u32,
+    }
+
+    impl MockServiceGenerator {
+        fn new(state: Rc<RefCell<MockState>>) -> Self {
+            Self { state }
+        }
+    }
+
+    impl ServiceGenerator for MockServiceGenerator {
+        fn generate(&mut self, service: Service, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.service_names.push(service.name.clone());
+        }
+
+        fn finalize(&mut self, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.finalized += 1;
+        }
+
+        fn finalize_package(&mut self, package: &str, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.package_names.push(package.to_string());
+        }
+    }
+
     #[test]
     fn smoke_test() {
-        let _ = env_logger::init();
+        let _ = env_logger::try_init();
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
+    }
+
+    #[test]
+    fn finalize_package() {
+        let _ = env_logger::try_init();
+
+        let state = Rc::new(RefCell::new(MockState::default()));
+        let gen = MockServiceGenerator::new(Rc::clone(&state));
+
+        Config::new()
+            .service_generator(Box::new(gen))
+            .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
+            .unwrap();
+
+        let state = state.borrow();
+        assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
+        assert_eq!(&state.package_names, &["helloworld"]);
+        assert_eq!(state.finalized, 3);
     }
 }

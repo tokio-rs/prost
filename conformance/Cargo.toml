@@ -6,8 +6,8 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.7"
-env_logger = { version = "0.6", default-features = false }
+bytes = "0.5"
+env_logger = { version = "0.7", default-features = false }
 log = "0.3"
 prost = { path = ".." }
 protobuf = { path = "../protobuf" }
