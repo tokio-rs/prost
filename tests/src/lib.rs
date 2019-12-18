@@ -3,7 +3,6 @@ extern crate cfg_if;
 
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
-        extern crate bytes;
         extern crate prost;
         extern crate prost_types;
         extern crate protobuf;
@@ -76,7 +75,7 @@ pub mod groups {
 
 use std::error::Error;
 
-use bytes::Buf;
+use prost::bytes::Buf;
 
 use prost::Message;
 
