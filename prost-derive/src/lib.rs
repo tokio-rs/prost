@@ -173,7 +173,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl ::prost::Message for #ident {
             #[allow(unused_variables)]
-            fn encode_raw<B>(&self, buf: &mut B) where B: ::bytes::BufMut {
+            fn encode_raw<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 #(#encode)*
             }
 
@@ -185,7 +185,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::std::result::Result<(), ::prost::DecodeError>
-            where B: ::bytes::Buf {
+            where B: ::prost::bytes::Buf {
                 #struct_name
                 match tag {
                     #(#merge)*
@@ -417,7 +417,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         impl #ident {
-            pub fn encode<B>(&self, buf: &mut B) where B: ::bytes::BufMut {
+            pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 match *self {
                     #(#encode,)*
                 }
@@ -430,7 +430,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::std::result::Result<(), ::prost::DecodeError>
-            where B: ::bytes::Buf {
+            where B: ::prost::bytes::Buf {
                 match tag {
                     #(#merge,)*
                     _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
