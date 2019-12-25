@@ -185,6 +185,7 @@ pub struct Config {
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
     strip_enum_prefix: bool,
+    serde: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
 }
@@ -344,6 +345,13 @@ impl Config {
     /// types, and instead generate Protobuf well-known types from their `.proto` definitions.
     pub fn compile_well_known_types(&mut self) -> &mut Self {
         self.prost_types = false;
+        self
+    }
+
+    /// Configures the code generator to include serde marcros on generated structs. Setting
+    /// this will include #[derive(Serialize,Deserialize)], #[prost(serde)], and #[serde(default)]
+    pub fn include_serde(&mut self) -> &mut Self {
+        self.serde = true;
         self
     }
 
@@ -611,6 +619,7 @@ impl default::Default for Config {
             field_attributes: Vec::new(),
             prost_types: true,
             strip_enum_prefix: true,
+            serde: false,
             out_dir: None,
             extern_paths: Vec::new(),
         }
@@ -747,6 +756,7 @@ mod tests {
     fn smoke_test() {
         let _ = env_logger::try_init();
         Config::new()
+            .include_serde()
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();

@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -10,4 +11,8 @@ message Foo {
     google.protobuf.NullValue null = 1;
     // message
     google.protobuf.Timestamp timestamp = 2;
+}
+
+message Bar {
+    google.protobuf.Any payload = 1;
 }

@@ -287,13 +287,13 @@ pub struct DefaultValues {
 
 #[test]
 fn check_default_values() {
-    let default = DefaultValues::default();
+    let default: DefaultValues = DefaultValues::default();
     assert_eq!(default.int32, 42);
     assert_eq!(default.optional_int32, None);
     assert_eq!(&default.string, "fourty two");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
-    assert_eq!(&default.repeated_enumeration, &[]);
+    assert!(&default.repeated_enumeration.is_empty());
     assert_eq!(0, default.encoded_len());
 }
 

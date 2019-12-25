@@ -218,6 +218,7 @@ and the generated Rust code (`tutorial.rs`):
 
 ```rust
 #[derive(Clone, Debug, PartialEq, Message)]
+#[prost(package=tutorial)]
 pub struct Person {
     #[prost(string, tag="1")]
     pub name: String,
@@ -231,6 +232,7 @@ pub struct Person {
 }
 pub mod person {
     #[derive(Clone, Debug, PartialEq, Message)]
+    #[prost(package=tutorial)]
     pub struct PhoneNumber {
         #[prost(string, tag="1")]
         pub number: String,
@@ -246,6 +248,7 @@ pub mod person {
 }
 /// Our address book file is just one of these.
 #[derive(Clone, Debug, PartialEq, Message)]
+#[prost(package=tutorial)]
 pub struct AddressBook {
     #[prost(message, repeated, tag="1")]
     pub people: Vec<Person>,
@@ -276,6 +279,7 @@ be tagged sequentially starting from the next number.
 
 ```rust
 #[derive(Clone, Debug, PartialEq, Message)]
+#[prost(package=tutorial)]
 struct Person {
   pub id: String, // tag=1
 
@@ -305,6 +309,176 @@ pub enum Gender {
   Unknown = 0,
   Female = 1,
   Male = 2,
+}
+```
+
+## Well Known Types
+
+To use the well known types such as `Any` and `Value`, you will have to include
+prost-types in your dependencies:
+```
+[dependencies]
+prost = <prost-version>
+bytes = <bytes-version>
+prost-types = <prost-version>
+```
+
+Currently Prost has convenience methods for wrapping common Rust types into `Value`
+types:
+
+```rust
+use prost_types::Value;
+
+#[test]
+fn test_well_known_types_value() {
+    let number: Value = Value::from(10.0);
+    let null: Value = Value::null();
+    let string: Value = Value::from(String::from("Hello"));
+    let list = vec![Value::null(), Value::from(100.0)];
+    let pb_list: Value = Value::from(list);
+    let mut map: BTreeMap<String, Value> = BTreeMap::new();
+    map.insert(String::from("number"), number);
+    map.insert(String::from("null"), null);
+    map.insert(String::from("string"), string);
+    map.insert(String::from("list"), pb_list);
+    let pb_struct: Value = Value::from(map);
+    println!("Struct: {:?}", pb_struct);
+}
+```
+
+Converting from `Value` back into its Rust value can be done by using the `TryFrom`
+trait that is implemented on all `Value` types, e.g.:
+
+```rust
+#[test]
+fn test_well_known_types_convert_number() {
+    let number: Value = Value::from(10.0);
+    let back: f64 = number.try_into().unwrap();
+    assert_eq!(10.0, back)
+}
+```
+
+The "packing" and "unpacking" of messages into the `Any` value is also supported:
+
+```rust
+use prost_types::Any;
+
+#[test]
+fn test_well_known_types_any() {
+    let msg = Foo {
+        null: ::prost_types::NullValue::NullValue.into(),
+        timestamp: Some(::prost_types::Timestamp {
+            seconds: 99,
+            nanos: 42,
+        }),
+    };
+    let any = Any::pack(msg);
+    println!("{:?}", any);
+    let unpacked = any.unpack(Foo::default()).unwrap();
+    println!("{:?}", unpacked);
+}
+```
+
+If you want to include JSON serialization and deserialization support for
+the well-known-types, you can do so by setting the `include_serde` option
+in the prost-build `build.rs`:
+
+```rust
+fn main() {
+    let mut prost_build = prost_build::Config::new();
+    prost_build.include_serde();
+    prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"],
+                               &["src"]).unwrap();
+}
+```
+
+Setting this option will decorate a `Message` struct as follows:
+```rust
+#[derive(Clone, Debug, PartialEq, ::prost::Message)]
+#[prost(package=tutorial)]
+#[derive(Serialize, Deserialize)]
+#[prost(serde)]
+#[serde(default, rename_all="camelCase")]
+pub struct AddressBook {
+    #[prost(message, repeated, tag="1")]
+    pub people: Vec<Person>,
+}
+```
+
+Doing so will allow you to _pack_ a `Message` struct into an `Any` and
+serialize it properly to JSON, e.g.:
+```rust
+use prost::*;
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, PartialEq, ::prost::Message, Serialize, Deserialize)]
+#[prost(package="serde.test")]
+#[prost(serde)]
+#[serde(default, rename_all="camelCase")]
+pub struct Foo {
+    #[prost(string, tag="1")]
+    pub string: std::string::String,
+    #[prost(message, optional, tag="2")]
+    pub timestamp: ::std::option::Option<::prost_types::Timestamp>,
+    #[prost(bool, tag="3")]
+    pub boolean: bool,
+    #[prost(message, optional, tag="4")]
+    pub data: ::std::option::Option<::prost_types::Value>,
+    #[prost(string, repeated, tag="5")]
+    pub list: ::std::vec::Vec<std::string::String>,
+    #[prost(message, optional, tag="6")]
+    pub payload: ::std::option::Option<::prost_types::Any>,
+}
+
+#[test]
+fn test_well_known_types_serde_serialize_deserialize() {
+    let inner = Foo {
+        string: String::from("inner"),
+        timestamp: None,
+        boolean: false,
+        data: None,
+        list: vec!["een".to_string(), "twee".to_string()],
+        payload: None
+    };
+
+    let original = Foo {
+        string: String::from("original"),
+        timestamp: Some(prost_types::Timestamp::new(99, 42)),
+        boolean: true,
+        data: Some(prost_types::Value::from("world".to_string())),
+        list: vec!["one".to_string(), "two".to_string()],
+        payload: Some(prost_types::Any::pack(inner))
+    };
+
+    let json = serde_json::to_string(&original).unwrap();
+    println!("{}", json);
+    let back: Foo = serde_json::from_str(&json).unwrap();
+    println!("{:?}", &back);
+    assert_eq!(back, original)
+}
+```
+
+You will also be able to deserialize any message packed in an Any struct
+properly:
+
+```rust
+#[test]
+fn test_well_known_types_serde_deserialize_any_string() {
+    let data =
+        r#"{
+                "@type":"type.googleapis.com/serde.test.Foo",
+                "string":"inner",
+                "timestamp":null,
+                "boolean":false,
+                "data":null,
+                "list":["een","twee"],
+                "payload":null
+           }"#;
+    let any: prost_types::Any = serde_json::from_str(data).unwrap();
+    println!("Deserialized any from string: {:?}", any);
+    let foo: Foo = any.unpack(Foo::default()).unwrap();
+    println!("Unpacked Any: {:?}", &foo);
+    assert_eq!(foo.list, vec!["een", "twee"])
 }
 ```
 

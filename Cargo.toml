@@ -43,6 +43,9 @@ no-recursion-limit = []
 [dependencies]
 bytes = "0.5"
 prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
+mopa = "0.2.2"
+serde = "1.0"
+typetag = "0.1"
 
 [dev-dependencies]
 criterion = "0.3"

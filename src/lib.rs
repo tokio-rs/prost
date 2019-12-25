@@ -1,5 +1,10 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.5.0")]
 
+#[macro_use]
+extern crate mopa;
+
+pub use typetag;
+
 mod error;
 mod message;
 mod types;
@@ -9,6 +14,8 @@ pub mod encoding;
 
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
+pub use crate::message::MessageMeta;
+pub use crate::message::MessageSerde;
 
 use bytes::{Buf, BufMut};
 

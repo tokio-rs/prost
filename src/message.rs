@@ -10,7 +10,7 @@ use crate::DecodeError;
 use crate::EncodeError;
 
 /// A Protocol Buffers message.
-pub trait Message: Debug + Send + Sync {
+pub trait Message: Debug + Send + Sync + mopa::Any {
     /// Encodes the message to a buffer.
     ///
     /// This method will panic if the buffer has insufficient capacity.
@@ -135,6 +135,8 @@ pub trait Message: Debug + Send + Sync {
     fn clear(&mut self);
 }
 
+mopafy!(Message);
+
 impl<M> Message for Box<M>
 where
     M: Message,
@@ -164,3 +166,19 @@ where
         (**self).clear()
     }
 }
+
+pub trait MessageMeta: Message + 'static {
+    fn name(&self) -> &'static str;
+    fn package_name(&self) -> &'static str;
+    fn type_url(&self) -> &'static str;
+}
+
+#[typetag::serde(tag = "@type")]
+pub trait MessageSerde: Message + MessageMeta + mopa::Any {
+    fn new_instance(&self, data: Vec<u8>) -> Result<Box<dyn MessageSerde>, DecodeError>;
+    fn encoded(&self) -> Vec<u8>;
+}
+
+mopafy!(MessageSerde);
+
+

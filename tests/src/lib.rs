@@ -29,6 +29,12 @@ mod no_unused_results;
 #[cfg(test)]
 mod well_known_types;
 
+extern crate prost_types;
+extern crate prost;
+
+#[cfg(test)]
+mod serde_test;
+
 pub mod foo {
     pub mod bar_baz {
         include!(concat!(env!("OUT_DIR"), "/foo.bar_baz.rs"));

@@ -11,13 +11,10 @@ use failure::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{
-    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Variant,
-};
+use syn::{punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Variant, Meta};
 
 mod field;
-use crate::field::Field;
+use crate::field::{Field, prost_attrs};
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
@@ -29,6 +26,26 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         Data::Enum(..) => bail!("Message can not be derived for an enum"),
         Data::Union(..) => bail!("Message can not be derived for a union"),
     };
+
+    let pkg_name = prost_attrs(input.attrs.clone()).unwrap().iter().find( |meta| {
+        meta.name() == "package"
+    }).and_then( |meta| {
+        match meta {
+            Meta::NameValue(v) => match &v.lit {
+                syn::Lit::Str(lit) => Some(lit.value().clone()),
+                _ => None
+            },
+            _ => None
+        }
+    }).unwrap_or_else( || String::from("prost"));
+
+    let type_url = format!(
+        "type.googleapis.com/{}.{}",
+        pkg_name,
+        ident
+    );
+
+    let serde_enabled = prost_attrs(input.attrs.clone()).unwrap().iter().find(|meta| meta.name() == "serde").is_some();
 
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
@@ -170,6 +187,30 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(f.debug_tuple(stringify!(#ident)))
     };
 
+    let serde = if serde_enabled {
+        quote! {
+            use ::prost::typetag;
+            #[typetag::serde(name=#type_url)]
+            impl ::prost::MessageSerde for #ident {
+                fn new_instance(&self, data: Vec<u8>) -> Result<Box<dyn ::prost::MessageSerde>, ::prost::DecodeError> {
+                    let mut target = Self::default();
+                    let mut cursor = std::io::Cursor::new(data.as_slice());
+                    ::prost::Message::merge(&mut target, &mut cursor)?;
+                    let erased: Box<::prost::MessageSerde> = Box::new(target);
+                    Ok(erased)
+                }
+                fn encoded(&self) -> Vec<u8> {
+                    let mut buf = Vec::new();
+                    buf.reserve(::prost::Message::encoded_len(self));
+                    ::prost::Message::encode(self, &mut buf).unwrap();
+                    buf
+                }
+            }
+        }
+    } else {
+        quote!()
+    };
+
     let expanded = quote! {
         impl ::prost::Message for #ident {
             #[allow(unused_variables)]
@@ -211,6 +252,18 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
+        impl ::prost::MessageMeta for #ident {
+            fn name(&self) -> &'static str {
+                stringify!(#ident)
+            }
+            fn package_name(&self) -> &'static str {
+                #pkg_name
+            }
+            fn type_url(&self) -> &'static str {
+                #type_url
+            }
+        }
+
         impl ::std::fmt::Debug for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 let mut builder = #debug_builder;
@@ -218,6 +271,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 builder.finish()
             }
         }
+
+        #serde
 
         #methods
     };

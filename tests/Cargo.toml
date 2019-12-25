@@ -16,6 +16,9 @@ cfg-if = "0.1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
 
 [dev-dependencies]
 diff = "0.1"
