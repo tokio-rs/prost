@@ -29,11 +29,14 @@ mod no_unused_results;
 #[cfg(test)]
 mod well_known_types;
 
-extern crate prost_types;
-extern crate prost;
-
-#[cfg(test)]
-mod serde_test;
+cfg_if! {
+    if #[cfg(feature = "edition-2015")] {
+        // do not run serde tests
+    } else {
+        #[cfg(test)]
+        mod serde_test;
+    }
+}
 
 pub mod foo {
     pub mod bar_baz {

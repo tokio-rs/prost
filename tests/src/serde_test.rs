@@ -1,4 +1,4 @@
-use prost::{MessageSerde, Message};
+use prost::MessageSerde;
 use serde_json::json;
 
 #[derive(Clone, PartialEq, ::prost::Message, Serialize, Deserialize)]
