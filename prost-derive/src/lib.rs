@@ -188,24 +188,27 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     let serde = if serde_enabled {
+        let dummy_const = Ident::new(&format!("IMPL_MESSAGE_SERDE_FOR_{}", ident), Span::call_site());
         quote! {
-            use ::prost::typetag;
-            #[typetag::serde(name=#type_url)]
-            impl ::prost::MessageSerde for #ident {
-                fn new_instance(&self, data: Vec<u8>) -> Result<Box<dyn ::prost::MessageSerde>, ::prost::DecodeError> {
-                    let mut target = Self::default();
-                    let mut cursor = std::io::Cursor::new(data.as_slice());
-                    ::prost::Message::merge(&mut target, &mut cursor)?;
-                    let erased: Box<::prost::MessageSerde> = Box::new(target);
-                    Ok(erased)
+            const #dummy_const: () = {
+                use ::prost::typetag;
+                #[typetag::serde(name=#type_url)]
+                impl ::prost::MessageSerde for #ident {
+                    fn new_instance(&self, data: Vec<u8>) -> Result<Box<dyn ::prost::MessageSerde>, ::prost::DecodeError> {
+                        let mut target = Self::default();
+                        let mut cursor = std::io::Cursor::new(data.as_slice());
+                        ::prost::Message::merge(&mut target, &mut cursor)?;
+                        let erased: Box<::prost::MessageSerde> = Box::new(target);
+                        Ok(erased)
+                    }
+                    fn encoded(&self) -> Vec<u8> {
+                        let mut buf = Vec::new();
+                        buf.reserve(::prost::Message::encoded_len(self));
+                        ::prost::Message::encode(self, &mut buf).unwrap();
+                        buf
+                    }
                 }
-                fn encoded(&self) -> Vec<u8> {
-                    let mut buf = Vec::new();
-                    buf.reserve(::prost::Message::encoded_len(self));
-                    ::prost::Message::encode(self, &mut buf).unwrap();
-                    buf
-                }
-            }
+            };
         }
     } else {
         quote!()
