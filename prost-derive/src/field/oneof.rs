@@ -1,4 +1,4 @@
-use failure::{bail, Error};
+use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
