@@ -14,7 +14,7 @@ edition = "2018"
 proc_macro = true
 
 [dependencies]
-failure = { version = "0.1", default-features = false, features = ["std"] }
+anyhow = "1"
 itertools = "0.8"
 proc-macro2 = "1"
 quote = "1"

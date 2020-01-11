@@ -1,4 +1,4 @@
-use failure::{bail, Error};
+use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::Meta;

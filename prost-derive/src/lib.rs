@@ -4,10 +4,10 @@
 
 extern crate proc_macro;
 
-use failure::bail;
+use anyhow::bail;
 use quote::quote;
 
-use failure::Error;
+use anyhow::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -71,7 +71,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 )),
             }
         })
-        .collect::<Result<Vec<(Ident, Field)>, failure::Context<String>>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
