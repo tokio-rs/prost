@@ -576,7 +576,8 @@ impl Config {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(&files);
+        let message_graph = MessageGraph::new(&files)
+            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
@@ -649,6 +650,7 @@ impl default::Default for Config {
 ///   - Failure to locate or download `protoc`.
 ///   - Failure to parse the `.proto`s.
 ///   - Failure to locate an imported `.proto`.
+///   - Failure to compile a `.proto` without a [package specifier][4].
 ///
 /// It's expected that this function call be `unwrap`ed in a `build.rs`; there is typically no
 /// reason to gracefully recover from errors during a build.
@@ -665,6 +667,7 @@ impl default::Default for Config {
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
+/// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
 pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()>
 where
     P: AsRef<Path>,
