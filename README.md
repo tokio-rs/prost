@@ -31,7 +31,6 @@ First, add `prost` and its public dependencies to your `Cargo.toml` (see
 ```
 [dependencies]
 prost = <prost-version>
-bytes = <bytes-version>
 # Only necessary if using Protobuf well-known types:
 prost-types = <prost-version>
 ```
