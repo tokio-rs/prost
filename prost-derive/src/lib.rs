@@ -103,16 +103,21 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .map(|&(ref field_ident, ref field)| field.encode(quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
-        let merge = field.merge(quote!(self.#field_ident));
+        let merge = field.merge(quote!(value));
         let tags = field
             .tags()
             .into_iter()
             .map(|tag| quote!(#tag))
             .intersperse(quote!(|));
-        quote!(#(#tags)* => #merge.map_err(|mut error| {
-            error.push(STRUCT_NAME, stringify!(#field_ident));
-            error
-        }),)
+        quote! {
+            #(#tags)* => {
+                let mut value = &mut self.#field_ident;
+                #merge.map_err(|mut error| {
+                    error.push(STRUCT_NAME, stringify!(#field_ident));
+                    error
+                })
+            },
+        }
     });
 
     let struct_name = if fields.is_empty() {
@@ -394,8 +399,16 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         let merge = field.merge(quote!(value));
         quote! {
             #tag => {
-                let mut value = ::std::default::Default::default();
-                #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(value)))
+                match field {
+                    ::std::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                        #merge
+                    },
+                    _ => {
+                        let mut owned_value = ::std::default::Default::default();
+                        let value = &mut owned_value;
+                        #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(owned_value)))
+                    },
+                }
             }
         }
     });

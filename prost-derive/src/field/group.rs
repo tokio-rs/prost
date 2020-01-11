@@ -101,10 +101,10 @@ impl Field {
                 )
             },
             Label::Required => quote! {
-                ::prost::encoding::group::merge(tag, wire_type, &mut #ident, buf, ctx)
+                ::prost::encoding::group::merge(tag, wire_type, #ident, buf, ctx)
             },
             Label::Repeated => quote! {
-                ::prost::encoding::group::merge_repeated(tag, wire_type, &mut #ident, buf, ctx)
+                ::prost::encoding::group::merge_repeated(tag, wire_type, #ident, buf, ctx)
             },
         }
     }
