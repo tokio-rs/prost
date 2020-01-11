@@ -680,17 +680,13 @@ impl DefaultValue {
                 if value.chars().next() == Some('-') {
                     if let Ok(lit) = syn::parse_str::<Lit>(&value[1..]) {
                         match lit {
-                            Lit::Int(ref lit)
-                                if is_i32 && empty_or_is("i32", lit.suffix()) =>
-                            {
+                            Lit::Int(ref lit) if is_i32 && empty_or_is("i32", lit.suffix()) => {
                                 // Initially parse into an i64, so that i32::MIN does not overflow.
                                 let value: i64 = -lit.base10_parse()?;
                                 return Ok(i32::try_from(value).map(DefaultValue::I32)?);
                             }
 
-                            Lit::Int(ref lit)
-                                if is_i64 && empty_or_is("i64", lit.suffix()) =>
-                            {
+                            Lit::Int(ref lit) if is_i64 && empty_or_is("i64", lit.suffix()) => {
                                 // Initially parse into an i128, so that i64::MIN does not overflow.
                                 let value: i128 = -lit.base10_parse()?;
                                 return Ok(i64::try_from(value).map(DefaultValue::I64)?);
