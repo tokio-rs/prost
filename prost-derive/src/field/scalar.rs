@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use failure::{bail, format_err, Error};
+use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
@@ -437,7 +437,7 @@ impl Ty {
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
         let enumeration_len = "enumeration".len();
-        let error = Err(format_err!("invalid type: {}", s));
+        let error = Err(anyhow!("invalid type: {}", s));
         let ty = match s.trim() {
             "float" => Ty::Float,
             "double" => Ty::Double,
