@@ -25,14 +25,13 @@ Compared to other Protocol Buffers implementations, `prost`
 
 ## Using `prost` in a Cargo Project
 
-First, add `prost` and its public dependencies to your `Cargo.toml` (see
-[crates.io](https://crates.io/crates/prost) for the current versions):
+First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
-prost = <prost-version>
+prost = "0.5"
 # Only necessary if using Protobuf well-known types:
-prost-types = <prost-version>
+prost-types = "0.5"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
