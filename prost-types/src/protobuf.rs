@@ -75,8 +75,10 @@ pub struct DescriptorProto {
 pub mod descriptor_proto {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ExtensionRange {
+        /// Inclusive.
         #[prost(int32, optional, tag="1")]
         pub start: ::std::option::Option<i32>,
+        /// Exclusive.
         #[prost(int32, optional, tag="2")]
         pub end: ::std::option::Option<i32>,
         #[prost(message, optional, tag="3")]
@@ -401,8 +403,8 @@ pub struct FileOptions {
     #[prost(string, optional, tag="41")]
     pub php_namespace: ::std::option::Option<std::string::String>,
     /// Use this option to change the namespace of php generated metadata classes.
-    /// Default is empty. When this option is empty, the proto file name will be used
-    /// for determining the namespace.
+    /// Default is empty. When this option is empty, the proto file name will be
+    /// used for determining the namespace.
     #[prost(string, optional, tag="44")]
     pub php_metadata_namespace: ::std::option::Option<std::string::String>,
     /// Use this option to change the package of ruby generated classes. Default
@@ -478,7 +480,7 @@ pub struct MessageOptions {
     ///
     /// Implementations may choose not to generate the map_entry=true message, but
     /// use a native map in the target language to hold the keys and values.
-    /// The reflection APIs in such implementions still need to work as
+    /// The reflection APIs in such implementations still need to work as
     /// if the field is a repeated message field.
     ///
     /// NOTE: Do not set the option in .proto files. Always use the maps syntax
@@ -748,7 +750,7 @@ pub struct SourceCodeInfo {
     ///   beginning of the "extend" block and is shared by all extensions within
     ///   the block.
     /// - Just because a location's span is a subset of some other location's span
-    ///   does not mean that it is a descendent.  For example, a "group" defines
+    ///   does not mean that it is a descendant.  For example, a "group" defines
     ///   both a type and a field in a single declaration.  Thus, the locations
     ///   corresponding to the type and field and their components will overlap.
     /// - Code which tries to interpret locations should probably be designed to
@@ -1366,7 +1368,7 @@ pub struct Mixin {
 ///     if (duration.seconds < 0 && duration.nanos > 0) {
 ///       duration.seconds += 1;
 ///       duration.nanos -= 1000000000;
-///     } else if (durations.seconds > 0 && duration.nanos < 0) {
+///     } else if (duration.seconds > 0 && duration.nanos < 0) {
 ///       duration.seconds -= 1;
 ///       duration.nanos += 1000000000;
 ///     }
@@ -1619,7 +1621,7 @@ pub struct Duration {
 ///
 /// The implementation of any API method which has a FieldMask type field in the
 /// request should verify the included field paths, and return an
-/// `INVALID_ARGUMENT` error if any path is duplicated or unmappable.
+/// `INVALID_ARGUMENT` error if any path is unmappable.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldMask {
     /// The set of field mask paths.
@@ -1768,11 +1770,13 @@ pub enum NullValue {
 /// 01:30 UTC on January 15, 2017.
 ///
 /// In JavaScript, one can convert a Date object to this format using the
-/// standard [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+/// standard
+/// [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
 /// method. In Python, a standard `datetime.datetime` object can be converted
-/// to this format using [`strftime`](https://docs.python.org/2/library/time.html#time.strftime)
-/// with the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one
-/// can use the Joda Time's [`ISODateTimeFormat.dateTime()`](
+/// to this format using
+/// [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+/// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+/// the Joda Time's [`ISODateTimeFormat.dateTime()`](
 /// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D
 /// ) to obtain a formatter capable of generating timestamps in this format.
 ///
