@@ -54,11 +54,7 @@ impl fmt::Display for DecodeError {
     }
 }
 
-impl error::Error for DecodeError {
-    fn description(&self) -> &str {
-        &self.description
-    }
-}
+impl error::Error for DecodeError {}
 
 impl From<DecodeError> for io::Error {
     fn from(error: DecodeError) -> io::Error {
@@ -99,20 +95,15 @@ impl EncodeError {
 
 impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(error::Error::description(self))?;
         write!(
             f,
-            " (required: {}, remaining: {})",
+            "failed to encode Protobuf messsage; insufficient buffer capacity (required: {}, remaining: {})",
             self.required, self.remaining
         )
     }
 }
 
-impl error::Error for EncodeError {
-    fn description(&self) -> &str {
-        "failed to encode Protobuf message: insufficient buffer capacity"
-    }
-}
+impl error::Error for EncodeError {}
 
 impl From<EncodeError> for io::Error {
     fn from(error: EncodeError) -> io::Error {
