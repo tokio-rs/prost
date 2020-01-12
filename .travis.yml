@@ -24,3 +24,13 @@ script:
   - if [[ $TRAVIS_RUST_VERSION = nightly* ]]; then
       cargo bench --verbose --no-run;
     fi
+
+addons:
+  homebrew:
+    packages:
+      - cmake
+      - ninja
+  apt:
+    packages:
+      - cmake
+      - ninja-build
