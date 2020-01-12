@@ -101,10 +101,10 @@ impl Field {
                                                  ctx)
             },
             Label::Required => quote! {
-                ::prost::encoding::message::merge(wire_type, &mut #ident, buf, ctx)
+                ::prost::encoding::message::merge(wire_type, #ident, buf, ctx)
             },
             Label::Repeated => quote! {
-                ::prost::encoding::message::merge_repeated(wire_type, &mut #ident, buf, ctx)
+                ::prost::encoding::message::merge_repeated(wire_type, #ident, buf, ctx)
             },
         }
     }

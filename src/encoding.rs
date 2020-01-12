@@ -856,6 +856,16 @@ pub mod bytes {
             return Err(DecodeError::new("buffer underflow"));
         }
         let len = len as usize;
+
+        // Clear the existing value. This follows from the following rule in the encoding guide[1]:
+        //
+        // > Normally, an encoded message would never have more than one instance of a non-repeated
+        // > field. However, parsers are expected to handle the case in which they do. For numeric
+        // > types and strings, if the same field appears multiple times, the parser accepts the last
+        // > value it sees.
+        //
+        // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
+        value.clear();
         value.reserve(len);
         value.put(buf.take(len));
         Ok(())
