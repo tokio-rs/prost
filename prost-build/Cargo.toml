@@ -1,6 +1,6 @@
 [package]
 name = "prost-build"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -16,8 +16,8 @@ itertools = "0.8"
 log = "0.4"
 multimap = { version = "0.4", default-features = false }
 petgraph = { version = "0.4", default-features = false }
-prost = { version = "0.5.0", path = ".." }
-prost-types = { version = "0.5.0", path = "../prost-types" }
+prost = { version = "0.6.0", path = ".." }
+prost-types = { version = "0.6.0", path = "../prost-types" }
 tempfile = "3"
 
 [build-dependencies]
