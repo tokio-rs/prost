@@ -15,12 +15,12 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CRATES=( \
   "prost-derive" \
   "." \
-  "prost-build" \
   "prost-types" \
+  "prost-build" \
 )
 
 for CRATE in "${CRATES[@]}"; do
-  pushd $CRATE
+  pushd "$DIR/$CRATE"
   cargo publish
   popd
 done
