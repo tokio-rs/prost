@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost/0.6.0")]
 
 #[macro_use]
 extern crate mopa;
@@ -86,6 +86,9 @@ where
 #[allow(unused_imports)]
 #[macro_use]
 extern crate prost_derive;
+#[cfg(feature = "prost-derive")]
+#[doc(hidden)]
+pub use bytes;
 #[cfg(feature = "prost-derive")]
 #[doc(hidden)]
 pub use prost_derive::*;

@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.6.0")]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
@@ -114,7 +114,7 @@ use std::collections::HashMap;
 use std::default;
 use std::env;
 use std::fs;
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -554,18 +554,27 @@ impl Config {
             ));
         }
 
-        let mut buf = Vec::new();
-        fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
+        let buf = fs::read(descriptor_set)?;
+        let descriptor_set = FileDescriptorSet::decode(&*buf)?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
-            trace!("writing: {:?}", filename);
-            let mut file = fs::File::create(target.join(filename))?;
-            file.write_all(content.as_bytes())?;
-            file.flush()?;
+
+            let output_path = target.join(&filename);
+
+            let previous_content = fs::read(&output_path);
+
+            if previous_content
+                .map(|previous_content| previous_content == content.as_bytes())
+                .unwrap_or(false)
+            {
+                trace!("unchanged: {:?}", filename);
+            } else {
+                trace!("writing: {:?}", filename);
+                fs::write(output_path, content)?;
+            }
         }
 
         Ok(())
@@ -575,7 +584,8 @@ impl Config {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(&files);
+        let message_graph = MessageGraph::new(&files)
+            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
@@ -649,6 +659,7 @@ impl default::Default for Config {
 ///   - Failure to locate or download `protoc`.
 ///   - Failure to parse the `.proto`s.
 ///   - Failure to locate an imported `.proto`.
+///   - Failure to compile a `.proto` without a [package specifier][4].
 ///
 /// It's expected that this function call be `unwrap`ed in a `build.rs`; there is typically no
 /// reason to gracefully recover from errors during a build.
@@ -665,6 +676,7 @@ impl default::Default for Config {
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
+/// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
 pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()>
 where
     P: AsRef<Path>,

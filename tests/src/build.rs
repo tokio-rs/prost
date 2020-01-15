@@ -88,6 +88,12 @@ fn main() {
         )
         .unwrap();
 
+    // Check that attempting to compile a .proto without a package declaration results in an error.
+    config
+        .compile_protos(&[src.join("no_package.proto")], includes)
+        .err()
+        .unwrap();
+
     let out_dir =
         &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
             .join("extern_paths");

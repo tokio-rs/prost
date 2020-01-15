@@ -15,7 +15,7 @@ pub struct MessageGraph {
 }
 
 impl MessageGraph {
-    pub fn new(files: &[FileDescriptorProto]) -> MessageGraph {
+    pub fn new(files: &[FileDescriptorProto]) -> Result<MessageGraph, String> {
         let mut msg_graph = MessageGraph {
             index: HashMap::new(),
             graph: Graph::new(),
@@ -24,19 +24,21 @@ impl MessageGraph {
         for file in files {
             let package = format!(
                 ".{}",
-                file.package.as_ref().expect(&format!(
-                    "prost requires a package specifier in all .proto files \
-                     (https://developers.google.com/protocol-buffers/docs/proto#packages); \
-                     file with missing package specifier: {}",
-                    file.name.as_ref().map_or("(unknown)", String::as_ref),
-                ))
+                file.package.as_ref().ok_or_else(|| {
+                    format!(
+                        "prost requires a package specifier in all .proto files \
+                         (https://developers.google.com/protocol-buffers/docs/proto#packages); \
+                         file with missing package specifier: {}",
+                        file.name.as_ref().map_or("(unknown)", String::as_ref),
+                    )
+                })?,
             );
             for msg in &file.message_type {
                 msg_graph.add_message(&package, msg);
             }
         }
 
-        msg_graph
+        Ok(msg_graph)
     }
 
     fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {

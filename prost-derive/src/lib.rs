@@ -1,13 +1,13 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.6.0")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
 extern crate proc_macro;
 
-use failure::bail;
+use anyhow::bail;
 use quote::quote;
 
-use failure::Error;
+use anyhow::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -88,7 +88,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 )),
             }
         })
-        .collect::<Result<Vec<(Ident, Field)>, failure::Context<String>>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
@@ -120,16 +120,21 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .map(|&(ref field_ident, ref field)| field.encode(quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
-        let merge = field.merge(quote!(self.#field_ident));
+        let merge = field.merge(quote!(value));
         let tags = field
             .tags()
             .into_iter()
             .map(|tag| quote!(#tag))
             .intersperse(quote!(|));
-        quote!(#(#tags)* => #merge.map_err(|mut error| {
-            error.push(STRUCT_NAME, stringify!(#field_ident));
-            error
-        }),)
+        quote! {
+            #(#tags)* => {
+                let mut value = &mut self.#field_ident;
+                #merge.map_err(|mut error| {
+                    error.push(STRUCT_NAME, stringify!(#field_ident));
+                    error
+                })
+            },
+        }
     });
 
     let struct_name = if fields.is_empty() {
@@ -217,7 +222,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl ::prost::Message for #ident {
             #[allow(unused_variables)]
-            fn encode_raw<B>(&self, buf: &mut B) where B: ::bytes::BufMut {
+            fn encode_raw<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 #(#encode)*
             }
 
@@ -229,7 +234,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::std::result::Result<(), ::prost::DecodeError>
-            where B: ::bytes::Buf {
+            where B: ::prost::bytes::Buf {
                 #struct_name
                 match tag {
                     #(#merge)*
@@ -452,8 +457,16 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         let merge = field.merge(quote!(value));
         quote! {
             #tag => {
-                let mut value = ::std::default::Default::default();
-                #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(value)))
+                match field {
+                    ::std::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                        #merge
+                    },
+                    _ => {
+                        let mut owned_value = ::std::default::Default::default();
+                        let value = &mut owned_value;
+                        #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(owned_value)))
+                    },
+                }
             }
         }
     });
@@ -475,7 +488,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         impl #ident {
-            pub fn encode<B>(&self, buf: &mut B) where B: ::bytes::BufMut {
+            pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 match *self {
                     #(#encode,)*
                 }
@@ -488,7 +501,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::std::result::Result<(), ::prost::DecodeError>
-            where B: ::bytes::Buf {
+            where B: ::prost::bytes::Buf {
                 match tag {
                     #(#merge,)*
                     _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),

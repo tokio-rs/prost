@@ -1,0 +1,41 @@
+From 104a483fbf3b87d42b0c3381049c72ab45d0f630 Mon Sep 17 00:00:00 2001
+From: Dan Burkert <dan@danburkert.com>
+Date: Sat, 11 Jan 2020 13:44:02 -0800
+Subject: [PATCH] Fix conformance_test_runner CMake build
+
+Makes the conformance_test_runner declared sources in
+cmake/conformance.cmake match the corresponding sources in
+conformance/Makefile.am, which allows the test runner to build
+successfully with CMake.
+---
+ cmake/conformance.cmake | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/cmake/conformance.cmake b/cmake/conformance.cmake
+index 82b4cf580..7be713d33 100644
+--- a/cmake/conformance.cmake
++++ b/cmake/conformance.cmake
+@@ -19,14 +19,17 @@ add_custom_command(
+ )
+ 
+ add_executable(conformance_test_runner
+-  ${protobuf_source_dir}/conformance/conformance.pb.cc
++  ${protobuf_source_dir}/conformance/conformance_test.h
+   ${protobuf_source_dir}/conformance/conformance_test.cc
+-  ${protobuf_source_dir}/conformance/binary_json_conformance_main.cc
+-  ${protobuf_source_dir}/conformance/binary_json_conformance_suite.cc
++  ${protobuf_source_dir}/conformance/conformance_test_main.cc
+   ${protobuf_source_dir}/conformance/binary_json_conformance_suite.h
++  ${protobuf_source_dir}/conformance/binary_json_conformance_suite.cc
++  ${protobuf_source_dir}/conformance/text_format_conformance_suite.h
++  ${protobuf_source_dir}/conformance/text_format_conformance_suite.cc
+   ${protobuf_source_dir}/conformance/conformance_test_runner.cc
+   ${protobuf_source_dir}/conformance/third_party/jsoncpp/json.h
+   ${protobuf_source_dir}/conformance/third_party/jsoncpp/jsoncpp.cpp
++  ${protobuf_source_dir}/conformance/conformance.pb.cc
+   ${protobuf_source_dir}/src/google/protobuf/test_messages_proto3.pb.cc
+   ${protobuf_source_dir}/src/google/protobuf/test_messages_proto2.pb.cc
+ )
+-- 
+2.21.1
+

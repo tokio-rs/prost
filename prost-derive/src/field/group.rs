@@ -1,6 +1,6 @@
-use failure::{bail, Error};
+use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::Meta;
 
 use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
@@ -58,7 +58,10 @@ impl Field {
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs, None)? {
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
-                bail!("invalid atribute for oneof field: {}", attr.name());
+                bail!(
+                    "invalid attribute for oneof field: {}",
+                    attr.path().into_token_stream()
+                );
             }
             field.label = Label::Required;
             Ok(Some(field))
@@ -98,10 +101,10 @@ impl Field {
                 )
             },
             Label::Required => quote! {
-                ::prost::encoding::group::merge(tag, wire_type, &mut #ident, buf, ctx)
+                ::prost::encoding::group::merge(tag, wire_type, #ident, buf, ctx)
             },
             Label::Repeated => quote! {
-                ::prost::encoding::group::merge_repeated(tag, wire_type, &mut #ident, buf, ctx)
+                ::prost::encoding::group::merge_repeated(tag, wire_type, #ident, buf, ctx)
             },
         }
     }
