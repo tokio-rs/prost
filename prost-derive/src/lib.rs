@@ -28,7 +28,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     let pkg_name = prost_attrs(input.attrs.clone()).unwrap().iter().find( |meta| {
-        meta.name() == "package"
+        meta.path().is_ident("package")
     }).and_then( |meta| {
         match meta {
             Meta::NameValue(v) => match &v.lit {
@@ -45,7 +45,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         ident
     );
 
-    let serde_enabled = prost_attrs(input.attrs.clone()).unwrap().iter().find(|meta| meta.name() == "serde").is_some();
+    let serde_enabled = prost_attrs(input.attrs.clone()).unwrap().iter().find(|meta| meta.path().is_ident("serde")).is_some();
 
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
