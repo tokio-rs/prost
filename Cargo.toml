@@ -1,6 +1,6 @@
 [package]
 name = "prost"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -41,7 +41,7 @@ no-recursion-limit = []
 
 [dependencies]
 bytes = "0.5"
-prost-derive = { version = "0.6.0", path = "prost-derive", optional = true }
+prost-derive = { version = "0.6.1", path = "prost-derive", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
