@@ -463,6 +463,16 @@ mod tests {
     }
 
     #[test]
+    fn test_267_regression() {
+        // Checks that skip_field will error appropriately when given a big stack of StartGroup
+        // tags.
+        //
+        // https://github.com/danburkert/prost/issues/267
+        let buf = vec![b'C'; 1 << 20];
+        <() as Message>::decode(&buf[..]).err().unwrap();
+    }
+
+    #[test]
     fn test_default_enum() {
         let msg = default_enum_value::Test::default();
         assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);

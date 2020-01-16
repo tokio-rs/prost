@@ -194,7 +194,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    _ => ::prost::encoding::skip_field(wire_type, tag, buf),
+                    _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
                 }
             }
 
