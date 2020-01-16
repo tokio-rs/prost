@@ -381,10 +381,11 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B) -> Result<(), DecodeError>
+pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
 where
     B: Buf,
 {
+    ctx.limit_reached()?;
     let len = match wire_type {
         WireType::Varint => decode_varint(buf).map(|_| 0)?,
         WireType::ThirtyTwoBit => 4,
@@ -399,7 +400,7 @@ where
                     }
                     break 0;
                 }
-                _ => skip_field(inner_wire_type, inner_tag, buf)?,
+                _ => skip_field(inner_wire_type, inner_tag, buf, ctx.enter_recursion())?,
             }
         },
         WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
@@ -1219,7 +1220,7 @@ macro_rules! map {
                     match tag {
                         1 => key_merge(wire_type, key, buf, ctx),
                         2 => val_merge(wire_type, val, buf, ctx),
-                        _ => skip_field(wire_type, tag, buf),
+                        _ => skip_field(wire_type, tag, buf, ctx),
                     }
                 },
             )?;
