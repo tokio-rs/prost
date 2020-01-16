@@ -1,6 +1,6 @@
 [package]
 name = "prost-derive"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
