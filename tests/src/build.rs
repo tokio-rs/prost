@@ -78,6 +78,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("deprecated_field.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
