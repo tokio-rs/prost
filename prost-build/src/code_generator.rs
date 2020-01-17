@@ -10,7 +10,8 @@ use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
+    FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
+    SourceCodeInfo,
 };
 
 use crate::ast::{Comments, Method, Service};
@@ -279,6 +280,7 @@ impl<'a> CodeGenerator<'a> {
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
+        let deprecated = self.deprecated(&field);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
@@ -294,6 +296,12 @@ impl<'a> CodeGenerator<'a> {
         );
 
         self.append_doc();
+
+        if deprecated {
+            self.push_indent();
+            self.buf.push_str("#[deprecated]\n");
+        }
+
         self.push_indent();
         self.buf.push_str("#[prost(");
         let type_tag = self.field_type_tag(&field);
@@ -791,6 +799,14 @@ impl<'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
+    }
+
+    /// Returns `true` if the field options includes the `deprecated` option.
+    fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
+        field
+            .options
+            .as_ref()
+            .map_or(false, FieldOptions::deprecated)
     }
 }
 

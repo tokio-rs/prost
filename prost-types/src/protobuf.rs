@@ -333,6 +333,7 @@ pub struct FileOptions {
     #[prost(bool, optional, tag="10", default="false")]
     pub java_multiple_files: ::std::option::Option<bool>,
     /// This option does nothing.
+    #[deprecated]
     #[prost(bool, optional, tag="20")]
     pub java_generate_equals_and_hash: ::std::option::Option<bool>,
     /// If set true, then the Java2 code generator will generate code that
