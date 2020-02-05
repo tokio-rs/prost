@@ -14,6 +14,9 @@ use std::i32;
 use std::i64;
 use std::time;
 
+use chrono::prelude::*;
+use std::borrow::Cow;
+
 include!("protobuf.rs");
 pub mod compiler {
     include!("compiler.rs");
@@ -115,6 +118,21 @@ impl Timestamp {
         // debug_assert!(self.seconds >= -62_135_596_800 && self.seconds <= 253_402_300_799,
         //               "invalid timestamp: {:?}", self);
     }
+
+    pub fn new(seconds: i64, nanos: i32) -> Self {
+        let mut ts = Timestamp {
+            seconds,
+            nanos
+        };
+        ts.normalize();
+        ts
+    }
+
+    pub fn to_datetime(&self) -> DateTime<Utc> {
+        let dt = NaiveDateTime::from_timestamp(self.seconds, self.nanos as u32);
+        DateTime::from_utc(dt, Utc)
+    }
+
 }
 
 /// Converts a `std::time::SystemTime` to a `Timestamp`.
@@ -151,3 +169,209 @@ impl TryFrom<Timestamp> for time::SystemTime {
         }
     }
 }
+
+/// Converts chrono's `NaiveDateTime` to `Timestamp`..
+impl From<NaiveDateTime> for Timestamp {
+    fn from(dt: NaiveDateTime) -> Self {
+        Timestamp {
+            seconds: dt.timestamp(),
+            nanos: dt.timestamp_subsec_nanos() as i32
+        }
+    }
+}
+
+/// Converts chrono's `DateTime<UTtc>` to `Timestamp`..
+impl From<DateTime<Utc>> for Timestamp {
+    fn from(dt: DateTime<Utc>) -> Self {
+        Timestamp {
+            seconds: dt.timestamp(),
+            nanos: dt.timestamp_subsec_nanos() as i32
+        }
+    }
+}
+
+/// Value Convenience Methods
+///
+/// A collection of methods to make working with value easier.
+///
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValueError {
+    description: Cow<'static, str>,
+}
+
+impl ValueError {
+    pub fn new<S>(description: S) -> Self
+        where
+            S: Into<Cow<'static, str>>,
+    {
+        ValueError {
+            description: description.into(),
+        }
+    }
+}
+
+impl std::error::Error for ValueError {
+    fn description(&self) -> &str {
+        &self.description
+    }
+}
+
+impl std::fmt::Display for ValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("failed to convert Value: ")?;
+        f.write_str(&self.description)
+    }
+}
+
+impl Value {
+    pub fn null() -> Self {
+        let kind = Some(value::Kind::NullValue(0));
+        Value { kind }
+    }
+    pub fn number(num: f64) -> Self {
+        Value::from(num)
+    }
+    pub fn string(s: String) -> Self {
+        Value::from(s)
+    }
+    pub fn bool(b: bool) -> Self {
+        Value::from(b)
+    }
+    pub fn pb_struct(m: std::collections::BTreeMap<std::string::String, Value>) -> Self {
+        Value::from(m)
+    }
+    pub fn pb_list(l: std::vec::Vec<Value>) -> Self {
+        Value::from(l)
+    }
+}
+
+impl From<NullValue> for Value {
+    fn from(_: NullValue) -> Self {
+        Value::null()
+    }
+}
+
+impl From<f64> for Value {
+    fn from(num: f64) -> Self {
+        let kind = Some(value::Kind::NumberValue(num));
+        Value { kind }
+    }
+}
+
+impl TryFrom<Value> for f64 {
+    type Error = ValueError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value.kind {
+            Some(value::Kind::NumberValue(num)) => Ok(num),
+            Some(other) => Err(ValueError::new(format!(
+                "Cannot convert to f64 because this is not a ValueNumber. We got instead a {:?}",
+                other
+            ))),
+            _ => Err(ValueError::new(
+                "Conversion to f64 failed because value is empty!",
+            )),
+        }
+    }
+}
+
+impl From<String> for Value {
+    fn from(s: String) -> Self {
+        let kind = Some(value::Kind::StringValue(s));
+        Value { kind }
+    }
+}
+
+impl TryFrom<Value> for String {
+    type Error = ValueError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value.kind {
+            Some(value::Kind::StringValue(string)) => Ok(string),
+            Some(other) => Err(ValueError::new(format!(
+                "Cannot convert to String because this is not a StringValue. We got instead a {:?}",
+                other
+            ))),
+            _ => Err(ValueError::new(
+                "Conversion to String failed because value is empty!",
+            )),
+        }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        let kind = Some(value::Kind::BoolValue(b));
+        Value { kind }
+    }
+}
+
+impl TryFrom<Value> for bool {
+    type Error = ValueError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value.kind {
+            Some(value::Kind::BoolValue(b)) => Ok(b),
+            Some(other) => Err(ValueError::new(format!(
+                "Cannot convert to bool because this is not a BoolValue. We got instead a {:?}",
+                other
+            ))),
+            _ => Err(ValueError::new(
+                "Conversion to bool failed because value is empty!",
+            )),
+        }
+    }
+}
+
+impl From<std::collections::BTreeMap<std::string::String, Value>> for Value {
+    fn from(fields: std::collections::BTreeMap<String, Value>) -> Self {
+        let s = Struct { fields };
+        let kind = Some(value::Kind::StructValue(s));
+        Value { kind }
+    }
+}
+
+impl TryFrom<Value> for std::collections::BTreeMap<std::string::String, Value> {
+    type Error = ValueError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value.kind {
+            Some(value::Kind::StructValue(s)) => Ok(s.fields),
+            Some(other) => Err(ValueError::new(format!(
+                "Cannot convert to BTreeMap<String, Value> because this is not a StructValue. We got instead a {:?}",
+                other
+            ))),
+            _ => Err(ValueError::new(
+                "Conversion to BTreeMap<String, Value> failed because value is empty!",
+            )),
+        }
+    }
+}
+
+impl From<std::vec::Vec<Value>> for Value {
+    fn from(values: Vec<Value>) -> Self {
+        let v = ListValue { values };
+        let kind = Some(value::Kind::ListValue(v));
+        Value { kind }
+    }
+}
+
+impl TryFrom<Value> for std::vec::Vec<Value> {
+    type Error = ValueError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value.kind {
+            Some(value::Kind::ListValue(list)) => Ok(list.values),
+            Some(other) => Err(ValueError::new(format!(
+                "Cannot convert to Vec<Value> because this is not a ListValue. We got instead a {:?}",
+                other
+            ))),
+            _ => Err(ValueError::new(
+                "Conversion to Vec<Value> failed because value is empty!",
+            )),
+        }
+    }
+}
+
+

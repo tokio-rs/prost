@@ -16,3 +16,4 @@ test = false
 [dependencies]
 bytes = "0.5"
 prost = { version = "0.6.1", path = ".." }
+chrono = "0.4"
