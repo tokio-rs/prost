@@ -23,6 +23,8 @@ mod bootstrap;
 #[cfg(test)]
 mod debug;
 #[cfg(test)]
+mod generic_derive;
+#[cfg(test)]
 mod deprecated_field;
 #[cfg(test)]
 mod message_encoding;
