@@ -32,13 +32,6 @@ fn env_protoc() -> Option<PathBuf> {
         None => return None,
     };
 
-    if !protoc.exists() {
-        panic!(
-            "PROTOC environment variable points to non-existent file ({:?})",
-            protoc
-        );
-    }
-
     Some(protoc)
 }
 
