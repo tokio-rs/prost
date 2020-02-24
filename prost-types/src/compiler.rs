@@ -1,16 +1,16 @@
 /// The version number of protocol compiler.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Version {
-    #[prost(int32, optional, tag="1")]
+    #[prost(int32, optional, alloc, tag="1")]
     pub major: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag="2")]
+    #[prost(int32, optional, alloc, tag="2")]
     pub minor: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag="3")]
+    #[prost(int32, optional, alloc, tag="3")]
     pub patch: ::core::option::Option<i32>,
     /// A suffix for alpha, beta or rc release, e.g., "alpha-1", "rc2". It should
     /// be empty for mainline stable releases.
-    #[prost(string, optional, tag="4")]
-    pub suffix: ::core::option::Option<::std::string::String>,
+    #[prost(string, optional, alloc, tag="4")]
+    pub suffix: ::core::option::Option<::alloc::string::String>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -18,11 +18,11 @@ pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
     /// code generator should generate code only for these files.  Each file's
     /// descriptor will be included in proto_file, below.
-    #[prost(string, repeated, tag="1")]
-    pub file_to_generate: ::std::vec::Vec<::std::string::String>,
+    #[prost(string, repeated, alloc, tag="1")]
+    pub file_to_generate: ::alloc::vec::Vec<::alloc::string::String>,
     /// The generator parameter passed on the command-line.
-    #[prost(string, optional, tag="2")]
-    pub parameter: ::core::option::Option<::std::string::String>,
+    #[prost(string, optional, alloc, tag="2")]
+    pub parameter: ::core::option::Option<::alloc::string::String>,
     /// FileDescriptorProtos for all files in files_to_generate and everything
     /// they import.  The files will appear in topological order, so each file
     /// appears before any file that imports it.
@@ -37,10 +37,10 @@ pub struct CodeGeneratorRequest {
     ///
     /// Type names of fields and extensions in the FileDescriptorProto are always
     /// fully qualified.
-    #[prost(message, repeated, tag="15")]
-    pub proto_file: ::std::vec::Vec<super::FileDescriptorProto>,
+    #[prost(message, repeated, alloc, tag="15")]
+    pub proto_file: ::alloc::vec::Vec<super::FileDescriptorProto>,
     /// The version number of protocol compiler.
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, alloc, tag="3")]
     pub compiler_version: ::core::option::Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
@@ -54,10 +54,10 @@ pub struct CodeGeneratorResponse {
     /// problem in protoc itself -- such as the input CodeGeneratorRequest being
     /// unparseable -- should be reported by writing a message to stderr and
     /// exiting with a non-zero status code.
-    #[prost(string, optional, tag="1")]
-    pub error: ::core::option::Option<::std::string::String>,
-    #[prost(message, repeated, tag="15")]
-    pub file: ::std::vec::Vec<code_generator_response::File>,
+    #[prost(string, optional, alloc, tag="1")]
+    pub error: ::core::option::Option<::alloc::string::String>,
+    #[prost(message, repeated, alloc, tag="15")]
+    pub file: ::alloc::vec::Vec<code_generator_response::File>,
 }
 pub mod code_generator_response {
     /// Represents a single generated file.
@@ -74,8 +74,8 @@ pub mod code_generator_response {
         /// files need not reside completely in memory at one time.  Note that as of
         /// this writing protoc does not optimize for this -- it will read the entire
         /// CodeGeneratorResponse before writing files to disk.
-        #[prost(string, optional, tag="1")]
-        pub name: ::core::option::Option<::std::string::String>,
+        #[prost(string, optional, alloc, tag="1")]
+        pub name: ::core::option::Option<::alloc::string::String>,
         /// If non-empty, indicates that the named file should already exist, and the
         /// content here is to be inserted into that file at a defined insertion
         /// point.  This feature allows a code generator to extend the output
@@ -113,10 +113,10 @@ pub mod code_generator_response {
         /// command line.
         ///
         /// If |insertion_point| is present, |name| must also be present.
-        #[prost(string, optional, tag="2")]
-        pub insertion_point: ::core::option::Option<::std::string::String>,
+        #[prost(string, optional, alloc, tag="2")]
+        pub insertion_point: ::core::option::Option<::alloc::string::String>,
         /// The file contents.
-        #[prost(string, optional, tag="15")]
-        pub content: ::core::option::Option<::std::string::String>,
+        #[prost(string, optional, alloc, tag="15")]
+        pub content: ::core::option::Option<::alloc::string::String>,
     }
 }
