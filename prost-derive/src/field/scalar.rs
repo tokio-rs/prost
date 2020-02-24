@@ -8,7 +8,7 @@ use syn::{
     self, parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
 };
 
-use crate::field::{bool_attr, set_option, tag_attr, Label};
+use crate::field::{bool_attr, set_option, tag_attr, Label, collections_lib_name, set_bool, word_attr};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -16,6 +16,7 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
+    pub alloc: bool,
 }
 
 impl Field {
@@ -25,6 +26,7 @@ impl Field {
         let mut packed = None;
         let mut default = None;
         let mut tag = None;
+        let mut alloc = false;
 
         let mut unknown_attrs = Vec::new();
 
@@ -33,6 +35,8 @@ impl Field {
                 set_option(&mut ty, t, "duplicate type attributes")?;
             } else if let Some(p) = bool_attr("packed", attr)? {
                 set_option(&mut packed, p, "duplicate packed attributes")?;
+            } else if word_attr("alloc", attr) {
+                set_bool(&mut alloc, "duplicate alloc attributes")?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {
@@ -92,6 +96,7 @@ impl Field {
             ty: ty,
             kind: kind,
             tag: tag,
+            alloc: alloc,
         }))
     }
 
@@ -211,9 +216,9 @@ impl Field {
 
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
-        let libname = super::collections_lib_name();
+        let libname = collections_lib_name(self.alloc);
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
+            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(self.alloc),
             Kind::Optional(_) => quote!(::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::#libname::vec::Vec::new()),
         }
@@ -243,8 +248,8 @@ impl Field {
     /// Returns a fragment for formatting the field `ident` in `Debug`.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
-        let libname = super::collections_lib_name();
-        let inner_ty = self.ty.rust_type();
+        let libname = collections_lib_name(self.alloc);
+        let inner_ty = self.ty.rust_type(self.alloc);
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
@@ -497,8 +502,8 @@ impl Ty {
     }
 
     // TODO: rename to 'owned_type'.
-    pub fn rust_type(&self) -> TokenStream {
-        let libname = super::collections_lib_name();
+    pub fn rust_type(&self, alloc: bool) -> TokenStream {
+        let libname = collections_lib_name(alloc);
         match *self {
             Ty::String => quote!(::#libname::string::String),
             Ty::Bytes => quote!(::#libname::vec::Vec<u8>),
@@ -750,8 +755,8 @@ impl DefaultValue {
         }
     }
 
-    pub fn owned(&self) -> TokenStream {
-        let libname = super::collections_lib_name();
+    pub fn owned(&self, alloc: bool) -> TokenStream {
+        let libname = collections_lib_name(alloc);
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
                 quote!(::#libname::string::String::new())

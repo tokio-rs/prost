@@ -17,6 +17,7 @@ impl Field {
         let mut label = None;
         let mut tag = None;
         let mut boxed = false;
+        let mut alloc = false;
 
         let mut unknown_attrs = Vec::new();
 
@@ -25,6 +26,8 @@ impl Field {
                 set_bool(&mut message, "duplicate message attribute")?;
             } else if word_attr("boxed", attr) {
                 set_bool(&mut boxed, "duplicate boxed attribute")?;
+            } else if word_attr("alloc", attr) {
+                set_bool(&mut alloc, "duplicate alloc attributes")?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {

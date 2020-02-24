@@ -1286,7 +1286,6 @@ pub mod btree_map {
 mod test {
     use std::borrow::Borrow;
     use std::fmt::Debug;
-    use std::io::Cursor;
     use std::u64;
 
     use ::bytes::{Bytes, BytesMut};
@@ -1374,6 +1373,7 @@ mod test {
             &mut buf,
             DecodeContext::default(),
         ) {
+            use crate::alloc::string::ToString;
             return TestResult::error(error.to_string());
         };
 
@@ -1452,6 +1452,7 @@ mod test {
                 &mut buf,
                 DecodeContext::default(),
             ) {
+                use crate::alloc::string::ToString;
                 return TestResult::error(error.to_string());
             };
         }
@@ -1466,7 +1467,7 @@ mod test {
     #[test]
     fn string_merge_invalid_utf8() {
         let mut s = String::new();
-        let mut buf = Cursor::new(b"\x02\x80\x80");
+        let mut buf = &b"\x02\x80\x80"[..];
 
         let r = string::merge(
             WireType::LengthDelimited,
@@ -1496,7 +1497,6 @@ mod test {
             let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            println!("encoding {:?}", encoded);
             let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }

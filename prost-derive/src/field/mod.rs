@@ -367,19 +367,10 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
 
 // Helper which builds an identifier corresponding `std` or `alloc` depending
 // on feature selection
-// FIXME(chris): This doesn't seem to work, maybe related to this issue:
-// https://github.com/rust-lang/rust/issues/54863
-// It seems to pick use_std always
-//
-//#[cfg(feature = "use_std")]
-//fn collections_lib_name() -> Ident {
-//    Ident::new("std", Span::call_site())
-//}
-//
-//#[cfg(not(feature = "use_std"))]
-//fn collections_lib_name() -> Ident {
-//    Ident::new("alloc", Span::call_site())
-//}
-fn collections_lib_name() -> Ident {
-    Ident::new("alloc", Span::call_site())
+fn collections_lib_name(alloc: bool) -> Ident {
+    if alloc {
+        Ident::new("alloc", Span::call_site())
+    } else {
+        Ident::new("std", Span::call_site())
+    }
 }

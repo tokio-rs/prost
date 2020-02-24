@@ -14,6 +14,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(feature = "std")]
 use core::convert::TryFrom;
 use core::i32;
 use core::i64;
@@ -30,6 +31,7 @@ pub mod compiler {
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
 // are defined in both directions.
 
+#[cfg(feature = "std")]
 const NANOS_PER_SECOND: i32 = 1_000_000_000;
 
 impl Duration {
@@ -37,6 +39,7 @@ impl Duration {
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L79-L100
+    #[cfg(feature = "std")]
     fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
@@ -107,6 +110,7 @@ impl Timestamp {
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+    #[cfg(feature = "std")]
     fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {

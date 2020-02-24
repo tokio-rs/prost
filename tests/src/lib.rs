@@ -219,7 +219,6 @@ mod tests {
 
     use prost::Message;
     use protobuf::test_messages::proto3::TestAllTypesProto3;
-    use tests_infra::*;
 
     #[test]
     fn test_all_types_proto3() {

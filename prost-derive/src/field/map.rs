@@ -3,7 +3,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
-use crate::field::{scalar, set_option, tag_attr};
+use crate::field::{scalar, set_option, tag_attr, collections_lib_name, word_attr, set_bool};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -34,6 +34,7 @@ fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
         ty,
         kind,
         tag: 0, // Not used here
+        alloc: false,
     }
 }
 
@@ -43,17 +44,21 @@ pub struct Field {
     pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
+    pub alloc: bool,
 }
 
 impl Field {
     pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
+        let mut alloc = false;
 
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
-            } else if let Some(map_ty) = attr
+            } else if word_attr("alloc", attr) {
+                set_bool(&mut alloc, "duplicate alloc attributes")?;
+            }else if let Some(map_ty) = attr
                 .path()
                 .get_ident()
                 .and_then(|i| MapTy::from_str(&i.to_string()))
@@ -112,6 +117,7 @@ impl Field {
                 key_ty: key_ty,
                 value_ty: val_ty,
                 tag: tag,
+                alloc: alloc,
             }),
             _ => None,
         })
@@ -253,7 +259,7 @@ impl Field {
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ref ty)) = self.value_ty {
-            let key_ty = self.key_ty.rust_type();
+            let key_ty = self.key_ty.rust_type(self.alloc);
             let key_ref_ty = self.key_ty.rust_ref_type();
 
             let get = Ident::new(&format!("get_{}", ident), Span::call_site());
@@ -290,7 +296,7 @@ impl Field {
     /// The Debug tries to convert any enumerations met into the variants if possible, instead of
     /// outputting the raw numbers.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
-        let libname = super::collections_lib_name();
+        let libname = collections_lib_name(self.alloc);
 
         let type_name = match self.map_ty {
             MapTy::HashMap => Ident::new("HashMap", Span::call_site()),
@@ -298,7 +304,7 @@ impl Field {
         };
         // A fake field for generating the debug wrapper
         let key_wrapper = fake_scalar(self.key_ty.clone()).debug(quote!(KeyWrapper));
-        let key = self.key_ty.rust_type();
+        let key = self.key_ty.rust_type(self.alloc);
         let value_wrapper = self.value_ty.debug();
         let fmt = quote! {
             fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
@@ -313,7 +319,7 @@ impl Field {
         };
         match self.value_ty {
             ValueTy::Scalar(ref ty) => {
-                let value = ty.rust_type();
+                let value = ty.rust_type(self.alloc);
                 quote! {
                     struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
