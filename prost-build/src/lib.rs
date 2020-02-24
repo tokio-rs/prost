@@ -189,8 +189,8 @@ pub enum CollectionsLib {
 impl CollectionsLib {
     pub fn to_str(&self) -> &'static str {
         match self {
-            CollectionsLib::Std => { "::std" },
-            CollectionsLib::Alloc => { "::alloc" },
+            CollectionsLib::Std => "::std",
+            CollectionsLib::Alloc => "::alloc",
         }
     }
 }

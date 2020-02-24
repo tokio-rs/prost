@@ -412,5 +412,5 @@ fn main() {
     test_recursive_oneof();
     test_default_enum();
     test_group();
-    test_group_oneof();   
+    test_group_oneof();
 }

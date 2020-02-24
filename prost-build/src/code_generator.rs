@@ -419,11 +419,12 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
 
-        let btree_map = (self.config.collections_lib != CollectionsLib::Std) || self
-            .config
-            .btree_map
-            .iter()
-            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+        let btree_map = (self.config.collections_lib != CollectionsLib::Std)
+            || self
+                .config
+                .btree_map
+                .iter()
+                .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
         let (annotation_ty, rust_ty) = if btree_map {
             ("btree_map", "BTreeMap")
         } else {
@@ -439,7 +440,9 @@ impl<'a> CodeGenerator<'a> {
             value_tag,
             if self.config.collections_lib == CollectionsLib::Alloc {
                 ", alloc"
-            } else { "" },
+            } else {
+                ""
+            },
             field.number()
         ));
         self.append_field_attributes(msg_name, field.name());
@@ -473,7 +476,9 @@ impl<'a> CodeGenerator<'a> {
             name,
             if self.config.collections_lib == CollectionsLib::Alloc {
                 ", alloc"
-            } else { "" },
+            } else {
+                ""
+            },
             fields
                 .iter()
                 .map(|&(ref field, _)| field.number())
@@ -527,7 +532,9 @@ impl<'a> CodeGenerator<'a> {
                 ty_tag,
                 if self.config.collections_lib == CollectionsLib::Alloc {
                     ", alloc"
-                } else { "" },
+                } else {
+                    ""
+                },
                 field.number()
             ));
             self.append_field_attributes(&oneof_name, field.name());
@@ -546,8 +553,12 @@ impl<'a> CodeGenerator<'a> {
             );
 
             if boxed {
-                self.buf
-                    .push_str(&format!("{}({}::boxed::Box<{}>),\n",to_upper_camel(field.name()), self.config.collections_lib.to_str(), ty));
+                self.buf.push_str(&format!(
+                    "{}({}::boxed::Box<{}>),\n",
+                    to_upper_camel(field.name()),
+                    self.config.collections_lib.to_str(),
+                    ty
+                ));
             } else {
                 self.buf
                     .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));

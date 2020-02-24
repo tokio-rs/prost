@@ -2,8 +2,8 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
-extern crate proc_macro;
 extern crate alloc;
+extern crate proc_macro;
 
 use anyhow::bail;
 use quote::quote;

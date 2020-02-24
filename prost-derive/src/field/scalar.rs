@@ -1,5 +1,5 @@
-use std::convert::TryFrom;
 use core::fmt;
+use std::convert::TryFrom;
 
 use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
@@ -8,7 +8,9 @@ use syn::{
     self, parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
 };
 
-use crate::field::{bool_attr, set_option, tag_attr, Label, collections_lib_name, set_bool, word_attr};
+use crate::field::{
+    bool_attr, collections_lib_name, set_bool, set_option, tag_attr, word_attr, Label,
+};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -762,7 +764,9 @@ impl DefaultValue {
                 quote!(::#libname::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::#libname::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => {
+                quote!(::#libname::vec::Vec::new())
+            }
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.to_owned())

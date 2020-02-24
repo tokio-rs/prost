@@ -2,12 +2,12 @@
 
 extern crate alloc;
 
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
-use alloc::format;
 
-use core::default::Default;
 use core::cmp::PartialEq;
+use core::default::Default;
 use core::fmt::Display;
 
 #[macro_use]

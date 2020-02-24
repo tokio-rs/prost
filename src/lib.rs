@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.6.1")]
-
 #![no_std]
 
 extern crate alloc;

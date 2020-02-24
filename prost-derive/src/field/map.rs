@@ -3,7 +3,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
-use crate::field::{scalar, set_option, tag_attr, collections_lib_name, word_attr, set_bool};
+use crate::field::{collections_lib_name, scalar, set_bool, set_option, tag_attr, word_attr};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -58,7 +58,7 @@ impl Field {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if word_attr("alloc", attr) {
                 set_bool(&mut alloc, "duplicate alloc attributes")?;
-            }else if let Some(map_ty) = attr
+            } else if let Some(map_ty) = attr
                 .path()
                 .get_ident()
                 .and_then(|i| MapTy::from_str(&i.to_string()))

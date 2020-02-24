@@ -40,7 +40,7 @@ where
                 *byte = mem::MaybeUninit::new(value as u8);
                 break 'outer;
             } else {
-                *byte =  mem::MaybeUninit::new(((value & 0x7F) | 0x80) as u8);
+                *byte = mem::MaybeUninit::new(((value & 0x7F) | 0x80) as u8);
                 value >>= 7;
             }
         }
@@ -385,7 +385,12 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
+pub fn skip_field<B>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
 where
     B: Buf,
 {
@@ -1275,10 +1280,10 @@ pub mod hash_map {
 }
 
 pub mod btree_map {
-    #[cfg(feature = "std")]
-    use std::collections::BTreeMap;
     #[cfg(not(feature = "std"))]
     use alloc::collections::BTreeMap;
+    #[cfg(feature = "std")]
+    use std::collections::BTreeMap;
     map!(BTreeMap);
 }
 
