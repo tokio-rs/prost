@@ -577,7 +577,10 @@ impl Config {
         }
 
         let buf = fs::read(descriptor_set)?;
-        let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
+        // Manually map error, because in no_std mode, prost::DecodeError will not implement
+        // Into<io::Error>
+        let descriptor_set = FileDescriptorSet::decode(&buf[..])
+            .map_err(|error| Error::new(ErrorKind::InvalidData, format!("{}", error)))?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
