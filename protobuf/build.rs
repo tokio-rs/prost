@@ -12,7 +12,7 @@ use curl::easy::Easy;
 use flate2::bufread::GzDecoder;
 use tar::Archive;
 
-const VERSION: &'static str = "3.7.1";
+const VERSION: &'static str = "3.11.2";
 
 static TEST_PROTOS: &[&str] = &[
     "test_messages_proto2.proto",
@@ -107,6 +107,7 @@ fn download_tarball(url: &str, out_dir: &Path) {
     let mut data = Vec::new();
     let mut handle = Easy::new();
 
+    // Download the tarball.
     handle.url(url).expect("failed to configure tarball URL");
     handle
         .follow_location(true)
@@ -122,6 +123,7 @@ fn download_tarball(url: &str, out_dir: &Path) {
         transfer.perform().expect("failed to download tarball");
     }
 
+    // Unpack the tarball.
     Archive::new(GzDecoder::new(Cursor::new(data)))
         .unpack(out_dir)
         .expect("failed to unpack tarball");
@@ -136,50 +138,58 @@ fn download_protobuf(out_dir: &Path) -> PathBuf {
         ),
         out_dir,
     );
-    out_dir.join(format!("protobuf-{}", VERSION))
+    let src_dir = out_dir.join(format!("protobuf-{}", VERSION));
+
+    // Apply patches.
+    let mut patch_src = env::current_dir().expect("failed to get current working directory");
+    patch_src.push("src");
+    patch_src.push("fix-conformance_test_runner-cmake-build.patch");
+
+    let rc = Command::new("patch")
+        .arg("-p1")
+        .arg("-i")
+        .arg(patch_src)
+        .current_dir(&src_dir)
+        .status()
+        .expect("failed to apply patch");
+    assert!(rc.success(), "protobuf patch failed");
+
+    src_dir
 }
 
 fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) {
     #[cfg(not(windows))]
     {
         // Build and install protoc, the protobuf libraries, and the conformance test runner.
-        let rc = Command::new("./autogen.sh")
+        let rc = Command::new("cmake")
+            .arg("-GNinja")
+            .arg("cmake/")
+            .arg("-DCMAKE_BUILD_TYPE=DEBUG")
+            .arg(&format!("-DCMAKE_INSTALL_PREFIX={}", prefix_dir.display()))
+            .arg("-Dprotobuf_BUILD_CONFORMANCE=ON")
+            .arg("-Dprotobuf_BUILD_TESTS=OFF")
             .current_dir(&src_dir)
             .status()
-            .expect("failed to execute autogen.sh");
-        assert!(rc.success(), "protobuf autogen.sh failed");
+            .expect("failed to execute CMake");
+        assert!(rc.success(), "protobuf CMake failed");
 
         let num_jobs = env::var("NUM_JOBS").expect("NUM_JOBS environment variable not set");
 
-        let rc = Command::new("./configure")
-            .arg("--disable-shared")
-            .arg("--prefix")
-            .arg(&prefix_dir)
-            .current_dir(&src_dir)
-            .status()
-            .expect("failed to execute configure");
-        assert!(rc.success(), "failed to configure protobuf");
-
-        let rc = Command::new("make")
+        let rc = Command::new("ninja")
             .arg("-j")
             .arg(&num_jobs)
             .arg("install")
             .current_dir(&src_dir)
             .status()
-            .expect("failed to execute make protobuf");
+            .expect("failed to execute ninja protobuf");
         assert!(rc.success(), "failed to make protobuf");
 
-        // Workaround for protocolbuffers/protobuf#6210.
-        fs::create_dir(src_dir.join("conformance").join("google-protobuf")).unwrap();
-
-        let rc = Command::new("make")
-            .arg("-j")
-            .arg("1") // Note: 1 instead of NUM_JOBS to work around bugs in makefile
-            .arg("install")
-            .current_dir(src_dir.join("conformance"))
-            .status()
-            .expect("failed to execute make conformance");
-        assert!(rc.success(), "failed to make conformance");
+        // Install the conformance-test-runner binary, since it isn't done automatically.
+        fs::rename(
+            src_dir.join("conformance_test_runner"),
+            prefix_dir.join("bin").join("conformance-test-runner"),
+        )
+        .expect("failed to move conformance-test-runner");
     }
 }
 

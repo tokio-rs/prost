@@ -3,7 +3,9 @@
 //! Meant to be used only from `Message` implementations.
 
 use core::cmp::min;
+use core::convert::TryFrom;
 use core::mem;
+use core::str;
 use core::u32;
 use core::usize;
 
@@ -11,7 +13,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use ::bytes::{Buf, BufMut};
+use ::bytes::{buf::ext::BufExt, Buf, BufMut};
 
 use crate::DecodeError;
 use crate::Message;
@@ -24,9 +26,6 @@ where
     B: BufMut,
 {
     // Safety notes:
-    //
-    // - bytes_mut is unsafe because it may return an uninitialized slice.
-    //   The use here is safe because the slice is only written to, never read from.
     //
     // - advance_mut is unsafe because it could cause uninitialized memory to be
     //   advanced over. The use here is safe since each byte which is advanced over
@@ -284,11 +283,12 @@ pub enum WireType {
 pub const MIN_TAG: u32 = 1;
 pub const MAX_TAG: u32 = (1 << 29) - 1;
 
-impl WireType {
-    // TODO: impl TryFrom<u64> when stable.
-    #[inline(always)]
-    pub fn try_from(val: u64) -> Result<WireType, DecodeError> {
-        match val {
+impl TryFrom<u64> for WireType {
+    type Error = DecodeError;
+
+    #[inline]
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        match value {
             0 => Ok(WireType::Varint),
             1 => Ok(WireType::SixtyFourBit),
             2 => Ok(WireType::LengthDelimited),
@@ -297,7 +297,7 @@ impl WireType {
             5 => Ok(WireType::ThirtyTwoBit),
             _ => Err(DecodeError::new(format!(
                 "invalid wire type value: {}",
-                val
+                value
             ))),
         }
     }
@@ -385,10 +385,11 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B) -> Result<(), DecodeError>
+pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
 where
     B: Buf,
 {
+    ctx.limit_reached()?;
     let len = match wire_type {
         WireType::Varint => decode_varint(buf).map(|_| 0)?,
         WireType::ThirtyTwoBit => 4,
@@ -403,7 +404,7 @@ where
                     }
                     break 0;
                 }
-                _ => skip_field(inner_wire_type, inner_tag, buf)?,
+                _ => skip_field(inner_wire_type, inner_tag, buf, ctx.enter_recursion())?,
             }
         },
         WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
@@ -824,11 +825,41 @@ pub mod string {
     where
         B: Buf,
     {
-        let mut value_bytes = mem::replace(value, String::new()).into_bytes();
-        bytes::merge(wire_type, &mut value_bytes, buf, ctx)?;
-        *value = String::from_utf8(value_bytes)
-            .map_err(|_| DecodeError::new("invalid string value: data is not UTF-8 encoded"))?;
-        Ok(())
+        // ## Unsafety
+        //
+        // `string::merge` reuses `bytes::merge`, with an additional check of utf-8
+        // well-formedness. If the utf-8 is not well-formed, or if any other error occurs, then the
+        // string is cleared, so as to avoid leaking a string field with invalid data.
+        //
+        // This implementation uses the unsafe `String::as_mut_vec` method instead of the safe
+        // alternative of temporarily swapping an empty `String` into the field, because it results
+        // in up to 10% better performance on the protobuf message decoding benchmarks.
+        //
+        // It's required when using `String::as_mut_vec` that invalid utf-8 data not be leaked into
+        // the backing `String`. To enforce this, even in the event of a panic in `bytes::merge` or
+        // in the buf implementation, a drop guard is used.
+        unsafe {
+            struct DropGuard<'a>(&'a mut Vec<u8>);
+            impl<'a> Drop for DropGuard<'a> {
+                #[inline]
+                fn drop(&mut self) {
+                    self.0.clear();
+                }
+            }
+
+            let drop_guard = DropGuard(value.as_mut_vec());
+            bytes::merge(wire_type, drop_guard.0, buf, ctx)?;
+            match str::from_utf8(drop_guard.0) {
+                Ok(_) => {
+                    // Success; do not clear the bytes.
+                    mem::forget(drop_guard);
+                    Ok(())
+                }
+                Err(_) => Err(DecodeError::new(
+                    "invalid string value: data is not UTF-8 encoded",
+                )),
+            }
+        }
     }
 
     length_delimited!(String);
@@ -861,8 +892,17 @@ pub mod bytes {
             return Err(DecodeError::new("buffer underflow"));
         }
         let len = len as usize;
+
+        // Clear the existing value. This follows from the following rule in the encoding guide[1]:
+        //
+        // > Normally, an encoded message would never have more than one instance of a non-repeated
+        // > field. However, parsers are expected to handle the case in which they do. For numeric
+        // > types and strings, if the same field appears multiple times, the parser accepts the
+        // > last value it sees.
+        //
+        // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
+        value.clear();
         value.reserve(len);
-        use ::bytes::buf::ext::BufExt;
         value.put(buf.take(len));
         Ok(())
     }
@@ -1182,7 +1222,7 @@ macro_rules! map {
                     match tag {
                         1 => key_merge(wire_type, key, buf, ctx),
                         2 => val_merge(wire_type, val, buf, ctx),
-                        _ => skip_field(wire_type, tag, buf),
+                        _ => skip_field(wire_type, tag, buf, ctx),
                     }
                 },
             )?;
@@ -1259,7 +1299,7 @@ mod test {
         tag: u32,
         wire_type: WireType,
         encode: fn(u32, &B, &mut BytesMut),
-        merge: fn(WireType, &mut T, &mut Cursor<Bytes>, DecodeContext) -> Result<(), DecodeError>,
+        merge: fn(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         encoded_len: fn(u32, &B) -> usize,
     ) -> TestResult
     where
@@ -1275,7 +1315,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, value.borrow(), &mut buf);
 
-        let mut buf = buf.freeze().to_bytes();
+        let mut buf = buf.freeze();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!(
@@ -1363,7 +1403,7 @@ mod test {
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
         E: FnOnce(u32, &B, &mut BytesMut),
-        M: FnMut(WireType, &mut T, &mut Cursor<Bytes>, DecodeContext) -> Result<(), DecodeError>,
+        M: FnMut(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         L: FnOnce(u32, &B) -> usize,
     {
         if tag > MAX_TAG || tag < MIN_TAG {
@@ -1375,7 +1415,7 @@ mod test {
         let mut buf = BytesMut::with_capacity(expected_len);
         encode(tag, value.borrow(), &mut buf);
 
-        let mut buf = buf.freeze().into_buf();
+        let mut buf = buf.freeze();
 
         if buf.remaining() != expected_len {
             return TestResult::error(format!(
@@ -1424,9 +1464,10 @@ mod test {
     }
 
     #[test]
-    fn string_merge_failure() {
+    fn string_merge_invalid_utf8() {
         let mut s = String::new();
-        let mut buf = Cursor::new(b"\x80\x80");
+        let mut buf = Cursor::new(b"\x02\x80\x80");
+
         let r = string::merge(
             WireType::LengthDelimited,
             &mut s,
@@ -1439,7 +1480,7 @@ mod test {
 
     #[test]
     fn varint() {
-        fn check(value: u64, encoded: &[u8]) {
+        fn check(value: u64, mut encoded: &[u8]) {
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1452,11 +1493,11 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value = decode_varint(&mut encoded.into_buf()).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            let roundtrip_value =
-                decode_varint_slow(&mut encoded.into_buf()).expect("slow decoding failed");
+            println!("encoding {:?}", encoded);
+            let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 

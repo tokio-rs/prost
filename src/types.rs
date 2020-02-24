@@ -7,9 +7,13 @@
 
 use ::bytes::{Buf, BufMut};
 
-use crate::encoding::*;
-use crate::DecodeError;
-use crate::Message;
+use crate::{
+    encoding::{
+        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
+        DecodeContext, WireType,
+    },
+    DecodeError, Message,
+};
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -37,7 +41,7 @@ impl Message for bool {
         if tag == 1 {
             bool::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -75,7 +79,7 @@ impl Message for u32 {
         if tag == 1 {
             uint32::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -113,7 +117,7 @@ impl Message for u64 {
         if tag == 1 {
             uint64::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -151,7 +155,7 @@ impl Message for i32 {
         if tag == 1 {
             int32::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -189,7 +193,7 @@ impl Message for i64 {
         if tag == 1 {
             int64::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -227,7 +231,7 @@ impl Message for f32 {
         if tag == 1 {
             float::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -265,7 +269,7 @@ impl Message for f64 {
         if tag == 1 {
             double::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -303,7 +307,7 @@ impl Message for String {
         if tag == 1 {
             string::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -341,7 +345,7 @@ impl Message for Vec<u8> {
         if tag == 1 {
             bytes::merge(wire_type, self, buf, ctx)
         } else {
-            skip_field(wire_type, tag, buf)
+            skip_field(wire_type, tag, buf, ctx)
         }
     }
     fn encoded_len(&self) -> usize {
@@ -368,12 +372,12 @@ impl Message for () {
         tag: u32,
         wire_type: WireType,
         buf: &mut B,
-        _ctx: DecodeContext,
+        ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        skip_field(wire_type, tag, buf)
+        skip_field(wire_type, tag, buf, ctx)
     }
     fn encoded_len(&self) -> usize {
         0

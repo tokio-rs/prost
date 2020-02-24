@@ -80,6 +80,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("deprecated_field.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
@@ -88,6 +92,12 @@ fn main() {
             &[src.join("packages/widget_factory.proto")],
             &[src.join("packages")],
         )
+        .unwrap();
+
+    // Check that attempting to compile a .proto without a package declaration results in an error.
+    config
+        .compile_protos(&[src.join("no_package.proto")], includes)
+        .err()
         .unwrap();
 
     let out_dir =

@@ -1,14 +1,14 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.6.1")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
 extern crate proc_macro;
 extern crate alloc;
 
-use failure::bail;
+use anyhow::bail;
 use quote::quote;
 
-use failure::Error;
+use anyhow::Error;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -72,7 +72,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 )),
             }
         })
-        .collect::<Result<Vec<(Ident, Field)>, failure::Context<String>>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
@@ -95,9 +95,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         bail!("message {} has fields with duplicate tags", ident);
     }
 
-    // Put impls in a const, so that 'extern crate' can be used.
-    let dummy_const = Ident::new(&format!("{}_MESSAGE", ident), Span::call_site());
-
     let encoded_len = fields
         .iter()
         .map(|&(ref field_ident, ref field)| field.encoded_len(quote!(self.#field_ident)));
@@ -107,16 +104,21 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .map(|&(ref field_ident, ref field)| field.encode(quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
-        let merge = field.merge(quote!(self.#field_ident));
+        let merge = field.merge(quote!(value));
         let tags = field
             .tags()
             .into_iter()
             .map(|tag| quote!(#tag))
             .intersperse(quote!(|));
-        quote!(#(#tags)* => #merge.map_err(|mut error| {
-            error.push(STRUCT_NAME, stringify!(#field_ident));
-            error
-        }),)
+        quote! {
+            #(#tags)* => {
+                let mut value = &mut self.#field_ident;
+                #merge.map_err(|mut error| {
+                    error.push(STRUCT_NAME, stringify!(#field_ident));
+                    error
+                })
+            },
+        }
     });
 
     let struct_name = if fields.is_empty() {
@@ -175,60 +177,55 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     let expanded = quote! {
-        #[allow(non_snake_case, unused_attributes)]
-        const #dummy_const: () = {
-            extern crate prost as _prost;
-            extern crate bytes as _bytes;
+        impl ::prost::Message for #ident {
+            #[allow(unused_variables)]
+            fn encode_raw<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+                #(#encode)*
+            }
 
-            impl _prost::Message for #ident {
-                #[allow(unused_variables)]
-                fn encode_raw<B>(&self, buf: &mut B) where B: _bytes::BufMut {
-                    #(#encode)*
-                }
-
-                #[allow(unused_variables)]
-                fn merge_field<B>(&mut self,
-                                  tag: u32,
-                                  wire_type: _prost::encoding::WireType,
-                                  buf: &mut B,
-                                  ctx: _prost::encoding::DecodeContext,
-                ) -> ::core::result::Result<(), _prost::DecodeError>
-                where B: _bytes::Buf {
-                    #struct_name
-                    match tag {
-                        #(#merge)*
-                        _ => _prost::encoding::skip_field(wire_type, tag, buf),
-                    }
-                }
-
-                #[inline]
-                fn encoded_len(&self) -> usize {
-                    0 #(+ #encoded_len)*
-                }
-
-                fn clear(&mut self) {
-                    #(#clear;)*
+            #[allow(unused_variables)]
+            fn merge_field<B>(
+                &mut self,
+                tag: u32,
+                wire_type: ::prost::encoding::WireType,
+                buf: &mut B,
+                ctx: ::prost::encoding::DecodeContext,
+            ) -> ::core::result::Result<(), ::prost::DecodeError>
+            where B: ::prost::bytes::Buf {
+                #struct_name
+                match tag {
+                    #(#merge)*
+                    _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
                 }
             }
 
-            impl Default for #ident {
-                fn default() -> #ident {
-                    #ident {
-                        #(#default)*
-                    }
-                }
+            #[inline]
+            fn encoded_len(&self) -> usize {
+                0 #(+ #encoded_len)*
             }
 
-            impl ::core::fmt::Debug for #ident {
-                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                    let mut builder = #debug_builder;
-                    #(#debugs;)*
-                    builder.finish()
+            fn clear(&mut self) {
+                #(#clear;)*
+            }
+        }
+
+        impl Default for #ident {
+            fn default() -> #ident {
+                #ident {
+                    #(#default)*
                 }
             }
+        }
 
-            #methods
-        };
+        impl ::core::fmt::Debug for #ident {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                let mut builder = #debug_builder;
+                #(#debugs;)*
+                builder.finish()
+            }
+        }
+
+        #methods
     };
 
     Ok(expanded.into())
@@ -281,8 +278,6 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     let default = variants[0].0.clone();
 
-    // Put impls in a const, so that 'extern crate' can be used.
-    let dummy_const = Ident::new(&format!("{}_ENUMERATION", ident), Span::call_site());
     let is_valid = variants
         .iter()
         .map(|&(_, ref value)| quote!(#value => true));
@@ -297,39 +292,35 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     );
 
     let expanded = quote! {
-        #[allow(non_snake_case, unused_attributes)]
-        const #dummy_const: () = {
-            impl #ident {
-
-                #[doc=#is_valid_doc]
-                pub fn is_valid(value: i32) -> bool {
-                    match value {
-                        #(#is_valid,)*
-                        _ => false,
-                    }
-                }
-
-                #[doc=#from_i32_doc]
-                pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
-                    match value {
-                        #(#from,)*
-                        _ => ::core::option::Option::None,
-                    }
+        impl #ident {
+            #[doc=#is_valid_doc]
+            pub fn is_valid(value: i32) -> bool {
+                match value {
+                    #(#is_valid,)*
+                    _ => false,
                 }
             }
 
-            impl ::core::default::Default for #ident {
-                fn default() -> #ident {
-                    #ident::#default
+            #[doc=#from_i32_doc]
+            pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
+                match value {
+                    #(#from,)*
+                    _ => ::core::option::Option::None,
                 }
             }
+        }
 
-            impl ::core::convert::From<#ident> for i32 {
-                fn from(value: #ident) -> i32 {
-                    value as i32
-                }
+        impl ::core::default::Default for #ident {
+            fn default() -> #ident {
+                #ident::#default
             }
-        };
+        }
+
+        impl ::core::convert::From<#ident> for i32 {
+            fn from(value: #ident) -> i32 {
+                value as i32
+            }
+        }
     };
 
     Ok(expanded.into())
@@ -399,9 +390,6 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         panic!("invalid oneof {}: variants have duplicate tags", ident);
     }
 
-    // Put impls in a const, so that 'extern crate' can be used.
-    let dummy_const = Ident::new(&format!("{}_ONEOF", ident), Span::call_site());
-
     let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
         let encode = field.encode(quote!(*value));
         quote!(#ident::#variant_ident(ref value) => { #encode })
@@ -412,8 +400,16 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         let merge = field.merge(quote!(value));
         quote! {
             #tag => {
-                let mut value = ::core::default::Default::default();
-                #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(value)))
+                match field {
+                    ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                        #merge
+                    },
+                    _ => {
+                        let mut owned_value = ::core::default::Default::default();
+                        let value = &mut owned_value;
+                        #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
+                    },
+                }
             }
         }
     });
@@ -434,47 +430,42 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     });
 
     let expanded = quote! {
-        #[allow(non_snake_case, unused_attributes)]
-        const #dummy_const: () = {
-            extern crate prost as _prost;
-            use _prost::_bytes;
-
-            impl #ident {
-                pub fn encode<B>(&self, buf: &mut B) where B: _bytes::BufMut {
-                    match *self {
-                        #(#encode,)*
-                    }
-                }
-
-                pub fn merge<B>(field: &mut ::core::option::Option<#ident>,
-                                tag: u32,
-                                wire_type: _prost::encoding::WireType,
-                                buf: &mut B,
-                                ctx: _prost::encoding::DecodeContext,
-                ) -> ::core::result::Result<(), _prost::DecodeError>
-                where B: _bytes::Buf {
-                    match tag {
-                        #(#merge,)*
-                        _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
-                    }
-                }
-
-                #[inline]
-                pub fn encoded_len(&self) -> usize {
-                    match *self {
-                        #(#encoded_len,)*
-                    }
+        impl #ident {
+            pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+                match *self {
+                    #(#encode,)*
                 }
             }
 
-            impl ::core::fmt::Debug for #ident {
-                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                    match *self {
-                        #(#debug,)*
-                    }
+            pub fn merge<B>(
+                field: &mut ::core::option::Option<#ident>,
+                tag: u32,
+                wire_type: ::prost::encoding::WireType,
+                buf: &mut B,
+                ctx: ::prost::encoding::DecodeContext,
+            ) -> ::core::result::Result<(), ::prost::DecodeError>
+            where B: ::prost::bytes::Buf {
+                match tag {
+                    #(#merge,)*
+                    _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
                 }
             }
-        };
+
+            #[inline]
+            pub fn encoded_len(&self) -> usize {
+                match *self {
+                    #(#encoded_len,)*
+                }
+            }
+        }
+
+        impl ::core::fmt::Debug for #ident {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                match *self {
+                    #(#debug,)*
+                }
+            }
+        }
     };
 
     Ok(expanded.into())

@@ -1,108 +1,95 @@
-#![feature(test)]
+use std::mem;
 
-extern crate test;
-
-use bytes::IntoBuf;
+use bytes::Buf;
+use criterion::{Benchmark, Criterion, Throughput};
 use prost::encoding::{decode_varint, encode_varint, encoded_len_varint};
+use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 
-macro_rules! varint_bench {
-    ($encode_name:ident, $decode_name:ident, $encoded_len_name: ident, $encode:expr) => {
-        #[bench]
-        fn $encode_name(b: &mut test::Bencher) {
-            let mut buf = Vec::with_capacity(100 * 10);
-            b.iter(|| {
-                buf.clear();
-                $encode(&mut buf);
-                test::black_box(&buf[..]);
-            });
-            b.bytes = 100 * 8;
-        }
-        #[bench]
-        fn $decode_name(b: &mut test::Bencher) {
-            let mut buf = Vec::with_capacity(100 * 10);
-            $encode(&mut buf);
-            let buf = &buf[..];
+fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>) {
+    // Shuffle the values in a stable order.
+    values.shuffle(&mut StdRng::seed_from_u64(0));
 
-            let mut values = [0u64; 100];
+    let encoded_len = values
+        .iter()
+        .cloned()
+        .map(encoded_len_varint)
+        .sum::<usize>() as u64;
+    let decoded_len = (values.len() * mem::size_of::<u64>()) as u64;
 
-            b.iter(|| {
-                let mut buf = buf.into_buf();
-                for i in 0..100 {
-                    values[i] = decode_varint(&mut buf).unwrap();
-                }
-                test::black_box(&values[..]);
-            });
-            b.bytes = 100 * 8;
-        }
-        #[bench]
-        fn $encoded_len_name(b: &mut test::Bencher) {
-            let mut values = [0u64; 100];
-            {
-                let mut buf = Vec::with_capacity(100 * 10);
-                $encode(&mut buf);
-                let mut buf = (&buf[..]).into_buf();
-                for i in 0..100 {
-                    values[i] = decode_varint(&mut buf).unwrap();
-                }
+    let encode_values = values.clone();
+    let encode = Benchmark::new("encode", move |b| {
+        let mut buf = Vec::<u8>::with_capacity(encode_values.len() * 10);
+        b.iter(|| {
+            buf.clear();
+            for &value in &encode_values {
+                encode_varint(value, &mut buf);
             }
+            criterion::black_box(&buf);
+        })
+    })
+    .throughput(Throughput::Bytes(encoded_len));
 
-            b.iter(|| {
-                let mut sum = 0;
-                for &value in values.iter() {
-                    sum += encoded_len_varint(value);
-                }
-                test::black_box(sum);
-            });
-            b.bytes = 100 * 8;
+    let mut decode_values = values.clone();
+    let decode = Benchmark::new("decode", move |b| {
+        let mut buf = Vec::with_capacity(decode_values.len() * 10);
+        for &value in &decode_values {
+            encode_varint(value, &mut buf);
         }
-    };
+
+        b.iter(|| {
+            decode_values.clear();
+            let mut buf = &mut buf.as_slice();
+            while buf.has_remaining() {
+                let value = decode_varint(&mut buf).unwrap();
+                decode_values.push(value);
+            }
+            criterion::black_box(&decode_values);
+        })
+    })
+    .throughput(Throughput::Bytes(decoded_len));
+
+    let encoded_len_values = values.clone();
+    let encoded_len = Benchmark::new("encoded_len", move |b| {
+        b.iter(|| {
+            let mut sum = 0;
+            for &value in &encoded_len_values {
+                sum += encoded_len_varint(value);
+            }
+            criterion::black_box(sum);
+        })
+    })
+    .throughput(Throughput::Bytes(decoded_len));
+
+    let name = format!("varint/{}", name);
+    criterion
+        .bench(&name, encode)
+        .bench(&name, decode)
+        .bench(&name, encoded_len);
 }
 
-// Benchmark encoding and decoding 100 varints of mixed width (average 5.5 bytes).
-varint_bench!(
-    encode_varint_mixed,
-    decode_varint_mixed,
-    encoded_len_varint_mixed,
-    |ref mut buf| for width in 0..10 {
-        let exponent = width * 7;
-        for offset in 0..10 {
-            encode_varint(offset + (1 << exponent), buf);
-        }
-    }
-);
+fn main() {
+    let mut criterion = Criterion::default().configure_from_args();
 
-// Benchmark encoding and decoding 100 small (1 byte) varints.
-varint_bench!(
-    encode_varint_small,
-    decode_varint_small,
-    encoded_len_varint_small,
-    |ref mut buf| for value in 0..100 {
-        encode_varint(value, buf);
-    }
-);
+    // Benchmark encoding and decoding 100 small (1 byte) varints.
+    benchmark_varint(&mut criterion, "small", (0..100).collect());
 
-// Benchmark encoding and decoding 100 medium (5 byte) varints.
-varint_bench!(
-    encode_varint_medium,
-    decode_varint_medium,
-    encoded_len_varint_medium,
-    |ref mut buf| {
-        let start = 1 << 28;
-        for value in start..start + 100 {
-            encode_varint(value, buf);
-        }
-    }
-);
+    // Benchmark encoding and decoding 100 medium (5 byte) varints.
+    benchmark_varint(&mut criterion, "medium", (1 << 28..).take(100).collect());
 
-// Benchmark encoding and decoding 100 large (10 byte) varints.
-varint_bench!(
-    encode_varint_large,
-    decode_varint_large,
-    encoded_len_varint_large,
-    |ref mut buf| {
-        let start = 1 << 63;
-        for value in start..start + 100 {
-            encode_varint(value, buf);
-        }
-    }
-);
+    // Benchmark encoding and decoding 100 large (10 byte) varints.
+    benchmark_varint(&mut criterion, "large", (1 << 63..).take(100).collect());
+
+    // Benchmark encoding and decoding 100 varints of mixed width (average 5.5 bytes).
+    benchmark_varint(
+        &mut criterion,
+        "mixed",
+        (0..10)
+            .flat_map(move |width| {
+                let exponent = width * 7;
+                (0..10).map(move |offset| offset + (1 << exponent))
+            })
+            .collect(),
+    );
+
+    criterion.final_summary();
+}

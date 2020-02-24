@@ -2,6 +2,7 @@
 [![Windows Build Status](https://ci.appveyor.com/api/projects/status/24rpba3x2vqe8lje/branch/master?svg=true)](https://ci.appveyor.com/project/danburkert/prost/branch/master)
 [![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
 [![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
+[![Dependency Status](https://deps.rs/repo/github/danburkert/prost/status.svg)](https://deps.rs/repo/github/danburkert/prost)
 
 # *PROST!*
 
@@ -18,22 +19,20 @@ Compared to other Protocol Buffers implementations, `prost`
   and deserialized by adding attributes.
 * Uses the [`bytes::{Buf, BufMut}`](https://github.com/carllerche/bytes)
   abstractions for serialization instead of `std::io::{Read, Write}`.
-* Respects the Protobuf `package` declaration when organizing generated code
+* Respects the Protobuf `package` specifier when organizing generated code
   into Rust modules.
 * Preserves unknown enum values during deserialization.
 * Does not include support for runtime reflection or message descriptors.
 
 ## Using `prost` in a Cargo Project
 
-First, add `prost` and its public dependencies to your `Cargo.toml` (see
-[crates.io](https://crates.io/crates/prost) for the current versions):
+First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
-prost = <prost-version>
-bytes = <bytes-version>
+prost = "0.6"
 # Only necessary if using Protobuf well-known types:
-prost-types = <prost-version>
+prost-types = "0.6"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
@@ -48,9 +47,11 @@ possible.
 
 ### Packages
 
-Currently, all `.proto` files used with `prost` must contain a `package`
-declaration. `prost` will translate the Protobuf package into a Rust module.
-For example, given the `package` declaration:
+All `.proto` files used with `prost` must contain a
+[`package` specifier][package]. `prost` will translate the Protobuf package into
+a Rust module. For example, given the `package` specifier:
+
+[package]: https://developers.google.com/protocol-buffers/docs/proto#packages
 
 ```proto
 package foo.bar;

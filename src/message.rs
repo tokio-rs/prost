@@ -3,9 +3,11 @@ use core::usize;
 
 use alloc::boxed::Box;
 
-use ::bytes::{Buf, BufMut};
+use bytes::{Buf, BufMut};
 
-use crate::encoding::*;
+use crate::encoding::{
+    decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
+};
 use crate::DecodeError;
 use crate::EncodeError;
 

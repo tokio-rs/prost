@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.6.1")]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
@@ -114,7 +114,7 @@ use std::collections::HashMap;
 use std::default;
 use std::env;
 use std::fs;
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -163,13 +163,23 @@ pub trait ServiceGenerator {
     ///
     /// The default implementation is empty and does nothing.
     fn finalize(&mut self, _buf: &mut String) {}
+
+    /// Finalizes the generation process for an entire protobuf package.
+    ///
+    /// This differs from [`finalize`](#method.finalize) by where (and how often) it is called
+    /// during the service generator life cycle. This method is called once per protobuf package,
+    /// making it ideal for grouping services within a single package spread across multiple
+    /// `.proto` files.
+    ///
+    /// The default implementation is empty and does nothing.
+    fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
 }
 
 /// Configuration enum for whether to use `std` prefixes or `alloc` prefixes in generated code
 ///
 /// This option also forces Btree everywhere, overriding the BtreeMap options,
 /// since HashMap is not in alloc::collections, only std (it requires randomness)
-/// 
+///
 #[derive(PartialEq)]
 pub enum CollectionsLib {
     Std,
@@ -566,18 +576,27 @@ impl Config {
             ));
         }
 
-        let mut buf = Vec::new();
-        fs::File::open(descriptor_set)?.read_to_end(&mut buf)?;
+        let buf = fs::read(descriptor_set)?;
         let descriptor_set = FileDescriptorSet::decode(&buf[..])?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
-            trace!("writing: {:?}", filename);
-            let mut file = fs::File::create(target.join(filename))?;
-            file.write_all(content.as_bytes())?;
-            file.flush()?;
+
+            let output_path = target.join(&filename);
+
+            let previous_content = fs::read(&output_path);
+
+            if previous_content
+                .map(|previous_content| previous_content == content.as_bytes())
+                .unwrap_or(false)
+            {
+                trace!("unchanged: {:?}", filename);
+            } else {
+                trace!("writing: {:?}", filename);
+                fs::write(output_path, content)?;
+            }
         }
 
         Ok(())
@@ -585,16 +604,32 @@ impl Config {
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
+        let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(&files);
+        let message_graph = MessageGraph::new(&files)
+            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
         for file in files {
             let module = self.module(&file);
+
+            // Only record packages that have services
+            if !file.service.is_empty() {
+                packages.insert(module.clone(), file.package().to_string());
+            }
+
             let mut buf = modules.entry(module).or_insert_with(String::new);
             CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
         }
+
+        if let Some(ref mut service_generator) = self.service_generator {
+            for (module, package) in packages {
+                let buf = modules.get_mut(&module).unwrap();
+                service_generator.finalize_package(&package, buf);
+            }
+        }
+
         Ok(modules)
     }
 
@@ -646,6 +681,7 @@ impl default::Default for Config {
 ///   - Failure to locate or download `protoc`.
 ///   - Failure to parse the `.proto`s.
 ///   - Failure to locate an imported `.proto`.
+///   - Failure to compile a `.proto` without a [package specifier][4].
 ///
 /// It's expected that this function call be `unwrap`ed in a `build.rs`; there is typically no
 /// reason to gracefully recover from errors during a build.
@@ -662,6 +698,7 @@ impl default::Default for Config {
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
+/// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
 pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()>
 where
     P: AsRef<Path>,
@@ -683,6 +720,8 @@ pub fn protoc_include() -> &'static Path {
 mod tests {
     use super::*;
     use env_logger;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
@@ -711,12 +750,66 @@ mod tests {
         }
     }
 
+    /// Implements `ServiceGenerator` and provides some state for assertions.
+    struct MockServiceGenerator {
+        state: Rc<RefCell<MockState>>,
+    }
+
+    /// Holds state for `MockServiceGenerator`
+    #[derive(Default)]
+    struct MockState {
+        service_names: Vec<String>,
+        package_names: Vec<String>,
+        finalized: u32,
+    }
+
+    impl MockServiceGenerator {
+        fn new(state: Rc<RefCell<MockState>>) -> Self {
+            Self { state }
+        }
+    }
+
+    impl ServiceGenerator for MockServiceGenerator {
+        fn generate(&mut self, service: Service, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.service_names.push(service.name.clone());
+        }
+
+        fn finalize(&mut self, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.finalized += 1;
+        }
+
+        fn finalize_package(&mut self, package: &str, _buf: &mut String) {
+            let mut state = self.state.borrow_mut();
+            state.package_names.push(package.to_string());
+        }
+    }
+
     #[test]
     fn smoke_test() {
-        let _ = env_logger::init();
+        let _ = env_logger::try_init();
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
+    }
+
+    #[test]
+    fn finalize_package() {
+        let _ = env_logger::try_init();
+
+        let state = Rc::new(RefCell::new(MockState::default()));
+        let gen = MockServiceGenerator::new(Rc::clone(&state));
+
+        Config::new()
+            .service_generator(Box::new(gen))
+            .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
+            .unwrap();
+
+        let state = state.borrow();
+        assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
+        assert_eq!(&state.package_names, &["helloworld"]);
+        assert_eq!(state.finalized, 3);
     }
 }

@@ -1,7 +1,6 @@
 [package]
 name = "prost-derive"
-# NB: When modifying, also modify html_root_url in lib.rs
-version = "0.5.0"
+version = "0.6.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -29,8 +28,8 @@ use_std = []
 default = []
 
 [dependencies]
-failure = { package = "alt-failure" , version = "0.1.5" }
+anyhow = "1"
 itertools = "0.8"
-proc-macro2 = "0.4.4"
-quote = "0.6.3"
-syn = { version = "0.15", features = [ "extra-traits" ] }
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = [ "extra-traits" ] }

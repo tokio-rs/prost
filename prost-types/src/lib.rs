@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-codegen/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost-types/0.6.1")]
 
 //! Protocol Buffers well-known types.
 //!
@@ -14,6 +14,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+use core::convert::TryFrom;
 use core::i32;
 use core::i64;
 
@@ -79,12 +80,13 @@ impl From<time::Duration> for Duration {
     }
 }
 
-/// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
-/// `std::time::Duration`.
-// TODO: convert this to TryFrom when it's stable.
 #[cfg(feature = "std")]
-impl From<Duration> for Result<time::Duration, time::Duration> {
-    fn from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
+impl TryFrom<Duration> for time::Duration {
+    type Error = time::Duration;
+
+    /// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
+    /// `std::time::Duration`.
+    fn try_from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
         duration.normalize();
         if duration.seconds >= 0 {
             Ok(time::Duration::new(
@@ -136,12 +138,13 @@ impl From<time::SystemTime> for Timestamp {
     }
 }
 
-/// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch, a
-/// duration containing the difference.
-// TODO: convert this to TryFrom when it's stable.
 #[cfg(feature = "std")]
-impl From<Timestamp> for Result<time::SystemTime, time::Duration> {
-    fn from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
+impl TryFrom<Timestamp> for time::SystemTime {
+    type Error = time::Duration;
+
+    /// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch,
+    /// a duration containing the difference.
+    fn try_from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
         timestamp.normalize();
         if timestamp.seconds >= 0 {
             Ok(time::UNIX_EPOCH
