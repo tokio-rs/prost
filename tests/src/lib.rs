@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate cfg_if;
 
+extern crate alloc;
+
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate bytes;
+        extern crate core;
         extern crate prost;
         extern crate prost_types;
         extern crate protobuf;
@@ -11,6 +14,8 @@ cfg_if! {
         extern crate prost_build;
         #[cfg(test)]
         extern crate tempfile;
+        #[cfg(test)]
+        extern crate tests_infra;
     }
 }
 
@@ -22,6 +27,8 @@ pub mod unittest;
 mod bootstrap;
 #[cfg(test)]
 mod debug;
+#[cfg(test)]
+mod deprecated_field;
 #[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
@@ -76,7 +83,7 @@ pub mod groups {
 
 use std::error::Error;
 
-use bytes::{Buf, IntoBuf};
+use bytes::Buf;
 
 use prost::Message;
 
@@ -145,7 +152,7 @@ where
         );
     }
 
-    let roundtrip = match M::decode(&buf1) {
+    let roundtrip = match M::decode(&*buf1) {
         Ok(roundtrip) => roundtrip,
         Err(error) => return RoundtripResult::Error(error.into()),
     };
@@ -180,7 +187,7 @@ where
     msg.encode(&mut buf).unwrap();
     assert_eq!(expected_len, buf.len());
 
-    let mut buf = buf.into_buf();
+    let mut buf = &*buf;
     let roundtrip = M::decode(&mut buf).unwrap();
 
     if buf.has_remaining() {
@@ -209,6 +216,8 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
+
+    use prost::Message;
     use protobuf::test_messages::proto3::TestAllTypesProto3;
 
     #[test]
@@ -355,7 +364,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -378,7 +387,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(buf).map(|_| ())
+            A::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(99).is_ok());
@@ -401,7 +410,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            NestedGroup2::decode(buf).map(|_| ())
+            NestedGroup2::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
@@ -422,7 +431,7 @@ mod tests {
 
             let mut buf = Vec::new();
             c.encode(&mut buf).unwrap();
-            C::decode(buf).map(|_| ())
+            C::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -443,7 +452,7 @@ mod tests {
 
             let mut buf = Vec::new();
             d.encode(&mut buf).unwrap();
-            D::decode(buf).map(|_| ())
+            D::decode(&*buf).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
@@ -460,6 +469,16 @@ mod tests {
                 })),
             }))),
         };
+    }
+
+    #[test]
+    fn test_267_regression() {
+        // Checks that skip_field will error appropriately when given a big stack of StartGroup
+        // tags.
+        //
+        // https://github.com/danburkert/prost/issues/267
+        let buf = vec![b'C'; 1 << 20];
+        <() as Message>::decode(&buf[..]).err().unwrap();
     }
 
     #[test]

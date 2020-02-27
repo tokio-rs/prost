@@ -20,12 +20,14 @@ fn main() {
     let src = PathBuf::from("../tests/src");
     let includes = &[src.clone()];
 
+    let mut config = prost_build::Config::new();
+
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
-    let mut config = prost_build::Config::new();
     config.btree_map(&["."]);
+
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
     config.type_attribute(
@@ -78,6 +80,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("deprecated_field.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
@@ -86,6 +92,12 @@ fn main() {
             &[src.join("packages/widget_factory.proto")],
             &[src.join("packages")],
         )
+        .unwrap();
+
+    // Check that attempting to compile a .proto without a package declaration results in an error.
+    config
+        .compile_protos(&[src.join("no_package.proto")], includes)
+        .err()
         .unwrap();
 
     let out_dir =

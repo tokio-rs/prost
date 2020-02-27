@@ -1,7 +1,6 @@
 [package]
 name = "prost"
-# NB: When modifying, also modify html_root_url in lib.rs
-version = "0.5.0"
+version = "0.6.1"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -25,6 +24,7 @@ members = [
   "protobuf",
   "tests",
   "tests-2015",
+  "tests-alloc",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,
@@ -32,25 +32,33 @@ exclude = [
   "fuzz",
 ]
 
+[lib]
+# https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+
 [features]
-default = ["prost-derive"]
+default = ["prost-derive", "std"]
 no-recursion-limit = []
+std = []
+   # When std is disabled, we attempt to provide no_std support in prost
+   # Config::use_alloc_collections() should be set when using prost_build in your build.rs
+   # so that generated files will not have std:: either, and will use alloc crate instead
 
 [dependencies]
-bytes = "0.4.7"
-prost-derive = { version = "0.5.0", path = "prost-derive", optional = true }
+bytes = { version = "0.5", default-features = false }
+prost-derive = { version = "0.6.1", path = "prost-derive", default-features = false, optional = true }
 
 [dev-dependencies]
-criterion = "0.2"
-env_logger = { version = "0.6", default-features = false }
-failure = "0.1"
+criterion = "0.3"
+env_logger = { version = "0.7", default-features = false }
+failure = { version = "0.1", default-features = false }
 log = "0.4"
-protobuf = { version = "0", path = "protobuf" }
-quickcheck = "0.8"
+quickcheck = "0.9"
+rand = "0.7"
+
+[profile.bench]
+debug = true
 
 [[bench]]
 name = "varint"
-
-[[bench]]
-name = "benchmark"
 harness = false

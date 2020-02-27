@@ -1,13 +1,6 @@
 language: rust
 dist: xenial
 
-# Even though this build script doesn't use sudo, we enable it in order to get
-# more memory. Previously on the container infrastructure the OOM killer would
-# come in and kill either the GCC processes compiling protobuf, or rustc. See
-# https://github.com/travis-ci/travis-ci/issues/7427 for the source of this
-# workaround.
-sudo: required
-
 cache: cargo
 
 os:
@@ -15,12 +8,23 @@ os:
   - osx
 
 rust:
-  - 1.32.0
+  - 1.39.0
   - nightly
 
 script:
   - cargo build --verbose --all --exclude benchmarks
   - cargo test --verbose --all --exclude benchmarks
+  - cargo run -p tests-alloc --verbose
   - if [[ $TRAVIS_RUST_VERSION = nightly* ]]; then
       cargo bench --verbose --no-run;
     fi
+
+addons:
+  homebrew:
+    packages:
+      - cmake
+      - ninja
+  apt:
+    packages:
+      - cmake
+      - ninja-build

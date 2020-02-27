@@ -1,9 +1,9 @@
-use failure::{bail, Error};
+use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{set_option, tags_attr};
+use crate::field::{set_bool, set_option, tags_attr, word_attr};
 
 #[derive(Clone)]
 pub struct Field {
@@ -16,9 +16,10 @@ impl Field {
         let mut ty = None;
         let mut tags = None;
         let mut unknown_attrs = Vec::new();
+        let mut alloc = false;
 
         for attr in attrs {
-            if attr.name() == "oneof" {
+            if attr.path().is_ident("oneof") {
                 let t = match *attr {
                     Meta::NameValue(MetaNameValue {
                         lit: Lit::Str(ref lit),
@@ -26,8 +27,12 @@ impl Field {
                     }) => parse_str::<Path>(&lit.value())?,
                     Meta::List(ref list) if list.nested.len() == 1 => {
                         // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                        if let NestedMeta::Meta(Meta::Word(ref ident)) = list.nested[0] {
-                            Path::from(ident.clone())
+                        if let NestedMeta::Meta(Meta::Path(ref path)) = list.nested[0] {
+                            if let Some(ident) = path.get_ident() {
+                                Path::from(ident.clone())
+                            } else {
+                                bail!("invalid oneof attribute: item must be an identifier");
+                            }
                         } else {
                             bail!("invalid oneof attribute: item must be an identifier");
                         }
@@ -35,6 +40,8 @@ impl Field {
                     _ => bail!("invalid oneof attribute: {:?}", attr),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
+            } else if word_attr("alloc", attr) {
+                set_bool(&mut alloc, "duplicate alloc attributes")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;
             } else {
@@ -77,7 +84,7 @@ impl Field {
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let ty = &self.ty;
         quote! {
-            #ty::merge(&mut #ident, tag, wire_type, buf, ctx)
+            #ty::merge(#ident, tag, wire_type, buf, ctx)
         }
     }
 
@@ -90,6 +97,6 @@ impl Field {
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident = ::std::option::Option::None)
+        quote!(#ident = ::core::option::Option::None)
     }
 }

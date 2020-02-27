@@ -16,11 +16,12 @@ default = ["edition-2015"]
 edition-2015 = []
 
 [dependencies]
-bytes = "0.4.7"
+bytes = { version = "0.5", default-features = false }
 cfg-if = "0.1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
+tests-infra = { path = "../tests-infra" }
 
 [dev-dependencies]
 diff = "0.1"
@@ -29,6 +30,6 @@ tempfile = "3"
 
 [build-dependencies]
 cfg-if = "0.1"
-env_logger = { version = "0.6", default-features = false }
+env_logger = { version = "0.7", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }

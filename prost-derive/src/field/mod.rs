@@ -4,11 +4,11 @@ mod message;
 mod oneof;
 mod scalar;
 
-use std::fmt;
-use std::slice;
+use core::fmt;
+use core::slice;
 
-use failure::{bail, Error};
-use proc_macro2::TokenStream;
+use anyhow::{bail, Error};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 
@@ -135,7 +135,7 @@ impl Field {
     pub fn default(&self) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
-            _ => quote!(::std::default::Default::default()),
+            _ => quote!(::core::default::Default::default()),
         }
     }
 
@@ -200,9 +200,9 @@ impl Label {
     /// Parses a string into a field label.
     /// If the string doesn't match a field label, `None` is returned.
     fn from_attr(attr: &Meta) -> Option<Label> {
-        if let Meta::Word(ref ident) = *attr {
+        if let Meta::Path(ref path) = *attr {
             for &label in Label::variants() {
-                if ident == label.as_str() {
+                if path.is_ident(label.as_str()) {
                     return Some(label);
                 }
             }
@@ -227,10 +227,10 @@ impl fmt::Display for Label {
 pub(super) fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
     Ok(attrs
         .iter()
-        .flat_map(Attribute::interpret_meta)
+        .flat_map(Attribute::parse_meta)
         .flat_map(|meta| match meta {
-            Meta::List(MetaList { ident, nested, .. }) => {
-                if ident == "prost" {
+            Meta::List(MetaList { path, nested, .. }) => {
+                if path.is_ident("prost") {
                     nested.into_iter().collect()
                 } else {
                     Vec::new()
@@ -241,7 +241,7 @@ pub(super) fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
         .flat_map(|attr| -> Result<_, _> {
             match attr {
                 NestedMeta::Meta(attr) => Ok(attr),
-                NestedMeta::Literal(lit) => bail!("invalid prost attribute: {:?}", lit),
+                NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
             }
         })
         .collect())
@@ -270,15 +270,15 @@ pub fn set_bool(b: &mut bool, message: &str) -> Result<(), Error> {
 /// Unpacks an attribute into a (key, boolean) pair, returning the boolean value.
 /// If the key doesn't match the attribute, `None` is returned.
 fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
-    if attr.name() != key {
+    if !attr.path().is_ident(key) {
         return Ok(None);
     }
     match *attr {
-        Meta::Word(..) => Ok(Some(true)),
+        Meta::Path(..) => Ok(Some(true)),
         Meta::List(ref meta_list) => {
             // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
             if meta_list.nested.len() == 1 {
-                if let NestedMeta::Literal(Lit::Bool(LitBool { value, .. })) = meta_list.nested[0] {
+                if let NestedMeta::Lit(Lit::Bool(LitBool { value, .. })) = meta_list.nested[0] {
                     return Ok(Some(value));
                 }
             }
@@ -302,23 +302,23 @@ fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
 
 /// Checks if an attribute matches a word.
 fn word_attr(key: &str, attr: &Meta) -> bool {
-    if let Meta::Word(ref ident) = *attr {
-        ident == key
+    if let Meta::Path(ref path) = *attr {
+        path.is_ident(key)
     } else {
         false
     }
 }
 
 pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
-    if attr.name() != "tag" {
+    if !attr.path().is_ident("tag") {
         return Ok(None);
     }
     match *attr {
         Meta::List(ref meta_list) => {
             // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
             if meta_list.nested.len() == 1 {
-                if let NestedMeta::Literal(Lit::Int(ref lit)) = meta_list.nested[0] {
-                    return Ok(Some(lit.value() as u32));
+                if let NestedMeta::Lit(Lit::Int(ref lit)) = meta_list.nested[0] {
+                    return Ok(Some(lit.base10_parse()?));
                 }
             }
             bail!("invalid tag attribute: {:?}", attr);
@@ -329,7 +329,7 @@ pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
                 .parse::<u32>()
                 .map_err(Error::from)
                 .map(Option::Some),
-            Lit::Int(ref lit) => Ok(Some(lit.value() as u32)),
+            Lit::Int(ref lit) => Ok(Some(lit.base10_parse()?)),
             _ => bail!("invalid tag attribute: {:?}", attr),
         },
         _ => bail!("invalid tag attribute: {:?}", attr),
@@ -337,15 +337,15 @@ pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
 }
 
 fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
-    if attr.name() != "tags" {
+    if !attr.path().is_ident("tags") {
         return Ok(None);
     }
     match *attr {
         Meta::List(ref meta_list) => {
             let mut tags = Vec::with_capacity(meta_list.nested.len());
             for item in &meta_list.nested {
-                if let NestedMeta::Literal(Lit::Int(ref lit)) = *item {
-                    tags.push(lit.value() as u32);
+                if let NestedMeta::Lit(Lit::Int(ref lit)) = *item {
+                    tags.push(lit.base10_parse()?);
                 } else {
                     bail!("invalid tag attribute: {:?}", attr);
                 }
@@ -362,5 +362,15 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .collect::<Result<Vec<u32>, _>>()
             .map(|tags| Some(tags)),
         _ => bail!("invalid tag attribute: {:?}", attr),
+    }
+}
+
+// Helper which builds an identifier corresponding `std` or `alloc` depending
+// on feature selection
+fn collections_lib_name(alloc: bool) -> Ident {
+    if alloc {
+        Ident::new("alloc", Span::call_site())
+    } else {
+        Ident::new("std", Span::call_site())
     }
 }

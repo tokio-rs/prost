@@ -1,14 +1,16 @@
-use std::fmt;
+use core::fmt;
+use std::convert::TryFrom;
 
-use failure::{bail, format_err, Error};
+use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
-    self, parse_str, FloatSuffix, Ident, IntSuffix, Lit, LitByteStr, Meta, MetaList, MetaNameValue,
-    NestedMeta, Path,
+    self, parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
 };
 
-use crate::field::{bool_attr, set_option, tag_attr, Label};
+use crate::field::{
+    bool_attr, collections_lib_name, set_bool, set_option, tag_attr, word_attr, Label,
+};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -16,6 +18,7 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
+    pub alloc: bool,
 }
 
 impl Field {
@@ -25,6 +28,7 @@ impl Field {
         let mut packed = None;
         let mut default = None;
         let mut tag = None;
+        let mut alloc = false;
 
         let mut unknown_attrs = Vec::new();
 
@@ -33,6 +37,8 @@ impl Field {
                 set_option(&mut ty, t, "duplicate type attributes")?;
             } else if let Some(p) = bool_attr("packed", attr)? {
                 set_option(&mut packed, p, "duplicate packed attributes")?;
+            } else if word_attr("alloc", attr) {
+                set_bool(&mut alloc, "duplicate alloc attributes")?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {
@@ -92,6 +98,7 @@ impl Field {
             ty: ty,
             kind: kind,
             tag: tag,
+            alloc: alloc,
         }))
     }
 
@@ -118,7 +125,7 @@ impl Field {
             Kind::Repeated => quote!(encode_repeated),
             Kind::Packed => quote!(encode_packed),
         };
-        let encode_fn = quote!(_prost::encoding::#module::#encode_fn);
+        let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
         let tag = self.tag;
 
         match self.kind {
@@ -131,7 +138,7 @@ impl Field {
                 }
             }
             Kind::Optional(..) => quote! {
-                if let ::std::option::Option::Some(ref value) = #ident {
+                if let ::core::option::Option::Some(ref value) = #ident {
                     #encode_fn(#tag, value, buf);
                 }
             },
@@ -149,11 +156,11 @@ impl Field {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
         };
-        let merge_fn = quote!(_prost::encoding::#module::#merge_fn);
+        let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(wire_type, &mut #ident, buf, ctx)
+                #merge_fn(wire_type, #ident, buf, ctx)
             },
             Kind::Optional(..) => quote! {
                 #merge_fn(wire_type,
@@ -172,7 +179,7 @@ impl Field {
             Kind::Repeated => quote!(encoded_len_repeated),
             Kind::Packed => quote!(encoded_len_packed),
         };
-        let encoded_len_fn = quote!(_prost::encoding::#module::#encoded_len_fn);
+        let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
         let tag = self.tag;
 
         match self.kind {
@@ -204,17 +211,18 @@ impl Field {
                     _ => quote!(#ident = #default),
                 }
             }
-            Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
+            Kind::Optional(_) => quote!(#ident = ::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
     }
 
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
+        let libname = collections_lib_name(self.alloc);
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
-            Kind::Optional(_) => quote!(::std::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
+            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(self.alloc),
+            Kind::Optional(_) => quote!(::core::option::Option::None),
+            Kind::Repeated | Kind::Packed => quote!(::#libname::vec::Vec::new()),
         }
     }
 
@@ -223,11 +231,11 @@ impl Field {
         if let Ty::Enumeration(ref ty) = self.ty {
             quote! {
                 struct #wrap_name<'a>(&'a i32);
-                impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                         match #ty::from_i32(*self.0) {
-                            None => ::std::fmt::Debug::fmt(&self.0, f),
-                            Some(en) => ::std::fmt::Debug::fmt(&en, f),
+                            None => ::core::fmt::Debug::fmt(&self.0, f),
+                            Some(en) => ::core::fmt::Debug::fmt(&en, f),
                         }
                     }
                 }
@@ -242,23 +250,24 @@ impl Field {
     /// Returns a fragment for formatting the field `ident` in `Debug`.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
-        let inner_ty = self.ty.rust_type();
+        let libname = collections_lib_name(self.alloc);
+        let inner_ty = self.ty.rust_type(self.alloc);
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
-                struct #wrapper_name<'a>(&'a ::std::option::Option<#inner_ty>);
-                impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                struct #wrapper_name<'a>(&'a ::core::option::Option<#inner_ty>);
+                impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                         #wrapper
-                        ::std::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                        ::core::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
                     }
                 }
             },
             Kind::Repeated | Kind::Packed => {
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::std::vec::Vec<#inner_ty>);
-                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    struct #wrapper_name<'a>(&'a ::#libname::vec::Vec<#inner_ty>);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
                             for v in self.0 {
                                 #wrapper
@@ -278,38 +287,63 @@ impl Field {
         if ident_str.starts_with("r#") {
             ident_str = ident_str[2..].to_owned();
         }
-        let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
-        let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+
         if let Ty::Enumeration(ref ty) = self.ty {
+            let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
+            let set_doc = format!("Sets `{}` to the provided enum value.", ident_str);
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or the default if the field is set to an invalid enum value.",
+                        ident_str,
+                    );
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
                             #ty::from_i32(self.#ident).unwrap_or(#default)
                         }
 
+                        #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = value as i32;
                         }
                     }
                 }
                 Kind::Optional(ref default) => {
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or the default if the field is unset or set to an invalid enum value.",
+                        ident_str,
+                    );
                     quote! {
+                        #[doc=#get_doc]
                         pub fn #ident(&self) -> #ty {
                             self.#ident.and_then(#ty::from_i32).unwrap_or(#default)
                         }
 
+                        #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::std::option::Option::Some(value as i32);
+                            self.#ident = ::core::option::Option::Some(value as i32);
                         }
                     }
                 }
                 Kind::Repeated | Kind::Packed => {
+                    let iter_doc = format!(
+                        "Returns an iterator which yields the valid enum values contained in `{}`.",
+                        ident_str,
+                    );
+                    let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
+                    let push_doc = format!("Appends the provided enum value to `{}`.", ident_str);
                     quote! {
-                        pub fn #ident(&self) -> ::std::iter::FilterMap<::std::iter::Cloned<::std::slice::Iter<i32>>,
-                                                                       fn(i32) -> Option<#ty>> {
+                        #[doc=#iter_doc]
+                        pub fn #ident(&self) -> ::core::iter::FilterMap<
+                            ::core::iter::Cloned<::core::slice::Iter<i32>>,
+                            fn(i32) -> ::std::option::Option<#ty>,
+                        > {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
+                        #[doc=#push_doc]
                         pub fn #push(&mut self, value: #ty) {
                             self.#ident.push(value as i32);
                         }
@@ -320,16 +354,22 @@ impl Field {
             let ty = self.ty.rust_ref_type();
 
             let match_some = if self.ty.is_numeric() {
-                quote!(::std::option::Option::Some(val) => val,)
+                quote!(::core::option::Option::Some(val) => val,)
             } else {
-                quote!(::std::option::Option::Some(ref val) => &val[..],)
+                quote!(::core::option::Option::Some(ref val) => &val[..],)
             };
 
+            let get_doc = format!(
+                "Returns the value of `{0}`, or the default value if `{0}` is unset.",
+                ident_str,
+            );
+
             Some(quote! {
+                #[doc=#get_doc]
                 pub fn #ident(&self) -> #ty {
                     match self.#ident {
                         #match_some
-                        ::std::option::Option::None => #default,
+                        ::core::option::Option::None => #default,
                     }
                 }
             })
@@ -363,35 +403,35 @@ pub enum Ty {
 impl Ty {
     pub fn from_attr(attr: &Meta) -> Result<Option<Ty>, Error> {
         let ty = match *attr {
-            Meta::Word(ref name) if name == "float" => Ty::Float,
-            Meta::Word(ref name) if name == "double" => Ty::Double,
-            Meta::Word(ref name) if name == "int32" => Ty::Int32,
-            Meta::Word(ref name) if name == "int64" => Ty::Int64,
-            Meta::Word(ref name) if name == "uint32" => Ty::Uint32,
-            Meta::Word(ref name) if name == "uint64" => Ty::Uint64,
-            Meta::Word(ref name) if name == "sint32" => Ty::Sint32,
-            Meta::Word(ref name) if name == "sint64" => Ty::Sint64,
-            Meta::Word(ref name) if name == "fixed32" => Ty::Fixed32,
-            Meta::Word(ref name) if name == "fixed64" => Ty::Fixed64,
-            Meta::Word(ref name) if name == "sfixed32" => Ty::Sfixed32,
-            Meta::Word(ref name) if name == "sfixed64" => Ty::Sfixed64,
-            Meta::Word(ref name) if name == "bool" => Ty::Bool,
-            Meta::Word(ref name) if name == "string" => Ty::String,
-            Meta::Word(ref name) if name == "bytes" => Ty::Bytes,
+            Meta::Path(ref name) if name.is_ident("float") => Ty::Float,
+            Meta::Path(ref name) if name.is_ident("double") => Ty::Double,
+            Meta::Path(ref name) if name.is_ident("int32") => Ty::Int32,
+            Meta::Path(ref name) if name.is_ident("int64") => Ty::Int64,
+            Meta::Path(ref name) if name.is_ident("uint32") => Ty::Uint32,
+            Meta::Path(ref name) if name.is_ident("uint64") => Ty::Uint64,
+            Meta::Path(ref name) if name.is_ident("sint32") => Ty::Sint32,
+            Meta::Path(ref name) if name.is_ident("sint64") => Ty::Sint64,
+            Meta::Path(ref name) if name.is_ident("fixed32") => Ty::Fixed32,
+            Meta::Path(ref name) if name.is_ident("fixed64") => Ty::Fixed64,
+            Meta::Path(ref name) if name.is_ident("sfixed32") => Ty::Sfixed32,
+            Meta::Path(ref name) if name.is_ident("sfixed64") => Ty::Sfixed64,
+            Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
+            Meta::Path(ref name) if name.is_ident("string") => Ty::String,
+            Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes,
             Meta::NameValue(MetaNameValue {
-                ref ident,
+                ref path,
                 lit: Lit::Str(ref l),
                 ..
-            }) if ident == "enumeration" => Ty::Enumeration(parse_str::<Path>(&l.value())?),
+            }) if path.is_ident("enumeration") => Ty::Enumeration(parse_str::<Path>(&l.value())?),
             Meta::List(MetaList {
-                ref ident,
+                ref path,
                 ref nested,
                 ..
-            }) if ident == "enumeration" => {
+            }) if path.is_ident("enumeration") => {
                 // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
                 if nested.len() == 1 {
-                    if let NestedMeta::Meta(Meta::Word(ref ident)) = nested[0] {
-                        Ty::Enumeration(Path::from(ident.clone()))
+                    if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
+                        Ty::Enumeration(path.clone())
                     } else {
                         bail!("invalid enumeration attribute: item must be an identifier");
                     }
@@ -406,7 +446,7 @@ impl Ty {
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
         let enumeration_len = "enumeration".len();
-        let error = Err(format_err!("invalid type: {}", s));
+        let error = Err(anyhow!("invalid type: {}", s));
         let ty = match s.trim() {
             "float" => Ty::Float,
             "double" => Ty::Double,
@@ -464,10 +504,11 @@ impl Ty {
     }
 
     // TODO: rename to 'owned_type'.
-    pub fn rust_type(&self) -> TokenStream {
+    pub fn rust_type(&self, alloc: bool) -> TokenStream {
+        let libname = collections_lib_name(alloc);
         match *self {
-            Ty::String => quote!(::std::string::String),
-            Ty::Bytes => quote!(::std::vec::Vec<u8>),
+            Ty::String => quote!(::#libname::string::String),
+            Ty::Bytes => quote!(::#libname::vec::Vec<u8>),
             _ => self.rust_ref_type(),
         }
     }
@@ -552,7 +593,7 @@ pub enum DefaultValue {
 
 impl DefaultValue {
     pub fn from_attr(attr: &Meta) -> Result<Option<Lit>, Error> {
-        if attr.name() != "default" {
+        if !attr.path().is_ident("default") {
             return Ok(None);
         } else if let Meta::NameValue(ref name_value) = *attr {
             Ok(Some(name_value.lit.clone()))
@@ -568,51 +609,35 @@ impl DefaultValue {
         let is_u32 = *ty == Ty::Uint32 || *ty == Ty::Fixed32;
         let is_u64 = *ty == Ty::Uint64 || *ty == Ty::Fixed64;
 
+        let empty_or_is = |expected, actual: &str| expected == actual || actual.is_empty();
+
         let default = match lit {
-            Lit::Int(ref lit)
-                if is_i32
-                    && (lit.suffix() == IntSuffix::I32 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::I32(lit.value() as _)
+            Lit::Int(ref lit) if is_i32 && empty_or_is("i32", lit.suffix()) => {
+                DefaultValue::I32(lit.base10_parse()?)
             }
-            Lit::Int(ref lit)
-                if is_i64
-                    && (lit.suffix() == IntSuffix::I64 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::I64(lit.value() as _)
+            Lit::Int(ref lit) if is_i64 && empty_or_is("i64", lit.suffix()) => {
+                DefaultValue::I64(lit.base10_parse()?)
             }
-            Lit::Int(ref lit)
-                if is_u32
-                    && (lit.suffix() == IntSuffix::U32 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::U32(lit.value() as _)
+            Lit::Int(ref lit) if is_u32 && empty_or_is("u32", lit.suffix()) => {
+                DefaultValue::U32(lit.base10_parse()?)
             }
-            Lit::Int(ref lit)
-                if is_u64
-                    && (lit.suffix() == IntSuffix::U64 || lit.suffix() == IntSuffix::None) =>
-            {
-                DefaultValue::U64(lit.value())
+            Lit::Int(ref lit) if is_u64 && empty_or_is("u64", lit.suffix()) => {
+                DefaultValue::U64(lit.base10_parse()?)
             }
 
-            Lit::Float(ref lit)
-                if *ty == Ty::Float
-                    && (lit.suffix() == FloatSuffix::F32 || lit.suffix() == FloatSuffix::None) =>
-            {
-                DefaultValue::F32(lit.value() as _)
+            Lit::Float(ref lit) if *ty == Ty::Float && empty_or_is("f32", lit.suffix()) => {
+                DefaultValue::F32(lit.base10_parse()?)
             }
-            Lit::Int(ref lit) if *ty == Ty::Float => DefaultValue::F32(lit.value() as _),
+            Lit::Int(ref lit) if *ty == Ty::Float => DefaultValue::F32(lit.base10_parse()?),
 
-            Lit::Float(ref lit)
-                if *ty == Ty::Double
-                    && (lit.suffix() == FloatSuffix::F64 || lit.suffix() == FloatSuffix::None) =>
-            {
-                DefaultValue::F64(lit.value())
+            Lit::Float(ref lit) if *ty == Ty::Double && empty_or_is("f64", lit.suffix()) => {
+                DefaultValue::F64(lit.base10_parse()?)
             }
-            Lit::Int(ref lit) if *ty == Ty::Double => DefaultValue::F64(lit.value() as _),
+            Lit::Int(ref lit) if *ty == Ty::Double => DefaultValue::F64(lit.base10_parse()?),
 
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
-            Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value().clone()),
-            Lit::ByteStr(ref lit) if *ty == Ty::Bytes => DefaultValue::Bytes(lit.value().clone()),
+            Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value()),
+            Lit::ByteStr(ref lit) if *ty == Ty::Bytes => DefaultValue::Bytes(lit.value()),
 
             Lit::Str(ref lit) => {
                 let value = lit.value();
@@ -628,16 +653,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::INFINITY",
+                                "::core::f32::INFINITY",
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::NEG_INFINITY",
+                                "::core::f32::NEG_INFINITY",
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f32::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>("::core::f32::NAN")?));
                         }
                         _ => (),
                     }
@@ -646,16 +671,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::INFINITY",
+                                "::core::f64::INFINITY",
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::NEG_INFINITY",
+                                "::core::f64::NEG_INFINITY",
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f64::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>("::core::f64::NAN")?));
                         }
                         _ => (),
                     }
@@ -665,48 +690,36 @@ impl DefaultValue {
                 if value.chars().next() == Some('-') {
                     if let Ok(lit) = syn::parse_str::<Lit>(&value[1..]) {
                         match lit {
-                            Lit::Int(ref lit)
-                                if is_i32
-                                    && (lit.suffix() == IntSuffix::I32
-                                        || lit.suffix() == IntSuffix::None) =>
-                            {
-                                return Ok(DefaultValue::I32((!lit.value() + 1) as i32));
+                            Lit::Int(ref lit) if is_i32 && empty_or_is("i32", lit.suffix()) => {
+                                // Initially parse into an i64, so that i32::MIN does not overflow.
+                                let value: i64 = -lit.base10_parse()?;
+                                return Ok(i32::try_from(value).map(DefaultValue::I32)?);
                             }
 
-                            Lit::Int(ref lit)
-                                if is_i64
-                                    && (lit.suffix() == IntSuffix::I64
-                                        || lit.suffix() == IntSuffix::None) =>
-                            {
-                                return Ok(DefaultValue::I64((!lit.value() + 1) as i64));
+                            Lit::Int(ref lit) if is_i64 && empty_or_is("i64", lit.suffix()) => {
+                                // Initially parse into an i128, so that i64::MIN does not overflow.
+                                let value: i128 = -lit.base10_parse()?;
+                                return Ok(i64::try_from(value).map(DefaultValue::I64)?);
                             }
 
                             Lit::Float(ref lit)
-                                if *ty == Ty::Float
-                                    && (lit.suffix() == FloatSuffix::F32
-                                        || lit.suffix() == FloatSuffix::None) =>
+                                if *ty == Ty::Float && empty_or_is("f32", lit.suffix()) =>
                             {
-                                return Ok(DefaultValue::F32(-lit.value() as f32));
+                                return Ok(DefaultValue::F32(-lit.base10_parse()?));
                             }
 
                             Lit::Float(ref lit)
-                                if *ty == Ty::Double
-                                    && (lit.suffix() == FloatSuffix::F64
-                                        || lit.suffix() == FloatSuffix::None) =>
+                                if *ty == Ty::Double && empty_or_is("f64", lit.suffix()) =>
                             {
-                                return Ok(DefaultValue::F64(-lit.value()));
+                                return Ok(DefaultValue::F64(-lit.base10_parse()?));
                             }
 
-                            Lit::Int(ref lit)
-                                if *ty == Ty::Float && lit.suffix() == IntSuffix::None =>
-                            {
-                                return Ok(DefaultValue::F32(-(lit.value() as f32)));
+                            Lit::Int(ref lit) if *ty == Ty::Float && lit.suffix().is_empty() => {
+                                return Ok(DefaultValue::F32(-lit.base10_parse()?));
                             }
 
-                            Lit::Int(ref lit)
-                                if *ty == Ty::Double && lit.suffix() == IntSuffix::None =>
-                            {
-                                return Ok(DefaultValue::F64(-(lit.value() as f64)));
+                            Lit::Int(ref lit) if *ty == Ty::Double && lit.suffix().is_empty() => {
+                                return Ok(DefaultValue::F64(-lit.base10_parse()?));
                             }
 
                             _ => (),
@@ -744,13 +757,16 @@ impl DefaultValue {
         }
     }
 
-    pub fn owned(&self) -> TokenStream {
+    pub fn owned(&self, alloc: bool) -> TokenStream {
+        let libname = collections_lib_name(alloc);
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::std::string::String::new())
+                quote!(::#libname::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => {
+                quote!(::#libname::vec::Vec::new())
+            }
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.to_owned())

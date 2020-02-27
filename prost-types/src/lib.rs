@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-codegen/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/prost-types/0.6.1")]
 
 //! Protocol Buffers well-known types.
 //!
@@ -9,8 +9,17 @@
 //!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
-use std::i32;
-use std::i64;
+#![no_std]
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "std")]
+use core::convert::TryFrom;
+use core::i32;
+use core::i64;
+
+#[cfg(feature = "std")]
 use std::time;
 
 include!("protobuf.rs");
@@ -22,6 +31,7 @@ pub mod compiler {
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
 // are defined in both directions.
 
+#[cfg(feature = "std")]
 const NANOS_PER_SECOND: i32 = 1_000_000_000;
 
 impl Duration {
@@ -29,6 +39,7 @@ impl Duration {
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L79-L100
+    #[cfg(feature = "std")]
     fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
@@ -51,6 +62,7 @@ impl Duration {
 }
 
 /// Converts a `std::time::Duration` to a `Duration`.
+#[cfg(feature = "std")]
 impl From<time::Duration> for Duration {
     fn from(duration: time::Duration) -> Duration {
         let seconds = duration.as_secs();
@@ -71,11 +83,13 @@ impl From<time::Duration> for Duration {
     }
 }
 
-/// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
-/// `std::time::Duration`.
-// TODO: convert this to TryFrom when it's stable.
-impl From<Duration> for Result<time::Duration, time::Duration> {
-    fn from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
+#[cfg(feature = "std")]
+impl TryFrom<Duration> for time::Duration {
+    type Error = time::Duration;
+
+    /// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
+    /// `std::time::Duration`.
+    fn try_from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
         duration.normalize();
         if duration.seconds >= 0 {
             Ok(time::Duration::new(
@@ -96,6 +110,7 @@ impl Timestamp {
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+    #[cfg(feature = "std")]
     fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
@@ -116,6 +131,7 @@ impl Timestamp {
 }
 
 /// Converts a `std::time::SystemTime` to a `Timestamp`.
+#[cfg(feature = "std")]
 impl From<time::SystemTime> for Timestamp {
     fn from(time: time::SystemTime) -> Timestamp {
         let duration = Duration::from(time.duration_since(time::UNIX_EPOCH).unwrap());
@@ -126,11 +142,13 @@ impl From<time::SystemTime> for Timestamp {
     }
 }
 
-/// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch, a
-/// duration containing the difference.
-// TODO: convert this to TryFrom when it's stable.
-impl From<Timestamp> for Result<time::SystemTime, time::Duration> {
-    fn from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
+#[cfg(feature = "std")]
+impl TryFrom<Timestamp> for time::SystemTime {
+    type Error = time::Duration;
+
+    /// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch,
+    /// a duration containing the difference.
+    fn try_from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
         timestamp.normalize();
         if timestamp.seconds >= 0 {
             Ok(time::UNIX_EPOCH

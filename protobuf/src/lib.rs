@@ -1,47 +1,73 @@
+extern crate alloc;
+
 pub mod benchmarks {
     include!(concat!(env!("OUT_DIR"), "/benchmarks.rs"));
 
-    use std::path::Path;
+    pub mod dataset {
+        use std::path::Path;
 
-    pub fn datasets() -> Vec<&'static Path> {
-        vec![
+        pub fn google_message1_proto2() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message1_proto2.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message1_proto3() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message1_proto3.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message2() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message2.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message3_1() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message3_1.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message3_2() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message3_2.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message3_3() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message3_3.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message3_4() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message3_4.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message3_5() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message3_5.pb"
-            )),
+            ))
+        }
+
+        pub fn google_message4() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message4.pb"
-            )),
-        ]
+            ))
+        }
     }
 
     pub mod google_message3 {

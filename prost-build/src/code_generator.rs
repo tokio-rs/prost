@@ -10,13 +10,15 @@ use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
+    FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
+    SourceCodeInfo,
 };
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{match_ident, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
+use crate::CollectionsLib;
 use crate::Config;
 
 #[derive(PartialEq)]
@@ -279,6 +281,7 @@ impl<'a> CodeGenerator<'a> {
     fn append_field(&mut self, msg_name: &str, field: FieldDescriptorProto) {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
+        let deprecated = self.deprecated(&field);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field);
 
@@ -294,6 +297,12 @@ impl<'a> CodeGenerator<'a> {
         );
 
         self.append_doc();
+
+        if deprecated {
+            self.push_indent();
+            self.buf.push_str("#[deprecated]\n");
+        }
+
         self.push_indent();
         self.buf.push_str("#[prost(");
         let type_tag = self.field_type_tag(&field);
@@ -322,6 +331,11 @@ impl<'a> CodeGenerator<'a> {
         if boxed {
             self.buf.push_str(", boxed");
         }
+
+        if self.config.collections_lib == CollectionsLib::Alloc {
+            self.buf.push_str(", alloc");
+        }
+
         self.buf.push_str(", tag=\"");
         self.buf.push_str(&field.number().to_string());
 
@@ -366,12 +380,14 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated {
-            self.buf.push_str("::std::vec::Vec<");
+            self.buf.push_str(self.config.collections_lib.to_str());
+            self.buf.push_str("::vec::Vec<");
         } else if optional {
-            self.buf.push_str("::std::option::Option<");
+            self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf.push_str("::std::boxed::Box<");
+            self.buf.push_str(self.config.collections_lib.to_str());
+            self.buf.push_str("::boxed::Box<");
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -403,11 +419,12 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
 
-        let btree_map = self
-            .config
-            .btree_map
-            .iter()
-            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+        let btree_map = (self.config.collections_lib != CollectionsLib::Std)
+            || self
+                .config
+                .btree_map
+                .iter()
+                .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
         let (annotation_ty, rust_ty) = if btree_map {
             ("btree_map", "BTreeMap")
         } else {
@@ -417,17 +434,23 @@ impl<'a> CodeGenerator<'a> {
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
         self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+            "#[prost({}=\"{}, {}\"{}, tag=\"{}\")]\n",
             annotation_ty,
             key_tag,
             value_tag,
+            if self.config.collections_lib == CollectionsLib::Alloc {
+                ", alloc"
+            } else {
+                ""
+            },
             field.number()
         ));
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::collections::{}<{}, {}>,\n",
+            "pub {}: {}::collections::{}<{}, {}>,\n",
             to_snake(field.name()),
+            self.config.collections_lib.to_str(),
             rust_ty,
             key_ty,
             value_ty
@@ -449,8 +472,13 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str(&format!(
-            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
+            "#[prost(oneof=\"{}\"{}, tags=\"{}\")]\n",
             name,
+            if self.config.collections_lib == CollectionsLib::Alloc {
+                ", alloc"
+            } else {
+                ""
+            },
             fields
                 .iter()
                 .map(|&(ref field, _)| field.number())
@@ -459,7 +487,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::option::Option<{}>,\n",
+            "pub {}: ::core::option::Option<{}>,\n",
             to_snake(oneof.name()),
             name
         ));
@@ -500,8 +528,13 @@ impl<'a> CodeGenerator<'a> {
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!(
-                "#[prost({}, tag=\"{}\")]\n",
+                "#[prost({}{}, tag=\"{}\")]\n",
                 ty_tag,
+                if self.config.collections_lib == CollectionsLib::Alloc {
+                    ", alloc"
+                } else {
+                    ""
+                },
                 field.number()
             ));
             self.append_field_attributes(&oneof_name, field.name());
@@ -520,8 +553,12 @@ impl<'a> CodeGenerator<'a> {
             );
 
             if boxed {
-                self.buf
-                    .push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
+                self.buf.push_str(&format!(
+                    "{}({}::boxed::Box<{}>),\n",
+                    to_upper_camel(field.name()),
+                    self.config.collections_lib.to_str(),
+                    ty
+                ));
             } else {
                 self.buf
                     .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
@@ -713,8 +750,8 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("std::string::String"),
-            Type::Bytes => String::from("std::vec::Vec<u8>"),
+            Type::String => format!("{}::string::String", self.config.collections_lib.to_str()),
+            Type::Bytes => format!("{}::vec::Vec<u8>", self.config.collections_lib.to_str()),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
@@ -791,6 +828,14 @@ impl<'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
+    }
+
+    /// Returns `true` if the field options includes the `deprecated` option.
+    fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
+        field
+            .options
+            .as_ref()
+            .map_or(false, FieldOptions::deprecated)
     }
 }
 
