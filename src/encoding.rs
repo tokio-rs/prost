@@ -62,7 +62,7 @@ where
 
     let byte = match bytes.get(0) {
         Some(&b) => b,
-        None => return Err(DecodeError::new("invalid varint"))),
+        None => return Err(DecodeError::new("invalid varint")),
     };
     if byte < 0x80 {
         buf.advance(1);
