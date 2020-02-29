@@ -59,11 +59,11 @@ where
 {
     let bytes = buf.bytes();
     let len = bytes.len();
-    if len == 0 {
-        return Err(DecodeError::new("invalid varint"));
-    }
 
-    let byte = unsafe { *bytes.get_unchecked(0) };
+    let byte = match bytes.get(0) {
+        Some(&b) => b,
+        None => return Err("invalid varint"),
+    };
     if byte < 0x80 {
         buf.advance(1);
         Ok(u64::from(byte))
