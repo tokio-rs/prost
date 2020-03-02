@@ -8,7 +8,7 @@ use core::fmt;
 use core::slice;
 
 use anyhow::{bail, Error};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{TokenStream};
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 
@@ -362,15 +362,5 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .collect::<Result<Vec<u32>, _>>()
             .map(|tags| Some(tags)),
         _ => bail!("invalid tag attribute: {:?}", attr),
-    }
-}
-
-// Helper which builds an identifier corresponding `std` or `alloc` depending
-// on feature selection
-fn collections_lib_name(alloc: bool) -> Ident {
-    if alloc {
-        Ident::new("alloc", Span::call_site())
-    } else {
-        Ident::new("std", Span::call_site())
     }
 }
