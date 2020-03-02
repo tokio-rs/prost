@@ -3,7 +3,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
-use crate::field::{scalar, set_bool, set_option, tag_attr, word_attr};
+use crate::field::{scalar, set_option, tag_attr};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -43,20 +43,16 @@ pub struct Field {
     pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
-    pub alloc: bool,
 }
 
 impl Field {
     pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
-        let mut alloc = false;
 
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
-            } else if word_attr("alloc", attr) {
-                set_bool(&mut alloc, "duplicate alloc attributes")?;
             } else if let Some(map_ty) = attr
                 .path()
                 .get_ident()
@@ -116,7 +112,6 @@ impl Field {
                 key_ty: key_ty,
                 value_ty: val_ty,
                 tag: tag,
-                alloc: alloc,
             }),
             _ => None,
         })

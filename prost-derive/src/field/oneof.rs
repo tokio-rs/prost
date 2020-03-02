@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{set_bool, set_option, tags_attr, word_attr};
+use crate::field::{set_option, tags_attr};
 
 #[derive(Clone)]
 pub struct Field {
@@ -16,7 +16,6 @@ impl Field {
         let mut ty = None;
         let mut tags = None;
         let mut unknown_attrs = Vec::new();
-        let mut alloc = false;
 
         for attr in attrs {
             if attr.path().is_ident("oneof") {
@@ -40,8 +39,6 @@ impl Field {
                     _ => bail!("invalid oneof attribute: {:?}", attr),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
-            } else if word_attr("alloc", attr) {
-                set_bool(&mut alloc, "duplicate alloc attributes")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;
             } else {
