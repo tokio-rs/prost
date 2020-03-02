@@ -92,8 +92,6 @@ pub trait Message: Debug + Send + Sync {
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
-    ///
-    /// The entire buffer will be consumed.
     fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
     where
         B: Buf,
@@ -122,8 +120,6 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    ///
-    /// The entire buffer will be consumed.
     fn merge_length_delimited<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
