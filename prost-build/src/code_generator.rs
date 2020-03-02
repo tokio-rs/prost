@@ -332,10 +332,6 @@ impl<'a> CodeGenerator<'a> {
             self.buf.push_str(", boxed");
         }
 
-        if self.config.collections_lib == CollectionsLib::Alloc {
-            self.buf.push_str(", alloc");
-        }
-
         self.buf.push_str(", tag=\"");
         self.buf.push_str(&field.number().to_string());
 
@@ -434,15 +430,10 @@ impl<'a> CodeGenerator<'a> {
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
         self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\"{}, tag=\"{}\")]\n",
+            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
             annotation_ty,
             key_tag,
             value_tag,
-            if self.config.collections_lib == CollectionsLib::Alloc {
-                ", alloc"
-            } else {
-                ""
-            },
             field.number()
         ));
         self.append_field_attributes(msg_name, field.name());
@@ -472,13 +463,8 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
         self.buf.push_str(&format!(
-            "#[prost(oneof=\"{}\"{}, tags=\"{}\")]\n",
+            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
             name,
-            if self.config.collections_lib == CollectionsLib::Alloc {
-                ", alloc"
-            } else {
-                ""
-            },
             fields
                 .iter()
                 .map(|&(ref field, _)| field.number())
@@ -528,13 +514,8 @@ impl<'a> CodeGenerator<'a> {
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!(
-                "#[prost({}{}, tag=\"{}\")]\n",
+                "#[prost({}, tag=\"{}\")]\n",
                 ty_tag,
-                if self.config.collections_lib == CollectionsLib::Alloc {
-                    ", alloc"
-                } else {
-                    ""
-                },
                 field.number()
             ));
             self.append_field_attributes(&oneof_name, field.name());
