@@ -3,13 +3,7 @@
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
-#[cfg(feature = "std")]
-use std::error;
-
 use core::fmt;
-
-#[cfg(feature = "std")]
-use std::io;
 
 /// A Protobuf message decoding error.
 ///
@@ -60,16 +54,6 @@ impl fmt::Display for DecodeError {
     }
 }
 
-#[cfg(feature = "std")]
-impl error::Error for DecodeError {}
-
-#[cfg(feature = "std")]
-impl From<DecodeError> for io::Error {
-    fn from(error: DecodeError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidData, error)
-    }
-}
-
 /// A Protobuf message encoding error.
 ///
 /// `EncodeError` always indicates that a message failed to encode because the
@@ -112,11 +96,23 @@ impl fmt::Display for EncodeError {
 }
 
 #[cfg(feature = "std")]
-impl error::Error for EncodeError {}
+mod std_details {
+    use std::{error, io};
+    use super::{DecodeError, EncodeError};
 
-#[cfg(feature = "std")]
-impl From<EncodeError> for io::Error {
-    fn from(error: EncodeError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidInput, error)
+    impl error::Error for DecodeError {}
+
+    impl From<DecodeError> for io::Error {
+        fn from(error: DecodeError) -> io::Error {
+            io::Error::new(io::ErrorKind::InvalidData, error)
+        }
+    }
+
+    impl error::Error for EncodeError {}
+
+    impl From<EncodeError> for io::Error {
+        fn from(error: EncodeError) -> io::Error {
+            io::Error::new(io::ErrorKind::InvalidInput, error)
+        }
     }
 }
