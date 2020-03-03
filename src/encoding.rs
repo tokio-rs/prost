@@ -1280,10 +1280,7 @@ pub mod hash_map {
 }
 
 pub mod btree_map {
-    #[cfg(not(feature = "std"))]
     use alloc::collections::BTreeMap;
-    #[cfg(feature = "std")]
-    use std::collections::BTreeMap;
     map!(BTreeMap);
 }
 

@@ -41,8 +41,6 @@ default = ["prost-derive", "std"]
 no-recursion-limit = []
 std = []
    # When std is disabled, we attempt to provide no_std support in prost
-   # Config::use_alloc_collections() should be set when using prost_build in your build.rs
-   # so that generated files will not have std:: either, and will use alloc crate instead
 
 [dependencies]
 bytes = { version = "0.5", default-features = false }
