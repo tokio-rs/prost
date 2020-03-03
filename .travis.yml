@@ -14,7 +14,6 @@ rust:
 script:
   - cargo build --verbose --all --exclude benchmarks
   - cargo test --verbose --all --exclude benchmarks
-  - cargo run -p tests-alloc --verbose
   - if [[ $TRAVIS_RUST_VERSION = nightly* ]]; then
       cargo bench --verbose --no-run;
     fi
