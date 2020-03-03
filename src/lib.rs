@@ -16,10 +16,6 @@ pub mod encoding;
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
 
-// This allows people to use prost and prost-derive without declaring dependency
-// on bytes in their Cargo.toml
-pub use bytes as _bytes;
-
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
@@ -68,7 +64,7 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///    input is required to decode the full delimiter.
 ///  * If the supplied buffer contains more than 10 bytes, then the buffer contains an invalid
 ///    delimiter, and typically the buffer should be considered corrupt.
-pub fn decode_length_delimiter<B>(buf: &mut B) -> Result<usize, DecodeError>
+pub fn decode_length_delimiter<B>(mut buf: B) -> Result<usize, DecodeError>
 where
     B: Buf,
 {

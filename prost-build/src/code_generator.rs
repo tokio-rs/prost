@@ -412,12 +412,11 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
 
-        let btree_map = self.config.force_btree_map ||
-            self
-                .config
-                .btree_map
-                .iter()
-                .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+        let btree_map = self
+            .config
+            .btree_map
+            .iter()
+            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
         let (annotation_ty, lib_name, rust_ty) = if btree_map {
             ("btree_map", "::alloc::collections", "BTreeMap")
         } else {

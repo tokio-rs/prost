@@ -180,7 +180,6 @@ pub trait ServiceGenerator {
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
-    force_btree_map: bool,
     btree_map: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
@@ -252,14 +251,6 @@ impl Config {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
-
-    /// Configure the code generator to use btree_map for all protobuf map types
-    /// and never HashMap. This is useful if the generated code must be no_std.
-    pub fn force_btree_map(&mut self) -> &mut Self {
-        self.force_btree_map = true;
-        self
-    }
-
 
     /// Add additional attribute to matched fields.
     ///
@@ -628,7 +619,6 @@ impl default::Default for Config {
     fn default() -> Config {
         Config {
             service_generator: None,
-            force_btree_map: true,
             btree_map: Vec::new(),
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),

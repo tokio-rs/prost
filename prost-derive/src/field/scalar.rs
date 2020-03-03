@@ -1,5 +1,5 @@
-use core::fmt;
 use std::convert::TryFrom;
+use std::fmt;
 
 use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
@@ -8,9 +8,7 @@ use syn::{
     self, parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
 };
 
-use crate::field::{
-    bool_attr, set_option, tag_attr, Label,
-};
+use crate::field::{bool_attr, set_option, tag_attr, Label};
 
 /// A scalar protobuf field.
 #[derive(Clone)]

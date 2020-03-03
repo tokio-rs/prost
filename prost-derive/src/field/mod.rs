@@ -8,7 +8,7 @@ use core::fmt;
 use core::slice;
 
 use anyhow::{bail, Error};
-use proc_macro2::{TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 

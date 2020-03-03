@@ -1375,7 +1375,7 @@ mod test {
             &mut buf,
             DecodeContext::default(),
         ) {
-            use crate::alloc::string::ToString;
+            use alloc::string::ToString;
             return TestResult::error(error.to_string());
         };
 
@@ -1454,7 +1454,7 @@ mod test {
                 &mut buf,
                 DecodeContext::default(),
             ) {
-                use crate::alloc::string::ToString;
+                use alloc::string::ToString;
                 return TestResult::error(error.to_string());
             };
         }
