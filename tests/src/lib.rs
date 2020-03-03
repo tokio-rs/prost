@@ -30,6 +30,8 @@ mod deprecated_field;
 #[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
+mod message_encoding_alloc;
+#[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
 mod well_known_types;
