@@ -175,32 +175,12 @@ pub trait ServiceGenerator {
     fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
 }
 
-/// Configuration enum for whether to use `std` prefixes or `alloc` prefixes in generated code
-///
-/// This option also forces Btree everywhere, overriding the BtreeMap options,
-/// since HashMap is not in alloc::collections, only std (it requires randomness)
-///
-#[derive(PartialEq)]
-pub enum CollectionsLib {
-    Std,
-    Alloc,
-}
-
-impl CollectionsLib {
-    pub fn to_str(&self) -> &'static str {
-        match self {
-            CollectionsLib::Std => "::std",
-            CollectionsLib::Alloc => "::alloc",
-        }
-    }
-}
-
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
-    collections_lib: CollectionsLib,
+    force_btree_map: bool,
     btree_map: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
@@ -272,6 +252,14 @@ impl Config {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
+
+    /// Configure the code generator to use btree_map for all protobuf map types
+    /// and never HashMap. This is useful if the generated code must be no_std.
+    pub fn force_btree_map(&mut self) -> &mut Self {
+        self.force_btree_map = true;
+        self
+    }
+
 
     /// Add additional attribute to matched fields.
     ///
@@ -491,15 +479,6 @@ impl Config {
         self
     }
 
-    /// Configure the code generator to use the `::alloc` namespace rather than `::std`, and Btree everywhere
-    /// rather than `std`.
-    ///
-    /// This allows generated code to be used in a `#![no_std]` crate
-    pub fn use_alloc_collections_lib(&mut self) -> &mut Self {
-        self.collections_lib = CollectionsLib::Alloc;
-        self
-    }
-
     /// Configures the output directory where generated Rust files will be written.
     ///
     /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
@@ -649,7 +628,7 @@ impl default::Default for Config {
     fn default() -> Config {
         Config {
             service_generator: None,
-            collections_lib: CollectionsLib::Std,
+            force_btree_map: true,
             btree_map: Vec::new(),
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),

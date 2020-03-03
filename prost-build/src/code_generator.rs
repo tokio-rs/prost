@@ -18,7 +18,6 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{match_ident, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::CollectionsLib;
 use crate::Config;
 
 #[derive(PartialEq)]
@@ -376,14 +375,12 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated {
-            self.buf.push_str(self.config.collections_lib.to_str());
-            self.buf.push_str("::vec::Vec<");
+            self.buf.push_str("::alloc::vec::Vec<");
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf.push_str(self.config.collections_lib.to_str());
-            self.buf.push_str("::boxed::Box<");
+            self.buf.push_str("::alloc::boxed::Box<");
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -415,16 +412,16 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc();
         self.push_indent();
 
-        let btree_map = (self.config.collections_lib != CollectionsLib::Std)
-            || self
+        let btree_map = self.config.force_btree_map ||
+            self
                 .config
                 .btree_map
                 .iter()
                 .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
-        let (annotation_ty, rust_ty) = if btree_map {
-            ("btree_map", "BTreeMap")
+        let (annotation_ty, lib_name, rust_ty) = if btree_map {
+            ("btree_map", "::alloc::collections", "BTreeMap")
         } else {
-            ("map", "HashMap")
+            ("map", "::std::collections", "HashMap")
         };
 
         let key_tag = self.field_type_tag(key);
@@ -439,9 +436,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: {}::collections::{}<{}, {}>,\n",
+            "pub {}: {}::{}<{}, {}>,\n",
             to_snake(field.name()),
-            self.config.collections_lib.to_str(),
+            lib_name,
             rust_ty,
             key_ty,
             value_ty
@@ -535,9 +532,8 @@ impl<'a> CodeGenerator<'a> {
 
             if boxed {
                 self.buf.push_str(&format!(
-                    "{}({}::boxed::Box<{}>),\n",
+                    "{}(::alloc::boxed::Box<{}>),\n",
                     to_upper_camel(field.name()),
-                    self.config.collections_lib.to_str(),
                     ty
                 ));
             } else {
@@ -731,8 +727,8 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::string::String", self.config.collections_lib.to_str()),
-            Type::Bytes => format!("{}::vec::Vec<u8>", self.config.collections_lib.to_str()),
+            Type::String => String::from("::alloc::string::String"),
+            Type::Bytes => String::from("::alloc::vec::Vec<u8>"),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

@@ -14,13 +14,8 @@ fn main() {
 
     let mut config = prost_build::Config::new();
 
-    // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
-    // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
-    // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
-    // values.
-    //
-    // Note nostd collections implies Btree everywhere anyways
-    config.use_alloc_collections_lib();
+    // Force btree_map everywhere for no_std compat
+    config.force_btree_map();
 
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
