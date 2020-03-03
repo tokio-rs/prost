@@ -21,7 +21,6 @@ fn bootstrap() {
 
     prost_build::Config::new()
         .compile_well_known_types()
-        .force_btree_map()
         .btree_map(&["."])
         .out_dir(tempdir.path())
         .compile_protos(
