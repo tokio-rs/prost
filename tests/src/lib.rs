@@ -14,8 +14,6 @@ cfg_if! {
         extern crate prost_build;
         #[cfg(test)]
         extern crate tempfile;
-        #[cfg(test)]
-        extern crate tests_infra;
     }
 }
 

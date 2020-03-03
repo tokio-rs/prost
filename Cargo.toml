@@ -24,7 +24,6 @@ members = [
   "protobuf",
   "tests",
   "tests-2015",
-  "tests-alloc",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,

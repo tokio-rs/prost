@@ -10,5 +10,5 @@ fn test_well_known_types() {
         }),
     };
 
-    tests_infra::check_message(&msg);
+    crate::check_message(&msg);
 }
