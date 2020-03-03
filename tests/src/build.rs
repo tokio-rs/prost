@@ -20,7 +20,6 @@ fn main() {
     let src = PathBuf::from("../tests/src");
     let includes = &[src.clone()];
 
-
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
