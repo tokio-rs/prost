@@ -11,16 +11,9 @@
 
 #![no_std]
 extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std;
 
-#[cfg(feature = "std")]
-use core::convert::TryFrom;
 use core::i32;
 use core::i64;
-
-#[cfg(feature = "std")]
-use std::time;
 
 include!("protobuf.rs");
 pub mod compiler {
@@ -32,137 +25,139 @@ pub mod compiler {
 // are defined in both directions.
 
 #[cfg(feature = "std")]
-const NANOS_PER_SECOND: i32 = 1_000_000_000;
+mod std_conversions {
+    use super::*;
+    extern crate std;
 
-impl Duration {
-    /// Normalizes the duration to a canonical format.
-    ///
-    /// Based on [`google::protobuf::util::CreateNormalized`][1].
-    /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L79-L100
-    #[cfg(feature = "std")]
-    fn normalize(&mut self) {
-        // Make sure nanos is in the range.
-        if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
-            self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
-            self.nanos %= NANOS_PER_SECOND;
-        }
+    use std::time;
+    use core::convert::TryFrom;
 
-        // nanos should have the same sign as seconds.
-        if self.seconds < 0 && self.nanos > 0 {
-            self.seconds += 1;
-            self.nanos -= NANOS_PER_SECOND;
-        } else if self.seconds > 0 && self.nanos < 0 {
-            self.seconds -= 1;
-            self.nanos += NANOS_PER_SECOND;
-        }
-        // TODO: should this be checked?
-        // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
-        //               "invalid duration: {:?}", self);
-    }
-}
+    const NANOS_PER_SECOND: i32 = 1_000_000_000;
 
-/// Converts a `std::time::Duration` to a `Duration`.
-#[cfg(feature = "std")]
-impl From<time::Duration> for Duration {
-    fn from(duration: time::Duration) -> Duration {
-        let seconds = duration.as_secs();
-        let seconds = if seconds > i64::MAX as u64 {
-            i64::MAX
-        } else {
-            seconds as i64
-        };
-        let nanos = duration.subsec_nanos();
-        let nanos = if nanos > i32::MAX as u32 {
-            i32::MAX
-        } else {
-            nanos as i32
-        };
-        let mut duration = Duration { seconds, nanos };
-        duration.normalize();
-        duration
-    }
-}
+    impl Duration {
+        /// Normalizes the duration to a canonical format.
+        ///
+        /// Based on [`google::protobuf::util::CreateNormalized`][1].
+        /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L79-L100
+        fn normalize(&mut self) {
+            // Make sure nanos is in the range.
+            if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
+                self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
+                self.nanos %= NANOS_PER_SECOND;
+            }
 
-#[cfg(feature = "std")]
-impl TryFrom<Duration> for time::Duration {
-    type Error = time::Duration;
-
-    /// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
-    /// `std::time::Duration`.
-    fn try_from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
-        duration.normalize();
-        if duration.seconds >= 0 {
-            Ok(time::Duration::new(
-                duration.seconds as u64,
-                duration.nanos as u32,
-            ))
-        } else {
-            Err(time::Duration::new(
-                (-duration.seconds) as u64,
-                (-duration.nanos) as u32,
-            ))
+            // nanos should have the same sign as seconds.
+            if self.seconds < 0 && self.nanos > 0 {
+                self.seconds += 1;
+                self.nanos -= NANOS_PER_SECOND;
+            } else if self.seconds > 0 && self.nanos < 0 {
+                self.seconds -= 1;
+                self.nanos += NANOS_PER_SECOND;
+            }
+            // TODO: should this be checked?
+            // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
+            //               "invalid duration: {:?}", self);
         }
     }
-}
 
-impl Timestamp {
-    /// Normalizes the timestamp to a canonical format.
-    ///
-    /// Based on [`google::protobuf::util::CreateNormalized`][1].
-    /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
-    #[cfg(feature = "std")]
-    fn normalize(&mut self) {
-        // Make sure nanos is in the range.
-        if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
-            self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
-            self.nanos %= NANOS_PER_SECOND;
-        }
-
-        // For Timestamp nanos should be in the range [0, 999999999].
-        if self.nanos < 0 {
-            self.seconds -= 1;
-            self.nanos += NANOS_PER_SECOND;
-        }
-
-        // TODO: should this be checked?
-        // debug_assert!(self.seconds >= -62_135_596_800 && self.seconds <= 253_402_300_799,
-        //               "invalid timestamp: {:?}", self);
-    }
-}
-
-/// Converts a `std::time::SystemTime` to a `Timestamp`.
-#[cfg(feature = "std")]
-impl From<time::SystemTime> for Timestamp {
-    fn from(time: time::SystemTime) -> Timestamp {
-        let duration = Duration::from(time.duration_since(time::UNIX_EPOCH).unwrap());
-        Timestamp {
-            seconds: duration.seconds,
-            nanos: duration.nanos,
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl TryFrom<Timestamp> for time::SystemTime {
-    type Error = time::Duration;
-
-    /// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch,
-    /// a duration containing the difference.
-    fn try_from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
-        timestamp.normalize();
-        if timestamp.seconds >= 0 {
-            Ok(time::UNIX_EPOCH
-                + time::Duration::new(timestamp.seconds as u64, timestamp.nanos as u32))
-        } else {
-            let mut duration = Duration {
-                seconds: -timestamp.seconds,
-                nanos: timestamp.nanos,
+    /// Converts a `std::time::Duration` to a `Duration`.
+    impl From<time::Duration> for Duration {
+        fn from(duration: time::Duration) -> Duration {
+            let seconds = duration.as_secs();
+            let seconds = if seconds > i64::MAX as u64 {
+                i64::MAX
+            } else {
+                seconds as i64
             };
+            let nanos = duration.subsec_nanos();
+            let nanos = if nanos > i32::MAX as u32 {
+                i32::MAX
+            } else {
+                nanos as i32
+            };
+            let mut duration = Duration { seconds, nanos };
             duration.normalize();
-            Err(time::Duration::new(
-                duration.seconds as u64,
-                duration.nanos as u32,
-            ))
+            duration
+        }
+    }
+
+    impl TryFrom<Duration> for time::Duration {
+        type Error = time::Duration;
+
+        /// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
+        /// `std::time::Duration`.
+        fn try_from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
+            duration.normalize();
+            if duration.seconds >= 0 {
+                Ok(time::Duration::new(
+                    duration.seconds as u64,
+                    duration.nanos as u32,
+                ))
+            } else {
+                Err(time::Duration::new(
+                    (-duration.seconds) as u64,
+                    (-duration.nanos) as u32,
+                ))
+            }
+        }
+    }
+
+    impl Timestamp {
+        /// Normalizes the timestamp to a canonical format.
+        ///
+        /// Based on [`google::protobuf::util::CreateNormalized`][1].
+        /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+        fn normalize(&mut self) {
+            // Make sure nanos is in the range.
+            if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
+                self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
+                self.nanos %= NANOS_PER_SECOND;
+            }
+
+            // For Timestamp nanos should be in the range [0, 999999999].
+            if self.nanos < 0 {
+                self.seconds -= 1;
+                self.nanos += NANOS_PER_SECOND;
+            }
+
+            // TODO: should this be checked?
+            // debug_assert!(self.seconds >= -62_135_596_800 && self.seconds <= 253_402_300_799,
+            //               "invalid timestamp: {:?}", self);
+        }
+    }
+
+    /// Converts a `std::time::SystemTime` to a `Timestamp`.
+    impl From<time::SystemTime> for Timestamp {
+        fn from(time: time::SystemTime) -> Timestamp {
+            let duration = Duration::from(time.duration_since(time::UNIX_EPOCH).unwrap());
+            Timestamp {
+                seconds: duration.seconds,
+                nanos: duration.nanos,
+            }
+        }
+    }
+
+    impl TryFrom<Timestamp> for time::SystemTime {
+        type Error = time::Duration;
+
+        /// Converts a `Timestamp` to a `SystemTime`, or if the timestamp falls before the Unix epoch,
+        /// a duration containing the difference.
+        fn try_from(mut timestamp: Timestamp) -> Result<time::SystemTime, time::Duration> {
+            timestamp.normalize();
+            if timestamp.seconds >= 0 {
+                Ok(time::UNIX_EPOCH
+                    + time::Duration::new(timestamp.seconds as u64, timestamp.nanos as u32))
+            } else {
+                let mut duration = Duration {
+                    seconds: -timestamp.seconds,
+                    nanos: timestamp.nanos,
+                };
+                duration.normalize();
+                Err(time::Duration::new(
+                    duration.seconds as u64,
+                    duration.nanos as u32,
+                ))
+            }
         }
     }
 }
