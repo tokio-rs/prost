@@ -15,7 +15,7 @@ fn main() {
     let mut config = prost_build::Config::new();
 
     // Force btree_map everywhere for no_std compat
-    config.force_btree_map();
+    config.btree_map(&["."]);
 
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
