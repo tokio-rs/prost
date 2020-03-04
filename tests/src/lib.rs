@@ -1,10 +1,9 @@
 #[macro_use]
 extern crate cfg_if;
 
-extern crate alloc;
-
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
+        extern crate alloc;
         extern crate bytes;
         extern crate core;
         extern crate prost;
