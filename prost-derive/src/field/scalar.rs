@@ -214,7 +214,7 @@ impl Field {
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
             Kind::Optional(_) => quote!(::core::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(::alloc::vec::Vec::new()),
+            Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
     }
 
@@ -256,7 +256,7 @@ impl Field {
             },
             Kind::Repeated | Kind::Packed => {
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::alloc::vec::Vec<#inner_ty>);
+                    struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#inner_ty>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
@@ -497,8 +497,8 @@ impl Ty {
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self) -> TokenStream {
         match *self {
-            Ty::String => quote!(::alloc::string::String),
-            Ty::Bytes => quote!(::alloc::vec::Vec<u8>),
+            Ty::String => quote!(::prost::alloc::string::String),
+            Ty::Bytes => quote!(::prost::alloc::vec::Vec<u8>),
             _ => self.rust_ref_type(),
         }
     }
@@ -750,11 +750,11 @@ impl DefaultValue {
     pub fn owned(&self) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::alloc::string::String::new())
+                quote!(::prost::alloc::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
             DefaultValue::Bytes(ref value) if value.is_empty() => {
-                quote!(::alloc::vec::Vec::new())
+                quote!(::prost::alloc::vec::Vec::new())
             }
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());

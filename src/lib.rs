@@ -1,7 +1,10 @@
 #![doc(html_root_url = "https://docs.rs/prost/0.6.1")]
 #![no_std]
 
-extern crate alloc;
+// This hidden re-export of alloc crate gives prost-derive a way to get alloc types,
+// without forcing users of prost-derive to write `extern crate alloc;`
+#[doc(hidden)]
+pub extern crate alloc;
 
 #[cfg(feature = "std")]
 extern crate std;

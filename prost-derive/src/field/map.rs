@@ -294,10 +294,10 @@ impl Field {
             MapTy::HashMap => Ident::new("HashMap", Span::call_site()),
             MapTy::BTreeMap => Ident::new("BTreeMap", Span::call_site()),
         };
-        // HashMap is in std, BTreeMap is in alloc
+        // HashMap is in std, BTreeMap is in alloc (re-exported as prost::alloc)
         let libname = match self.map_ty {
-            MapTy::HashMap => Ident::new("std", Span::call_site()),
-            MapTy::BTreeMap => Ident::new("alloc", Span::call_site()),
+            MapTy::HashMap => quote! { std },
+            MapTy::BTreeMap => quote! { prost::alloc },
         };
 
         // A fake field for generating the debug wrapper

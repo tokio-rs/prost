@@ -375,12 +375,12 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated {
-            self.buf.push_str("alloc::vec::Vec<");
+            self.buf.push_str("prost::alloc::vec::Vec<");
         } else if optional {
             self.buf.push_str("core::option::Option<");
         }
         if boxed {
-            self.buf.push_str("alloc::boxed::Box<");
+            self.buf.push_str("prost::alloc::boxed::Box<");
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -418,7 +418,7 @@ impl<'a> CodeGenerator<'a> {
             .iter()
             .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
         let (annotation_ty, lib_name, rust_ty) = if btree_map {
-            ("btree_map", "alloc::collections", "BTreeMap")
+            ("btree_map", "prost::alloc::collections", "BTreeMap")
         } else {
             ("map", "std::collections", "HashMap")
         };
@@ -531,7 +531,7 @@ impl<'a> CodeGenerator<'a> {
 
             if boxed {
                 self.buf.push_str(&format!(
-                    "{}(alloc::boxed::Box<{}>),\n",
+                    "{}(prost::alloc::boxed::Box<{}>),\n",
                     to_upper_camel(field.name()),
                     ty
                 ));
@@ -726,8 +726,8 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("alloc::string::String"),
-            Type::Bytes => String::from("alloc::vec::Vec<u8>"),
+            Type::String => String::from("prost::alloc::string::String"),
+            Type::Bytes => String::from("prost::alloc::vec::Vec<u8>"),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

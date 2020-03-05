@@ -236,7 +236,7 @@ pub struct TagsInferred {
     #[prost(enumeration = "BasicEnumeration", default = "ONE")]
     pub ten: i32,
     #[prost(btree_map = "string, string")]
-    pub eleven: ::alloc::collections::BTreeMap<String, String>,
+    pub eleven: prost::alloc::collections::BTreeMap<String, String>,
 
     #[prost(tag = "5", bytes)]
     pub back_to_five: Vec<u8>,
@@ -263,7 +263,7 @@ pub struct TagsQualified {
     #[prost(tag = "10", enumeration = "BasicEnumeration", default = "ONE")]
     pub ten: i32,
     #[prost(tag = "11", btree_map = "string, string")]
-    pub eleven: ::alloc::collections::BTreeMap<String, String>,
+    pub eleven: prost::alloc::collections::BTreeMap<String, String>,
 }
 
 /// A prost message with default value.
@@ -327,16 +327,16 @@ pub struct Basic {
     pub enumeration: i32,
 
     #[prost(btree_map = "int32, enumeration(BasicEnumeration)", tag = "6")]
-    pub enumeration_map: ::alloc::collections::BTreeMap<i32, i32>,
+    pub enumeration_map: prost::alloc::collections::BTreeMap<i32, i32>,
 
     #[prost(btree_map = "string, string", tag = "7")]
-    pub string_map: ::alloc::collections::BTreeMap<String, String>,
+    pub string_map: prost::alloc::collections::BTreeMap<String, String>,
 
     #[prost(btree_map = "int32, enumeration(BasicEnumeration)", tag = "10")]
-    pub enumeration_btree_map: ::alloc::collections::BTreeMap<i32, i32>,
+    pub enumeration_btree_map: prost::alloc::collections::BTreeMap<i32, i32>,
 
     #[prost(btree_map = "string, string", tag = "11")]
-    pub string_btree_map: ::alloc::collections::BTreeMap<String, String>,
+    pub string_btree_map: prost::alloc::collections::BTreeMap<String, String>,
 
     #[prost(oneof = "BasicOneof", tags = "8, 9")]
     pub oneof: Option<BasicOneof>,
@@ -354,10 +354,10 @@ pub struct Compound {
     pub repeated_message: Vec<Basic>,
 
     #[prost(btree_map = "sint32, message", tag = "4")]
-    pub message_map: ::alloc::collections::BTreeMap<i32, Basic>,
+    pub message_map: prost::alloc::collections::BTreeMap<i32, Basic>,
 
     #[prost(btree_map = "sint32, message", tag = "5")]
-    pub message_btree_map: ::alloc::collections::BTreeMap<i32, Basic>,
+    pub message_btree_map: prost::alloc::collections::BTreeMap<i32, Basic>,
 }
 
 #[derive(Clone, PartialEq, Oneof)]
