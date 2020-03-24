@@ -850,6 +850,33 @@ mod tests {
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
+        let dir = fs::read_dir(env::var("OUT_DIR").unwrap()).unwrap();
+        let mut contents_checked = false;
+        for entry in dir {
+            if let Ok(entry) = entry {
+                if entry.file_type().unwrap().is_file()
+                    && Some(true)
+                        == entry
+                            .path()
+                            .file_name()
+                            .map(|p| p.to_string_lossy() == "smoke_test.rs")
+                {
+                    let compiled_contents = fs::read_to_string(entry.path())
+                        .unwrap()
+                        .replace("\r\n", "\n");
+                    let expected_contents = fs::read_to_string(
+                        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+                            .join("src")
+                            .join("smoke_test_expected.txt"),
+                    )
+                    .unwrap()
+                    .replace("\r\n", "\n");
+                    assert_eq!(compiled_contents, expected_contents);
+                    contents_checked = true;
+                }
+            }
+        }
+        assert!(contents_checked);
     }
 
     #[test]

@@ -1,40 +1,35 @@
+use comrak::{
+    format_commonmark,
+    nodes::{AstNode, NodeValue},
+    parse_document, Arena, ComrakOptions,
+};
+use prost_types;
 use prost_types::source_code_info::Location;
 
 /// Comments on a Protobuf item.
 #[derive(Debug)]
 pub struct Comments {
     /// Leading detached blocks of comments.
-    pub leading_detached: Vec<Vec<String>>,
+    pub leading_detached: Vec<String>,
 
     /// Leading comments.
-    pub leading: Vec<String>,
+    pub leading: String,
 
     /// Trailing comments.
-    pub trailing: Vec<String>,
+    pub trailing: String,
 }
 
 impl Comments {
     pub(crate) fn from_location(location: &Location) -> Comments {
-        fn get_lines<S>(comments: S) -> Vec<String>
-        where
-            S: AsRef<str>,
-        {
-            comments.as_ref().lines().map(str::to_owned).collect()
-        }
-
-        let leading_detached = location
-            .leading_detached_comments
-            .iter()
-            .map(get_lines)
-            .collect();
+        let leading_detached = location.leading_detached_comments.clone();
         let leading = location
             .leading_comments
             .as_ref()
-            .map_or(Vec::new(), get_lines);
+            .map_or(String::new(), String::clone);
         let trailing = location
             .trailing_comments
             .as_ref()
-            .map_or(Vec::new(), get_lines);
+            .map_or(String::new(), String::clone);
         Comments {
             leading_detached,
             leading,
@@ -48,23 +43,32 @@ impl Comments {
     pub fn append_with_indent(&self, indent_level: u8, buf: &mut String) {
         // Append blocks of detached comments.
         for detached_block in &self.leading_detached {
-            for line in detached_block {
+            let detached_block = add_text_to_code_blocks(&detached_block);
+            for line in detached_block.lines() {
                 for _ in 0..indent_level {
                     buf.push_str("    ");
                 }
                 buf.push_str("//");
+                if !line.trim().is_empty() && !line.starts_with(' ') {
+                    buf.push(' ');
+                }
                 buf.push_str(line);
                 buf.push_str("\n");
             }
             buf.push_str("\n");
         }
 
+        let leading = add_text_to_code_blocks(&self.leading);
+
         // Append leading comments.
-        for line in &self.leading {
+        for line in leading.lines() {
             for _ in 0..indent_level {
                 buf.push_str("    ");
             }
             buf.push_str("///");
+            if !line.trim().is_empty() && !line.starts_with(' ') {
+                buf.push(' ');
+            }
             buf.push_str(line);
             buf.push_str("\n");
         }
@@ -77,16 +81,51 @@ impl Comments {
             buf.push_str("///\n");
         }
 
+        let trailing = add_text_to_code_blocks(&self.trailing);
+
         // Append trailing comments.
-        for line in &self.trailing {
+        for line in trailing.lines() {
             for _ in 0..indent_level {
                 buf.push_str("    ");
             }
             buf.push_str("///");
+            if !line.trim().is_empty() && !line.starts_with(' ') {
+                buf.push(' ');
+            }
             buf.push_str(line);
             buf.push_str("\n");
         }
     }
+}
+
+fn add_text_to_code_blocks(markdown: &str) -> String {
+    let arena = Arena::new();
+    let options = ComrakOptions::default();
+    let root = parse_document(&arena, markdown, &options);
+
+    fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
+    where
+        F: Fn(&'a AstNode<'a>),
+    {
+        f(node);
+        for c in node.children() {
+            iter_nodes(c, f);
+        }
+    }
+
+    iter_nodes(root, &|node| match node.data.borrow_mut().value {
+        NodeValue::CodeBlock(ref mut block) => {
+            block.fenced = true;
+            block.fence_char = b'`';
+            block.fence_length = 3;
+            block.info = Vec::from("text".as_bytes());
+        }
+        _ => (),
+    });
+    let mut ret = Vec::new();
+    format_commonmark(&root, &options, &mut ret)
+        .expect("Failed to render markdown in proto comment");
+    String::from_utf8(ret).unwrap()
 }
 
 /// A service descriptor.

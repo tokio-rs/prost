@@ -9,6 +9,15 @@ message SmokeResponse {
 }
 
 // Just a smoke test service.
+//
+// ```
+// It'd be a mistake to try to rust doc test this.
+// ```
+//
+//     Here's another code block, just for kicks.
+// This isn't a code block.
+//
+//     And another, just to be sure.
 service SmokeService {
 
     // A detached comment block.

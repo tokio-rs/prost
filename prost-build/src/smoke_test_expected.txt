@@ -1,0 +1,28 @@
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SmokeRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SmokeResponse {
+}
+/// Just a smoke test service.
+///
+/// ``` text
+/// It'd be a mistake to try to rust doc test this.
+/// ```
+///
+/// ``` text
+/// Here's another code block, just for kicks.
+/// ```
+///
+/// This isn't a code block.
+///
+/// ``` text
+/// And another, just to be sure.
+/// ```
+trait SmokeService {
+    // A detached comment block.
+
+    /// Blow some smoke.
+    fn blow_smoke(SmokeRequest) -> SmokeResponse;
+}
+pub mod utils { }

@@ -17,17 +17,17 @@ pub struct Version {
 pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
     /// code generator should generate code only for these files.  Each file's
-    /// descriptor will be included in proto_file, below.
+    /// descriptor will be included in proto\_file, below.
     #[prost(string, repeated, tag="1")]
     pub file_to_generate: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The generator parameter passed on the command-line.
     #[prost(string, optional, tag="2")]
     pub parameter: ::core::option::Option<::prost::alloc::string::String>,
-    /// FileDescriptorProtos for all files in files_to_generate and everything
+    /// FileDescriptorProtos for all files in files\_to\_generate and everything
     /// they import.  The files will appear in topological order, so each file
     /// appears before any file that imports it.
     ///
-    /// protoc guarantees that all proto_files will be written after
+    /// protoc guarantees that all proto\_files will be written after
     /// the fields above, even though this is not technically guaranteed by the
     /// protobuf wire format.  This theoretically could allow a plugin to stream
     /// in the FileDescriptorProtos and handle them one by one rather than read
@@ -67,7 +67,7 @@ pub mod code_generator_response {
         /// The file name, relative to the output directory.  The name must not
         /// contain "." or ".." components and must be relative, not be absolute (so,
         /// the file cannot lie outside the output directory).  "/" must be used as
-        /// the path separator, not "\".
+        /// the path separator, not "".
         ///
         /// If the name is omitted, the content will be appended to the previous
         /// file.  This allows the generator to break large files into small chunks,
@@ -83,11 +83,11 @@ pub mod code_generator_response {
         /// produced by another code generator.  The original generator may provide
         /// insertion points by placing special annotations in the file that look
         /// like:
-        ///   @@protoc_insertion_point(NAME)
+        /// @@protoc\_insertion\_point(NAME)
         /// The annotation can have arbitrary text before and after it on the line,
         /// which allows it to be placed in a comment.  NAME should be replaced with
         /// an identifier naming the point -- this is what other generators will use
-        /// as the insertion_point.  Code inserted at this point will be placed
+        /// as the insertion\_point.  Code inserted at this point will be placed
         /// immediately above the line containing the insertion point (thus multiple
         /// insertions to the same point will come out in the order they were added).
         /// The double-@ is intended to make it unlikely that the generated code
@@ -95,10 +95,10 @@ pub mod code_generator_response {
         ///
         /// For example, the C++ code generator places the following line in the
         /// .pb.h files that it generates:
-        ///   // @@protoc_insertion_point(namespace_scope)
+        /// // @@protoc\_insertion\_point(namespace\_scope)
         /// This line appears within the scope of the file's package namespace, but
         /// outside of any particular class.  Another plugin can then specify the
-        /// insertion_point "namespace_scope" to generate additional classes or
+        /// insertion\_point "namespace\_scope" to generate additional classes or
         /// other declarations that should be placed in this scope.
         ///
         /// Note that if the line containing the insertion point begins with
@@ -113,7 +113,7 @@ pub mod code_generator_response {
         /// Code generators are executed in the order in which they appear on the
         /// command line.
         ///
-        /// If |insertion_point| is present, |name| must also be present.
+        /// If |insertion\_point| is present, |name| must also be present.
         #[prost(string, optional, tag="2")]
         pub insertion_point: ::core::option::Option<::prost::alloc::string::String>,
         /// The file contents.

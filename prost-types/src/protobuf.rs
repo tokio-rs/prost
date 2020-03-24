@@ -113,8 +113,8 @@ pub struct FieldDescriptorProto {
     pub number: ::core::option::Option<i32>,
     #[prost(enumeration="field_descriptor_proto::Label", optional, tag="4")]
     pub label: ::core::option::Option<i32>,
-    /// If type_name is set, this need not be set.  If both this and type_name
-    /// are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
+    /// If type\_name is set, this need not be set.  If both this and type\_name
+    /// are set, this must be one of TYPE\_ENUM, TYPE\_MESSAGE or TYPE\_GROUP.
     #[prost(enumeration="field_descriptor_proto::Type", optional, tag="5")]
     pub r#type: ::core::option::Option<i32>,
     /// For message and enum types, this is the name of the type.  If the name
@@ -125,22 +125,22 @@ pub struct FieldDescriptorProto {
     #[prost(string, optional, tag="6")]
     pub type_name: ::core::option::Option<::prost::alloc::string::String>,
     /// For extensions, this is the name of the type being extended.  It is
-    /// resolved in the same manner as type_name.
+    /// resolved in the same manner as type\_name.
     #[prost(string, optional, tag="2")]
     pub extendee: ::core::option::Option<::prost::alloc::string::String>,
     /// For numeric types, contains the original text representation of the value.
     /// For booleans, "true" or "false".
     /// For strings, contains the default text contents (not escaped in any way).
-    /// For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
+    /// For bytes, contains the C escaped value.  All bytes \>= 128 are escaped.
     /// TODO(kenton):  Base-64 encode?
     #[prost(string, optional, tag="7")]
     pub default_value: ::core::option::Option<::prost::alloc::string::String>,
-    /// If set, gives the index of a oneof in the containing type's oneof_decl
+    /// If set, gives the index of a oneof in the containing type's oneof\_decl
     /// list.  This field is a member of that oneof.
     #[prost(int32, optional, tag="9")]
     pub oneof_index: ::core::option::Option<i32>,
     /// JSON name of this field. The value is set by protocol compiler. If the
-    /// user has set a "json_name" option on this field, that option's value
+    /// user has set a "json\_name" option on this field, that option's value
     /// will be used. Otherwise, it's deduced from the field's name by converting
     /// it to camelCase.
     #[prost(string, optional, tag="10")]
@@ -157,11 +157,11 @@ pub mod field_descriptor_proto {
         /// Order is weird for historical reasons.
         Double = 1,
         Float = 2,
-        /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT64 if
+        /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE\_SINT64 if
         /// negative values are likely.
         Int64 = 3,
         Uint64 = 4,
-        /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT32 if
+        /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE\_SINT32 if
         /// negative values are likely.
         Int32 = 5,
         Fixed64 = 6,
@@ -266,7 +266,7 @@ pub struct MethodDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// Input and output type names.  These are resolved in the same way as
-    /// FieldDescriptorProto.type_name, but must refer to a message type.
+    /// FieldDescriptorProto.type\_name, but must refer to a message type.
     #[prost(string, optional, tag="2")]
     pub input_type: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag="3")]
@@ -280,37 +280,38 @@ pub struct MethodDescriptorProto {
     #[prost(bool, optional, tag="6", default="false")]
     pub server_streaming: ::core::option::Option<bool>,
 }
-// ===================================================================
+// \===================================================================
 // Options
 
 // Each of the definitions above may have "options" attached.  These are
 // just annotations which may cause code to be generated slightly differently
 // or may contain hints for code that manipulates protocol messages.
 //
-// Clients may define custom options as extensions of the *Options messages.
+// Clients may define custom options as extensions of the \*Options messages.
 // These extensions may not yet be known at parsing time, so the parser cannot
-// store the values in them.  Instead it stores them in a field in the *Options
-// message called uninterpreted_option. This field must have the same name
-// across all *Options messages. We then use this field to populate the
+// store the values in them.  Instead it stores them in a field in the \*Options
+// message called uninterpreted\_option. This field must have the same name
+// across all \*Options messages. We then use this field to populate the
 // extensions when we build a descriptor, at which point all protos have been
 // parsed and so all extensions are known.
 //
 // Extension numbers for custom options may be chosen as follows:
-// * For options which will only be used within a single application or
-//   organization, or for experimental options, use field numbers 50000
-//   through 99999.  It is up to you to ensure that you do not use the
-//   same number for multiple options.
-// * For options which will be published and used publicly by multiple
-//   independent entities, e-mail protobuf-global-extension-registry@google.com
-//   to reserve extension numbers. Simply provide your project name (e.g.
-//   Objective-C plugin) and your project website (if available) -- there's no
-//   need to explain how you intend to use them. Usually you only need one
-//   extension number. You can declare multiple options with only one extension
-//   number by putting them in a sub-message. See the Custom Options section of
-//   the docs for examples:
-//   https://developers.google.com/protocol-buffers/docs/proto#options
-//   If this turns out to be popular, a web service will be set up
-//   to automatically assign option numbers.
+//
+//  - For options which will only be used within a single application or
+//    organization, or for experimental options, use field numbers 50000
+//    through 99999.  It is up to you to ensure that you do not use the
+//    same number for multiple options.
+//  - For options which will be published and used publicly by multiple
+//    independent entities, e-mail protobuf-global-extension-registry@google.com
+//    to reserve extension numbers. Simply provide your project name (e.g.
+//    Objective-C plugin) and your project website (if available) -- there's no
+//    need to explain how you intend to use them. Usually you only need one
+//    extension number. You can declare multiple options with only one extension
+//    number by putting them in a sub-message. See the Custom Options section of
+//    the docs for examples:
+//    https://developers.google.com/protocol-buffers/docs/proto\#options
+//    If this turns out to be popular, a web service will be set up
+//    to automatically assign option numbers.
 
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileOptions {
@@ -322,7 +323,7 @@ pub struct FileOptions {
     pub java_package: ::core::option::Option<::prost::alloc::string::String>,
     /// If set, all the classes from the .proto file are wrapped in a single
     /// outer class with the given name.  This applies to both Proto1
-    /// (equivalent to the old "--one_java_file" option) and Proto2 (where
+    /// (equivalent to the old "--one\_java\_file" option) and Proto2 (where
     /// a .proto always translates to a single class, but you may want to
     /// explicitly choose the class name).
     #[prost(string, optional, tag="8")]
@@ -330,7 +331,7 @@ pub struct FileOptions {
     /// If set true, then the Java code generator will generate a separate .java
     /// file for each top-level message, enum, and service defined in the .proto
     /// file.  Thus, these types will *not* be nested inside the outer class
-    /// named by java_outer_classname.  However, the outer class will still be
+    /// named by java\_outer\_classname.  However, the outer class will still be
     /// generated to contain the file's getDescriptor() method as well as any
     /// top-level extensions defined in the file.
     #[prost(bool, optional, tag="10", default="false")]
@@ -351,9 +352,10 @@ pub struct FileOptions {
     pub optimize_for: ::core::option::Option<i32>,
     /// Sets the Go package where structs generated from this .proto will be
     /// placed. If omitted, the Go package will be derived from the following:
-    ///   - The basename of the package import path, if provided.
-    ///   - Otherwise, the package statement in the .proto file, if present.
-    ///   - Otherwise, the basename of the .proto file, without extension.
+    ///
+    ///  - The basename of the package import path, if provided.
+    ///  - Otherwise, the package statement in the .proto file, if present.
+    ///  - Otherwise, the basename of the .proto file, without extension.
     #[prost(string, optional, tag="11")]
     pub go_package: ::core::option::Option<::prost::alloc::string::String>,
     /// Should generic services be generated in each language?  "Generic" services
@@ -445,10 +447,10 @@ pub struct MessageOptions {
     /// efficient, has fewer features, and is more complicated.
     ///
     /// The message must be defined exactly as follows:
-    ///   message Foo {
-    ///     option message_set_wire_format = true;
-    ///     extensions 4 to max;
-    ///   }
+    /// message Foo {
+    /// option message\_set\_wire\_format = true;
+    /// extensions 4 to max;
+    /// }
     /// Note that the message cannot have any defined fields; MessageSets only
     /// have extensions.
     ///
@@ -474,16 +476,16 @@ pub struct MessageOptions {
     /// maps field.
     ///
     /// For maps fields:
-    ///     map<KeyType, ValueType> map_field = 1;
+    /// map\<KeyType, ValueType\> map\_field = 1;
     /// The parsed descriptor looks like:
-    ///     message MapFieldEntry {
-    ///         option map_entry = true;
-    ///         optional KeyType key = 1;
-    ///         optional ValueType value = 2;
-    ///     }
-    ///     repeated MapFieldEntry map_field = 1;
+    /// message MapFieldEntry {
+    /// option map\_entry = true;
+    /// optional KeyType key = 1;
+    /// optional ValueType value = 2;
+    /// }
+    /// repeated MapFieldEntry map\_field = 1;
     ///
-    /// Implementations may choose not to generate the map_entry=true message, but
+    /// Implementations may choose not to generate the map\_entry=true message, but
     /// use a native map in the target language to hold the keys and values.
     /// The reflection APIs in such implementations still need to work as
     /// if the field is a repeated message field.
@@ -502,7 +504,7 @@ pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
     /// representation of the field than it normally would.  See the specific
     /// options below.  This option is not yet implemented in the open source
-    /// release -- sorry, we'll try to include it in a future version!
+    /// release -- sorry, we'll try to include it in a future version\!
     #[prost(enumeration="field_options::CType", optional, tag="1", default="String")]
     pub ctype: ::core::option::Option<i32>,
     /// The packed option can be enabled for repeated primitive fields to enable
@@ -514,12 +516,12 @@ pub struct FieldOptions {
     pub packed: ::core::option::Option<bool>,
     /// The jstype option determines the JavaScript type used for values of the
     /// field.  The option is permitted only for 64 bit integral and fixed types
-    /// (int64, uint64, sint64, fixed64, sfixed64).  A field with jstype JS_STRING
+    /// (int64, uint64, sint64, fixed64, sfixed64).  A field with jstype JS\_STRING
     /// is represented as JavaScript string, which avoids loss of precision that
     /// can happen when a large value is converted to a floating point JavaScript.
-    /// Specifying JS_NUMBER for the jstype causes the generated JavaScript code to
+    /// Specifying JS\_NUMBER for the jstype causes the generated JavaScript code to
     /// use the JavaScript "number" type.  The behavior of the default option
-    /// JS_NORMAL is implementation dependent.
+    /// JS\_NORMAL is implementation dependent.
     ///
     /// This option is an enum to permit additional types to be added, e.g.
     /// goog.math.Integer.
@@ -541,7 +543,6 @@ pub struct FieldOptions {
     /// interface is not affected by this option; const methods remain safe to
     /// call from multiple threads concurrently, while non-const methods continue
     /// to require exclusive access.
-    ///
     ///
     /// Note that implementations may choose not to check required fields within
     /// a lazy sub-message.  That is, calling IsInitialized() on the outer message
@@ -626,9 +627,9 @@ pub struct EnumValueOptions {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
-    //   framework.  We apologize for hoarding these numbers to ourselves, but
-    //   we were already using them long before we decided to release Protocol
-    //   Buffers.
+    // framework.  We apologize for hoarding these numbers to ourselves, but
+    // we were already using them long before we decided to release Protocol
+    // Buffers.
 
     /// Is this service deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
@@ -643,9 +644,9 @@ pub struct ServiceOptions {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MethodOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
-    //   framework.  We apologize for hoarding these numbers to ourselves, but
-    //   we were already using them long before we decided to release Protocol
-    //   Buffers.
+    // framework.  We apologize for hoarding these numbers to ourselves, but
+    // we were already using them long before we decided to release Protocol
+    // Buffers.
 
     /// Is this method deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
@@ -702,9 +703,9 @@ pub struct UninterpretedOption {
 /// Nested message and enum types in `UninterpretedOption`.
 pub mod uninterpreted_option {
     /// The name of the uninterpreted option.  Each string represents a segment in
-    /// a dot-separated name.  is_extension is true iff a segment represents an
+    /// a dot-separated name.  is\_extension is true iff a segment represents an
     /// extension (denoted with parentheses in options specs in .proto files).
-    /// E.g.,{ ["foo", false], ["bar.baz", true], ["qux", false] } represents
+    /// E.g.,{ \["foo", false\], \["bar.baz", true\], \["qux", false\] } represents
     /// "foo.(bar.baz).qux".
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct NamePart {
@@ -714,7 +715,7 @@ pub mod uninterpreted_option {
         pub is_extension: bool,
     }
 }
-// ===================================================================
+// \===================================================================
 // Optional source code info
 
 /// Encapsulates information about the original source file from which a
@@ -727,43 +728,44 @@ pub struct SourceCodeInfo {
     /// tools.
     ///
     /// For example, say we have a file like:
-    ///   message Foo {
-    ///     optional string foo = 1;
-    ///   }
+    /// message Foo {
+    /// optional string foo = 1;
+    /// }
     /// Let's look at just the field definition:
-    ///   optional string foo = 1;
-    ///   ^       ^^     ^^  ^  ^^^
-    ///   a       bc     de  f  ghi
+    /// optional string foo = 1;
+    /// ^       ^^     ^^  ^  ^^^
+    /// a       bc     de  f  ghi
     /// We have the following locations:
-    ///   span   path               represents
-    ///   [a,i)  [ 4, 0, 2, 0 ]     The whole field definition.
-    ///   [a,b)  [ 4, 0, 2, 0, 4 ]  The label (optional).
-    ///   [c,d)  [ 4, 0, 2, 0, 5 ]  The type (string).
-    ///   [e,f)  [ 4, 0, 2, 0, 1 ]  The name (foo).
-    ///   [g,h)  [ 4, 0, 2, 0, 3 ]  The number (1).
+    /// span   path               represents
+    /// \[a,i)  \[ 4, 0, 2, 0 \]     The whole field definition.
+    /// \[a,b)  \[ 4, 0, 2, 0, 4 \]  The label (optional).
+    /// \[c,d)  \[ 4, 0, 2, 0, 5 \]  The type (string).
+    /// \[e,f)  \[ 4, 0, 2, 0, 1 \]  The name (foo).
+    /// \[g,h)  \[ 4, 0, 2, 0, 3 \]  The number (1).
     ///
     /// Notes:
-    /// - A location may refer to a repeated field itself (i.e. not to any
-    ///   particular index within it).  This is used whenever a set of elements are
-    ///   logically enclosed in a single code segment.  For example, an entire
-    ///   extend block (possibly containing multiple extension definitions) will
-    ///   have an outer location whose path refers to the "extensions" repeated
-    ///   field without an index.
-    /// - Multiple locations may have the same path.  This happens when a single
-    ///   logical declaration is spread out across multiple places.  The most
-    ///   obvious example is the "extend" block again -- there may be multiple
-    ///   extend blocks in the same scope, each of which will have the same path.
-    /// - A location's span is not always a subset of its parent's span.  For
-    ///   example, the "extendee" of an extension declaration appears at the
-    ///   beginning of the "extend" block and is shared by all extensions within
-    ///   the block.
-    /// - Just because a location's span is a subset of some other location's span
-    ///   does not mean that it is a descendant.  For example, a "group" defines
-    ///   both a type and a field in a single declaration.  Thus, the locations
-    ///   corresponding to the type and field and their components will overlap.
-    /// - Code which tries to interpret locations should probably be designed to
-    ///   ignore those that it doesn't understand, as more types of locations could
-    ///   be recorded in the future.
+    ///
+    ///  - A location may refer to a repeated field itself (i.e. not to any
+    ///    particular index within it).  This is used whenever a set of elements are
+    ///    logically enclosed in a single code segment.  For example, an entire
+    ///    extend block (possibly containing multiple extension definitions) will
+    ///    have an outer location whose path refers to the "extensions" repeated
+    ///    field without an index.
+    ///  - Multiple locations may have the same path.  This happens when a single
+    ///    logical declaration is spread out across multiple places.  The most
+    ///    obvious example is the "extend" block again -- there may be multiple
+    ///    extend blocks in the same scope, each of which will have the same path.
+    ///  - A location's span is not always a subset of its parent's span.  For
+    ///    example, the "extendee" of an extension declaration appears at the
+    ///    beginning of the "extend" block and is shared by all extensions within
+    ///    the block.
+    ///  - Just because a location's span is a subset of some other location's span
+    ///    does not mean that it is a descendant.  For example, a "group" defines
+    ///    both a type and a field in a single declaration.  Thus, the locations
+    ///    corresponding to the type and field and their components will overlap.
+    ///  - Code which tries to interpret locations should probably be designed to
+    ///    ignore those that it doesn't understand, as more types of locations could
+    ///    be recorded in the future.
     #[prost(message, repeated, tag="1")]
     pub location: ::prost::alloc::vec::Vec<source_code_info::Location>,
 }
@@ -777,21 +779,21 @@ pub mod source_code_info {
         /// Each element is a field number or an index.  They form a path from
         /// the root FileDescriptorProto to the place where the definition.  For
         /// example, this path:
-        ///   [ 4, 3, 2, 7, 1 ]
+        /// \[ 4, 3, 2, 7, 1 \]
         /// refers to:
-        ///   file.message_type(3)  // 4, 3
-        ///       .field(7)         // 2, 7
-        ///       .name()           // 1
-        /// This is because FileDescriptorProto.message_type has field number 4:
-        ///   repeated DescriptorProto message_type = 4;
+        /// file.message\_type(3)  // 4, 3
+        /// .field(7)         // 2, 7
+        /// .name()           // 1
+        /// This is because FileDescriptorProto.message\_type has field number 4:
+        /// repeated DescriptorProto message\_type = 4;
         /// and DescriptorProto.field has field number 2:
-        ///   repeated FieldDescriptorProto field = 2;
+        /// repeated FieldDescriptorProto field = 2;
         /// and FieldDescriptorProto.name has field number 1:
-        ///   optional string name = 1;
+        /// optional string name = 1;
         ///
         /// Thus, the above path gives the location of a field name.  If we removed
         /// the last element:
-        ///   [ 4, 3, 2, 7 ]
+        /// \[ 4, 3, 2, 7 \]
         /// this path refers to the whole field declaration (from the beginning
         /// of the label to the terminating semicolon).
         #[prost(int32, repeated, tag="1")]
@@ -810,7 +812,7 @@ pub mod source_code_info {
         /// A series of line comments appearing on consecutive lines, with no other
         /// tokens appearing on those lines, will be treated as a single comment.
         ///
-        /// leading_detached_comments will keep paragraphs of comments that appear
+        /// leading\_detached\_comments will keep paragraphs of comments that appear
         /// before (but not connected to) the current element. Each paragraph,
         /// separated by empty lines, will be one comment element in the repeated
         /// field.
@@ -822,34 +824,34 @@ pub mod source_code_info {
         ///
         /// Examples:
         ///
-        ///   optional int32 foo = 1;  // Comment attached to foo.
-        ///   // Comment attached to bar.
-        ///   optional int32 bar = 2;
+        /// optional int32 foo = 1;  // Comment attached to foo.
+        /// // Comment attached to bar.
+        /// optional int32 bar = 2;
         ///
-        ///   optional string baz = 3;
-        ///   // Comment attached to baz.
-        ///   // Another line attached to baz.
+        /// optional string baz = 3;
+        /// // Comment attached to baz.
+        /// // Another line attached to baz.
         ///
-        ///   // Comment attached to qux.
-        ///   //
-        ///   // Another line attached to qux.
-        ///   optional double qux = 4;
+        /// // Comment attached to qux.
+        /// //
+        /// // Another line attached to qux.
+        /// optional double qux = 4;
         ///
-        ///   // Detached comment for corge. This is not leading or trailing comments
-        ///   // to qux or corge because there are blank lines separating it from
-        ///   // both.
+        /// // Detached comment for corge. This is not leading or trailing comments
+        /// // to qux or corge because there are blank lines separating it from
+        /// // both.
         ///
-        ///   // Detached comment for corge paragraph 2.
+        /// // Detached comment for corge paragraph 2.
         ///
-        ///   optional string corge = 5;
-        ///   /* Block comment attached
-        ///    * to corge.  Leading asterisks
-        ///    * will be removed. */
-        ///   /* Block comment attached to
-        ///    * grault. */
-        ///   optional int32 grault = 6;
+        /// optional string corge = 5;
+        /// /\* Block comment attached
+        /// \* to corge.  Leading asterisks
+        /// \* will be removed. */
+        /// /* Block comment attached to
+        /// \* grault. \*/
+        /// optional int32 grault = 6;
         ///
-        ///   // ignored detached comments.
+        /// // ignored detached comments.
         #[prost(string, optional, tag="3")]
         pub leading_comments: ::core::option::Option<::prost::alloc::string::String>,
         #[prost(string, optional, tag="4")]
@@ -898,42 +900,50 @@ pub mod generated_code_info {
 ///
 /// Example 1: Pack and unpack a message in C++.
 ///
-///     Foo foo = ...;
-///     Any any;
-///     any.PackFrom(foo);
-///     ...
-///     if (any.UnpackTo(&foo)) {
-///       ...
-///     }
+/// ``` text
+/// Foo foo = ...;
+/// Any any;
+/// any.PackFrom(foo);
+/// ...
+/// if (any.UnpackTo(&foo)) {
+///   ...
+/// }
+/// ```
 ///
 /// Example 2: Pack and unpack a message in Java.
 ///
-///     Foo foo = ...;
-///     Any any = Any.pack(foo);
-///     ...
-///     if (any.is(Foo.class)) {
-///       foo = any.unpack(Foo.class);
-///     }
+/// ``` text
+/// Foo foo = ...;
+/// Any any = Any.pack(foo);
+/// ...
+/// if (any.is(Foo.class)) {
+///   foo = any.unpack(Foo.class);
+/// }
+/// ```
 ///
-///  Example 3: Pack and unpack a message in Python.
+/// Example 3: Pack and unpack a message in Python.
 ///
-///     foo = Foo(...)
-///     any = Any()
-///     any.Pack(foo)
-///     ...
-///     if any.Is(Foo.DESCRIPTOR):
-///       any.Unpack(foo)
-///       ...
+/// ``` text
+/// foo = Foo(...)
+/// any = Any()
+/// any.Pack(foo)
+/// ...
+/// if any.Is(Foo.DESCRIPTOR):
+///   any.Unpack(foo)
+///   ...
+/// ```
 ///
-///  Example 4: Pack and unpack a message in Go
+/// Example 4: Pack and unpack a message in Go
 ///
-///      foo := &pb.Foo{...}
-///      any, err := ptypes.MarshalAny(foo)
-///      ...
-///      foo := &pb.Foo{}
-///      if err := ptypes.UnmarshalAny(any, foo); err != nil {
-///        ...
-///      }
+/// ``` text
+///  foo := &pb.Foo{...}
+///  any, err := ptypes.MarshalAny(foo)
+///  ...
+///  foo := &pb.Foo{}
+///  if err := ptypes.UnmarshalAny(any, foo); err != nil {
+///    ...
+///  }
+/// ```
 ///
 /// The pack methods provided by protobuf library will by default use
 /// 'type.googleapis.com/full.type.name' as the type URL and the unpack
@@ -941,35 +951,37 @@ pub mod generated_code_info {
 /// in the type URL, for example "foo.bar.com/x/y.z" will yield type
 /// name "y.z".
 ///
+/// # JSON
 ///
-/// JSON
-/// ====
 /// The JSON representation of an `Any` value uses the regular
 /// representation of the deserialized, embedded message, with an
 /// additional field `@type` which contains the type URL. Example:
 ///
-///     package google.profile;
-///     message Person {
-///       string first_name = 1;
-///       string last_name = 2;
-///     }
+/// ``` text
+/// package google.profile;
+/// message Person {
+///   string first_name = 1;
+///   string last_name = 2;
+/// }
 ///
-///     {
-///       "@type": "type.googleapis.com/google.profile.Person",
-///       "firstName": <string>,
-///       "lastName": <string>
-///     }
+/// {
+///   "@type": "type.googleapis.com/google.profile.Person",
+///   "firstName": <string>,
+///   "lastName": <string>
+/// }
+/// ```
 ///
 /// If the embedded message type is well-known and has a custom JSON
 /// representation, that representation will be embedded adding a field
 /// `value` which holds the custom JSON in addition to the `@type`
-/// field. Example (for message [google.protobuf.Duration][]):
+/// field. Example (for message \[google.protobuf.Duration\]\[\]):
 ///
-///     {
-///       "@type": "type.googleapis.com/google.protobuf.Duration",
-///       "value": "1.212s"
-///     }
-///
+/// ``` text
+/// {
+///   "@type": "type.googleapis.com/google.protobuf.Duration",
+///   "value": "1.212s"
+/// }
+/// ```
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Any {
     /// A URL/resource name that uniquely identifies the type of the serialized
@@ -984,14 +996,14 @@ pub struct Any {
     /// scheme `http`, `https`, or no scheme, one can optionally set up a type
     /// server that maps type URLs to message definitions as follows:
     ///
-    /// * If no scheme is provided, `https` is assumed.
-    /// * An HTTP GET on the URL must yield a [google.protobuf.Type][]
-    ///   value in binary format, or produce an error.
-    /// * Applications are allowed to cache lookup results based on the
-    ///   URL, or have them precompiled into a binary to avoid any
-    ///   lookup. Therefore, binary compatibility needs to be preserved
-    ///   on changes to types. (Use versioned type names to manage
-    ///   breaking changes.)
+    ///  - If no scheme is provided, `https` is assumed.
+    ///  - An HTTP GET on the URL must yield a \[google.protobuf.Type\]\[\]
+    ///    value in binary format, or produce an error.
+    ///  - Applications are allowed to cache lookup results based on the
+    ///    URL, or have them precompiled into a binary to avoid any
+    ///    lookup. Therefore, binary compatibility needs to be preserved
+    ///    on changes to types. (Use versioned type names to manage
+    ///    breaking changes.)
     ///
     /// Note: this functionality is not currently available in the official
     /// protobuf release, and it is not used for type URLs beginning with
@@ -999,7 +1011,6 @@ pub struct Any {
     ///
     /// Schemes other than `http`, `https` (or the empty scheme) might be
     /// used with implementation specific semantics.
-    ///
     #[prost(string, tag="1")]
     pub type_url: ::prost::alloc::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
@@ -1230,15 +1241,13 @@ pub struct Api {
     /// `google.feature.v1`. For major versions 0 and 1, the suffix can
     /// be omitted. Zero major versions must only be used for
     /// experimental, non-GA interfaces.
-    ///
-    ///
     #[prost(string, tag="4")]
     pub version: ::prost::alloc::string::String,
     /// Source context for the protocol buffer service represented by this
     /// message.
     #[prost(message, optional, tag="5")]
     pub source_context: ::core::option::Option<SourceContext>,
-    /// Included interfaces. See [Mixin][].
+    /// Included interfaces. See \[Mixin\]\[\].
     #[prost(message, repeated, tag="6")]
     pub mixins: ::prost::alloc::vec::Vec<Mixin>,
     /// The source syntax of the service.
@@ -1274,45 +1283,49 @@ pub struct Method {
 /// interface must redeclare all the methods from the included interface, but
 /// documentation and options are inherited as follows:
 ///
-/// - If after comment and whitespace stripping, the documentation
-///   string of the redeclared method is empty, it will be inherited
-///   from the original method.
+///  - If after comment and whitespace stripping, the documentation
+///    string of the redeclared method is empty, it will be inherited
+///    from the original method.
 ///
-/// - Each annotation belonging to the service config (http,
-///   visibility) which is not set in the redeclared method will be
-///   inherited.
+///  - Each annotation belonging to the service config (http,
+///    visibility) which is not set in the redeclared method will be
+///    inherited.
 ///
-/// - If an http annotation is inherited, the path pattern will be
-///   modified as follows. Any version prefix will be replaced by the
-///   version of the including interface plus the [root][] path if
-///   specified.
+///  - If an http annotation is inherited, the path pattern will be
+///    modified as follows. Any version prefix will be replaced by the
+///    version of the including interface plus the \[root\]\[\] path if
+///    specified.
 ///
 /// Example of a simple mixin:
 ///
-///     package google.acl.v1;
-///     service AccessControl {
-///       // Get the underlying ACL object.
-///       rpc GetAcl(GetAclRequest) returns (Acl) {
-///         option (google.api.http).get = "/v1/{resource=**}:getAcl";
-///       }
-///     }
+/// ``` text
+/// package google.acl.v1;
+/// service AccessControl {
+///   // Get the underlying ACL object.
+///   rpc GetAcl(GetAclRequest) returns (Acl) {
+///     option (google.api.http).get = "/v1/{resource=**}:getAcl";
+///   }
+/// }
 ///
-///     package google.storage.v2;
-///     service Storage {
-///       rpc GetAcl(GetAclRequest) returns (Acl);
+/// package google.storage.v2;
+/// service Storage {
+///   rpc GetAcl(GetAclRequest) returns (Acl);
 ///
-///       // Get a data record.
-///       rpc GetData(GetDataRequest) returns (Data) {
-///         option (google.api.http).get = "/v2/{resource=**}";
-///       }
-///     }
+///   // Get a data record.
+///   rpc GetData(GetDataRequest) returns (Data) {
+///     option (google.api.http).get = "/v2/{resource=**}";
+///   }
+/// }
+/// ```
 ///
 /// Example of a mixin configuration:
 ///
-///     apis:
-///     - name: google.storage.v2.Storage
-///       mixins:
-///       - name: google.acl.v1.AccessControl
+/// ``` text
+/// apis:
+/// - name: google.storage.v2.Storage
+///   mixins:
+///   - name: google.acl.v1.AccessControl
+/// ```
 ///
 /// The mixin construct implies that all methods in `AccessControl` are
 /// also declared with same name and request/response types in
@@ -1320,34 +1333,40 @@ pub struct Method {
 /// see the effective `Storage.GetAcl` method after inherting
 /// documentation and annotations as follows:
 ///
-///     service Storage {
-///       // Get the underlying ACL object.
-///       rpc GetAcl(GetAclRequest) returns (Acl) {
-///         option (google.api.http).get = "/v2/{resource=**}:getAcl";
-///       }
-///       ...
-///     }
+/// ``` text
+/// service Storage {
+///   // Get the underlying ACL object.
+///   rpc GetAcl(GetAclRequest) returns (Acl) {
+///     option (google.api.http).get = "/v2/{resource=**}:getAcl";
+///   }
+///   ...
+/// }
+/// ```
 ///
 /// Note how the version in the path pattern changed from `v1` to `v2`.
 ///
 /// If the `root` field in the mixin is specified, it should be a
 /// relative path under which inherited HTTP paths are placed. Example:
 ///
-///     apis:
-///     - name: google.storage.v2.Storage
-///       mixins:
-///       - name: google.acl.v1.AccessControl
-///         root: acls
+/// ``` text
+/// apis:
+/// - name: google.storage.v2.Storage
+///   mixins:
+///   - name: google.acl.v1.AccessControl
+///     root: acls
+/// ```
 ///
 /// This implies the following inherited HTTP annotation:
 ///
-///     service Storage {
-///       // Get the underlying ACL object.
-///       rpc GetAcl(GetAclRequest) returns (Acl) {
-///         option (google.api.http).get = "/v2/acls/{resource=**}:getAcl";
-///       }
-///       ...
-///     }
+/// ``` text
+/// service Storage {
+///   // Get the underlying ACL object.
+///   rpc GetAcl(GetAclRequest) returns (Acl) {
+///     option (google.api.http).get = "/v2/acls/{resource=**}:getAcl";
+///   }
+///   ...
+/// }
+/// ```
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
@@ -1369,43 +1388,49 @@ pub struct Mixin {
 ///
 /// Example 1: Compute Duration from two Timestamps in pseudo code.
 ///
-///     Timestamp start = ...;
-///     Timestamp end = ...;
-///     Duration duration = ...;
+/// ``` text
+/// Timestamp start = ...;
+/// Timestamp end = ...;
+/// Duration duration = ...;
 ///
-///     duration.seconds = end.seconds - start.seconds;
-///     duration.nanos = end.nanos - start.nanos;
+/// duration.seconds = end.seconds - start.seconds;
+/// duration.nanos = end.nanos - start.nanos;
 ///
-///     if (duration.seconds < 0 && duration.nanos > 0) {
-///       duration.seconds += 1;
-///       duration.nanos -= 1000000000;
-///     } else if (duration.seconds > 0 && duration.nanos < 0) {
-///       duration.seconds -= 1;
-///       duration.nanos += 1000000000;
-///     }
+/// if (duration.seconds < 0 && duration.nanos > 0) {
+///   duration.seconds += 1;
+///   duration.nanos -= 1000000000;
+/// } else if (duration.seconds > 0 && duration.nanos < 0) {
+///   duration.seconds -= 1;
+///   duration.nanos += 1000000000;
+/// }
+/// ```
 ///
 /// Example 2: Compute Timestamp from Timestamp + Duration in pseudo code.
 ///
-///     Timestamp start = ...;
-///     Duration duration = ...;
-///     Timestamp end = ...;
+/// ``` text
+/// Timestamp start = ...;
+/// Duration duration = ...;
+/// Timestamp end = ...;
 ///
-///     end.seconds = start.seconds + duration.seconds;
-///     end.nanos = start.nanos + duration.nanos;
+/// end.seconds = start.seconds + duration.seconds;
+/// end.nanos = start.nanos + duration.nanos;
 ///
-///     if (end.nanos < 0) {
-///       end.seconds -= 1;
-///       end.nanos += 1000000000;
-///     } else if (end.nanos >= 1000000000) {
-///       end.seconds += 1;
-///       end.nanos -= 1000000000;
-///     }
+/// if (end.nanos < 0) {
+///   end.seconds -= 1;
+///   end.nanos += 1000000000;
+/// } else if (end.nanos >= 1000000000) {
+///   end.seconds += 1;
+///   end.nanos -= 1000000000;
+/// }
+/// ```
 ///
 /// Example 3: Compute Duration from datetime.timedelta in Python.
 ///
-///     td = datetime.timedelta(days=3, minutes=10)
-///     duration = Duration()
-///     duration.FromTimedelta(td)
+/// ``` text
+/// td = datetime.timedelta(days=3, minutes=10)
+/// duration = Duration()
+/// duration.FromTimedelta(td)
+/// ```
 ///
 /// # JSON Mapping
 ///
@@ -1416,13 +1441,11 @@ pub struct Mixin {
 /// encoded in JSON format as "3s", while 3 seconds and 1 nanosecond should
 /// be expressed in JSON format as "3.000000001s", and 3 seconds and 1
 /// microsecond should be expressed in JSON format as "3.000001s".
-///
-///
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
     /// to +315,576,000,000 inclusive. Note: these bounds are computed from:
-    /// 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years
+    /// 60 sec/min \* 60 min/hr \* 24 hr/day \* 365.25 days/year \* 10000 years
     #[prost(int64, tag="1")]
     pub seconds: i64,
     /// Signed fractions of a second at nanosecond resolution of the span
@@ -1436,8 +1459,10 @@ pub struct Duration {
 }
 /// `FieldMask` represents a set of symbolic field paths, for example:
 ///
-///     paths: "f.a"
-///     paths: "f.b.d"
+/// ``` text
+/// paths: "f.a"
+/// paths: "f.b.d"
+/// ```
 ///
 /// Here `f` represents a field in some root message, `a` and `b`
 /// fields in the message found in `f`, and `d` a field found in the
@@ -1454,27 +1479,30 @@ pub struct Duration {
 /// specified in the mask. For example, if the mask in the previous
 /// example is applied to a response message as follows:
 ///
-///     f {
-///       a : 22
-///       b {
-///         d : 1
-///         x : 2
-///       }
-///       y : 13
-///     }
-///     z: 8
+/// ``` text
+/// f {
+///   a : 22
+///   b {
+///     d : 1
+///     x : 2
+///   }
+///   y : 13
+/// }
+/// z: 8
+/// ```
 ///
 /// The result will not contain specific values for fields x,y and z
 /// (their value will be set to the default, and omitted in proto text
 /// output):
 ///
-///
-///     f {
-///       a : 22
-///       b {
-///         d : 1
-///       }
-///     }
+/// ``` text
+/// f {
+///   a : 22
+///   b {
+///     d : 1
+///   }
+/// }
+/// ```
 ///
 /// A repeated field is not allowed except at the last position of a
 /// paths string.
@@ -1512,36 +1540,42 @@ pub struct Duration {
 ///
 /// For example, given the target message:
 ///
-///     f {
-///       b {
-///         d: 1
-///         x: 2
-///       }
-///       c: [1]
-///     }
+/// ``` text
+/// f {
+///   b {
+///     d: 1
+///     x: 2
+///   }
+///   c: [1]
+/// }
+/// ```
 ///
 /// And an update message:
 ///
-///     f {
-///       b {
-///         d: 10
-///       }
-///       c: [2]
-///     }
+/// ``` text
+/// f {
+///   b {
+///     d: 10
+///   }
+///   c: [2]
+/// }
+/// ```
 ///
 /// then if the field mask is:
 ///
-///  paths: ["f.b", "f.c"]
+/// paths: \["f.b", "f.c"\]
 ///
 /// then the result will be:
 ///
-///     f {
-///       b {
-///         d: 10
-///         x: 2
-///       }
-///       c: [1, 2]
-///     }
+/// ``` text
+/// f {
+///   b {
+///     d: 10
+///     x: 2
+///   }
+///   c: [1, 2]
+/// }
+/// ```
 ///
 /// An implementation may provide options to override this default behavior for
 /// repeated and message fields.
@@ -1579,53 +1613,65 @@ pub struct Duration {
 ///
 /// As an example, consider the following message declarations:
 ///
-///     message Profile {
-///       User user = 1;
-///       Photo photo = 2;
-///     }
-///     message User {
-///       string display_name = 1;
-///       string address = 2;
-///     }
+/// ``` text
+/// message Profile {
+///   User user = 1;
+///   Photo photo = 2;
+/// }
+/// message User {
+///   string display_name = 1;
+///   string address = 2;
+/// }
+/// ```
 ///
 /// In proto a field mask for `Profile` may look as such:
 ///
-///     mask {
-///       paths: "user.display_name"
-///       paths: "photo"
-///     }
+/// ``` text
+/// mask {
+///   paths: "user.display_name"
+///   paths: "photo"
+/// }
+/// ```
 ///
 /// In JSON, the same mask is represented as below:
 ///
-///     {
-///       mask: "user.displayName,photo"
-///     }
+/// ``` text
+/// {
+///   mask: "user.displayName,photo"
+/// }
+/// ```
 ///
 /// # Field Masks and Oneof Fields
 ///
 /// Field masks treat fields in oneofs just as regular fields. Consider the
 /// following message:
 ///
-///     message SampleMessage {
-///       oneof test_oneof {
-///         string name = 4;
-///         SubMessage sub_message = 9;
-///       }
-///     }
+/// ``` text
+/// message SampleMessage {
+///   oneof test_oneof {
+///     string name = 4;
+///     SubMessage sub_message = 9;
+///   }
+/// }
+/// ```
 ///
 /// The field mask can be:
 ///
-///     mask {
-///       paths: "name"
-///     }
+/// ``` text
+/// mask {
+///   paths: "name"
+/// }
+/// ```
 ///
 /// Or:
 ///
-///     mask {
-///       paths: "sub_message"
-///     }
+/// ``` text
+/// mask {
+///   paths: "sub_message"
+/// }
+/// ```
 ///
-/// Note that oneof type names ("test_oneof" in this case) cannot be used in
+/// Note that oneof type names ("test\_oneof" in this case) cannot be used in
 /// paths.
 ///
 /// ## Field Mask Verification
@@ -1702,7 +1748,7 @@ pub struct ListValue {
 /// `NullValue` is a singleton enumeration to represent the null value for the
 /// `Value` type union.
 ///
-///  The JSON representation for `NullValue` is JSON `null`.
+/// The JSON representation for `NullValue` is JSON `null`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum NullValue {
@@ -1727,49 +1773,58 @@ pub enum NullValue {
 ///
 /// Example 1: Compute Timestamp from POSIX `time()`.
 ///
-///     Timestamp timestamp;
-///     timestamp.set_seconds(time(NULL));
-///     timestamp.set_nanos(0);
+/// ``` text
+/// Timestamp timestamp;
+/// timestamp.set_seconds(time(NULL));
+/// timestamp.set_nanos(0);
+/// ```
 ///
 /// Example 2: Compute Timestamp from POSIX `gettimeofday()`.
 ///
-///     struct timeval tv;
-///     gettimeofday(&tv, NULL);
+/// ``` text
+/// struct timeval tv;
+/// gettimeofday(&tv, NULL);
 ///
-///     Timestamp timestamp;
-///     timestamp.set_seconds(tv.tv_sec);
-///     timestamp.set_nanos(tv.tv_usec * 1000);
+/// Timestamp timestamp;
+/// timestamp.set_seconds(tv.tv_sec);
+/// timestamp.set_nanos(tv.tv_usec * 1000);
+/// ```
 ///
 /// Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
 ///
-///     FILETIME ft;
-///     GetSystemTimeAsFileTime(&ft);
-///     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+/// ``` text
+/// FILETIME ft;
+/// GetSystemTimeAsFileTime(&ft);
+/// UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
 ///
-///     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
-///     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
-///     Timestamp timestamp;
-///     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
-///     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+/// // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+/// // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+/// Timestamp timestamp;
+/// timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+/// timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+/// ```
 ///
 /// Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
 ///
-///     long millis = System.currentTimeMillis();
+/// ``` text
+/// long millis = System.currentTimeMillis();
 ///
-///     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
-///         .setNanos((int) ((millis % 1000) * 1000000)).build();
-///
+/// Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+///     .setNanos((int) ((millis % 1000) * 1000000)).build();
+/// ```
 ///
 /// Example 5: Compute Timestamp from current time in Python.
 ///
-///     timestamp = Timestamp()
-///     timestamp.GetCurrentTime()
+/// ``` text
+/// timestamp = Timestamp()
+/// timestamp.GetCurrentTime()
+/// ```
 ///
 /// # JSON Mapping
 ///
 /// In JSON format, the Timestamp type is encoded as a string in the
 /// [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
-/// format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+/// format is "{year}-{month}-{day}T{hour}:{min}:{sec}\[.{frac\_sec}\]Z"
 /// where {year} is always expressed using four digits while {month}, {day},
 /// {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
 /// seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
@@ -1788,11 +1843,7 @@ pub enum NullValue {
 /// to this format using
 /// [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
 /// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
-/// the Joda Time's [`ISODateTimeFormat.dateTime()`](
-/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D
-/// ) to obtain a formatter capable of generating timestamps in this format.
-///
-///
+/// the Joda Time's [`ISODateTimeFormat.dateTime()`](http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D) to obtain a formatter capable of generating timestamps in this format.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch
