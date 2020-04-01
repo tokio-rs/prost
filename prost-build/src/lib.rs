@@ -144,7 +144,7 @@ type Module = Vec<String>;
 /// implementation of the generated trait in the application code and plugs it into the framework.
 ///
 /// Such framework isn't part of Prost at present.
-pub trait ServiceGenerator {
+pub trait ServiceGenerator: std::fmt::Debug {
     /// Generates a Rust interface or implementation for a service, writing the
     /// result to `buf`.
     fn generate(&mut self, service: Service, buf: &mut String);
@@ -178,6 +178,7 @@ pub trait ServiceGenerator {
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
+#[derive(Debug)]
 pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     btree_map: Vec<String>,
