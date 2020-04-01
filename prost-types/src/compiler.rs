@@ -59,6 +59,7 @@ pub struct CodeGeneratorResponse {
     #[prost(message, repeated, tag="15")]
     pub file: ::std::vec::Vec<code_generator_response::File>,
 }
+#[doc = "Nested message and enum types in CodeGeneratorResponse."]
 pub mod code_generator_response {
     /// Represents a single generated file.
     #[derive(Clone, PartialEq, ::prost::Message)]

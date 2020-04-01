@@ -627,6 +627,22 @@ impl default::Default for Config {
     }
 }
 
+impl std::fmt::Debug for Config {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        let not_debug = "service_generators do not implement Debug.";
+        fmt.debug_struct("Config")
+            .field("service_generator", &self.service_generator.as_ref().map(|_| not_debug))
+            .field("btree_map", &self.btree_map)
+            .field("type_attributes", &self.type_attributes)
+            .field("field_attributes", &self.field_attributes)
+            .field("prost_types", &self.prost_types)
+            .field("strip_enum_prefix", &self.strip_enum_prefix)
+            .field("out_dir", &self.out_dir)
+            .field("extern_paths", &self.extern_paths)
+            .finish()
+    }
+}
+
 /// Compile `.proto` files into Rust files during a Cargo build.
 ///
 /// The generated `.rs` files are written to the Cargo `OUT_DIR` directory, suitable for use with
