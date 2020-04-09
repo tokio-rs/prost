@@ -17,7 +17,13 @@ use syn::{
 };
 
 mod field;
+mod meta;
 use crate::field::Field;
+
+#[proc_macro_attribute]
+pub fn meta(attr: TokenStream, input: TokenStream) -> TokenStream {
+    meta::try_meta(attr, input).unwrap_or_else(|err| err.to_compile_error().into())
+}
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
