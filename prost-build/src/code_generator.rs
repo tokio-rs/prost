@@ -176,6 +176,13 @@ impl<'a> CodeGenerator<'a> {
         assert_eq!(oneof_fields.len(), message.oneof_decl.len());
 
         self.append_doc();
+
+        self.push_indent();
+        self.buf.push_str(&format!(
+            "#[::prost::meta(fqname=\"{}\")]\n",
+            &fq_message_name
+        ));
+
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
@@ -568,6 +575,9 @@ impl<'a> CodeGenerator<'a> {
         }
 
         self.append_doc();
+        self.push_indent();
+        self.buf
+            .push_str(&format!("#[::prost::meta(fqname=\"{}\")]\n", &fq_enum_name));
         self.push_indent();
         self.buf.push_str(
             "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",
