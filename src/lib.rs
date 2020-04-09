@@ -4,6 +4,9 @@ mod error;
 mod message;
 mod types;
 
+mod message_named;
+pub use message_named::MessageNamed;
+
 #[doc(hidden)]
 pub mod encoding;
 
