@@ -110,6 +110,9 @@ mod extern_paths;
 mod ident;
 mod message_graph;
 
+#[cfg(feature = "raw-fdset")]
+mod file_descriptor_set;
+
 use std::collections::HashMap;
 use std::default;
 use std::env;
@@ -546,7 +549,11 @@ impl Config {
             ));
         }
 
-        let buf = fs::read(descriptor_set)?;
+        let buf = fs::read(&descriptor_set)?;
+
+        #[cfg(feature = "raw-fdset")]
+        file_descriptor_set::compile(&target, &buf)?;
+
         let descriptor_set = FileDescriptorSet::decode(&*buf)?;
 
         let modules = self.generate(descriptor_set.file)?;

@@ -9,8 +9,12 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 edition = "2018"
 
+[features]
+raw-fdset = ["flate2"]
+
 [dependencies]
 bytes = "0.5"
+flate2 = { version = "1.0", optional = true }
 heck = "0.3"
 itertools = "0.8"
 log = "0.4"
