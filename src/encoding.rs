@@ -2,6 +2,8 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
+#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
+
 use std::cmp::min;
 use std::convert::TryFrom;
 use std::mem;
