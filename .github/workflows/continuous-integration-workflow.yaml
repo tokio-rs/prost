@@ -1,0 +1,31 @@
+name: continuous integration
+on: pull_request
+
+jobs:
+
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            override: true
+            components: rustfmt
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+
+  #rustfmt:
+    #runs-on: ubuntu-latest
+    #steps:
+
+  #clippy:
+    #runs-on: ubuntu-latest
+
+  #test:
+    #runs-on: ${{ matrix.os }}
+    #strategy:
+      #matrix:
+        #os: [ubuntu-latest, macos-latest, windows-latest]
