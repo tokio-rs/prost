@@ -102,7 +102,9 @@ criterion_group! {
 
 criterion_group! {
     name = extra_slow;
-    config = Criterion::default().sample_size(3);
+    // TODO: Criterion now requires a sample_size of 10; figure out a better way to
+    // get these tests to run in a reasonable time.
+    config = Criterion::default().sample_size(10);
     targets = google_message3_1, google_message3_5, google_message4
 }
 
