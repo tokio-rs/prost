@@ -41,7 +41,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --workspace --all-targets --all-features
+          args: --workspace --all-targets
 
   test:
     runs-on: ${{ matrix.os }}
@@ -74,4 +74,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace --all-targets --all-features
+          args: --workspace --all-targets
