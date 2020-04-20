@@ -58,9 +58,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-target-
+          key: ${{ runner.os }}-target
       - name: test
         uses: actions-rs/cargo@v1
         with:
