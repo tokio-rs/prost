@@ -100,12 +100,14 @@ criterion_group! {
     targets = google_message3_2, google_message3_4, google_message3_3
 }
 
+// TODO: Criterion now requires a sample_size of 10; figure out a better way to
+// get these tests to run in a reasonable time.
+/*
 criterion_group! {
     name = extra_slow;
-    // TODO: Criterion now requires a sample_size of 10; figure out a better way to
-    // get these tests to run in a reasonable time.
     config = Criterion::default().sample_size(10);
     targets = google_message3_1, google_message3_5, google_message4
 }
+*/
 
-criterion_main!(dataset, slow, extra_slow);
+criterion_main!(dataset, slow/*, extra_slow*/);
