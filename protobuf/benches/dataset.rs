@@ -80,12 +80,12 @@ macro_rules! dataset {
 dataset!(google_message1_proto2, proto2::GoogleMessage1);
 dataset!(google_message1_proto3, proto3::GoogleMessage1);
 dataset!(google_message2, proto2::GoogleMessage2);
-dataset!(google_message3_1, GoogleMessage3);
+//dataset!(google_message3_1, GoogleMessage3);
 dataset!(google_message3_2, GoogleMessage3);
 dataset!(google_message3_3, GoogleMessage3);
 dataset!(google_message3_4, GoogleMessage3);
-dataset!(google_message3_5, GoogleMessage3);
-dataset!(google_message4, GoogleMessage4);
+//dataset!(google_message3_5, GoogleMessage3);
+//dataset!(google_message4, GoogleMessage4);
 
 criterion_group!(
     dataset,

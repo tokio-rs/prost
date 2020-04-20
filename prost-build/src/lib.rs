@@ -50,9 +50,10 @@
 //! `build.rs` build-script:
 //!
 //! ```rust,no_run
-//! fn main() {
-//!     prost_build::compile_protos(&["src/items.proto"],
-//!                                 &["src/"]).unwrap();
+//! # use std::io::Result;
+//! fn main() -> Result<()> {
+//!   prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
+//!   Ok(())
 //! }
 //! ```
 //!
@@ -492,11 +493,12 @@ impl Config {
     /// # Example `build.rs`
     ///
     /// ```rust,no_run
-    /// fn main() {
-    ///     let mut prost_build = prost_build::Config::new();
-    ///     prost_build.btree_map(&["."]);
-    ///     prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"],
-    ///                                &["src"]).unwrap();
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    ///   prost_build.btree_map(&["."]);
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
     /// }
     /// ```
     pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()>
@@ -658,9 +660,10 @@ impl default::Default for Config {
 /// # Example `build.rs`
 ///
 /// ```rust,no_run
-/// fn main() {
-///     prost_build::compile_protos(&["src/frontend.proto", "src/backend.proto"],
-///                                 &["src"]).unwrap();
+/// # use std::io::Result;
+/// fn main() -> Result<()> {
+///   prost_build::compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+///   Ok(())
 /// }
 /// ```
 ///
@@ -741,7 +744,7 @@ mod tests {
     impl ServiceGenerator for MockServiceGenerator {
         fn generate(&mut self, service: Service, _buf: &mut String) {
             let mut state = self.state.borrow_mut();
-            state.service_names.push(service.name.clone());
+            state.service_names.push(service.name);
         }
 
         fn finalize(&mut self, _buf: &mut String) {

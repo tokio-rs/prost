@@ -11,6 +11,7 @@ prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]
+anyhow = "1"
 cfg-if = "0.1"
 curl = "0.4"
 flate2 = "1.0"
