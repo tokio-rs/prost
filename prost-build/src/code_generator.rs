@@ -57,7 +57,7 @@ impl<'a> CodeGenerator<'a> {
             .location
             .sort_by_key(|location| location.path.clone());
 
-        let syntax = match file.syntax.as_deref() {
+        let syntax = match file.syntax.as_ref().map(String::as_str) {
             None | Some("proto2") => Syntax::Proto2,
             Some("proto3") => Syntax::Proto3,
             Some(s) => panic!("unknown syntax: {}", s),

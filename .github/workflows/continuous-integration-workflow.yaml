@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-debug
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-target
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -65,7 +65,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-debug
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-target
       - name: test
         uses: actions-rs/cargo@v1
         with:

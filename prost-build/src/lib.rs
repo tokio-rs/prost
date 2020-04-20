@@ -1,4 +1,5 @@
 #![doc(html_root_url = "https://docs.rs/prost-build/0.6.1")]
+#![allow(clippy::option_as_ref_deref)]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
