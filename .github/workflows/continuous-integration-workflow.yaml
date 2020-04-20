@@ -30,6 +30,13 @@ jobs:
             toolchain: stable
             override: true
             components: clippy
+      - name: install ninja
+        uses: seanmiddleditch/gha-setup-ninja@v1
+      - name: cache target directory
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-debug
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -58,7 +65,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-debug
       - name: test
         uses: actions-rs/cargo@v1
         with:
