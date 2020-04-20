@@ -1480,6 +1480,9 @@ mod test {
     #[test]
     fn varint() {
         fn check(value: u64, mut encoded: &[u8]) {
+            // TODO(rust-lang/rust-clippy#5494)
+            #![allow(clippy::clone_double_ref)]
+
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1492,10 +1495,9 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value = decode_varint(&mut encoded).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            println!("encoding {:?}", encoded);
             let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }

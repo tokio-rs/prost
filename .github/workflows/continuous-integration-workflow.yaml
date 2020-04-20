@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target
+          key: ${{ runner.os }}-stable-target
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -44,12 +44,16 @@ jobs:
           args: --workspace --all-targets --all-features
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         toolchain:
           - stable
           - 1.39.0
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
     steps:
       - name: checkout
         uses: actions/checkout@v2
