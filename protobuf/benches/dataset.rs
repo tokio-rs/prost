@@ -110,4 +110,4 @@ criterion_group! {
 }
 */
 
-criterion_main!(dataset, slow/*, extra_slow*/);
+criterion_main!(dataset, slow /*, extra_slow*/);

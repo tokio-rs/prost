@@ -383,7 +383,12 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
+pub fn skip_field<B>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
 where
     B: Buf,
 {
