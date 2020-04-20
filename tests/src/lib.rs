@@ -1,3 +1,9 @@
+#![allow(
+    clippy::cognitive_complexity,
+    clippy::module_inception,
+    clippy::unreadable_literal
+)]
+
 #[macro_use]
 extern crate cfg_if;
 

@@ -7,8 +7,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
 
 use protobuf::benchmarks::{
-    dataset, google_message3::GoogleMessage3, google_message4::GoogleMessage4, proto2, proto3,
-    BenchmarkDataset,
+    dataset, google_message3::GoogleMessage3, /*google_message4::GoogleMessage4,*/ proto2,
+    proto3, BenchmarkDataset,
 };
 
 fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
