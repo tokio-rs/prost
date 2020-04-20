@@ -1492,7 +1492,7 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut encoded).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
             println!("encoding {:?}", encoded);
