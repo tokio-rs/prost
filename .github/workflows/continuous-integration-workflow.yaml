@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-stable-target
+          key: ${{ runner.os }}-clippy-target
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
