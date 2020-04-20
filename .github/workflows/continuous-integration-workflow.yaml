@@ -36,7 +36,11 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-clippy-target
+          key: ${{ runner.os }}-clippy-target-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/*.rs') }}
+          restore_keys: |
+            ${{ runner.os }}-clippy-target-${{ hashFiles('**/Cargo.toml') }}-
+            ${{ runner.os }}-clippy-target-
+
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -69,7 +73,10 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/*.rs') }}
+          restore_keys: |
+            ${{ runner.os }}-${{ matrix.toolchain }}-target-${{ hashFiles('**/Cargo.toml') }}-
+            ${{ runner.os }}-${{ matrix.toolchain }}-target-
       - name: test
         uses: actions-rs/cargo@v1
         with:
