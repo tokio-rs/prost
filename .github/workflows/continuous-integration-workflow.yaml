@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust:
+        toolchain:
           - stable
           - 1.39.0
     steps:
@@ -49,7 +49,7 @@ jobs:
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: stable
+            toolchain: ${{ matrix.toolchain }}
             override: true
             components: rustfmt
       - name: install ninja
@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-target
+          key: ${{ runner.os }}-${{ matrix.toolchain }}-target
       - name: test
         uses: actions-rs/cargo@v1
         with:
