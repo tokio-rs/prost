@@ -38,10 +38,11 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    matrix:
-      rust:
-        - stable
-        - 1.39.0
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - 1.39.0
     steps:
       - name: checkout
         uses: actions/checkout@v2
