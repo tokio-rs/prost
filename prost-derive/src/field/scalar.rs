@@ -82,17 +82,13 @@ impl Field {
             (None, _, _) => Kind::Plain(default),
             (Some(Label::Optional), _, _) => Kind::Optional(default),
             (Some(Label::Required), _, _) => Kind::Required(default),
-            (Some(Label::Repeated), packed, false) if packed.unwrap_or(ty.is_numeric()) => {
+            (Some(Label::Repeated), packed, false) if packed.unwrap_or_else(|| ty.is_numeric()) => {
                 Kind::Packed
             }
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        Ok(Some(Field {
-            ty: ty,
-            kind: kind,
-            tag: tag,
-        }))
+        Ok(Some(Field { ty, kind, tag }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
@@ -584,7 +580,7 @@ pub enum DefaultValue {
 impl DefaultValue {
     pub fn from_attr(attr: &Meta) -> Result<Option<Lit>, Error> {
         if !attr.path().is_ident("default") {
-            return Ok(None);
+            Ok(None)
         } else if let Meta::NameValue(ref name_value) = *attr {
             Ok(Some(name_value.lit.clone()))
         } else {
@@ -677,7 +673,7 @@ impl DefaultValue {
                 }
 
                 // Rust doesn't have a negative literals, so they have to be parsed specially.
-                if value.chars().next() == Some('-') {
+                if value.starts_with('-') {
                     if let Ok(lit) = syn::parse_str::<Lit>(&value[1..]) {
                         match lit {
                             Lit::Int(ref lit) if is_i32 && empty_or_is("i32", lit.suffix()) => {
@@ -741,9 +737,7 @@ impl DefaultValue {
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
             Ty::Bytes => DefaultValue::Bytes(Vec::new()),
-            Ty::Enumeration(ref path) => {
-                return DefaultValue::Enumeration(quote!(#path::default()))
-            }
+            Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
     }
 

@@ -51,7 +51,7 @@ impl Field {
 
         Ok(Some(Field {
             label: label.unwrap_or(Label::Optional),
-            tag: tag,
+            tag,
         }))
     }
 
