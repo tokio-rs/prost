@@ -1,3 +1,9 @@
+#![allow(
+    clippy::cognitive_complexity,
+    clippy::module_inception,
+    clippy::unreadable_literal
+)]
+
 #[macro_use]
 extern crate cfg_if;
 
@@ -467,7 +473,7 @@ mod tests {
     #[test]
     fn test_267_regression() {
         // Checks that skip_field will error appropriately when given a big stack of StartGroup
-        // tags.
+        // tags. When the no-recursion-limit feature is enabled this results in stack overflow.
         //
         // https://github.com/danburkert/prost/issues/267
         let buf = vec![b'C'; 1 << 20];

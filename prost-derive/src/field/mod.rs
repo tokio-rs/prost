@@ -184,8 +184,8 @@ pub enum Label {
 }
 
 impl Label {
-    fn as_str(&self) -> &'static str {
-        match *self {
+    fn as_str(self) -> &'static str {
+        match self {
             Label::Optional => "optional",
             Label::Required => "required",
             Label::Repeated => "repeated",
@@ -193,7 +193,7 @@ impl Label {
     }
 
     fn variants() -> slice::Iter<'static, Label> {
-        const VARIANTS: &'static [Label] = &[Label::Optional, Label::Required, Label::Repeated];
+        const VARIANTS: &[Label] = &[Label::Optional, Label::Required, Label::Repeated];
         VARIANTS.iter()
     }
 
@@ -350,7 +350,7 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
                     bail!("invalid tag attribute: {:?}", attr);
                 }
             }
-            return Ok(Some(tags));
+            Ok(Some(tags))
         }
         Meta::NameValue(MetaNameValue {
             lit: Lit::Str(ref lit),
@@ -360,7 +360,7 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .split(',')
             .map(|s| s.trim().parse::<u32>().map_err(Error::from))
             .collect::<Result<Vec<u32>, _>>()
-            .map(|tags| Some(tags)),
+            .map(Some),
         _ => bail!("invalid tag attribute: {:?}", attr),
     }
 }

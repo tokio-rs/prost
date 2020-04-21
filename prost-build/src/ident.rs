@@ -76,6 +76,9 @@ pub fn match_ident(matcher: &str, msg: &str, field: Option<&str>) -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    #![allow(clippy::cognitive_complexity)]
+
     use super::*;
 
     #[test]
