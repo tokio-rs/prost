@@ -190,6 +190,8 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
+    #[cfg(feature = "runtime-protoc")]
+    protoc: Option<PathBuf>,
 }
 
 impl Config {
@@ -485,6 +487,19 @@ impl Config {
         self
     }
 
+    /// Specifies the path of the protoc executable to be used if using `runtime-protoc`.
+    ///
+    /// If not set, then `compile_protos` will result in an error when the `runtime-protoc` feature
+    /// is enabled, otherwise, `PROTOC` is expected to be set at build time.
+    #[cfg(feature = "runtime-protoc")]
+    pub fn protoc<P>(&mut self, path: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.protoc = Some(path.into());
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -524,7 +539,7 @@ impl Config {
         let tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
         let descriptor_set = tmp.path().join("prost-descriptor-set");
 
-        let mut cmd = Command::new(protoc());
+        let mut cmd = Command::new(self.get_protoc()?);
         cmd.arg("--include_imports")
             .arg("--include_source_info")
             .arg("-o")
@@ -536,7 +551,9 @@ impl Config {
 
         // Set the protoc include after the user includes in case the user wants to
         // override one of the built-in .protos.
-        cmd.arg("-I").arg(protoc_include());
+        if let Some(protoc_include_dir) = get_protoc_include() {
+            cmd.arg("-I").arg(protoc_include_dir);
+        }
 
         for proto in protos {
             cmd.arg(proto.as_ref());
@@ -619,6 +636,23 @@ impl Config {
             .map(to_snake)
             .collect()
     }
+
+    /// Provides a path to a protoc executable, if available.  Provides a means of hiding the
+    /// runtime-protoc feature usage from the rest of the logic.
+    fn get_protoc(&self) -> Result<PathBuf> {
+        #[cfg(not(feature = "runtime-protoc"))]
+        return Ok(protoc());
+
+        #[cfg(feature = "runtime-protoc")]
+        match &self.protoc {
+            Some(x) => Ok(x.clone()),
+            None => Err(Error::new(
+                ErrorKind::Other,
+                "Protoc was not specified.  Provide it using Config::protoc when building the \
+config or by disabling the runtime-protoc feature",
+            )),
+        }
+    }
 }
 
 impl default::Default for Config {
@@ -632,6 +666,8 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
+            #[cfg(feature = "runtime-protoc")]
+            protoc: None,
         }
     }
 }
@@ -700,6 +736,7 @@ where
 }
 
 /// Returns the path to the `protoc` binary.
+#[cfg(not(feature = "runtime-protoc"))]
 pub fn protoc() -> PathBuf {
     match env::var_os("PROTOC") {
         Some(protoc) => PathBuf::from(protoc),
@@ -708,11 +745,23 @@ pub fn protoc() -> PathBuf {
 }
 
 /// Returns the path to the Protobuf include directory.
+#[cfg(not(feature = "runtime-protoc"))]
 pub fn protoc_include() -> PathBuf {
     match env::var_os("PROTOC_INCLUDE") {
         Some(include) => PathBuf::from(include),
         None => PathBuf::from(env!("PROTOC_INCLUDE")),
     }
+}
+
+/// Returns the path to the protobuf include directory if the configuration allows it.
+fn get_protoc_include() -> Option<PathBuf> {
+    #[cfg(not(feature = "runtime-protoc"))]
+    return Some(protoc_include());
+
+    // We expect, with runtime-protoc enabled, that all include directories will be passed at
+    // runtime.
+    #[cfg(feature = "runtime-protoc")]
+    None
 }
 
 #[cfg(test)]
@@ -784,10 +833,24 @@ mod tests {
         }
     }
 
+    // Test helper to make sure tests run under both the default and under runtime-protoc, by still
+    // taking advantage of the fact PROTOC is still set by the build.rs file.  This is slightly at
+    // odds with the intended use-case, but seemed like a better option than recreating the build.rs
+    // file logic here to lookup the appopriate protoc executable in third-party for the platform.
+    fn config_new() -> Config {
+        #![allow(unused_mut)]
+        let mut config = Config::new();
+
+        #[cfg(feature = "runtime-protoc")]
+        config.protoc(env!("PROTOC"));
+
+        config
+    }
+
     #[test]
     fn smoke_test() {
         let _ = env_logger::try_init();
-        Config::new()
+        config_new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
@@ -800,7 +863,7 @@ mod tests {
         let state = Rc::new(RefCell::new(MockState::default()));
         let gen = MockServiceGenerator::new(Rc::clone(&state));
 
-        Config::new()
+        config_new()
             .service_generator(Box::new(gen))
             .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
             .unwrap();

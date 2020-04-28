@@ -9,6 +9,11 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 edition = "2018"
 
+[features]
+# Modify prost-build to be built and run as an executable outside of the normal
+# build.rs environment.  Requires explicitly setting the protoc path at runtime.
+runtime-protoc = []
+
 [dependencies]
 bytes = { version = "0.5", default-features = false }
 heck = "0.3"
