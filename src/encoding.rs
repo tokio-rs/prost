@@ -15,6 +15,7 @@ use ::bytes::{buf::ext::BufExt, Buf, BufMut};
 
 use crate::DecodeError;
 use crate::Message;
+use crate::UnknownField;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -392,6 +393,52 @@ pub fn skip_field<B>(
 where
     B: Buf,
 {
+    handle_unknown_field(
+        wire_type,
+        tag,
+        buf,
+        &mut |_, len, buf| {
+            buf.advance(len);
+        },
+        ctx,
+    )
+}
+
+pub fn unknown_field<B>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    unknown_fields: &mut Vec<UnknownField>,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
+where
+    B: Buf,
+{
+    handle_unknown_field(
+        wire_type,
+        tag,
+        buf,
+        &mut |tag, len, buf| {
+            let mut value = Vec::new();
+            value.resize(len as usize, 0);
+            buf.copy_to_slice(value.as_mut_slice());
+            unknown_fields.push(UnknownField { tag, value });
+        },
+        ctx,
+    )
+}
+
+fn handle_unknown_field<B, F>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    handler: &mut F,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
+where
+    B: Buf,
+    F: FnMut(u32, usize, &mut B),
+{
     ctx.limit_reached()?;
     let len = match wire_type {
         WireType::Varint => decode_varint(buf).map(|_| 0)?,
@@ -407,7 +454,13 @@ where
                     }
                     break 0;
                 }
-                _ => skip_field(inner_wire_type, inner_tag, buf, ctx.enter_recursion())?,
+                _ => handle_unknown_field(
+                    inner_wire_type,
+                    inner_tag,
+                    buf,
+                    handler,
+                    ctx.enter_recursion(),
+                )?,
             }
         },
         WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
@@ -417,7 +470,7 @@ where
         return Err(DecodeError::new("buffer underflow"));
     }
 
-    buf.advance(len as usize);
+    handler(tag, len as usize, buf);
     Ok(())
 }
 

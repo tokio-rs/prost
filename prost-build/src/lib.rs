@@ -189,6 +189,7 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
+    unknown_fields_messages: Vec<String>,
 }
 
 impl Config {
@@ -484,6 +485,15 @@ impl Config {
         self
     }
 
+    pub fn unknown_fields_message<S>(&mut self, message: S) -> &mut Self
+    where
+        S: AsRef<str>,
+    {
+        self.unknown_fields_messages
+            .push(message.as_ref().to_owned());
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -626,6 +636,7 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
+            unknown_fields_messages: Vec::new(),
         }
     }
 }

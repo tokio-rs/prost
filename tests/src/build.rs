@@ -86,6 +86,11 @@ fn main() {
         .unwrap();
 
     config
+        .unknown_fields_message("unknown_fields.MessageWithUnknownFields")
+        .compile_protos(&[src.join("unknown_fields.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(
             &[src.join("packages/widget_factory.proto")],
             &[src.join("packages")],

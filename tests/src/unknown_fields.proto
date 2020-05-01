@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package unknown_fields;
+
+message MessageWithUnknownFields {
+  string normal_field = 1;
+}
+
+message MessageWithExtraFields {
+    string normal_field = 1;
+    string extra_field = 2;
+}
+
+message MessageWithRepeatedExtraFields {
+    string normal_field = 1;
+    repeated string extra_field = 2;
+}
