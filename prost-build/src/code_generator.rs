@@ -105,14 +105,9 @@ impl<'a> CodeGenerator<'a> {
                 code_gen.path.pop();
             }
 
-            let buf = code_gen.buf;
-            code_gen
-                .config
-                .service_generator
-                .as_mut()
-                .map(|service_generator| {
-                    service_generator.finalize(buf);
-                });
+            if let Some(service_generator) = code_gen.config.service_generator.as_mut() {
+                service_generator.finalize(code_gen.buf);
+            }
 
             code_gen.path.pop();
         }
@@ -584,7 +579,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (idx, value) in enum_values.into_iter().enumerate() {
+        for (idx, value) in enum_values.iter().enumerate() {
             // Skip duplicate enum values. Protobuf allows this when the
             // 'allow_alias' option is set.
             if !numbers.insert(value.number()) {
@@ -677,11 +672,9 @@ impl<'a> CodeGenerator<'a> {
             options: service.options.unwrap_or_default(),
         };
 
-        let buf = &mut self.buf;
-        self.config
-            .service_generator
-            .as_mut()
-            .map(move |service_generator| service_generator.generate(service, buf));
+        if let Some(service_generator) = self.config.service_generator.as_mut() {
+            service_generator.generate(service, &mut self.buf)
+        }
     }
 
     fn push_indent(&mut self) {

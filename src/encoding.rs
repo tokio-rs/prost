@@ -2,6 +2,8 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
+#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
+
 use std::cmp::min;
 use std::convert::TryFrom;
 use std::mem;
@@ -381,7 +383,12 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
+pub fn skip_field<B>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
 where
     B: Buf,
 {
@@ -1473,6 +1480,9 @@ mod test {
     #[test]
     fn varint() {
         fn check(value: u64, mut encoded: &[u8]) {
+            // TODO(rust-lang/rust-clippy#5494)
+            #![allow(clippy::clone_double_ref)]
+
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1488,7 +1498,6 @@ mod test {
             let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            println!("encoding {:?}", encoded);
             let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }

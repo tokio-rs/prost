@@ -37,9 +37,9 @@ impl Comments {
             .as_ref()
             .map_or(Vec::new(), get_lines);
         Comments {
-            leading_detached: leading_detached,
-            leading: leading,
-            trailing: trailing,
+            leading_detached,
+            leading,
+            trailing,
         }
     }
 

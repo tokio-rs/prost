@@ -1,3 +1,5 @@
+#![allow(clippy::float_cmp)]
+
 #[test]
 fn extreme_default_values() {
     use protobuf::test_messages::protobuf_unittest;
