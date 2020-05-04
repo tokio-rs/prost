@@ -25,3 +25,9 @@ which = { version = "3", default-features = false }
 
 [dev-dependencies]
 env_logger = { version = "0.7", default-features = false }
+
+[[bin]]
+name = "protoc-gen-rust"
+path = "src/bin/protoc-gen-rust.rs"
+test = false
+bench = false
