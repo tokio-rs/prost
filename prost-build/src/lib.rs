@@ -181,6 +181,7 @@ pub trait ServiceGenerator {
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
+    include_file_descriptor: bool,
     service_generator: Option<Box<dyn ServiceGenerator>>,
     btree_map: Vec<String>,
     type_attributes: Vec<(String, String)>,
@@ -251,6 +252,14 @@ impl Config {
         S: AsRef<str>,
     {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self
+    }
+
+    /// Include a constant byte array containing the encoded `FileDescriptorProto` named
+    /// `FILE_DESCRIPTOR` in each generated module file. This can be used in conjunction with
+    /// the types in the `prost-types` crate to help implement server reflection.
+    pub fn include_file_descriptor(&mut self) -> &mut Self {
+        self.include_file_descriptor = true;
         self
     }
 
@@ -618,6 +627,7 @@ impl Config {
 impl default::Default for Config {
     fn default() -> Config {
         Config {
+            include_file_descriptor: false,
             service_generator: None,
             btree_map: Vec::new(),
             type_attributes: Vec::new(),

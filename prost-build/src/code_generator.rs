@@ -6,6 +6,7 @@ use std::iter;
 use itertools::{Either, Itertools};
 use log::debug;
 use multimap::MultiMap;
+use prost::Message;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
@@ -46,6 +47,12 @@ impl<'a> CodeGenerator<'a> {
         file: FileDescriptorProto,
         buf: &mut String,
     ) {
+        let file_descriptor = if config.include_file_descriptor {
+            Some(file.clone())
+        } else {
+            None
+        };
+
         let mut source_info = file
             .source_code_info
             .expect("no source code info in request");
@@ -111,6 +118,34 @@ impl<'a> CodeGenerator<'a> {
 
             code_gen.path.pop();
         }
+
+        if let Some(fd) = file_descriptor {
+            code_gen.append_descriptor(fd);
+        }
+    }
+
+    fn append_descriptor(&mut self, fd: FileDescriptorProto) {
+        debug!("  descriptor: {:?}", &fd.name);
+
+        let mut encoded_descriptor = vec![];
+        fd.encode(&mut encoded_descriptor)
+            .expect("file descriptor encodes");
+
+        self.buf.push_str(
+            "/// The encoded bytes of the `prost_types::FileDescriptorProto` corresponding to this module\n",
+        );
+        self.buf.push_str("pub const FILE_DESCRIPTOR: &[u8] = &[\n");
+
+        for line in encoded_descriptor.chunks(16).map(|chunk| {
+            chunk
+                .iter()
+                .map(|x| format!("0x{:02x}", x))
+                .collect::<Vec<String>>()
+                .join(", ")
+        }) {
+            self.buf.push_str(&format!("\t{},\n", line))
+        }
+        self.buf.push_str("];\n");
     }
 
     fn append_message(&mut self, message: DescriptorProto) {

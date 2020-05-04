@@ -22,7 +22,8 @@ Compared to other Protocol Buffers implementations, `prost`
 * Respects the Protobuf `package` specifier when organizing generated code
   into Rust modules.
 * Preserves unknown enum values during deserialization.
-* Does not include support for runtime reflection or message descriptors.
+* Includes support for including message descriptors in generated code in order
+  that runtime reflection can be implemented by consumers.
 
 ## Using `prost` in a Cargo Project
 
@@ -58,6 +59,10 @@ package foo.bar;
 ```
 
 All Rust types generated from the file will be in the `foo::bar` module.
+
+If the `file_descriptor` option is set on the `prost_build::Config` used to
+generate the Rust module, an encoded constant byte slice containing the
+corresponding `FileDescriptorProto` will be included.
 
 ### Messages
 
