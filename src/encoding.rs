@@ -582,20 +582,20 @@ varint!(i64, int64);
 varint!(u32, uint32);
 varint!(u64, uint64);
 varint!(i32, sint32,
-        to_uint64(value) {
-            ((value << 1) ^ (value >> 31)) as u32 as u64
-        },
-        from_uint64(value) {
-            let value = value as u32;
-            ((value >> 1) as i32) ^ (-((value & 1) as i32))
-        });
+to_uint64(value) {
+    ((value << 1) ^ (value >> 31)) as u32 as u64
+},
+from_uint64(value) {
+    let value = value as u32;
+    ((value >> 1) as i32) ^ (-((value & 1) as i32))
+});
 varint!(i64, sint64,
-        to_uint64(value) {
-            ((value << 1) ^ (value >> 63)) as u64
-        },
-        from_uint64(value) {
-            ((value >> 1) as i64) ^ (-((value & 1) as i64))
-        });
+to_uint64(value) {
+    ((value << 1) ^ (value >> 63)) as u64
+},
+from_uint64(value) {
+    ((value >> 1) as i64) ^ (-((value & 1) as i64))
+});
 
 /// Macro which emits a module containing a set of encoding functions for a
 /// fixed width numeric type.
@@ -1626,34 +1626,34 @@ mod test {
     }
 
     map_tests!(keys: [
-                   (i32, int32),
-                   (i64, int64),
-                   (u32, uint32),
-                   (u64, uint64),
-                   (i32, sint32),
-                   (i64, sint64),
-                   (u32, fixed32),
-                   (u64, fixed64),
-                   (i32, sfixed32),
-                   (i64, sfixed64),
-                   (bool, bool),
-                   (String, string)
-               ],
-               vals: [
-                   (f32, float),
-                   (f64, double),
-                   (i32, int32),
-                   (i64, int64),
-                   (u32, uint32),
-                   (u64, uint64),
-                   (i32, sint32),
-                   (i64, sint64),
-                   (u32, fixed32),
-                   (u64, fixed64),
-                   (i32, sfixed32),
-                   (i64, sfixed64),
-                   (bool, bool),
-                   (String, string),
-                   (Vec<u8>, bytes)
-               ]);
+        (i32, int32),
+        (i64, int64),
+        (u32, uint32),
+        (u64, uint64),
+        (i32, sint32),
+        (i64, sint64),
+        (u32, fixed32),
+        (u64, fixed64),
+        (i32, sfixed32),
+        (i64, sfixed64),
+        (bool, bool),
+        (String, string)
+    ],
+    vals: [
+        (f32, float),
+        (f64, double),
+        (i32, int32),
+        (i64, int64),
+        (u32, uint32),
+        (u64, uint64),
+        (i32, sint32),
+        (i64, sint64),
+        (u32, fixed32),
+        (u64, fixed64),
+        (i32, sfixed32),
+        (i64, sfixed64),
+        (bool, bool),
+        (String, string),
+        (Vec<u8>, bytes)
+    ]);
 }
