@@ -69,14 +69,6 @@ jobs:
             components: rustfmt
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v1
-      - name: cache target directory
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/*.rs') }}
-          restore_keys: |
-            ${{ runner.os }}-${{ matrix.toolchain }}-target-${{ hashFiles('**/Cargo.toml') }}-
-            ${{ runner.os }}-${{ matrix.toolchain }}-target-
       - name: test
         uses: actions-rs/cargo@v1
         with:
