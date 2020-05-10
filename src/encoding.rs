@@ -2,12 +2,18 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-use std::cmp::min;
-use std::convert::TryFrom;
-use std::mem;
-use std::str;
-use std::u32;
-use std::usize;
+#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
+
+use alloc::collections::BTreeMap;
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::cmp::min;
+use core::convert::TryFrom;
+use core::mem;
+use core::str;
+use core::u32;
+use core::usize;
 
 use ::bytes::{buf::ext::BufExt, Buf, BufMut};
 
@@ -381,7 +387,12 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
+pub fn skip_field<B>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
 where
     B: Buf,
 {
@@ -575,20 +586,20 @@ varint!(i64, int64);
 varint!(u32, uint32);
 varint!(u64, uint64);
 varint!(i32, sint32,
-        to_uint64(value) {
-            ((value << 1) ^ (value >> 31)) as u32 as u64
-        },
-        from_uint64(value) {
-            let value = value as u32;
-            ((value >> 1) as i32) ^ (-((value & 1) as i32))
-        });
+to_uint64(value) {
+    ((value << 1) ^ (value >> 31)) as u32 as u64
+},
+from_uint64(value) {
+    let value = value as u32;
+    ((value >> 1) as i32) ^ (-((value & 1) as i32))
+});
 varint!(i64, sint64,
-        to_uint64(value) {
-            ((value << 1) ^ (value >> 63)) as u64
-        },
-        from_uint64(value) {
-            ((value >> 1) as i64) ^ (-((value & 1) as i64))
-        });
+to_uint64(value) {
+    ((value << 1) ^ (value >> 63)) as u64
+},
+from_uint64(value) {
+    ((value >> 1) as i64) ^ (-((value & 1) as i64))
+});
 
 /// Macro which emits a module containing a set of encoding functions for a
 /// fixed width numeric type.
@@ -1081,10 +1092,8 @@ pub mod group {
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
     ($map_ty:ident) => {
-        use std::collections::$map_ty;
-        use std::hash::Hash;
-
         use crate::encoding::*;
+        use core::hash::Hash;
 
         /// Generic protobuf map encode function.
         pub fn encode<K, V, B, KE, KL, VE, VL>(
@@ -1266,7 +1275,9 @@ macro_rules! map {
     };
 }
 
+#[cfg(feature = "std")]
 pub mod hash_map {
+    use std::collections::HashMap;
     map!(HashMap);
 }
 
@@ -1276,10 +1287,10 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Borrow;
-    use std::fmt::Debug;
-    use std::io::Cursor;
-    use std::u64;
+    use alloc::string::ToString;
+    use core::borrow::Borrow;
+    use core::fmt::Debug;
+    use core::u64;
 
     use ::bytes::{Bytes, BytesMut};
     use quickcheck::TestResult;
@@ -1458,12 +1469,12 @@ mod test {
     #[test]
     fn string_merge_invalid_utf8() {
         let mut s = String::new();
-        let mut buf = Cursor::new(b"\x02\x80\x80");
+        let buf = b"\x02\x80\x80";
 
         let r = string::merge(
             WireType::LengthDelimited,
             &mut s,
-            &mut buf,
+            &mut &buf[..],
             DecodeContext::default(),
         );
         r.expect_err("must be an error");
@@ -1473,6 +1484,9 @@ mod test {
     #[test]
     fn varint() {
         fn check(value: u64, mut encoded: &[u8]) {
+            // TODO(rust-lang/rust-clippy#5494)
+            #![allow(clippy::clone_double_ref)]
+
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1488,7 +1502,6 @@ mod test {
             let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            println!("encoding {:?}", encoded);
             let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
@@ -1551,6 +1564,7 @@ mod test {
     /// This big bowl o' macro soup generates a quickcheck encoding test for each
     /// combination of map type, scalar map key, and value type.
     /// TODO: these tests take a long time to compile, can this be improved?
+    #[cfg(feature = "std")]
     macro_rules! map_tests {
         (keys: $keys:tt,
          vals: $vals:tt) => {
@@ -1616,35 +1630,36 @@ mod test {
         };
     }
 
+    #[cfg(feature = "std")]
     map_tests!(keys: [
-                   (i32, int32),
-                   (i64, int64),
-                   (u32, uint32),
-                   (u64, uint64),
-                   (i32, sint32),
-                   (i64, sint64),
-                   (u32, fixed32),
-                   (u64, fixed64),
-                   (i32, sfixed32),
-                   (i64, sfixed64),
-                   (bool, bool),
-                   (String, string)
-               ],
-               vals: [
-                   (f32, float),
-                   (f64, double),
-                   (i32, int32),
-                   (i64, int64),
-                   (u32, uint32),
-                   (u64, uint64),
-                   (i32, sint32),
-                   (i64, sint64),
-                   (u32, fixed32),
-                   (u64, fixed64),
-                   (i32, sfixed32),
-                   (i64, sfixed64),
-                   (bool, bool),
-                   (String, string),
-                   (Vec<u8>, bytes)
-               ]);
+        (i32, int32),
+        (i64, int64),
+        (u32, uint32),
+        (u64, uint64),
+        (i32, sint32),
+        (i64, sint64),
+        (u32, fixed32),
+        (u64, fixed64),
+        (i32, sfixed32),
+        (i64, sfixed64),
+        (bool, bool),
+        (String, string)
+    ],
+    vals: [
+        (f32, float),
+        (f64, double),
+        (i32, int32),
+        (i64, int64),
+        (u32, uint32),
+        (u64, uint64),
+        (i32, sint32),
+        (i64, sint64),
+        (u32, fixed32),
+        (u64, fixed64),
+        (i32, sfixed32),
+        (i64, sfixed64),
+        (bool, bool),
+        (String, string),
+        (Vec<u8>, bytes)
+    ]);
 }

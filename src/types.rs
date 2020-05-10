@@ -5,6 +5,9 @@
 //! the `prost-types` crate in order to avoid a cyclic dependency between `prost` and
 //! `prost-build`.
 
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use ::bytes::{Buf, BufMut};
 
 use crate::{

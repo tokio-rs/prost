@@ -1,0 +1,37 @@
+[package]
+name = "tests-no-std"
+version = "0.0.0"
+authors = ["Dan Burkert <dan@danburkert.com>"]
+publish = false
+edition = "2018"
+
+build = "../tests/src/build.rs"
+
+[lib]
+doctest = false
+path = "../tests/src/lib.rs"
+
+# Compile the `tests` crate *without* the std feature, which is implicitly
+# omitted from the default crate features. It would be easier to do something
+# like `cargo test -p tests --no-default-features`, but that currently does not
+# do the right thing (see [1] for more context).
+# [1]: https://github.com/rust-lang/cargo/pull/8074
+
+[dependencies]
+anyhow = { version = "1", default-features = false }
+bytes = { version = "0.5", default-features = false }
+cfg-if = "0.1"
+prost = { path = "..", default-features = false, features = ["prost-derive"] }
+prost-types = { path = "../prost-types", default-features = false }
+protobuf = { path = "../protobuf" }
+
+[dev-dependencies]
+diff = "0.1"
+prost-build = { path = "../prost-build" }
+tempfile = "3"
+
+[build-dependencies]
+cfg-if = "0.1"
+env_logger = { version = "0.7", default-features = false }
+prost-build = { path = "../prost-build" }
+protobuf = { path = "../protobuf" }

@@ -10,7 +10,12 @@ build = "src/build.rs"
 [lib]
 doctest = false
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
+anyhow = "1"
 bytes = "0.5"
 cfg-if = "0.1"
 prost = { path = ".." }

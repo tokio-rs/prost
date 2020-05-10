@@ -1,3 +1,7 @@
+// protoc on Windows outputs \r\n line endings.
+#![cfg(not(target_os = "windows"))]
+#![cfg(feature = "std")]
+
 use std::fs;
 use std::io::Read;
 use std::io::Write;

@@ -1,3 +1,5 @@
+use alloc::string::ToString;
+
 mod deprecated_field {
     // #![deny(unused_results)]
     include!(concat!(env!("OUT_DIR"), "/deprecated_field.rs"));
@@ -6,7 +8,7 @@ mod deprecated_field {
 #[test]
 fn test_warns_when_using_fields_with_deprecated_field() {
     #[allow(deprecated)]
-    deprecated_field::Test {
+    let message = deprecated_field::Test {
         not_outdated: ".ogg".to_string(),
         outdated: ".wav".to_string(),
     };
@@ -23,6 +25,5 @@ fn test_warns_when_using_fields_with_deprecated_field() {
     //       |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     //       |
     //       = note: `#[warn(deprecated)]` on by default
-
-    assert!(true);
+    drop(message);
 }

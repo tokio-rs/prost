@@ -1,4 +1,3 @@
-use prost_types;
 use prost_types::source_code_info::Location;
 
 /// Comments on a Protobuf item.
@@ -37,9 +36,9 @@ impl Comments {
             .as_ref()
             .map_or(Vec::new(), get_lines);
         Comments {
-            leading_detached: leading_detached,
-            leading: leading,
-            trailing: trailing,
+            leading_detached,
+            leading,
+            trailing,
         }
     }
 
