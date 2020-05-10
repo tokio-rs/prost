@@ -3,11 +3,16 @@
 //! The tests check against expected output. This may be a bit fragile, but it is likely OK for
 //! actual use.
 
+use prost::alloc::{format, string::String};
+
 // Borrow some types from other places.
-use crate::message_encoding::{Basic, BasicEnumeration};
+#[cfg(feature = "std")]
+use crate::message_encoding::Basic;
+use crate::message_encoding::BasicEnumeration;
 
 /// Some real-life message
 #[test]
+#[cfg(feature = "std")]
 fn basic() {
     let mut basic = Basic::default();
     assert_eq!(

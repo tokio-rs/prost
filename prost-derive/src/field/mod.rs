@@ -135,7 +135,7 @@ impl Field {
     pub fn default(&self) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(),
-            _ => quote!(::std::default::Default::default()),
+            _ => quote!(::core::default::Default::default()),
         }
     }
 
