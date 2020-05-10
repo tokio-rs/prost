@@ -12,10 +12,12 @@ doctest = false
 path = "../tests/src/lib.rs"
 
 [features]
-default = ["edition-2015"]
+default = ["edition-2015", "std"]
 edition-2015 = []
+std = []
 
 [dependencies]
+anyhow = "1"
 bytes = "0.5"
 cfg-if = "0.1"
 prost = { path = ".." }

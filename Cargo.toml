@@ -24,6 +24,7 @@ members = [
   "protobuf",
   "tests",
   "tests-2015",
+  "tests-no-std",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,
@@ -36,11 +37,12 @@ exclude = [
 bench = false
 
 [features]
-default = ["prost-derive"]
+default = ["prost-derive", "std"]
 no-recursion-limit = []
+std = []
 
 [dependencies]
-bytes = "0.5"
+bytes = { version = "0.5", default-features = false }
 prost-derive = { version = "0.6.1", path = "prost-derive", optional = true }
 
 [dev-dependencies]

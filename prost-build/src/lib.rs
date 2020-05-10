@@ -225,7 +225,7 @@ impl Config {
     /// // Match all map fields in a package.
     /// config.btree_map(&[".my_messages"]);
     ///
-    /// // Match all map fields.
+    /// // Match all map fields. Expecially useful in `no_std` contexts.
     /// config.btree_map(&["."]);
     ///
     /// // Match all map fields in a nested message.
@@ -698,7 +698,6 @@ pub fn protoc_include() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use env_logger;
     use std::cell::RefCell;
     use std::rc::Rc;
 

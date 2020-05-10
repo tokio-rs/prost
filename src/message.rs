@@ -1,5 +1,6 @@
-use std::fmt::Debug;
-use std::usize;
+use alloc::boxed::Box;
+use core::fmt::Debug;
+use core::usize;
 
 use bytes::{Buf, BufMut};
 
