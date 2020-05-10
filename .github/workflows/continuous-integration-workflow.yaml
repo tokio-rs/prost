@@ -24,7 +24,7 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -34,15 +34,6 @@ jobs:
             components: clippy
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v1
-      - name: cache target directory
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-clippy-target-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/*.rs') }}
-          restore_keys: |
-            ${{ runner.os }}-clippy-target-${{ hashFiles('**/Cargo.toml') }}-
-            ${{ runner.os }}-clippy-target-
-
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -71,14 +62,6 @@ jobs:
             profile: minimal
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v1
-      - name: cache target directory
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-target-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/*.rs') }}
-          restore_keys: |
-            ${{ runner.os }}-${{ matrix.toolchain }}-target-${{ hashFiles('**/Cargo.toml') }}-
-            ${{ runner.os }}-${{ matrix.toolchain }}-target-
       - name: test
         uses: actions-rs/cargo@v1
         with:
