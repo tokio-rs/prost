@@ -1,9 +1,9 @@
 //! Protobuf encoding and decoding errors.
 
-use std::borrow::Cow;
-use std::error;
-use std::fmt;
-use std::io;
+use alloc::borrow::Cow;
+use alloc::vec::Vec;
+
+use core::fmt;
 
 /// A Protobuf message decoding error.
 ///
@@ -54,11 +54,13 @@ impl fmt::Display for DecodeError {
     }
 }
 
-impl error::Error for DecodeError {}
+#[cfg(feature = "std")]
+impl std::error::Error for DecodeError {}
 
-impl From<DecodeError> for io::Error {
-    fn from(error: DecodeError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidData, error)
+#[cfg(feature = "std")]
+impl From<DecodeError> for std::io::Error {
+    fn from(error: DecodeError) -> std::io::Error {
+        std::io::Error::new(std::io::ErrorKind::InvalidData, error)
     }
 }
 
@@ -103,10 +105,12 @@ impl fmt::Display for EncodeError {
     }
 }
 
-impl error::Error for EncodeError {}
+#[cfg(feature = "std")]
+impl std::error::Error for EncodeError {}
 
-impl From<EncodeError> for io::Error {
-    fn from(error: EncodeError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidInput, error)
+#[cfg(feature = "std")]
+impl From<EncodeError> for std::io::Error {
+    fn from(error: EncodeError) -> std::io::Error {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, error)
     }
 }
