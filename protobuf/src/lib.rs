@@ -1,3 +1,5 @@
+#![allow(clippy::large_enum_variant, clippy::unreadable_literal)]
+
 pub mod benchmarks {
     include!(concat!(env!("OUT_DIR"), "/benchmarks.rs"));
 

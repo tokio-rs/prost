@@ -13,7 +13,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
 
     // The source directory. The indirection is necessary in order to support the tests-2015 crate,
     // which sets the current directory to tests-2015 during build script evaluation.

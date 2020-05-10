@@ -251,6 +251,29 @@ pub struct AddressBook {
 }
 ```
 
+## Using `prost` in a `no_std` Crate
+
+`prost` is compatible with `no_std` crates. To enable `no_std` support, disable
+the `std` features in `prost` and `prost-types`:
+
+```
+[dependencies]
+prost = { version = "0.6", default-features = false, features = ["prost-derive"] }
+# Only necessary if using Protobuf well-known types:
+prost-types = { version = "0.6", default-features = false }
+```
+
+Additionally, configure `prost-buid` to output `BTreeMap`s instead of `HashMap`s
+for all Protobuf `map` fields in your `build.rs`:
+
+```rust
+let mut config = prost_build::Config::new();
+config.btree_map(&["."]);
+```
+
+When using edition 2015, it may be necessary to add an `extern crate core;`
+directive to the crate which includes `prost`-generated code.
+
 ## Serializing Existing Types
 
 `prost` uses a custom derive macro to handle encoding and decoding types, which
