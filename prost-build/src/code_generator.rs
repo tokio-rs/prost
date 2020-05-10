@@ -349,11 +349,12 @@ impl<'a> CodeGenerator<'a> {
                         .as_ref()
                         .and_then(|ty| ty.split('.').last())
                         .unwrap();
-                    strip_enum_prefix(enum_type, &enum_value)
+
+                    strip_enum_prefix(&to_upper_camel(&enum_type), &enum_value)
                 } else {
-                    default
+                    &enum_value
                 };
-                self.buf.push_str(&to_upper_camel(stripped_prefix));
+                self.buf.push_str(stripped_prefix);
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
                 // safer, we should unescape the Protobuf string and re-escape it with the Rust
