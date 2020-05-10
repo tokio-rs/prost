@@ -34,15 +34,6 @@ jobs:
             components: clippy
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v1
-      - name: cache target directory
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-clippy-target-${{ hashFiles('**/Cargo.toml') }}-${{ hashFiles('**/*.rs') }}
-          restore_keys: |
-            ${{ runner.os }}-clippy-target-${{ hashFiles('**/Cargo.toml') }}-
-            ${{ runner.os }}-clippy-target-
-
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
