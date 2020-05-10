@@ -1,4 +1,3 @@
-use prost_types;
 use prost_types::source_code_info::Location;
 
 /// Comments on a Protobuf item.
