@@ -14,7 +14,7 @@ use tempfile;
 /// repo. Ensures that the checked-in compiled versions are up-to-date.
 #[test]
 fn bootstrap() {
-    let protobuf = Path::new(prost_build::protoc_include())
+    let protobuf = prost_build::protoc_include()
         .join("google")
         .join("protobuf");
 

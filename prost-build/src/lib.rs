@@ -695,13 +695,19 @@ where
 }
 
 /// Returns the path to the `protoc` binary.
-pub fn protoc() -> &'static Path {
-    Path::new(env!("PROTOC"))
+pub fn protoc() -> PathBuf {
+    match env::var_os("PROTOC") {
+        Some(protoc) => PathBuf::from(protoc),
+        None => PathBuf::from(env!("PROTOC")),
+    }
 }
 
 /// Returns the path to the Protobuf include directory.
-pub fn protoc_include() -> &'static Path {
-    Path::new(env!("PROTOC_INCLUDE"))
+pub fn protoc_include() -> PathBuf {
+    match env::var_os("PROTOC_INCLUDE") {
+        Some(include) => PathBuf::from(include),
+        None => PathBuf::from(env!("PROTOC_INCLUDE")),
+    }
 }
 
 #[cfg(test)]
