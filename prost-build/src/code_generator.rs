@@ -690,9 +690,9 @@ impl<'a> CodeGenerator<'a> {
 
     fn push_mod(&mut self, module: &str) {
         self.push_indent();
-        self.buf.push_str("#[doc = \"Nested message and enum types in ");
+        self.buf.push_str("/// Nested message and enum types in `");
         self.buf.push_str(module);
-        self.buf.push_str(".\"]\n");
+        self.buf.push_str("`.\n");
 
         self.push_indent();
         self.buf.push_str("pub mod ");
