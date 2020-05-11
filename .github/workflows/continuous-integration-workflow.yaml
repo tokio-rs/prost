@@ -99,3 +99,13 @@ jobs:
         with:
           command: no-std-check
           args: --manifest-path prost-types/Cargo.toml --no-default-features
+      # prost-build depends on prost with --no-default-features, but when
+      # prost-build is built through the workspace, prost typically has default
+      # features enabled due to vagaries in Cargo workspace feature resolution.
+      # This additional check ensures that prost-build does not rely on any of
+      # prost's default features to compile.
+      - name: prost-build check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --manifest-path prost-build/Cargo.toml
