@@ -72,6 +72,7 @@ pub struct DescriptorProto {
     #[prost(string, repeated, tag="10")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
+/// Nested message and enum types in `DescriptorProto`.
 pub mod descriptor_proto {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ExtensionRange {
@@ -147,6 +148,7 @@ pub struct FieldDescriptorProto {
     #[prost(message, optional, tag="8")]
     pub options: ::core::option::Option<FieldOptions>,
 }
+/// Nested message and enum types in `FieldDescriptorProto`.
 pub mod field_descriptor_proto {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
@@ -220,6 +222,7 @@ pub struct EnumDescriptorProto {
     #[prost(string, repeated, tag="5")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
+/// Nested message and enum types in `EnumDescriptorProto`.
 pub mod enum_descriptor_proto {
     /// Range of reserved numeric values. Reserved values may not be used by
     /// entries in the same enum. Reserved ranges may not overlap.
@@ -418,6 +421,7 @@ pub struct FileOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+/// Nested message and enum types in `FileOptions`.
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -564,6 +568,7 @@ pub struct FieldOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+/// Nested message and enum types in `FieldOptions`.
 pub mod field_options {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
@@ -654,6 +659,7 @@ pub struct MethodOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+/// Nested message and enum types in `MethodOptions`.
 pub mod method_options {
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
@@ -693,6 +699,7 @@ pub struct UninterpretedOption {
     #[prost(string, optional, tag="8")]
     pub aggregate_value: ::core::option::Option<::prost::alloc::string::String>,
 }
+/// Nested message and enum types in `UninterpretedOption`.
 pub mod uninterpreted_option {
     /// The name of the uninterpreted option.  Each string represents a segment in
     /// a dot-separated name.  is_extension is true iff a segment represents an
@@ -760,6 +767,7 @@ pub struct SourceCodeInfo {
     #[prost(message, repeated, tag="1")]
     pub location: ::prost::alloc::vec::Vec<source_code_info::Location>,
 }
+/// Nested message and enum types in `SourceCodeInfo`.
 pub mod source_code_info {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Location {
@@ -860,6 +868,7 @@ pub struct GeneratedCodeInfo {
     #[prost(message, repeated, tag="1")]
     pub annotation: ::prost::alloc::vec::Vec<generated_code_info::Annotation>,
 }
+/// Nested message and enum types in `GeneratedCodeInfo`.
 pub mod generated_code_info {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Annotation {
@@ -1064,6 +1073,7 @@ pub struct Field {
     #[prost(string, tag="11")]
     pub default_value: ::prost::alloc::string::String,
 }
+/// Nested message and enum types in `Field`.
 pub mod field {
     /// Basic field types.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -1655,6 +1665,7 @@ pub struct Value {
     #[prost(oneof="value::Kind", tags="1, 2, 3, 4, 5, 6")]
     pub kind: ::core::option::Option<value::Kind>,
 }
+/// Nested message and enum types in `Value`.
 pub mod value {
     /// The kind of value.
     #[derive(Clone, PartialEq, ::prost::Oneof)]
