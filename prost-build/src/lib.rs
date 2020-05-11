@@ -115,6 +115,7 @@ mod message_graph;
 use std::collections::HashMap;
 use std::default;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
@@ -627,6 +628,20 @@ impl default::Default for Config {
             out_dir: None,
             extern_paths: Vec::new(),
         }
+    }
+}
+
+impl fmt::Debug for Config {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("Config")
+            .field("btree_map", &self.btree_map)
+            .field("type_attributes", &self.type_attributes)
+            .field("field_attributes", &self.field_attributes)
+            .field("prost_types", &self.prost_types)
+            .field("strip_enum_prefix", &self.strip_enum_prefix)
+            .field("out_dir", &self.out_dir)
+            .field("extern_paths", &self.extern_paths)
+            .finish()
     }
 }
 
