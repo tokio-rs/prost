@@ -6,9 +6,9 @@ impl CustomType for u64 {}
 enum GenericEnum<A: CustomType> {
     #[prost(message, tag = "1")]
     Data(GenericMessage<A>),
-    #[prost(string, tag = "2")]
+    #[prost(uint64, tag = "2")]
     #[allow(dead_code)]
-    String(String),
+    Number(u64),
 }
 
 #[derive(Clone, prost::Message)]
@@ -23,6 +23,6 @@ fn generic_enum() {
     let enumeration = GenericEnum::Data(msg);
     match enumeration {
         GenericEnum::Data(d) => assert_eq!(100, d.data.unwrap()),
-        GenericEnum::String(_) => panic!("Not supposed to reach"),
+        GenericEnum::Number(_) => panic!("Not supposed to reach"),
     }
 }
