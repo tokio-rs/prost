@@ -2,15 +2,14 @@
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
+extern crate alloc;
 extern crate proc_macro;
 
-use anyhow::bail;
-use quote::quote;
-
-use anyhow::Error;
+use anyhow::{bail, Error};
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
     FieldsUnnamed, Ident, Variant,
@@ -188,7 +187,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 wire_type: ::prost::encoding::WireType,
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
-            ) -> ::std::result::Result<(), ::prost::DecodeError>
+            ) -> ::core::result::Result<(), ::prost::DecodeError>
             where B: ::prost::bytes::Buf {
                 #struct_name
                 match tag {
@@ -215,8 +214,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 let mut builder = #debug_builder;
                 #(#debugs;)*
                 builder.finish()
@@ -279,7 +278,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|&(_, ref value)| quote!(#value => true));
     let from = variants.iter().map(
-        |&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)),
+        |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
     );
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
@@ -299,21 +298,21 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             #[doc=#from_i32_doc]
-            pub fn from_i32(value: i32) -> ::std::option::Option<#ident> {
+            pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
                 match value {
                     #(#from,)*
-                    _ => ::std::option::Option::None,
+                    _ => ::core::option::Option::None,
                 }
             }
         }
 
-        impl #impl_generics ::std::default::Default for #ident #ty_generics #where_clause {
+        impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> #ident {
                 #ident::#default
             }
         }
 
-        impl #impl_generics ::std::convert::From::<#ident> for i32 #ty_generics #where_clause {
+        impl #impl_generics ::core::convert::From::<#ident> for i32 #ty_generics #where_clause {
             fn from(value: #ident) -> i32 {
                 value as i32
             }
@@ -397,13 +396,13 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote! {
             #tag => {
                 match field {
-                    ::std::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                    ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
                         #merge
                     },
                     _ => {
-                        let mut owned_value = ::std::default::Default::default();
+                        let mut owned_value = ::core::default::Default::default();
                         let value = &mut owned_value;
-                        #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(owned_value)))
+                        #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
                     },
                 }
             }
@@ -434,12 +433,12 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             pub fn merge<B>(
-                field: &mut ::std::option::Option<#ident #ty_generics>,
+                field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
                 wire_type: ::prost::encoding::WireType,
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
-            ) -> ::std::result::Result<(), ::prost::DecodeError>
+            ) -> ::core::result::Result<(), ::prost::DecodeError>
             where B: ::prost::bytes::Buf {
                 match tag {
                     #(#merge,)*
@@ -455,8 +454,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 match *self {
                     #(#debug,)*
                 }

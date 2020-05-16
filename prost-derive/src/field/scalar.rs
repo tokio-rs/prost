@@ -4,9 +4,7 @@ use std::fmt;
 use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{
-    self, parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
-};
+use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
 
@@ -127,7 +125,7 @@ impl Field {
                 }
             }
             Kind::Optional(..) => quote! {
-                if let ::std::option::Option::Some(ref value) = #ident {
+                if let ::core::option::Option::Some(ref value) = #ident {
                     #encode_fn(#tag, value, buf);
                 }
             },
@@ -200,7 +198,7 @@ impl Field {
                     _ => quote!(#ident = #default),
                 }
             }
-            Kind::Optional(_) => quote!(#ident = ::std::option::Option::None),
+            Kind::Optional(_) => quote!(#ident = ::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
     }
@@ -209,8 +207,8 @@ impl Field {
     pub fn default(&self) -> TokenStream {
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
-            Kind::Optional(_) => quote!(::std::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(::std::vec::Vec::new()),
+            Kind::Optional(_) => quote!(::core::option::Option::None),
+            Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
     }
 
@@ -219,11 +217,11 @@ impl Field {
         if let Ty::Enumeration(ref ty) = self.ty {
             quote! {
                 struct #wrap_name<'a>(&'a i32);
-                impl<'a> ::std::fmt::Debug for #wrap_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                         match #ty::from_i32(*self.0) {
-                            None => ::std::fmt::Debug::fmt(&self.0, f),
-                            Some(en) => ::std::fmt::Debug::fmt(&en, f),
+                            None => ::core::fmt::Debug::fmt(&self.0, f),
+                            Some(en) => ::core::fmt::Debug::fmt(&en, f),
                         }
                     }
                 }
@@ -242,19 +240,19 @@ impl Field {
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
-                struct #wrapper_name<'a>(&'a ::std::option::Option<#inner_ty>);
-                impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                struct #wrapper_name<'a>(&'a ::core::option::Option<#inner_ty>);
+                impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                         #wrapper
-                        ::std::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                        ::core::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
                     }
                 }
             },
             Kind::Repeated | Kind::Packed => {
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::std::vec::Vec<#inner_ty>);
-                    impl<'a> ::std::fmt::Debug for #wrapper_name<'a> {
-                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#inner_ty>);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
                             for v in self.0 {
                                 #wrapper
@@ -311,7 +309,7 @@ impl Field {
 
                         #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::std::option::Option::Some(value as i32);
+                            self.#ident = ::core::option::Option::Some(value as i32);
                         }
                     }
                 }
@@ -324,9 +322,9 @@ impl Field {
                     let push_doc = format!("Appends the provided enum value to `{}`.", ident_str);
                     quote! {
                         #[doc=#iter_doc]
-                        pub fn #ident(&self) -> ::std::iter::FilterMap<
-                            ::std::iter::Cloned<::std::slice::Iter<i32>>,
-                            fn(i32) -> ::std::option::Option<#ty>,
+                        pub fn #ident(&self) -> ::core::iter::FilterMap<
+                            ::core::iter::Cloned<::core::slice::Iter<i32>>,
+                            fn(i32) -> ::core::option::Option<#ty>,
                         > {
                             self.#ident.iter().cloned().filter_map(#ty::from_i32)
                         }
@@ -341,9 +339,9 @@ impl Field {
             let ty = self.ty.rust_ref_type();
 
             let match_some = if self.ty.is_numeric() {
-                quote!(::std::option::Option::Some(val) => val,)
+                quote!(::core::option::Option::Some(val) => val,)
             } else {
-                quote!(::std::option::Option::Some(ref val) => &val[..],)
+                quote!(::core::option::Option::Some(ref val) => &val[..],)
             };
 
             let get_doc = format!(
@@ -356,7 +354,7 @@ impl Field {
                 pub fn #ident(&self) -> #ty {
                     match self.#ident {
                         #match_some
-                        ::std::option::Option::None => #default,
+                        ::core::option::Option::None => #default,
                     }
                 }
             })
@@ -493,8 +491,8 @@ impl Ty {
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self) -> TokenStream {
         match *self {
-            Ty::String => quote!(::std::string::String),
-            Ty::Bytes => quote!(::std::vec::Vec<u8>),
+            Ty::String => quote!(::prost::alloc::string::String),
+            Ty::Bytes => quote!(::prost::alloc::vec::Vec<u8>),
             _ => self.rust_ref_type(),
         }
     }
@@ -639,16 +637,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::INFINITY",
+                                "::core::f32::INFINITY",
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f32::NEG_INFINITY",
+                                "::core::f32::NEG_INFINITY",
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f32::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>("::core::f32::NAN")?));
                         }
                         _ => (),
                     }
@@ -657,16 +655,16 @@ impl DefaultValue {
                     match value {
                         "inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::INFINITY",
+                                "::core::f64::INFINITY",
                             )?));
                         }
                         "-inf" => {
                             return Ok(DefaultValue::Path(parse_str::<Path>(
-                                "::std::f64::NEG_INFINITY",
+                                "::core::f64::NEG_INFINITY",
                             )?));
                         }
                         "nan" => {
-                            return Ok(DefaultValue::Path(parse_str::<Path>("::std::f64::NAN")?));
+                            return Ok(DefaultValue::Path(parse_str::<Path>("::core::f64::NAN")?));
                         }
                         _ => (),
                     }
@@ -744,10 +742,12 @@ impl DefaultValue {
     pub fn owned(&self) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::std::string::String::new())
+                quote!(::prost::alloc::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.to_owned()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(::std::vec::Vec::new()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => {
+                quote!(::prost::alloc::vec::Vec::new())
+            }
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.to_owned())

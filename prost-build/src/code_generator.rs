@@ -171,10 +171,10 @@ impl<'a> CodeGenerator<'a> {
         assert_eq!(oneof_fields.len(), message.oneof_decl.len());
 
         self.append_doc();
+        self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
-        self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -349,11 +349,12 @@ impl<'a> CodeGenerator<'a> {
                         .as_ref()
                         .and_then(|ty| ty.split('.').last())
                         .unwrap();
-                    strip_enum_prefix(enum_type, &enum_value)
+
+                    strip_enum_prefix(&to_upper_camel(&enum_type), &enum_value)
                 } else {
-                    default
+                    &enum_value
                 };
-                self.buf.push_str(&to_upper_camel(stripped_prefix));
+                self.buf.push_str(stripped_prefix);
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
                 // safer, we should unescape the Protobuf string and re-escape it with the Rust
@@ -369,12 +370,12 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
         if repeated {
-            self.buf.push_str("::std::vec::Vec<");
+            self.buf.push_str("::prost::alloc::vec::Vec<");
         } else if optional {
-            self.buf.push_str("::std::option::Option<");
+            self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf.push_str("::std::boxed::Box<");
+            self.buf.push_str("::prost::alloc::boxed::Box<");
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -411,10 +412,10 @@ impl<'a> CodeGenerator<'a> {
             .btree_map
             .iter()
             .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
-        let (annotation_ty, rust_ty) = if btree_map {
-            ("btree_map", "BTreeMap")
+        let (annotation_ty, lib_name, rust_ty) = if btree_map {
+            ("btree_map", "::prost::alloc::collections", "BTreeMap")
         } else {
-            ("map", "HashMap")
+            ("map", "::std::collections", "HashMap")
         };
 
         let key_tag = self.field_type_tag(key);
@@ -429,8 +430,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(msg_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::collections::{}<{}, {}>,\n",
+            "pub {}: {}::{}<{}, {}>,\n",
             to_snake(field.name()),
+            lib_name,
             rust_ty,
             key_ty,
             value_ty
@@ -462,7 +464,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: ::std::option::Option<{}>,\n",
+            "pub {}: ::core::option::Option<{}>,\n",
             to_snake(oneof.name()),
             name
         ));
@@ -481,11 +483,11 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
         self.path.pop();
 
+        let oneof_name = format!("{}.{}", msg_name, oneof.name());
+        self.append_type_attributes(&oneof_name);
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
-        let oneof_name = format!("{}.{}", msg_name, oneof.name());
-        self.append_type_attributes(&oneof_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -523,8 +525,11 @@ impl<'a> CodeGenerator<'a> {
             );
 
             if boxed {
-                self.buf
-                    .push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
+                self.buf.push_str(&format!(
+                    "{}(::prost::alloc::boxed::Box<{}>),\n",
+                    to_upper_camel(field.name()),
+                    ty
+                ));
             } else {
                 self.buf
                     .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
@@ -563,13 +568,13 @@ impl<'a> CodeGenerator<'a> {
         }
 
         self.append_doc();
+        self.append_type_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str(
             "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",
         );
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
-        self.append_type_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(desc.name()));
@@ -685,6 +690,11 @@ impl<'a> CodeGenerator<'a> {
 
     fn push_mod(&mut self, module: &str) {
         self.push_indent();
+        self.buf.push_str("/// Nested message and enum types in `");
+        self.buf.push_str(module);
+        self.buf.push_str("`.\n");
+
+        self.push_indent();
         self.buf.push_str("pub mod ");
         self.buf.push_str(&to_snake(module));
         self.buf.push_str(" {\n");
@@ -714,8 +724,8 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("std::string::String"),
-            Type::Bytes => String::from("std::vec::Vec<u8>"),
+            Type::String => String::from("::prost::alloc::string::String"),
+            Type::Bytes => String::from("::prost::alloc::vec::Vec<u8>"),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

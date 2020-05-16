@@ -1,10 +1,12 @@
+#![cfg(test)]
 #![allow(clippy::float_cmp)]
+
+use core::{f32, f64};
+
+use protobuf::test_messages::protobuf_unittest;
 
 #[test]
 fn extreme_default_values() {
-    use protobuf::test_messages::protobuf_unittest;
-    use std::{f32, f64};
-
     let pb = protobuf_unittest::TestExtremeDefaultValues::default();
 
     assert_eq!(
