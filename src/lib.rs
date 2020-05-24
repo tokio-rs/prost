@@ -18,6 +18,7 @@ pub mod encoding;
 
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
+pub use crate::message::MessageProto;
 
 use bytes::{Buf, BufMut};
 

@@ -12,11 +12,11 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Variant,
+    FieldsUnnamed, Ident, Variant, Meta,
 };
 
 mod field;
-use crate::field::Field;
+use crate::field::{Field, prost_attrs};
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
@@ -28,6 +28,24 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         Data::Enum(..) => bail!("Message can not be derived for an enum"),
         Data::Union(..) => bail!("Message can not be derived for a union"),
     };
+
+    let pkg_name = prost_attrs(input.attrs.clone()).unwrap().iter().find( |meta| {
+        meta.path().is_ident("package")
+    }).and_then( |meta| {
+        match meta {
+            Meta::NameValue(v) => match &v.lit {
+                syn::Lit::Str(lit) => Some(lit.value().clone()),
+                _ => None
+            },
+            _ => None
+        }
+    }).unwrap_or_else( || String::from("prost"));
+
+    let type_url = format!(
+        "type.googleapis.com/{}.{}",
+        pkg_name,
+        ident
+    );
 
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
@@ -212,6 +230,18 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #ident {
                     #(#default)*
                 }
+            }
+        }
+
+        impl ::prost::MessageProto for #ident {
+            fn message_name(&self) -> &'static str {
+                stringify!(#ident)
+            }
+            fn package_name(&self) -> &'static str {
+                #pkg_name
+            }
+            fn type_url(&self) -> &'static str {
+                #type_url
             }
         }
 
