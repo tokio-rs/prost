@@ -736,7 +736,7 @@ impl<'a> CodeGenerator<'a> {
                 } else {
                     String::from("::prost::alloc::vec::Vec<u8>")
                 }
-            },
+            }
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
@@ -795,7 +795,7 @@ impl<'a> CodeGenerator<'a> {
                 } else {
                     Cow::Borrowed("bytes=\"vec\"")
                 }
-            },
+            }
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
@@ -805,7 +805,11 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn map_value_type_tag(&self, field: &FieldDescriptorProto, msg_name: &str) -> Cow<'static, str> {
+    fn map_value_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        msg_name: &str,
+    ) -> Cow<'static, str> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",

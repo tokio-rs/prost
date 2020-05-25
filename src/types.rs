@@ -8,7 +8,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use ::bytes::{Bytes, Buf, BufMut};
+use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::{
     encoding::{

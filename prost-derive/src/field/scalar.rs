@@ -652,7 +652,11 @@ impl DefaultValue {
 
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
             Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value()),
-            Lit::ByteStr(ref lit) if *ty == Ty::Bytes(BytesTy::Bytes) || *ty == Ty::Bytes(BytesTy::Vec) => DefaultValue::Bytes(lit.value()),
+            Lit::ByteStr(ref lit)
+                if *ty == Ty::Bytes(BytesTy::Bytes) || *ty == Ty::Bytes(BytesTy::Vec) =>
+            {
+                DefaultValue::Bytes(lit.value())
+            }
 
             Lit::Str(ref lit) => {
                 let value = lit.value();
@@ -776,9 +780,7 @@ impl DefaultValue {
                 quote!(::prost::alloc::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.into()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => {
-                quote!(Default::default())
-            }
+            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(Default::default()),
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.into())

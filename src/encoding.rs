@@ -15,7 +15,7 @@ use core::str;
 use core::u32;
 use core::usize;
 
-use ::bytes::{buf::ext::BufExt, Bytes, Buf, BufMut};
+use ::bytes::{buf::ext::BufExt, Buf, BufMut, Bytes};
 
 use crate::DecodeError;
 use crate::Message;
