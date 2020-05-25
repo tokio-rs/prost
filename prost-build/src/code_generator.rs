@@ -277,7 +277,7 @@ impl<'a> CodeGenerator<'a> {
         let repeated = field.label == Some(Label::Repeated as i32);
         let deprecated = self.deprecated(&field);
         let optional = self.optional(&field);
-        let ty = self.resolve_type(&field);
+        let ty = self.resolve_type(&field, msg_name);
 
         let boxed = !repeated
             && (type_ == Type::Message || type_ == Type::Group)
@@ -394,8 +394,8 @@ impl<'a> CodeGenerator<'a> {
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) {
-        let key_ty = self.resolve_type(key);
-        let value_ty = self.resolve_type(value);
+        let key_ty = self.resolve_type(key, msg_name);
+        let value_ty = self.resolve_type(value, msg_name);
 
         debug!(
             "    map field: {:?}, key type: {:?}, value type: {:?}",
@@ -512,7 +512,7 @@ impl<'a> CodeGenerator<'a> {
             self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field);
+            let ty = self.resolve_type(&field, msg_name);
 
             let boxed = (type_ == Type::Message || type_ == Type::Group)
                 && self.message_graph.is_nested(field.type_name(), msg_name);
@@ -715,7 +715,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type(&self, field: &FieldDescriptorProto) -> String {
+    fn resolve_type(&self, field: &FieldDescriptorProto, msg_name: &str) -> String {
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -725,7 +725,18 @@ impl<'a> CodeGenerator<'a> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => String::from("::prost::alloc::string::String"),
-            Type::Bytes => String::from("::prost::alloc::vec::Vec<u8>"),
+            Type::Bytes => {
+                let bytes = self
+                    .config
+                    .bytes
+                    .iter()
+                    .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+                if bytes {
+                    String::from("::prost::bytes::Bytes")
+                } else {
+                    String::from("::prost::alloc::vec::Vec<u8>")
+                }
+            },
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
@@ -780,9 +791,9 @@ impl<'a> CodeGenerator<'a> {
                     .iter()
                     .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
                 if bytes {
-                    Cow::Borrowed("bytes = \"bytes\"")
+                    Cow::Borrowed("bytes=\"bytes\"")
                 } else {
-                    Cow::Borrowed("bytes = \"vec\"")
+                    Cow::Borrowed("bytes=\"vec\"")
                 }
             },
             Type::Group => Cow::Borrowed("group"),
