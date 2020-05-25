@@ -299,7 +299,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field);
+        let type_tag = self.field_type_tag(&field, msg_name);
         self.buf.push_str(&type_tag);
 
         match field.label() {
@@ -418,8 +418,8 @@ impl<'a> CodeGenerator<'a> {
             ("map", "::std::collections", "HashMap")
         };
 
-        let key_tag = self.field_type_tag(key);
-        let value_tag = self.map_value_type_tag(value);
+        let key_tag = self.field_type_tag(key, msg_name);
+        let value_tag = self.map_value_type_tag(value, msg_name);
         self.buf.push_str(&format!(
             "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
             annotation_ty,
@@ -503,7 +503,7 @@ impl<'a> CodeGenerator<'a> {
             self.path.pop();
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field);
+            let ty_tag = self.field_type_tag(&field, msg_name);
             self.buf.push_str(&format!(
                 "#[prost({}, tag=\"{}\")]\n",
                 ty_tag,
@@ -757,7 +757,7 @@ impl<'a> CodeGenerator<'a> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn field_type_tag(&self, field: &FieldDescriptorProto, msg_name: &str) -> Cow<'static, str> {
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -773,7 +773,18 @@ impl<'a> CodeGenerator<'a> {
             Type::Sfixed64 => Cow::Borrowed("sfixed64"),
             Type::Bool => Cow::Borrowed("bool"),
             Type::String => Cow::Borrowed("string"),
-            Type::Bytes => Cow::Borrowed("bytes"),
+            Type::Bytes => {
+                let bytes = self
+                    .config
+                    .bytes
+                    .iter()
+                    .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+                if bytes {
+                    Cow::Borrowed("bytes = \"bytes\"")
+                } else {
+                    Cow::Borrowed("bytes = \"vec\"")
+                }
+            },
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
@@ -783,13 +794,13 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn map_value_type_tag(&self, field: &FieldDescriptorProto, msg_name: &str) -> Cow<'static, str> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
             )),
-            _ => self.field_type_tag(field),
+            _ => self.field_type_tag(field, msg_name),
         }
     }
 

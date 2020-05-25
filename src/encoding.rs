@@ -15,7 +15,7 @@ use core::str;
 use core::u32;
 use core::usize;
 
-use ::bytes::{buf::ext::BufExt, Buf, BufMut};
+use ::bytes::{buf::ext::BufExt, Bytes, Buf, BufMut};
 
 use crate::DecodeError;
 use crate::Message;
@@ -789,26 +789,6 @@ macro_rules! length_delimited {
                     .map(|value| encoded_len_varint(value.len() as u64) + value.len())
                     .sum::<usize>()
         }
-
-        #[cfg(test)]
-        mod test {
-            use quickcheck::{quickcheck, TestResult};
-
-            use super::super::test::{check_collection_type, check_type};
-            use super::*;
-
-            quickcheck! {
-                fn check(value: $ty, tag: u32) -> TestResult {
-                    super::test::check_type(value, tag, WireType::LengthDelimited,
-                                            encode, merge, encoded_len)
-                }
-                fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                    super::test::check_collection_type(value, tag, WireType::LengthDelimited,
-                                                       encode_repeated, merge_repeated,
-                                                       encoded_len_repeated)
-                }
-            }
-        }
     };
 }
 
@@ -870,23 +850,82 @@ pub mod string {
     }
 
     length_delimited!(String);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check(value: String, tag: u32) -> TestResult {
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)
+            }
+            fn check_repeated(value: Vec<String>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
+}
+
+pub trait BytesAdapter: Default + Sized + 'static {
+    fn len(&self) -> usize;
+    fn as_slice(&self) -> &[u8];
+    fn replace(&mut self, buf: impl Buf);
+}
+
+impl BytesAdapter for Bytes {
+    fn len(&self) -> usize {
+        Buf::remaining(self)
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        Buf::bytes(self)
+    }
+
+    fn replace(&mut self, mut buf: impl Buf) {
+        // Replace bytes without allocating or copying if the underlying
+        // Buf is an instance of Bytes.
+        *self = buf.to_bytes();
+    }
+}
+
+impl BytesAdapter for Vec<u8> {
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        Vec::as_slice(self)
+    }
+
+    fn replace(&mut self, buf: impl Buf) {
+        // Always copies memory; and allocates if the vec has not been used
+        // before or if capacity < len;
+        self.clear();
+        self.put(buf);
+    }
 }
 
 pub mod bytes {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &Vec<u8>, buf: &mut B)
+    pub fn encode<B>(tag: u32, value: &impl BytesAdapter, buf: &mut B)
     where
         B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
-        buf.put_slice(value);
+        buf.put_slice(value.as_slice()); // TODO Avoid copying
     }
 
-    pub fn merge<B>(
+    pub fn merge<'a, B>(
         wire_type: WireType,
-        value: &mut Vec<u8>,
+        value: &mut impl BytesAdapter,
         buf: &mut B,
         _ctx: DecodeContext,
     ) -> Result<(), DecodeError>
@@ -908,13 +947,32 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
-        value.clear();
-        value.reserve(len);
-        value.put(buf.take(len));
+        value.replace(buf.take(len));
         Ok(())
     }
 
-    length_delimited!(Vec<u8>);
+    length_delimited!(impl BytesAdapter);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check(value: Vec<u8>, tag: u32) -> TestResult {
+                super::test::check_type::<Vec<u8>, Vec<u8>>(value, tag, WireType::LengthDelimited,
+                                                            encode, merge, encoded_len)
+            }
+
+            fn check_repeated(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
 }
 
 pub mod message {
