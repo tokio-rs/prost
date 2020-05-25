@@ -876,6 +876,9 @@ pub trait BytesAdapter: Default + Sized + 'static {
     fn len(&self) -> usize;
     fn as_slice(&self) -> &[u8];
     fn replace(&mut self, buf: impl Buf);
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl BytesAdapter for Bytes {
@@ -923,7 +926,7 @@ pub mod bytes {
         buf.put_slice(value.as_slice()); // TODO Avoid copying
     }
 
-    pub fn merge<'a, B>(
+    pub fn merge<B>(
         wire_type: WireType,
         value: &mut impl BytesAdapter,
         buf: &mut B,
