@@ -12,11 +12,11 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Variant, Meta,
+    FieldsUnnamed, Ident, Meta, Variant,
 };
 
 mod field;
-use crate::field::{Field, prost_attrs};
+use crate::field::{prost_attrs, Field};
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
@@ -29,23 +29,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         Data::Union(..) => bail!("Message can not be derived for a union"),
     };
 
-    let pkg_name = prost_attrs(input.attrs.clone()).unwrap().iter().find( |meta| {
-        meta.path().is_ident("package")
-    }).and_then( |meta| {
-        match meta {
+    let pkg_name = prost_attrs(input.attrs.clone())
+        .unwrap()
+        .iter()
+        .find(|meta| meta.path().is_ident("package"))
+        .and_then(|meta| match meta {
             Meta::NameValue(v) => match &v.lit {
                 syn::Lit::Str(lit) => Some(lit.value().clone()),
-                _ => None
+                _ => None,
             },
-            _ => None
-        }
-    }).unwrap_or_else( || String::from("prost"));
+            _ => None,
+        })
+        .unwrap_or_else(|| String::from("prost"));
 
-    let type_url = format!(
-        "type.googleapis.com/{}.{}",
-        pkg_name,
-        ident
-    );
+    let type_url = format!("type.googleapis.com/{}.{}", pkg_name, ident);
 
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
