@@ -26,6 +26,21 @@ enum Syntax {
     Proto3,
 }
 
+#[derive(PartialEq)]
+enum BytesTy {
+    Vec,
+    Bytes,
+}
+
+impl BytesTy {
+    fn as_str(&self) -> &'static str {
+        match self {
+            BytesTy::Vec => "\"vec\"",
+            BytesTy::Bytes => "\"bytes\"",
+        }
+    }
+}
+
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
     package: String,
@@ -299,8 +314,14 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field, msg_name);
+        let type_tag = self.field_type_tag(&field);
         self.buf.push_str(&type_tag);
+
+        if type_ == Type::Bytes {
+            self.buf.push_str("=");
+            self.buf
+                .push_str(self.bytes_backing_type(&field, msg_name).as_str());
+        }
 
         match field.label() {
             Label::Optional => {
@@ -418,8 +439,9 @@ impl<'a> CodeGenerator<'a> {
             ("map", "::std::collections", "HashMap")
         };
 
-        let key_tag = self.field_type_tag(key, msg_name);
-        let value_tag = self.map_value_type_tag(value, msg_name);
+        let key_tag = self.field_type_tag(key);
+        let value_tag = self.map_value_type_tag(value);
+
         self.buf.push_str(&format!(
             "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
             annotation_ty,
@@ -503,7 +525,7 @@ impl<'a> CodeGenerator<'a> {
             self.path.pop();
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field, msg_name);
+            let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!(
                 "#[prost({}, tag=\"{}\")]\n",
                 ty_tag,
@@ -726,15 +748,9 @@ impl<'a> CodeGenerator<'a> {
             Type::Bool => String::from("bool"),
             Type::String => String::from("::prost::alloc::string::String"),
             Type::Bytes => {
-                let bytes = self
-                    .config
-                    .bytes
-                    .iter()
-                    .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
-                if bytes {
-                    String::from("::prost::bytes::Bytes")
-                } else {
-                    String::from("::prost::alloc::vec::Vec<u8>")
+                match self.bytes_backing_type(field, msg_name) {
+                    BytesTy::Bytes => String::from("::prost::bytes::Bytes"),
+                    BytesTy::Vec => String::from("::prost::alloc::vec::Vec<u8>"),
                 }
             }
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
@@ -768,7 +784,7 @@ impl<'a> CodeGenerator<'a> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto, msg_name: &str) -> Cow<'static, str> {
+    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -784,18 +800,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Sfixed64 => Cow::Borrowed("sfixed64"),
             Type::Bool => Cow::Borrowed("bool"),
             Type::String => Cow::Borrowed("string"),
-            Type::Bytes => {
-                let bytes = self
-                    .config
-                    .bytes
-                    .iter()
-                    .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
-                if bytes {
-                    Cow::Borrowed("bytes=\"bytes\"")
-                } else {
-                    Cow::Borrowed("bytes=\"vec\"")
-                }
-            }
+            Type::Bytes => Cow::Borrowed("bytes"),
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
@@ -805,17 +810,13 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn map_value_type_tag(
-        &self,
-        field: &FieldDescriptorProto,
-        msg_name: &str,
-    ) -> Cow<'static, str> {
+    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
             )),
-            _ => self.field_type_tag(field, msg_name),
+            _ => self.field_type_tag(field),
         }
     }
 
@@ -827,6 +828,19 @@ impl<'a> CodeGenerator<'a> {
         match field.r#type() {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
+        }
+    }
+
+    fn bytes_backing_type(&self, field: &FieldDescriptorProto, msg_name: &str) -> BytesTy {
+        let bytes = self
+            .config
+            .bytes
+            .iter()
+            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+        if bytes {
+            BytesTy::Bytes
+        } else {
+            BytesTy::Vec
         }
     }
 
