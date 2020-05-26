@@ -747,12 +747,10 @@ impl<'a> CodeGenerator<'a> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => String::from("::prost::alloc::string::String"),
-            Type::Bytes => {
-                match self.bytes_backing_type(field, msg_name) {
-                    BytesTy::Bytes => String::from("::prost::bytes::Bytes"),
-                    BytesTy::Vec => String::from("::prost::alloc::vec::Vec<u8>"),
-                }
-            }
+            Type::Bytes => match self.bytes_backing_type(field, msg_name) {
+                BytesTy::Bytes => String::from("::prost::bytes::Bytes"),
+                BytesTy::Vec => String::from("::prost::alloc::vec::Vec<u8>"),
+            },
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
