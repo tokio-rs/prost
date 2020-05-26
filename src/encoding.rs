@@ -910,6 +910,7 @@ impl BytesAdapter for Vec<u8> {
         // Always copies memory; and allocates if the vec has not been used
         // before or if capacity < len;
         self.clear();
+        self.reserve(buf.remaining());
         self.put(buf);
     }
 }
