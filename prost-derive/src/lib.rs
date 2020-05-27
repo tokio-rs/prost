@@ -230,7 +230,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl ::prost::MessageProto for #ident {
+        impl ::prost::MessageDescriptor for #ident {
             fn message_name(&self) -> &'static str {
                 stringify!(#ident)
             }
