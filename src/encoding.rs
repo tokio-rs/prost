@@ -993,6 +993,7 @@ pub mod bytes {
         // NOTE: The use of BufExt::take() currently prevents zero-copy decoding
         // for bytes fields backed by Bytes when docoding from Bytes. This could
         // be addressed in the future by specialization.
+        // See also: https://github.com/tokio-rs/bytes/issues/374
         value.replace_with(buf.take(len));
         Ok(())
     }
