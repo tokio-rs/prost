@@ -872,46 +872,66 @@ pub mod string {
     }
 }
 
-pub trait BytesAdapter: Default + Sized + 'static {
-    fn len(&self) -> usize;
-    fn as_slice(&self) -> &[u8];
-    fn replace(&mut self, buf: impl Buf);
-    fn is_empty(&self) -> bool {
-        self.len() == 0
+pub trait BytesAdapter: sealed::BytesAdapter {}
+
+mod sealed {
+    use super::{Buf, BufMut};
+
+    #[doc(hidden)]
+    pub trait BytesAdapter: Default + Sized + 'static {
+        fn len(&self) -> usize;
+
+        // Replace contents of this buffer with (contents of) other buffer.
+        fn replace_with(&mut self, buf: impl Buf);
+
+        // Appends this buffer to the (contents of) other buffer.
+        fn append_to(&self, buf: &mut impl BufMut);
+
+        fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
     }
 }
 
-impl BytesAdapter for Bytes {
+impl BytesAdapter for Bytes {}
+
+impl sealed::BytesAdapter for Bytes {
     fn len(&self) -> usize {
         Buf::remaining(self)
     }
 
-    fn as_slice(&self) -> &[u8] {
-        Buf::bytes(self)
+    fn replace_with(&mut self, mut buf: impl Buf) {
+        // Replace bytes without allocating or copying if the underlying
+        // Buf is an instance of Bytes. NOTE: In practice zero-copy does not
+        // work yet due to BufExt::take() in bytes::merge() making a copy.
+        *self = buf.to_bytes();
     }
 
-    fn replace(&mut self, mut buf: impl Buf) {
-        // Replace bytes without allocating or copying if the underlying
-        // Buf is an instance of Bytes.
-        *self = buf.to_bytes();
+    fn append_to(&self, buf: &mut impl BufMut) {
+        // Copy data to outgoing buffer. A specialized backing buffer may
+        // be able to optimize this if we pass self instead of a &[u8] slice.
+        buf.put(self.bytes())
     }
 }
 
-impl BytesAdapter for Vec<u8> {
+impl BytesAdapter for Vec<u8> {}
+
+impl sealed::BytesAdapter for Vec<u8> {
     fn len(&self) -> usize {
         Vec::len(self)
     }
 
-    fn as_slice(&self) -> &[u8] {
-        Vec::as_slice(self)
-    }
-
-    fn replace(&mut self, buf: impl Buf) {
+    fn replace_with(&mut self, buf: impl Buf) {
         // Always copies memory; and allocates if the vec has not been used
         // before or if capacity < len;
         self.clear();
         self.reserve(buf.remaining());
         self.put(buf);
+    }
+
+    fn append_to(&self, buf: &mut impl BufMut) {
+        // Copy data to outgoing buffer.
+        buf.put(self.as_slice())
     }
 }
 
@@ -924,7 +944,7 @@ pub mod bytes {
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
-        buf.put_slice(value.as_slice()); // TODO Avoid copying
+        value.append_to(buf);
     }
 
     pub fn merge<B>(
@@ -951,7 +971,11 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
-        value.replace(buf.take(len));
+
+        // NOTE: The use of BufExt::take() currently prevents zero-copy decoding
+        // for bytes fields backed by Bytes when docoding from Bytes. This could
+        // be addressed in the future by specialization.
+        value.replace_with(buf.take(len));
         Ok(())
     }
 
