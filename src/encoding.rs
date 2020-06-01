@@ -1008,12 +1008,25 @@ pub mod bytes {
         use super::*;
 
         quickcheck! {
-            fn check(value: Vec<u8>, tag: u32) -> TestResult {
+            fn check_vec(value: Vec<u8>, tag: u32) -> TestResult {
                 super::test::check_type::<Vec<u8>, Vec<u8>>(value, tag, WireType::LengthDelimited,
                                                             encode, merge, encoded_len)
             }
 
-            fn check_repeated(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+            fn check_bytes(value: Vec<u8>, tag: u32) -> TestResult {
+                let value = Bytes::from(value);
+                super::test::check_type::<Bytes, Bytes>(value, tag, WireType::LengthDelimited,
+                                                        encode, merge, encoded_len)
+            }
+
+            fn check_repeated_vec(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+
+            fn check_repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                let value = value.into_iter().map(|v| Bytes::from(v)).collect();
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
                                                    encoded_len_repeated)
