@@ -882,10 +882,14 @@ mod sealed {
         fn len(&self) -> usize;
 
         // Replace contents of this buffer with (contents of) other buffer.
-        fn replace_with(&mut self, buf: impl Buf);
+        fn replace_with<B>(&mut self, buf: B)
+        where
+            B: Buf;
 
         // Appends this buffer to the (contents of) other buffer.
-        fn append_to(&self, buf: &mut impl BufMut);
+        fn append_to<B>(&self, buf: &mut B)
+        where
+            B: BufMut;
 
         fn is_empty(&self) -> bool {
             self.len() == 0
@@ -900,14 +904,20 @@ impl sealed::BytesAdapter for Bytes {
         Buf::remaining(self)
     }
 
-    fn replace_with(&mut self, mut buf: impl Buf) {
+    fn replace_with<B>(&mut self, mut buf: B)
+    where
+        B: Buf,
+    {
         // Replace bytes without allocating or copying if the underlying
         // Buf is an instance of Bytes. NOTE: In practice zero-copy does not
         // work yet due to BufExt::take() in bytes::merge() making a copy.
         *self = buf.to_bytes();
     }
 
-    fn append_to(&self, buf: &mut impl BufMut) {
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
         // Copy data to outgoing buffer. A specialized backing buffer may
         // be able to optimize this if we pass self instead of a &[u8] slice.
         buf.put(self.bytes())
@@ -921,7 +931,10 @@ impl sealed::BytesAdapter for Vec<u8> {
         Vec::len(self)
     }
 
-    fn replace_with(&mut self, buf: impl Buf) {
+    fn replace_with<B>(&mut self, buf: B)
+    where
+        B: Buf,
+    {
         // Always copies memory; and allocates if the vec has not been used
         // before or if capacity < len;
         self.clear();
@@ -929,7 +942,10 @@ impl sealed::BytesAdapter for Vec<u8> {
         self.put(buf);
     }
 
-    fn append_to(&self, buf: &mut impl BufMut) {
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
         // Copy data to outgoing buffer.
         buf.put(self.as_slice())
     }
@@ -938,8 +954,9 @@ impl sealed::BytesAdapter for Vec<u8> {
 pub mod bytes {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &impl BytesAdapter, buf: &mut B)
+    pub fn encode<A, B>(tag: u32, value: &A, buf: &mut B)
     where
+        A: BytesAdapter,
         B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
@@ -947,13 +964,14 @@ pub mod bytes {
         value.append_to(buf);
     }
 
-    pub fn merge<B>(
+    pub fn merge<A, B>(
         wire_type: WireType,
-        value: &mut impl BytesAdapter,
+        value: &mut A,
         buf: &mut B,
         _ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
+        A: BytesAdapter,
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
