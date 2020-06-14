@@ -287,6 +287,12 @@ pub struct DefaultValues {
     #[prost(string, tag = "3", default = "fourty two")]
     pub string: String,
 
+    #[prost(bytes = "vec", tag = "7", default = "b\"foo\\x00bar\"")]
+    pub bytes_vec: Vec<u8>,
+
+    #[prost(bytes = "bytes", tag = "8", default = "b\"foo\\x00bar\"")]
+    pub bytes_buf: Bytes,
+
     #[prost(enumeration = "BasicEnumeration", tag = "4", default = "ONE")]
     pub enumeration: i32,
 
@@ -303,6 +309,8 @@ fn check_default_values() {
     assert_eq!(default.int32, 42);
     assert_eq!(default.optional_int32, None);
     assert_eq!(&default.string, "fourty two");
+    assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
+    assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);

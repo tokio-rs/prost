@@ -783,7 +783,7 @@ impl DefaultValue {
             DefaultValue::Bytes(ref value) if value.is_empty() => quote!(Default::default()),
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
-                quote!(#lit.into())
+                quote!(#lit.as_ref().into())
             }
 
             ref other => other.typed(),
