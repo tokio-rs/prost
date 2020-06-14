@@ -360,7 +360,7 @@ impl Message for Vec<u8> {
     }
 }
 
-// TODO: Try to implement this for Buf/BufMut with specialization.
+/// `google.protobuf.BytesValue`
 impl Message for Bytes {
     fn encode_raw<B>(&self, buf: &mut B)
     where

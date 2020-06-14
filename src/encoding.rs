@@ -877,16 +877,15 @@ pub trait BytesAdapter: sealed::BytesAdapter {}
 mod sealed {
     use super::{Buf, BufMut};
 
-    #[doc(hidden)]
     pub trait BytesAdapter: Default + Sized + 'static {
         fn len(&self) -> usize;
 
-        // Replace contents of this buffer with (contents of) other buffer.
+        /// Replace contents of this buffer with the contents of another buffer.
         fn replace_with<B>(&mut self, buf: B)
         where
             B: Buf;
 
-        // Appends this buffer to the (contents of) other buffer.
+        /// Appends this buffer to the (contents of) other buffer.
         fn append_to<B>(&self, buf: &mut B)
         where
             B: BufMut;
@@ -908,9 +907,8 @@ impl sealed::BytesAdapter for Bytes {
     where
         B: Buf,
     {
-        // Replace bytes without allocating or copying if the underlying
-        // Buf is an instance of Bytes. NOTE: In practice zero-copy does not
-        // work yet due to BufExt::take() in bytes::merge() making a copy.
+        // TODO(tokio-rs/bytes#374): use a get_bytes(..)-like API to enable zero-copy merge
+        // when possible.
         *self = buf.to_bytes();
     }
 
@@ -918,9 +916,7 @@ impl sealed::BytesAdapter for Bytes {
     where
         B: BufMut,
     {
-        // Copy data to outgoing buffer. A specialized backing buffer may
-        // be able to optimize this if we pass self instead of a &[u8] slice.
-        buf.put(self.bytes())
+        buf.put(self.clone())
     }
 }
 
@@ -935,8 +931,6 @@ impl sealed::BytesAdapter for Vec<u8> {
     where
         B: Buf,
     {
-        // Always copies memory; and allocates if the vec has not been used
-        // before or if capacity < len;
         self.clear();
         self.reserve(buf.remaining());
         self.put(buf);
@@ -946,7 +940,6 @@ impl sealed::BytesAdapter for Vec<u8> {
     where
         B: BufMut,
     {
-        // Copy data to outgoing buffer.
         buf.put(self.as_slice())
     }
 }
