@@ -1019,7 +1019,7 @@ pub mod bytes {
             }
 
             fn check_repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
-                let value = value.into_iter().map(|v| Bytes::from(v)).collect();
+                let value = value.into_iter().map(Bytes::from).collect();
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
                                                    encoded_len_repeated)
