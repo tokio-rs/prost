@@ -9,7 +9,7 @@ use curl::easy::Easy;
 use flate2::bufread::GzDecoder;
 use tar::Archive;
 
-const VERSION: &str = "3.11.2";
+const VERSION: &str = "3.13.0";
 
 static TEST_PROTOS: &[&str] = &[
     "test_messages_proto2.proto",
