@@ -26,6 +26,21 @@ enum Syntax {
     Proto3,
 }
 
+#[derive(PartialEq)]
+enum BytesTy {
+    Vec,
+    Bytes,
+}
+
+impl BytesTy {
+    fn as_str(&self) -> &'static str {
+        match self {
+            BytesTy::Vec => "\"vec\"",
+            BytesTy::Bytes => "\"bytes\"",
+        }
+    }
+}
+
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
     package: String,
@@ -277,7 +292,7 @@ impl<'a> CodeGenerator<'a> {
         let repeated = field.label == Some(Label::Repeated as i32);
         let deprecated = self.deprecated(&field);
         let optional = self.optional(&field);
-        let ty = self.resolve_type(&field);
+        let ty = self.resolve_type(&field, msg_name);
 
         let boxed = !repeated
             && (type_ == Type::Message || type_ == Type::Group)
@@ -301,6 +316,12 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("#[prost(");
         let type_tag = self.field_type_tag(&field);
         self.buf.push_str(&type_tag);
+
+        if type_ == Type::Bytes {
+            self.buf.push_str("=");
+            self.buf
+                .push_str(self.bytes_backing_type(&field, msg_name).as_str());
+        }
 
         match field.label() {
             Label::Optional => {
@@ -394,8 +415,8 @@ impl<'a> CodeGenerator<'a> {
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) {
-        let key_ty = self.resolve_type(key);
-        let value_ty = self.resolve_type(value);
+        let key_ty = self.resolve_type(key, msg_name);
+        let value_ty = self.resolve_type(value, msg_name);
 
         debug!(
             "    map field: {:?}, key type: {:?}, value type: {:?}",
@@ -420,6 +441,7 @@ impl<'a> CodeGenerator<'a> {
 
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
+
         self.buf.push_str(&format!(
             "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
             annotation_ty,
@@ -512,7 +534,7 @@ impl<'a> CodeGenerator<'a> {
             self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field);
+            let ty = self.resolve_type(&field, msg_name);
 
             let boxed = (type_ == Type::Message || type_ == Type::Group)
                 && self.message_graph.is_nested(field.type_name(), msg_name);
@@ -715,7 +737,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type(&self, field: &FieldDescriptorProto) -> String {
+    fn resolve_type(&self, field: &FieldDescriptorProto, msg_name: &str) -> String {
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -725,7 +747,10 @@ impl<'a> CodeGenerator<'a> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => String::from("::prost::alloc::string::String"),
-            Type::Bytes => String::from("::prost::alloc::vec::Vec<u8>"),
+            Type::Bytes => match self.bytes_backing_type(field, msg_name) {
+                BytesTy::Bytes => String::from("::prost::bytes::Bytes"),
+                BytesTy::Vec => String::from("::prost::alloc::vec::Vec<u8>"),
+            },
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
@@ -801,6 +826,19 @@ impl<'a> CodeGenerator<'a> {
         match field.r#type() {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
+        }
+    }
+
+    fn bytes_backing_type(&self, field: &FieldDescriptorProto, msg_name: &str) -> BytesTy {
+        let bytes = self
+            .config
+            .bytes
+            .iter()
+            .any(|matcher| match_ident(matcher, msg_name, Some(field.name())));
+        if bytes {
+            BytesTy::Bytes
+        } else {
+            BytesTy::Vec
         }
     }
 
