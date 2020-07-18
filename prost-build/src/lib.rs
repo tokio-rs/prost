@@ -255,6 +255,7 @@ impl Config {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
+
     /// Configure the code generator to generate Rust [`bytes::Bytes`][1] fields for Protobuf
     /// [`bytes`][2] type fields.
     ///
