@@ -184,6 +184,7 @@ pub trait ServiceGenerator {
 pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     btree_map: Vec<String>,
+    bytes: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
@@ -253,6 +254,63 @@ impl Config {
         S: AsRef<str>,
     {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self
+    }
+
+    /// Configure the code generator to generate Rust [`bytes::Bytes`][1] fields for Protobuf
+    /// [`bytes`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Bytes` for Protobuf `bytes` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `Bytes` field is generated instead of the default [`Vec<u8>`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.bytes(&[".my_messages.MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all bytes fields in a message type.
+    /// config.bytes(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all bytes fields in a package.
+    /// config.bytes(&[".my_messages"]);
+    ///
+    /// // Match all bytes fields. Expecially useful in `no_std` contexts.
+    /// config.bytes(&["."]);
+    ///
+    /// // Match all bytes fields in a nested message.
+    /// config.bytes(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_bytes_field'.
+    /// config.bytes(&["my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.bytes(&["MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field', and all fields in the 'foo.bar' package.
+    /// config.bytes(&["my_bytes_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
+    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
+    pub fn bytes<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.bytes = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
 
@@ -647,6 +705,7 @@ impl default::Default for Config {
         Config {
             service_generator: None,
             btree_map: Vec::new(),
+            bytes: Vec::new(),
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),
             prost_types: true,
