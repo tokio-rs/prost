@@ -49,10 +49,7 @@ impl Comments {
                     buf.push_str("    ");
                 }
                 buf.push_str("//");
-                if !line.trim().is_empty() && !line.starts_with(' ') {
-                    buf.push(' ');
-                }
-                buf.push_str(line);
+                push_str_prepend_space_if_missing(line, buf);
                 buf.push_str("\n");
             }
             buf.push_str("\n");
@@ -66,10 +63,7 @@ impl Comments {
                 buf.push_str("    ");
             }
             buf.push_str("///");
-            if !line.trim().is_empty() && !line.starts_with(' ') {
-                buf.push(' ');
-            }
-            buf.push_str(line);
+            push_str_prepend_space_if_missing(line, buf);
             buf.push_str("\n");
         }
 
@@ -89,13 +83,17 @@ impl Comments {
                 buf.push_str("    ");
             }
             buf.push_str("///");
-            if !line.trim().is_empty() && !line.starts_with(' ') {
-                buf.push(' ');
-            }
-            buf.push_str(line);
+            push_str_prepend_space_if_missing(line, buf);
             buf.push_str("\n");
         }
     }
+}
+
+fn push_str_prepend_space_if_missing(line: &str, buf: &mut String) {
+    if !line.is_empty() && !line.starts_with(' ') {
+        buf.push(' ');
+    }
+    buf.push_str(line);
 }
 
 fn add_text_to_code_blocks(markdown: &str) -> String {

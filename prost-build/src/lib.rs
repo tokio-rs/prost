@@ -777,6 +777,7 @@ pub fn protoc_include() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
     use std::cell::RefCell;
     use std::rc::Rc;
 
