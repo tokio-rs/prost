@@ -716,7 +716,7 @@ pub struct UninterpretedOption {
     pub negative_int_value: ::core::option::Option<i64>,
     #[prost(double, optional, tag="6")]
     pub double_value: ::core::option::Option<f64>,
-    #[prost(bytes, optional, tag="7")]
+    #[prost(bytes="vec", optional, tag="7")]
     pub string_value: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
     #[prost(string, optional, tag="8")]
     pub aggregate_value: ::core::option::Option<::prost::alloc::string::String>,
@@ -1031,7 +1031,7 @@ pub struct Any {
     #[prost(string, tag="1")]
     pub type_url: ::prost::alloc::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
-    #[prost(bytes, tag="2")]
+    #[prost(bytes="vec", tag="2")]
     pub value: ::prost::alloc::vec::Vec<u8>,
 }
 /// `SourceContext` represents information about the source of a

@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use prost::alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
 use prost::{Enumeration, Message, Oneof};
 
@@ -60,8 +61,10 @@ pub struct ScalarTypes {
     pub _bool: bool,
     #[prost(string, tag = "014")]
     pub string: String,
-    #[prost(bytes, tag = "015")]
-    pub bytes: Vec<u8>,
+    #[prost(bytes = "vec", tag = "015")]
+    pub bytes_vec: Vec<u8>,
+    #[prost(bytes = "bytes", tag = "016")]
+    pub bytes_buf: Bytes,
 
     #[prost(int32, required, tag = "101")]
     pub required_int32: i32,
@@ -91,8 +94,10 @@ pub struct ScalarTypes {
     pub required_bool: bool,
     #[prost(string, required, tag = "114")]
     pub required_string: String,
-    #[prost(bytes, required, tag = "115")]
-    pub required_bytes: Vec<u8>,
+    #[prost(bytes = "vec", required, tag = "115")]
+    pub required_bytes_vec: Vec<u8>,
+    #[prost(bytes = "bytes", required, tag = "116")]
+    pub required_bytes_buf: Bytes,
 
     #[prost(int32, optional, tag = "201")]
     pub optional_int32: Option<i32>,
@@ -123,8 +128,10 @@ pub struct ScalarTypes {
     pub optional_bool: Option<bool>,
     #[prost(string, optional, tag = "214")]
     pub optional_string: Option<String>,
-    #[prost(bytes, optional, tag = "215")]
-    pub optional_bytes: Option<Vec<u8>>,
+    #[prost(bytes = "vec", optional, tag = "215")]
+    pub optional_bytes_vec: Option<Vec<u8>>,
+    #[prost(bytes = "bytes", optional, tag = "216")]
+    pub optional_bytes_buf: Option<Bytes>,
 
     #[prost(int32, repeated, packed = "false", tag = "301")]
     pub repeated_int32: Vec<i32>,
@@ -154,8 +161,10 @@ pub struct ScalarTypes {
     pub repeated_bool: Vec<bool>,
     #[prost(string, repeated, packed = "false", tag = "315")]
     pub repeated_string: Vec<String>,
-    #[prost(bytes, repeated, packed = "false", tag = "316")]
-    pub repeated_bytes: Vec<Vec<u8>>,
+    #[prost(bytes = "vec", repeated, packed = "false", tag = "316")]
+    pub repeated_bytes_vec: Vec<Vec<u8>>,
+    #[prost(bytes = "bytes", repeated, packed = "false", tag = "317")]
+    pub repeated_bytes_buf: Vec<Bytes>,
 
     #[prost(int32, repeated, tag = "401")]
     pub packed_int32: Vec<i32>,
@@ -186,8 +195,10 @@ pub struct ScalarTypes {
     pub packed_bool: Vec<bool>,
     #[prost(string, repeated, tag = "415")]
     pub packed_string: Vec<String>,
-    #[prost(bytes, repeated, tag = "416")]
-    pub packed_bytes: Vec<Vec<u8>>,
+    #[prost(bytes = "vec", repeated, tag = "416")]
+    pub packed_bytes_vec: Vec<Vec<u8>>,
+    #[prost(bytes = "bytes", repeated, tag = "417")]
+    pub packed_bytes_buf: Vec<Bytes>,
 }
 
 #[test]
@@ -276,6 +287,12 @@ pub struct DefaultValues {
     #[prost(string, tag = "3", default = "fourty two")]
     pub string: String,
 
+    #[prost(bytes = "vec", tag = "7", default = "b\"foo\\x00bar\"")]
+    pub bytes_vec: Vec<u8>,
+
+    #[prost(bytes = "bytes", tag = "8", default = "b\"foo\\x00bar\"")]
+    pub bytes_buf: Bytes,
+
     #[prost(enumeration = "BasicEnumeration", tag = "4", default = "ONE")]
     pub enumeration: i32,
 
@@ -292,6 +309,8 @@ fn check_default_values() {
     assert_eq!(default.int32, 42);
     assert_eq!(default.optional_int32, None);
     assert_eq!(&default.string, "fourty two");
+    assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
+    assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);

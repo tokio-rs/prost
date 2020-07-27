@@ -159,7 +159,7 @@ impl From<Timestamp> for std::time::SystemTime {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use proptest::prelude::*;
 
@@ -173,5 +173,74 @@ mod tests {
         ) {
             prop_assert_eq!(SystemTime::from(Timestamp::from(system_time)), system_time);
         }
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_timestamp_negative_seconds() {
+        // Representative tests for the case of timestamps before the UTC Epoch time:
+        // validate the expected behaviour that "negative second values with fractions
+        // must still have non-negative nanos values that count forward in time"
+        // https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp
+        //
+        // To ensure cross-platform compatibility, all nanosecond values in these
+        // tests are in minimum 100 ns increments.  This does not affect the general
+        // character of the behaviour being tested, but ensures that the tests are
+        // valid for both POSIX (1 ns precision) and Windows (100 ns precision).
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(1_001, 0)),
+            Timestamp {
+                seconds: -1_001,
+                nanos: 0
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(0, 999_999_900)),
+            Timestamp {
+                seconds: -1,
+                nanos: 100
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(2_001_234, 12_300)),
+            Timestamp {
+                seconds: -2_001_235,
+                nanos: 999_987_700
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(768, 65_432_100)),
+            Timestamp {
+                seconds: -769,
+                nanos: 934_567_900
+            }
+        );
+    }
+
+    #[cfg(all(unix, feature = "std"))]
+    #[test]
+    fn check_timestamp_negative_seconds_1ns() {
+        // UNIX-only test cases with 1 ns precision
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(0, 999_999_999)),
+            Timestamp {
+                seconds: -1,
+                nanos: 1
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(1_234_567, 123)),
+            Timestamp {
+                seconds: -1_234_568,
+                nanos: 999_999_877
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - Duration::new(890, 987_654_321)),
+            Timestamp {
+                seconds: -891,
+                nanos: 12_345_679
+            }
+        );
     }
 }
