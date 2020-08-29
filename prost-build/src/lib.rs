@@ -105,6 +105,20 @@
 //!
 //! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
 //! in the prost-build crate is be used.
+//!
+//! ### NixOS related hints
+//!
+//! On NixOS, it is better to specify the location of `PROTOC` and `PROTOC_INCLUDE` explicitly.
+//!
+//! ```bash
+//! $ export PROTOC=/nix/store/<SHA>-protobuf/bin/protoc
+//! $ export PROTOC_INCLUDE=/nix/store/<SHA>-protobuf/include
+//! $ cargo build
+//! ```
+//!
+//! The reason being that if `prost_build::compile_protos` fails to generate the resultant package,
+//! the failure is not obvious until the `include!(concat!(env!("OUT_DIR"), "/resultant.rs"));`
+//! fails with `No such file or directory` error.
 
 mod ast;
 mod code_generator;
