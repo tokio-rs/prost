@@ -7,8 +7,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
 
 use protobuf::benchmarks::{
-    dataset, google_message3::GoogleMessage3, /*google_message4::GoogleMessage4,*/ proto2,
-    proto3, BenchmarkDataset,
+    dataset, google_message3::GoogleMessage3, google_message4::GoogleMessage4, proto2, proto3,
+    BenchmarkDataset,
 };
 
 fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
@@ -22,7 +22,9 @@ fn benchmark_dataset<M>(criterion: &mut Criterion, name: &str, dataset: &'static
 where
     M: prost::Message + Default + 'static,
 {
-    criterion.bench_function(&format!("dataset/{}/merge", name), move |b| {
+    let mut group = criterion.benchmark_group(&format!("dataset/{}", name));
+
+    group.bench_function("merge", move |b| {
         let dataset = load_dataset(dataset).unwrap();
         let mut message = M::default();
         b.iter(|| {
@@ -34,7 +36,7 @@ where
         });
     });
 
-    criterion.bench_function(&format!("dataset/{}/encode", name), move |b| {
+    group.bench_function("encode", move |b| {
         let messages = load_dataset(dataset)
             .unwrap()
             .payload
@@ -53,7 +55,7 @@ where
         });
     });
 
-    criterion.bench_function(&format!("dataset/{}/encoded_len", name), move |b| {
+    group.bench_function("encoded_len", move |b| {
         let messages = load_dataset(dataset)
             .unwrap()
             .payload
@@ -80,34 +82,27 @@ macro_rules! dataset {
 dataset!(google_message1_proto2, proto2::GoogleMessage1);
 dataset!(google_message1_proto3, proto3::GoogleMessage1);
 dataset!(google_message2, proto2::GoogleMessage2);
-//dataset!(google_message3_1, GoogleMessage3);
+dataset!(google_message3_1, GoogleMessage3);
 dataset!(google_message3_2, GoogleMessage3);
 dataset!(google_message3_3, GoogleMessage3);
 dataset!(google_message3_4, GoogleMessage3);
-//dataset!(google_message3_5, GoogleMessage3);
-//dataset!(google_message4, GoogleMessage4);
+dataset!(google_message3_5, GoogleMessage3);
+dataset!(google_message4, GoogleMessage4);
 
 criterion_group!(
     dataset,
     google_message1_proto2,
     google_message1_proto3,
     google_message2,
+    google_message3_2,
+    google_message3_3,
+    google_message3_4,
 );
 
 criterion_group! {
     name = slow;
     config = Criterion::default().sample_size(10);
-    targets = google_message3_2, google_message3_4, google_message3_3
-}
-
-// TODO: Criterion now requires a sample_size of 10; figure out a better way to
-// get these tests to run in a reasonable time.
-/*
-criterion_group! {
-    name = extra_slow;
-    config = Criterion::default().sample_size(10);
     targets = google_message3_1, google_message3_5, google_message4
 }
-*/
 
-criterion_main!(dataset, slow /*, extra_slow*/);
+criterion_main!(dataset, slow);
