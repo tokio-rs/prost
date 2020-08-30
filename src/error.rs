@@ -1,6 +1,7 @@
 //! Protobuf encoding and decoding errors.
 
 use alloc::borrow::Cow;
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use core::fmt;
@@ -29,15 +30,10 @@ impl DecodeError {
     /// Creates a new `DecodeError` with a 'best effort' root cause description.
     ///
     /// Meant to be used only by `Message` implementations.
-    #[doc(hidden)]
-    #[inline(never)]
-    pub fn new<S>(description: S) -> DecodeError
-    where
-        S: Into<Cow<'static, str>>,
-    {
+    pub(crate) fn new(description: Cow<'static, str>) -> DecodeError {
         DecodeError {
             inner: Box::new(Inner {
-                description: description.into(),
+                description,
                 stack: Vec::new(),
             }),
         }
