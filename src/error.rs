@@ -30,6 +30,7 @@ impl DecodeError {
     /// Creates a new `DecodeError` with a 'best effort' root cause description.
     ///
     /// Meant to be used only by `Message` implementations.
+    #[cold]
     pub(crate) fn new(description: Cow<'static, str>) -> DecodeError {
         DecodeError {
             inner: Box::new(Inner {
