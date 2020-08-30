@@ -30,6 +30,7 @@ impl DecodeError {
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
+    #[inline(never)]
     pub fn new<S>(description: S) -> DecodeError
     where
         S: Into<Cow<'static, str>>,
