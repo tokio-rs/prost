@@ -11,10 +11,6 @@ keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "danburkert/prost" }
-appveyor = { repository = "danburkert/prost" }
-
 [workspace]
 members = [
   "conformance",
