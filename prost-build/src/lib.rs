@@ -111,8 +111,9 @@
 //! On NixOS, it is better to specify the location of `PROTOC` and `PROTOC_INCLUDE` explicitly.
 //!
 //! ```bash
-//! $ export PROTOC=/nix/store/<SHA>-protobuf/bin/protoc
-//! $ export PROTOC_INCLUDE=/nix/store/<SHA>-protobuf/include
+//! $ export PROTOBUF_LOCATION=$(nix-env -q protobuf --out-path --no-name)
+//! $ export PROTOC=$(PROTOBUF_LOCATION)/bin/protoc
+//! $ export PROTOC_INCLUDE=$($PROTOBUF_LOCATION)/include
 //! $ cargo build
 //! ```
 //!
