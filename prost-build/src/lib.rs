@@ -113,7 +113,7 @@
 //! ```bash
 //! $ export PROTOBUF_LOCATION=$(nix-env -q protobuf --out-path --no-name)
 //! $ export PROTOC=$(PROTOBUF_LOCATION)/bin/protoc
-//! $ export PROTOC_INCLUDE=$($PROTOBUF_LOCATION)/include
+//! $ export PROTOC_INCLUDE=$(PROTOBUF_LOCATION)/include
 //! $ cargo build
 //! ```
 //!
