@@ -297,36 +297,41 @@ the `tag` attribute on the first field after the gap. The following fields will
 be tagged sequentially starting from the next number.
 
 ```rust
-#[derive(Clone, Debug, PartialEq, Message)]
+use prost;
+use prost::{Enumeration, Message};
+
+#[derive(Clone, PartialEq, Message)]
 struct Person {
-  pub id: String, // tag=1
-
-  // NOTE: Old "name" field has been removed
-  // pub name: String, // tag=2 (Removed)
-
-  #[prost(tag="6")]
-  pub given_name: String, // tag=6
-  pub family_name: String, // tag=7
-  pub formatted_name: String, // tag=8
-
-  #[prost(tag="3")]
-  pub age: u32, // tag=3
-  pub height: u32, // tag=4
-  #[prost(enumeration="Gender")]
-  pub gender: i32, // tag=5
-
-  // NOTE: Skip to less commonly occurring fields
-  #[prost(tag="16")]
-  pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
-  pub name_suffix: String, // tag=17  (eg. jr/esq)
-  pub maiden_name: String, // tag=18
+    #[prost(string, tag = "1")]
+    pub id: String, // tag=1
+    // NOTE: Old "name" field has been removed
+    // pub name: String, // tag=2 (Removed)
+    #[prost(string, tag = "6")]
+    pub given_name: String, // tag=6
+    #[prost(string)]
+    pub family_name: String, // tag=7
+    #[prost(string)]
+    pub formatted_name: String, // tag=8
+    #[prost(uint32, tag = "3")]
+    pub age: u32, // tag=3
+    #[prost(uint32)]
+    pub height: u32, // tag=4
+    #[prost(enumeration = "Gender")]
+    pub gender: i32, // tag=5
+    // NOTE: Skip to less commonly occurring fields
+    #[prost(string, tag = "16")]
+    pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
+    #[prost(string)]
+    pub name_suffix: String, // tag=17  (eg. jr/esq)
+    #[prost(string)]
+    pub maiden_name: String, // tag=18
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
 pub enum Gender {
-  Unknown = 0,
-  Female = 1,
-  Male = 2,
+    Unknown = 0,
+    Female = 1,
+    Male = 2,
 }
 ```
 
