@@ -48,11 +48,10 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
     })
     .throughput(Throughput::Bytes(decoded_len));
 
-    let encoded_len_values = values.clone();
     let encoded_len = Benchmark::new("encoded_len", move |b| {
         b.iter(|| {
             let mut sum = 0;
-            for &value in &encoded_len_values {
+            for &value in &values {
                 sum += encoded_len_varint(value);
             }
             criterion::black_box(sum);

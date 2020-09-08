@@ -2,14 +2,20 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-use std::cmp::min;
-use std::convert::TryFrom;
-use std::mem;
-use std::str;
-use std::u32;
-use std::usize;
+#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
-use ::bytes::{buf::ext::BufExt, Buf, BufMut};
+use alloc::collections::BTreeMap;
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::cmp::min;
+use core::convert::TryFrom;
+use core::mem;
+use core::str;
+use core::u32;
+use core::usize;
+
+use ::bytes::{buf::ext::BufExt, Buf, BufMut, Bytes};
 
 use crate::DecodeError;
 use crate::Message;
@@ -381,7 +387,12 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(wire_type: WireType, tag: u32, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError>
+pub fn skip_field<B>(
+    wire_type: WireType,
+    tag: u32,
+    buf: &mut B,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
 where
     B: Buf,
 {
@@ -575,20 +586,20 @@ varint!(i64, int64);
 varint!(u32, uint32);
 varint!(u64, uint64);
 varint!(i32, sint32,
-        to_uint64(value) {
-            ((value << 1) ^ (value >> 31)) as u32 as u64
-        },
-        from_uint64(value) {
-            let value = value as u32;
-            ((value >> 1) as i32) ^ (-((value & 1) as i32))
-        });
+to_uint64(value) {
+    ((value << 1) ^ (value >> 31)) as u32 as u64
+},
+from_uint64(value) {
+    let value = value as u32;
+    ((value >> 1) as i32) ^ (-((value & 1) as i32))
+});
 varint!(i64, sint64,
-        to_uint64(value) {
-            ((value << 1) ^ (value >> 63)) as u64
-        },
-        from_uint64(value) {
-            ((value >> 1) as i64) ^ (-((value & 1) as i64))
-        });
+to_uint64(value) {
+    ((value << 1) ^ (value >> 63)) as u64
+},
+from_uint64(value) {
+    ((value >> 1) as i64) ^ (-((value & 1) as i64))
+});
 
 /// Macro which emits a module containing a set of encoding functions for a
 /// fixed width numeric type.
@@ -778,26 +789,6 @@ macro_rules! length_delimited {
                     .map(|value| encoded_len_varint(value.len() as u64) + value.len())
                     .sum::<usize>()
         }
-
-        #[cfg(test)]
-        mod test {
-            use quickcheck::{quickcheck, TestResult};
-
-            use super::super::test::{check_collection_type, check_type};
-            use super::*;
-
-            quickcheck! {
-                fn check(value: $ty, tag: u32) -> TestResult {
-                    super::test::check_type(value, tag, WireType::LengthDelimited,
-                                            encode, merge, encoded_len)
-                }
-                fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                    super::test::check_collection_type(value, tag, WireType::LengthDelimited,
-                                                       encode_repeated, merge_repeated,
-                                                       encoded_len_repeated)
-                }
-            }
-        }
     };
 }
 
@@ -859,27 +850,121 @@ pub mod string {
     }
 
     length_delimited!(String);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check(value: String, tag: u32) -> TestResult {
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)
+            }
+            fn check_repeated(value: Vec<String>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
+}
+
+pub trait BytesAdapter: sealed::BytesAdapter {}
+
+mod sealed {
+    use super::{Buf, BufMut};
+
+    pub trait BytesAdapter: Default + Sized + 'static {
+        fn len(&self) -> usize;
+
+        /// Replace contents of this buffer with the contents of another buffer.
+        fn replace_with<B>(&mut self, buf: B)
+        where
+            B: Buf;
+
+        /// Appends this buffer to the (contents of) other buffer.
+        fn append_to<B>(&self, buf: &mut B)
+        where
+            B: BufMut;
+
+        fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+    }
+}
+
+impl BytesAdapter for Bytes {}
+
+impl sealed::BytesAdapter for Bytes {
+    fn len(&self) -> usize {
+        Buf::remaining(self)
+    }
+
+    fn replace_with<B>(&mut self, mut buf: B)
+    where
+        B: Buf,
+    {
+        // TODO(tokio-rs/bytes#374): use a get_bytes(..)-like API to enable zero-copy merge
+        // when possible.
+        *self = buf.to_bytes();
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.clone())
+    }
+}
+
+impl BytesAdapter for Vec<u8> {}
+
+impl sealed::BytesAdapter for Vec<u8> {
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+
+    fn replace_with<B>(&mut self, buf: B)
+    where
+        B: Buf,
+    {
+        self.clear();
+        self.reserve(buf.remaining());
+        self.put(buf);
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.as_slice())
+    }
 }
 
 pub mod bytes {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &Vec<u8>, buf: &mut B)
+    pub fn encode<A, B>(tag: u32, value: &A, buf: &mut B)
     where
+        A: BytesAdapter,
         B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
-        buf.put_slice(value);
+        value.append_to(buf);
     }
 
-    pub fn merge<B>(
+    pub fn merge<A, B>(
         wire_type: WireType,
-        value: &mut Vec<u8>,
+        value: &mut A,
         buf: &mut B,
         _ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
+        A: BytesAdapter,
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
@@ -897,13 +982,50 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
-        value.clear();
-        value.reserve(len);
-        value.put(buf.take(len));
+
+        // NOTE: The use of BufExt::take() currently prevents zero-copy decoding
+        // for bytes fields backed by Bytes when docoding from Bytes. This could
+        // be addressed in the future by specialization.
+        // See also: https://github.com/tokio-rs/bytes/issues/374
+        value.replace_with(buf.take(len));
         Ok(())
     }
 
-    length_delimited!(Vec<u8>);
+    length_delimited!(impl BytesAdapter);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check_vec(value: Vec<u8>, tag: u32) -> TestResult {
+                super::test::check_type::<Vec<u8>, Vec<u8>>(value, tag, WireType::LengthDelimited,
+                                                            encode, merge, encoded_len)
+            }
+
+            fn check_bytes(value: Vec<u8>, tag: u32) -> TestResult {
+                let value = Bytes::from(value);
+                super::test::check_type::<Bytes, Bytes>(value, tag, WireType::LengthDelimited,
+                                                        encode, merge, encoded_len)
+            }
+
+            fn check_repeated_vec(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+
+            fn check_repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                let value = value.into_iter().map(Bytes::from).collect();
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
 }
 
 pub mod message {
@@ -1081,10 +1203,8 @@ pub mod group {
 /// generic over `HashMap` and `BTreeMap`.
 macro_rules! map {
     ($map_ty:ident) => {
-        use std::collections::$map_ty;
-        use std::hash::Hash;
-
         use crate::encoding::*;
+        use core::hash::Hash;
 
         /// Generic protobuf map encode function.
         pub fn encode<K, V, B, KE, KL, VE, VL>(
@@ -1266,7 +1386,9 @@ macro_rules! map {
     };
 }
 
+#[cfg(feature = "std")]
 pub mod hash_map {
+    use std::collections::HashMap;
     map!(HashMap);
 }
 
@@ -1276,10 +1398,10 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Borrow;
-    use std::fmt::Debug;
-    use std::io::Cursor;
-    use std::u64;
+    use alloc::string::ToString;
+    use core::borrow::Borrow;
+    use core::fmt::Debug;
+    use core::u64;
 
     use ::bytes::{Bytes, BytesMut};
     use quickcheck::TestResult;
@@ -1458,12 +1580,12 @@ mod test {
     #[test]
     fn string_merge_invalid_utf8() {
         let mut s = String::new();
-        let mut buf = Cursor::new(b"\x02\x80\x80");
+        let buf = b"\x02\x80\x80";
 
         let r = string::merge(
             WireType::LengthDelimited,
             &mut s,
-            &mut buf,
+            &mut &buf[..],
             DecodeContext::default(),
         );
         r.expect_err("must be an error");
@@ -1473,6 +1595,9 @@ mod test {
     #[test]
     fn varint() {
         fn check(value: u64, mut encoded: &[u8]) {
+            // TODO(rust-lang/rust-clippy#5494)
+            #![allow(clippy::clone_double_ref)]
+
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1488,7 +1613,6 @@ mod test {
             let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            println!("encoding {:?}", encoded);
             let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
@@ -1551,6 +1675,7 @@ mod test {
     /// This big bowl o' macro soup generates a quickcheck encoding test for each
     /// combination of map type, scalar map key, and value type.
     /// TODO: these tests take a long time to compile, can this be improved?
+    #[cfg(feature = "std")]
     macro_rules! map_tests {
         (keys: $keys:tt,
          vals: $vals:tt) => {
@@ -1616,35 +1741,36 @@ mod test {
         };
     }
 
+    #[cfg(feature = "std")]
     map_tests!(keys: [
-                   (i32, int32),
-                   (i64, int64),
-                   (u32, uint32),
-                   (u64, uint64),
-                   (i32, sint32),
-                   (i64, sint64),
-                   (u32, fixed32),
-                   (u64, fixed64),
-                   (i32, sfixed32),
-                   (i64, sfixed64),
-                   (bool, bool),
-                   (String, string)
-               ],
-               vals: [
-                   (f32, float),
-                   (f64, double),
-                   (i32, int32),
-                   (i64, int64),
-                   (u32, uint32),
-                   (u64, uint64),
-                   (i32, sint32),
-                   (i64, sint64),
-                   (u32, fixed32),
-                   (u64, fixed64),
-                   (i32, sfixed32),
-                   (i64, sfixed64),
-                   (bool, bool),
-                   (String, string),
-                   (Vec<u8>, bytes)
-               ]);
+        (i32, int32),
+        (i64, int64),
+        (u32, uint32),
+        (u64, uint64),
+        (i32, sint32),
+        (i64, sint64),
+        (u32, fixed32),
+        (u64, fixed64),
+        (i32, sfixed32),
+        (i64, sfixed64),
+        (bool, bool),
+        (String, string)
+    ],
+    vals: [
+        (f32, float),
+        (f64, double),
+        (i32, int32),
+        (i64, int64),
+        (u32, uint32),
+        (u64, uint64),
+        (i32, sint32),
+        (i64, sint64),
+        (u32, fixed32),
+        (u64, fixed64),
+        (i32, sfixed32),
+        (i64, sfixed64),
+        (bool, bool),
+        (String, string),
+        (Vec<u8>, bytes)
+    ]);
 }

@@ -1,4 +1,5 @@
 #![doc(html_root_url = "https://docs.rs/prost-build/0.6.1")]
+#![allow(clippy::option_as_ref_deref)]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
@@ -50,9 +51,10 @@
 //! `build.rs` build-script:
 //!
 //! ```rust,no_run
-//! fn main() {
-//!     prost_build::compile_protos(&["src/items.proto"],
-//!                                 &["src/"]).unwrap();
+//! # use std::io::Result;
+//! fn main() -> Result<()> {
+//!   prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
+//!   Ok(())
 //! }
 //! ```
 //!
@@ -113,6 +115,7 @@ mod message_graph;
 use std::collections::HashMap;
 use std::default;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
@@ -181,6 +184,7 @@ pub trait ServiceGenerator {
 pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     btree_map: Vec<String>,
+    bytes: Vec<String>,
     type_attributes: Vec<(String, String)>,
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
@@ -223,7 +227,7 @@ impl Config {
     /// // Match all map fields in a package.
     /// config.btree_map(&[".my_messages"]);
     ///
-    /// // Match all map fields.
+    /// // Match all map fields. Expecially useful in `no_std` contexts.
     /// config.btree_map(&["."]);
     ///
     /// // Match all map fields in a nested message.
@@ -249,6 +253,63 @@ impl Config {
         S: AsRef<str>,
     {
         self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self
+    }
+
+    /// Configure the code generator to generate Rust [`bytes::Bytes`][1] fields for Protobuf
+    /// [`bytes`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Bytes` for Protobuf `bytes` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `Bytes` field is generated instead of the default [`Vec<u8>`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.bytes(&[".my_messages.MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all bytes fields in a message type.
+    /// config.bytes(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all bytes fields in a package.
+    /// config.bytes(&[".my_messages"]);
+    ///
+    /// // Match all bytes fields. Expecially useful in `no_std` contexts.
+    /// config.bytes(&["."]);
+    ///
+    /// // Match all bytes fields in a nested message.
+    /// config.bytes(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_bytes_field'.
+    /// config.bytes(&["my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.bytes(&["MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field', and all fields in the 'foo.bar' package.
+    /// config.bytes(&["my_bytes_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
+    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
+    pub fn bytes<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.bytes = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
 
@@ -492,11 +553,12 @@ impl Config {
     /// # Example `build.rs`
     ///
     /// ```rust,no_run
-    /// fn main() {
-    ///     let mut prost_build = prost_build::Config::new();
-    ///     prost_build.btree_map(&["."]);
-    ///     prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"],
-    ///                                &["src"]).unwrap();
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    ///   prost_build.btree_map(&["."]);
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
     /// }
     /// ```
     pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()>
@@ -547,7 +609,12 @@ impl Config {
         }
 
         let buf = fs::read(descriptor_set)?;
-        let descriptor_set = FileDescriptorSet::decode(&*buf)?;
+        let descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
+            Error::new(
+                ErrorKind::InvalidInput,
+                format!("invalid FileDescriptorSet: {}", error.to_string()),
+            )
+        })?;
 
         let modules = self.generate(descriptor_set.file)?;
         for (module, content) in modules {
@@ -617,6 +684,7 @@ impl default::Default for Config {
         Config {
             service_generator: None,
             btree_map: Vec::new(),
+            bytes: Vec::new(),
             type_attributes: Vec::new(),
             field_attributes: Vec::new(),
             prost_types: true,
@@ -624,6 +692,20 @@ impl default::Default for Config {
             out_dir: None,
             extern_paths: Vec::new(),
         }
+    }
+}
+
+impl fmt::Debug for Config {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("Config")
+            .field("btree_map", &self.btree_map)
+            .field("type_attributes", &self.type_attributes)
+            .field("field_attributes", &self.field_attributes)
+            .field("prost_types", &self.prost_types)
+            .field("strip_enum_prefix", &self.strip_enum_prefix)
+            .field("out_dir", &self.out_dir)
+            .field("extern_paths", &self.extern_paths)
+            .finish()
     }
 }
 
@@ -658,9 +740,10 @@ impl default::Default for Config {
 /// # Example `build.rs`
 ///
 /// ```rust,no_run
-/// fn main() {
-///     prost_build::compile_protos(&["src/frontend.proto", "src/backend.proto"],
-///                                 &["src"]).unwrap();
+/// # use std::io::Result;
+/// fn main() -> Result<()> {
+///   prost_build::compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+///   Ok(())
 /// }
 /// ```
 ///
@@ -676,19 +759,24 @@ where
 }
 
 /// Returns the path to the `protoc` binary.
-pub fn protoc() -> &'static Path {
-    Path::new(env!("PROTOC"))
+pub fn protoc() -> PathBuf {
+    match env::var_os("PROTOC") {
+        Some(protoc) => PathBuf::from(protoc),
+        None => PathBuf::from(env!("PROTOC")),
+    }
 }
 
 /// Returns the path to the Protobuf include directory.
-pub fn protoc_include() -> &'static Path {
-    Path::new(env!("PROTOC_INCLUDE"))
+pub fn protoc_include() -> PathBuf {
+    match env::var_os("PROTOC_INCLUDE") {
+        Some(include) => PathBuf::from(include),
+        None => PathBuf::from(env!("PROTOC_INCLUDE")),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use env_logger;
     use std::cell::RefCell;
     use std::rc::Rc;
 
@@ -741,7 +829,7 @@ mod tests {
     impl ServiceGenerator for MockServiceGenerator {
         fn generate(&mut self, service: Service, _buf: &mut String) {
             let mut state = self.state.borrow_mut();
-            state.service_names.push(service.name.clone());
+            state.service_names.push(service.name);
         }
 
         fn finalize(&mut self, _buf: &mut String) {

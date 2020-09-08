@@ -1,3 +1,7 @@
+// protoc on Windows outputs \r\n line endings.
+#![cfg(not(target_os = "windows"))]
+#![cfg(feature = "std")]
+
 use std::fs;
 use std::io::Read;
 use std::io::Write;
@@ -10,7 +14,7 @@ use tempfile;
 /// repo. Ensures that the checked-in compiled versions are up-to-date.
 #[test]
 fn bootstrap() {
-    let protobuf = Path::new(prost_build::protoc_include())
+    let protobuf = prost_build::protoc_include()
         .join("google")
         .join("protobuf");
 

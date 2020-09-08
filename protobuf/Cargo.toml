@@ -6,11 +6,12 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.5"
+bytes = { version = "0.5", default-features = false }
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]
+anyhow = "1"
 cfg-if = "0.1"
 curl = "0.4"
 flate2 = "1.0"

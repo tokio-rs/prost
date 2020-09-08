@@ -10,7 +10,12 @@ build = "src/build.rs"
 [lib]
 doctest = false
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
+anyhow = "1"
 bytes = "0.5"
 cfg-if = "0.1"
 prost = { path = ".." }
@@ -21,6 +26,9 @@ protobuf = { path = "../protobuf" }
 diff = "0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
+# TODO: remove this when support for 1.39 is dropped. remove_dir_all 0.5.3 is not compatible with
+# rustc 1.39.
+remove_dir_all = "=0.5.2"
 
 [build-dependencies]
 cfg-if = "0.1"
