@@ -189,6 +189,7 @@ pub struct Config {
     field_attributes: Vec<(String, String)>,
     prost_types: bool,
     strip_enum_prefix: bool,
+    no_derive_debug: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
 }
@@ -531,6 +532,12 @@ impl Config {
         self
     }
 
+    pub fn no_derive_dbg(&mut self,dbg: bool) -> &mut Self {
+        self.no_derive_debug = dbg;
+        self
+    }
+
+
     /// Configures the output directory where generated Rust files will be written.
     ///
     /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
@@ -689,6 +696,7 @@ impl default::Default for Config {
             field_attributes: Vec::new(),
             prost_types: true,
             strip_enum_prefix: true,
+            no_derive_debug: false,
             out_dir: None,
             extern_paths: Vec::new(),
         }
@@ -703,6 +711,7 @@ impl fmt::Debug for Config {
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
+            .field("no_derive_dbg", &self.no_derive_debug)
             .field("out_dir", &self.out_dir)
             .field("extern_paths", &self.extern_paths)
             .finish()
