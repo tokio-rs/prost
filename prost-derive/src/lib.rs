@@ -16,10 +16,17 @@ use syn::{
 };
 
 mod field;
-use crate::field::Field;
+use crate::field::{prost_attrs, Field};
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
+    let no_dbg = prost_attrs(input.attrs)
+        .map(|a| {
+            a.iter()
+                .position(|inner| inner.path().is_ident("no_dbg"))
+                .is_some()
+        })
+        .unwrap_or_default();
 
     let ident = input.ident;
 
@@ -32,23 +39,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
         bail!("Message may not be derived for generic type");
     }
-
-    let fields = match variant_data {
-        DataStruct {
-            fields: Fields::Named(FieldsNamed { named: fields, .. }),
-            ..
-        }
-        | DataStruct {
-            fields:
-                Fields::Unnamed(FieldsUnnamed {
-                    unnamed: fields, ..
-                }),
-            ..
-        } => fields.into_iter().collect(),
-        DataStruct {
-            fields: Fields::Unit,
-            ..
-        } => Vec::new(),
+    let fields = if let Fields::Named(..) | Fields::Unnamed(..) = variant_data.fields {
+        variant_data.fields.into_iter().collect()
+    } else {
+        Vec::new()
     };
 
     let mut next_tag: u32 = 1;
@@ -168,12 +162,26 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
              };
         }
     });
+
     let debug_builder = if is_struct {
         quote!(f.debug_struct(stringify!(#ident)))
     } else {
         quote!(f.debug_tuple(stringify!(#ident)))
     };
 
+    let dbg_impl = if no_dbg {
+        quote!()
+    } else {
+        quote! {
+            impl ::core::fmt::Debug for #ident {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                let mut builder = #debug_builder;
+                #(#debugs;)*
+                builder.finish()
+            }
+        }
+        }
+    };
     let expanded = quote! {
         impl ::prost::Message for #ident {
             #[allow(unused_variables)]
@@ -215,13 +223,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl ::core::fmt::Debug for #ident {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                let mut builder = #debug_builder;
-                #(#debugs;)*
-                builder.finish()
-            }
-        }
+        #dbg_impl
 
         #methods
     };
@@ -331,7 +333,13 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
 
 fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
-
+    let no_dbg = prost_attrs(input.attrs)
+        .map(|a| {
+            a.iter()
+                .position(|inner| inner.path().is_ident("no_dbg"))
+                .is_some()
+        })
+        .unwrap_or_default();
     let ident = input.ident;
 
     let variants = match input.data {
@@ -427,6 +435,19 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         })
     });
 
+    let dbg_impl = if no_dbg {
+        quote!()
+    } else {
+        quote! {
+            impl ::core::fmt::Debug for #ident {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    match *self {
+                        #(#debug,)*
+                    }
+                }
+            }
+        }
+    };
     let expanded = quote! {
         impl #ident {
             pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
@@ -457,13 +478,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl ::core::fmt::Debug for #ident {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                match *self {
-                    #(#debug,)*
-                }
-            }
-        }
+        #dbg_impl
+
+
     };
 
     Ok(expanded.into())
