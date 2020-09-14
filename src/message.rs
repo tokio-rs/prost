@@ -20,8 +20,7 @@ pub trait Message: Debug + Send + Sync {
     #[doc(hidden)]
     fn encode_raw<B>(&self, buf: &mut B)
     where
-        B: BufMut,
-        Self: Sized;
+        B: BufMut;
 
     /// Decodes a field from a buffer, and merges it into `self`.
     ///
@@ -35,8 +34,7 @@ pub trait Message: Debug + Send + Sync {
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
-        Self: Sized;
+        B: Buf;
 
     /// Returns the encoded length of the message without a length delimiter.
     fn encoded_len(&self) -> usize;
@@ -47,7 +45,6 @@ pub trait Message: Debug + Send + Sync {
     fn encode<B>(&self, buf: &mut B) -> Result<(), EncodeError>
     where
         B: BufMut,
-        Self: Sized,
     {
         let required = self.encoded_len();
         let remaining = buf.remaining_mut();
@@ -65,7 +62,6 @@ pub trait Message: Debug + Send + Sync {
     fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<(), EncodeError>
     where
         B: BufMut,
-        Self: Sized,
     {
         let len = self.encoded_len();
         let required = len + encoded_len_varint(len as u64);
@@ -107,7 +103,6 @@ pub trait Message: Debug + Send + Sync {
     fn merge<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
-        Self: Sized,
     {
         let ctx = DecodeContext::default();
         while buf.has_remaining() {
@@ -122,7 +117,6 @@ pub trait Message: Debug + Send + Sync {
     fn merge_length_delimited<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
-        Self: Sized,
     {
         message::merge(
             WireType::LengthDelimited,

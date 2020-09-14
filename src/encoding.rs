@@ -369,6 +369,7 @@ pub fn merge_loop<T, M, B>(
 where
     M: FnMut(&mut T, &mut B, DecodeContext) -> Result<(), DecodeError>,
     B: Buf,
+    T: ?Sized,
 {
     let len = decode_varint(buf)?;
     let remaining = buf.remaining();
@@ -1048,7 +1049,7 @@ pub mod message {
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        M: Message,
+        M: Message + ?Sized,
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
