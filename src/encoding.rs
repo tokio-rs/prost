@@ -15,7 +15,7 @@ use core::str;
 use core::u32;
 use core::usize;
 
-use ::bytes::{buf::ext::BufExt, Buf, BufMut};
+use ::bytes::{buf::ext::BufExt, Buf, BufMut, Bytes};
 
 use crate::DecodeError;
 use crate::Message;
@@ -789,26 +789,6 @@ macro_rules! length_delimited {
                     .map(|value| encoded_len_varint(value.len() as u64) + value.len())
                     .sum::<usize>()
         }
-
-        #[cfg(test)]
-        mod test {
-            use quickcheck::{quickcheck, TestResult};
-
-            use super::super::test::{check_collection_type, check_type};
-            use super::*;
-
-            quickcheck! {
-                fn check(value: $ty, tag: u32) -> TestResult {
-                    super::test::check_type(value, tag, WireType::LengthDelimited,
-                                            encode, merge, encoded_len)
-                }
-                fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
-                    super::test::check_collection_type(value, tag, WireType::LengthDelimited,
-                                                       encode_repeated, merge_repeated,
-                                                       encoded_len_repeated)
-                }
-            }
-        }
     };
 }
 
@@ -870,27 +850,121 @@ pub mod string {
     }
 
     length_delimited!(String);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check(value: String, tag: u32) -> TestResult {
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)
+            }
+            fn check_repeated(value: Vec<String>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
+}
+
+pub trait BytesAdapter: sealed::BytesAdapter {}
+
+mod sealed {
+    use super::{Buf, BufMut};
+
+    pub trait BytesAdapter: Default + Sized + 'static {
+        fn len(&self) -> usize;
+
+        /// Replace contents of this buffer with the contents of another buffer.
+        fn replace_with<B>(&mut self, buf: B)
+        where
+            B: Buf;
+
+        /// Appends this buffer to the (contents of) other buffer.
+        fn append_to<B>(&self, buf: &mut B)
+        where
+            B: BufMut;
+
+        fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+    }
+}
+
+impl BytesAdapter for Bytes {}
+
+impl sealed::BytesAdapter for Bytes {
+    fn len(&self) -> usize {
+        Buf::remaining(self)
+    }
+
+    fn replace_with<B>(&mut self, mut buf: B)
+    where
+        B: Buf,
+    {
+        // TODO(tokio-rs/bytes#374): use a get_bytes(..)-like API to enable zero-copy merge
+        // when possible.
+        *self = buf.to_bytes();
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.clone())
+    }
+}
+
+impl BytesAdapter for Vec<u8> {}
+
+impl sealed::BytesAdapter for Vec<u8> {
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+
+    fn replace_with<B>(&mut self, buf: B)
+    where
+        B: Buf,
+    {
+        self.clear();
+        self.reserve(buf.remaining());
+        self.put(buf);
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.as_slice())
+    }
 }
 
 pub mod bytes {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &Vec<u8>, buf: &mut B)
+    pub fn encode<A, B>(tag: u32, value: &A, buf: &mut B)
     where
+        A: BytesAdapter,
         B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
-        buf.put_slice(value);
+        value.append_to(buf);
     }
 
-    pub fn merge<B>(
+    pub fn merge<A, B>(
         wire_type: WireType,
-        value: &mut Vec<u8>,
+        value: &mut A,
         buf: &mut B,
         _ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
+        A: BytesAdapter,
         B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
@@ -908,13 +982,50 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
-        value.clear();
-        value.reserve(len);
-        value.put(buf.take(len));
+
+        // NOTE: The use of BufExt::take() currently prevents zero-copy decoding
+        // for bytes fields backed by Bytes when docoding from Bytes. This could
+        // be addressed in the future by specialization.
+        // See also: https://github.com/tokio-rs/bytes/issues/374
+        value.replace_with(buf.take(len));
         Ok(())
     }
 
-    length_delimited!(Vec<u8>);
+    length_delimited!(impl BytesAdapter);
+
+    #[cfg(test)]
+    mod test {
+        use quickcheck::{quickcheck, TestResult};
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        quickcheck! {
+            fn check_vec(value: Vec<u8>, tag: u32) -> TestResult {
+                super::test::check_type::<Vec<u8>, Vec<u8>>(value, tag, WireType::LengthDelimited,
+                                                            encode, merge, encoded_len)
+            }
+
+            fn check_bytes(value: Vec<u8>, tag: u32) -> TestResult {
+                let value = Bytes::from(value);
+                super::test::check_type::<Bytes, Bytes>(value, tag, WireType::LengthDelimited,
+                                                        encode, merge, encoded_len)
+            }
+
+            fn check_repeated_vec(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+
+            fn check_repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+                let value = value.into_iter().map(Bytes::from).collect();
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)
+            }
+        }
+    }
 }
 
 pub mod message {
