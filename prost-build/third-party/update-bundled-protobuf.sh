@@ -43,9 +43,8 @@ mv "$TEMPDIR/linux-x86_64/include" "$DIR/protobuf/"
 mkdir "$TEMPDIR/src"
 curl --proto '=https' --tlsv1.2 -sSfL \
   "https://github.com/protocolbuffers/protobuf/archive/v$VERSION.zip" \
-   https://github.com/protocolbuffers/protobuf/archive/v3.11.2.zip
   -o "$TEMPDIR/src/protobuf.zip"
 unzip "$TEMPDIR/src/protobuf.zip" -d "$TEMPDIR/src"
-mv "$TEMPDIR/src/license.txt" "$DIR/protobuf/license"
+mv "$TEMPDIR/src/protobuf-$VERSION/LICENSE" "$DIR/protobuf/LICENSE"
 
 rm -rf $TEMPDIR
