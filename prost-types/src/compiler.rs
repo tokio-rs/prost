@@ -124,7 +124,7 @@ pub mod code_generator_response {
         #[prost(string, optional, tag="15")]
         pub content: ::core::option::Option<::prost::alloc::string::String>,
     }
-    /// Sync with code_generator.h.
+    /// Sync with code\_generator.h.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Feature {
