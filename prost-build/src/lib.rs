@@ -561,9 +561,10 @@ impl Config {
     ///   Ok(())
     /// }
     /// ```
-    pub fn compile_protos<P>(&mut self, protos: &[P], includes: &[P]) -> Result<()>
+    pub fn compile_protos<P1, P2>(&mut self, protos: &[P1], includes: &[P2]) -> Result<()>
     where
-        P: AsRef<Path>,
+        P1: AsRef<Path>,
+        P2: AsRef<Path>,
     {
         let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
             env::var_os("OUT_DIR")
@@ -751,9 +752,10 @@ impl fmt::Debug for Config {
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
 /// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
-pub fn compile_protos<P>(protos: &[P], includes: &[P]) -> Result<()>
+pub fn compile_protos<P1, P2>(protos: &[P1], includes: &[P2]) -> Result<()>
 where
-    P: AsRef<Path>,
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
 {
     Config::new().compile_protos(protos, includes)
 }
@@ -849,6 +851,18 @@ mod tests {
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .compile_protos(&["src/smoke_test.proto"], &["src"])
+            .unwrap();
+    }
+
+    /// Ensure that as long as the parameters to compile_protos match
+    /// `AsRef<Path>` they can still be different types.
+    #[test]
+    fn different_compile_protos_types() {
+        let _ = env_logger::try_init();
+        let protos = vec![format!("{}/smoke_test.proto", "src")];
+        Config::new()
+            .service_generator(Box::new(ServiceTraitGenerator))
+            .compile_protos(&protos[..], &["src"])
             .unwrap();
     }
 
