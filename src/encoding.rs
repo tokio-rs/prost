@@ -15,7 +15,7 @@ use core::str;
 use core::u32;
 use core::usize;
 
-use ::bytes::{buf::ext::BufExt, Buf, BufMut, Bytes};
+use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::DecodeError;
 use crate::Message;
@@ -29,31 +29,33 @@ where
 {
     // Safety notes:
     //
-    // - advance_mut is unsafe because it could cause uninitialized memory to be
-    //   advanced over. The use here is safe since each byte which is advanced over
-    //   has been written to in the previous loop iteration.
-    let mut i;
-    'outer: loop {
-        i = 0;
-
-        for byte in buf.bytes_mut() {
-            i += 1;
-            if value < 0x80 {
-                *byte = mem::MaybeUninit::new(value as u8);
-                break 'outer;
-            } else {
-                *byte = mem::MaybeUninit::new(((value & 0x7F) | 0x80) as u8);
-                value >>= 7;
-            }
-        }
-
-        unsafe {
-            buf.advance_mut(i);
-        }
-        debug_assert!(buf.has_remaining_mut());
-    }
-
+    // - ptr::write is an unsafe raw pointer write. The use here is safe since the length of the
+    //   uninit slice is checked.
+    // - advance_mut is unsafe because it could cause uninitialized memory to be advanced over. The
+    //   use here is safe since each byte which is advanced over has been written to in the
+    //   previous loop iteration.
     unsafe {
+        let mut i;
+        'outer: loop {
+            i = 0;
+
+            let uninit_slice = buf.bytes_mut();
+            for offset in 0..uninit_slice.len() {
+                i += 1;
+                let ptr = uninit_slice.as_mut_ptr().add(offset);
+                if value < 0x80 {
+                    ptr.write(value as u8);
+                    break 'outer;
+                } else {
+                    ptr.write(((value & 0x7F) | 0x80) as u8);
+                    value >>= 7;
+                }
+            }
+
+            buf.advance_mut(i);
+            debug_assert!(buf.has_remaining_mut());
+        }
+
         buf.advance_mut(i);
     }
 }
@@ -915,9 +917,7 @@ impl sealed::BytesAdapter for Bytes {
     where
         B: Buf,
     {
-        // TODO(tokio-rs/bytes#374): use a get_bytes(..)-like API to enable zero-copy merge
-        // when possible.
-        *self = buf.to_bytes();
+        *self = buf.copy_to_bytes(buf.remaining());
     }
 
     fn append_to<B>(&self, buf: &mut B)
