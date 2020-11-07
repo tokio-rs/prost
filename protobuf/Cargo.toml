@@ -13,7 +13,9 @@ prost-types = { path = "../prost-types" }
 [build-dependencies]
 anyhow = "1"
 cfg-if = "0.1"
-curl = "0.4"
+# curl 0.4.34 requires Rust 1.40 or higher:
+# https://github.com/alexcrichton/curl-rust/pull/356/files#r498918694
+curl = "0.4, < 0.4.34"
 flate2 = "1.0"
 prost-build = { path = "../prost-build" }
 tar = "0.4"
