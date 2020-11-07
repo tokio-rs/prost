@@ -15,7 +15,7 @@ use core::str;
 use core::u32;
 use core::usize;
 
-use ::bytes::{buf::ext::BufExt, Buf, BufMut, Bytes};
+use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::DecodeError;
 use crate::Message;
@@ -27,34 +27,14 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B)
 where
     B: BufMut,
 {
-    // Safety notes:
-    //
-    // - advance_mut is unsafe because it could cause uninitialized memory to be
-    //   advanced over. The use here is safe since each byte which is advanced over
-    //   has been written to in the previous loop iteration.
-    let mut i;
-    'outer: loop {
-        i = 0;
-
-        for byte in buf.bytes_mut() {
-            i += 1;
-            if value < 0x80 {
-                *byte = mem::MaybeUninit::new(value as u8);
-                break 'outer;
-            } else {
-                *byte = mem::MaybeUninit::new(((value & 0x7F) | 0x80) as u8);
-                value >>= 7;
-            }
+    while buf.remaining_mut() > 0 {
+        if value < 0x80 {
+            buf.put_u8(value as u8);
+            return;
+        } else {
+            buf.put_u8(((value & 0x7F) | 0x80) as u8);
+            value >>= 7;
         }
-
-        unsafe {
-            buf.advance_mut(i);
-        }
-        debug_assert!(buf.has_remaining_mut());
-    }
-
-    unsafe {
-        buf.advance_mut(i);
     }
 }
 
@@ -907,9 +887,7 @@ impl sealed::BytesAdapter for Bytes {
     where
         B: Buf,
     {
-        // TODO(tokio-rs/bytes#374): use a get_bytes(..)-like API to enable zero-copy merge
-        // when possible.
-        *self = buf.to_bytes();
+        *self = buf.copy_to_bytes(buf.remaining());
     }
 
     fn append_to<B>(&self, buf: &mut B)
