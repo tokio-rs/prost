@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use cfg_if::cfg_if;
 use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
 
@@ -105,4 +106,11 @@ criterion_group! {
     targets = google_message3_1, google_message3_5, google_message4
 }
 
-criterion_main!(dataset, slow);
+cfg_if! {
+    if #[cfg(debug_assertions)] {
+        // Disable 'slow' benchmarks for unoptimized test builds.
+        criterion_main!(dataset);
+    } else {
+        criterion_main!(dataset, slow);
+    }
+}
