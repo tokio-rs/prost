@@ -227,6 +227,20 @@ impl<'a> CodeGenerator<'a> {
         }
         self.path.pop();
 
+        if self
+            .config
+            .unknown_fields_messages
+            .iter()
+            // Skip the leading '.' when matching
+            .any(|m| m == &fq_message_name[1..])
+        {
+            self.push_indent();
+            self.buf.push_str("#[prost(unknown_fields)]\n");
+            self.push_indent();
+            self.buf
+                .push_str("pub protobuf_unknown_fields: Vec<::prost::UnknownField>,\n");
+        }
+
         self.depth -= 1;
         self.push_indent();
         self.buf.push_str("}\n");
