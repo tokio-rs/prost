@@ -33,7 +33,7 @@ jobs:
             profile: minimal
             components: clippy
       - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v1
+        uses: seanmiddleditch/gha-setup-ninja@v3
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
