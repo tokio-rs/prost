@@ -853,23 +853,23 @@ impl<'a> CodeGenerator<'a> {
 
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
-    match field.r#type() {
+    matches!(
+        field.r#type(),
         Type::Float
-        | Type::Double
-        | Type::Int32
-        | Type::Int64
-        | Type::Uint32
-        | Type::Uint64
-        | Type::Sint32
-        | Type::Sint64
-        | Type::Fixed32
-        | Type::Fixed64
-        | Type::Sfixed32
-        | Type::Sfixed64
-        | Type::Bool
-        | Type::Enum => true,
-        _ => false,
-    }
+            | Type::Double
+            | Type::Int32
+            | Type::Int64
+            | Type::Uint32
+            | Type::Uint64
+            | Type::Sint32
+            | Type::Sint64
+            | Type::Fixed32
+            | Type::Fixed64
+            | Type::Sfixed32
+            | Type::Sfixed64
+            | Type::Bool
+            | Type::Enum
+    )
 }
 
 /// Based on [`google::protobuf::UnescapeCEscapeString`][1]
