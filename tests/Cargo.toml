@@ -26,12 +26,10 @@ protobuf = { path = "../protobuf" }
 diff = "0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
-# TODO: remove this when support for 1.39 is dropped. remove_dir_all 0.5.3 is not compatible with
-# rustc 1.39.
-remove_dir_all = "=0.5.2"
+remove_dir_all = "0.6"
 
 [build-dependencies]
 cfg-if = "0.1"
-env_logger = { version = "0.7", default-features = false }
+env_logger = { version = "0.8", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }
