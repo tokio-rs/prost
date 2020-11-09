@@ -19,8 +19,6 @@ pub mod encoding;
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
 
-use alloc::borrow::Cow;
-
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
@@ -75,9 +73,9 @@ where
 {
     let length = decode_varint(&mut buf)?;
     if length > usize::max_value() as u64 {
-        return Err(DecodeError::new(Cow::Borrowed(
+        return Err(DecodeError::new(
             "length delimiter exceeds maximum usize value",
-        )));
+        ));
     }
     Ok(length as usize)
 }

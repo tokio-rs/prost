@@ -4,7 +4,6 @@
 
 #![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
-use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
@@ -67,7 +66,7 @@ where
     let bytes = buf.bytes();
     let len = bytes.len();
     if len == 0 {
-        return Err(DecodeError::new(Cow::Borrowed("invalid varint")));
+        return Err(DecodeError::new("invalid varint"));
     }
 
     let byte = unsafe { *bytes.get_unchecked(0) };
@@ -167,7 +166,7 @@ unsafe fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError>
     };
 
     // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
-    Err(DecodeError::new(Cow::Borrowed("invalid varint")))
+    Err(DecodeError::new("invalid varint"))
 }
 
 /// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as
@@ -186,7 +185,7 @@ where
         }
     }
 
-    Err(DecodeError::new(Cow::Borrowed("invalid varint")))
+    Err(DecodeError::new("invalid varint"))
 }
 
 /// Additional information passed to every decode/merge function.
@@ -250,7 +249,7 @@ impl DecodeContext {
     #[inline]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         if self.recurse_count == 0 {
-            Err(DecodeError::new(Cow::Borrowed("recursion limit reached")))
+            Err(DecodeError::new("recursion limit reached"))
         } else {
             Ok(())
         }
@@ -298,10 +297,10 @@ impl TryFrom<u64> for WireType {
             3 => Ok(WireType::StartGroup),
             4 => Ok(WireType::EndGroup),
             5 => Ok(WireType::ThirtyTwoBit),
-            _ => Err(DecodeError::new(Cow::Owned(format!(
+            _ => Err(DecodeError::new(format!(
                 "invalid wire type value: {}",
                 value
-            )))),
+            ))),
         }
     }
 }
@@ -327,16 +326,13 @@ where
 {
     let key = decode_varint(buf)?;
     if key > u64::from(u32::MAX) {
-        return Err(DecodeError::new(Cow::Owned(format!(
-            "invalid key value: {}",
-            key
-        ))));
+        return Err(DecodeError::new(format!("invalid key value: {}", key)));
     }
     let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key as u32 >> 3;
 
     if tag < MIN_TAG {
-        return Err(DecodeError::new(Cow::Borrowed("invalid tag value: 0")));
+        return Err(DecodeError::new("invalid tag value: 0"));
     }
 
     Ok((tag, wire_type))
@@ -354,10 +350,10 @@ pub fn key_len(tag: u32) -> usize {
 #[inline]
 pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), DecodeError> {
     if expected != actual {
-        return Err(DecodeError::new(Cow::Owned(format!(
+        return Err(DecodeError::new(format!(
             "invalid wire type: {:?} (expected {:?})",
             actual, expected
-        ))));
+        )));
     }
     Ok(())
 }
@@ -377,7 +373,7 @@ where
     let len = decode_varint(buf)?;
     let remaining = buf.remaining();
     if len > remaining as u64 {
-        return Err(DecodeError::new(Cow::Borrowed("buffer underflow")));
+        return Err(DecodeError::new("buffer underflow"));
     }
 
     let limit = remaining - len as usize;
@@ -386,7 +382,7 @@ where
     }
 
     if buf.remaining() != limit {
-        return Err(DecodeError::new(Cow::Borrowed("delimited length exceeded")));
+        return Err(DecodeError::new("delimited length exceeded"));
     }
     Ok(())
 }
@@ -411,20 +407,18 @@ where
             match inner_wire_type {
                 WireType::EndGroup => {
                     if inner_tag != tag {
-                        return Err(DecodeError::new(Cow::Borrowed("unexpected end group tag")));
+                        return Err(DecodeError::new("unexpected end group tag"));
                     }
                     break 0;
                 }
                 _ => skip_field(inner_wire_type, inner_tag, buf, ctx.enter_recursion())?,
             }
         },
-        WireType::EndGroup => {
-            return Err(DecodeError::new(Cow::Borrowed("unexpected end group tag")))
-        }
+        WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
     };
 
     if len > buf.remaining() as u64 {
-        return Err(DecodeError::new(Cow::Borrowed("buffer underflow")));
+        return Err(DecodeError::new("buffer underflow"));
     }
 
     buf.advance(len as usize);
@@ -641,7 +635,7 @@ macro_rules! fixed_width {
             {
                 check_wire_type($wire_type, wire_type)?;
                 if buf.remaining() < $width {
-                    return Err(DecodeError::new(Cow::Borrowed("buffer underflow")));
+                    return Err(DecodeError::new("buffer underflow"));
                 }
                 *value = buf.$get();
                 Ok(())
@@ -854,9 +848,9 @@ pub mod string {
                     mem::forget(drop_guard);
                     Ok(())
                 }
-                Err(_) => Err(DecodeError::new(Cow::Borrowed(
+                Err(_) => Err(DecodeError::new(
                     "invalid string value: data is not UTF-8 encoded",
-                ))),
+                )),
             }
         }
     }
@@ -984,7 +978,7 @@ pub mod bytes {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(DecodeError::new(Cow::Borrowed("buffer underflow")));
+            return Err(DecodeError::new("buffer underflow"));
         }
         let len = len as usize;
 
@@ -1163,7 +1157,7 @@ pub mod group {
             let (field_tag, field_wire_type) = decode_key(buf)?;
             if field_wire_type == WireType::EndGroup {
                 if field_tag != tag {
-                    return Err(DecodeError::new(Cow::Borrowed("unexpected end group tag")));
+                    return Err(DecodeError::new("unexpected end group tag"));
                 }
                 return Ok(());
             }
