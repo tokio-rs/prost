@@ -195,10 +195,11 @@ where
     let mut buf = &*buf;
     let roundtrip = M::decode(&mut buf).unwrap();
 
-    if buf.has_remaining() {
-        panic!("expected buffer to be empty: {}", buf.remaining());
-    }
-
+    assert!(
+        !buf.has_remaining(),
+        "expected buffer to be empty: {}",
+        buf.remaining()
+    );
     assert_eq!(msg, &roundtrip);
 }
 
