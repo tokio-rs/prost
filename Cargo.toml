@@ -45,7 +45,7 @@ prost-derive = { version = "0.6.1", path = "prost-derive", optional = true }
 criterion = "0.3"
 env_logger = { version = "0.8", default-features = false }
 log = "0.4"
-quickcheck = "0.9"
+proptest = "0.10"
 rand = "0.7"
 
 [profile.bench]

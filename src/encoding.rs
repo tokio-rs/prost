@@ -549,7 +549,7 @@ macro_rules! varint {
 
             #[cfg(test)]
             mod test {
-                use quickcheck::{quickcheck, TestResult};
+                use proptest::prelude::*;
 
                 use crate::encoding::$proto_ty::*;
                 use crate::encoding::test::{
@@ -557,20 +557,23 @@ macro_rules! varint {
                     check_type,
                 };
 
-                quickcheck! {
-                    fn check(value: $ty, tag: u32) -> TestResult {
+                proptest! {
+                    #[test]
+                    fn check(value: $ty, tag in MIN_TAG..=MAX_TAG) {
                         check_type(value, tag, WireType::Varint,
-                                   encode, merge, encoded_len)
+                                   encode, merge, encoded_len)?;
                     }
-                    fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
+                    #[test]
+                    fn check_repeated(value: Vec<$ty>, tag in MIN_TAG..=MAX_TAG) {
                         check_collection_type(value, tag, WireType::Varint,
                                               encode_repeated, merge_repeated,
-                                              encoded_len_repeated)
+                                              encoded_len_repeated)?;
                     }
-                    fn check_packed(value: Vec<$ty>, tag: u32) -> TestResult {
+                    #[test]
+                    fn check_packed(value: Vec<$ty>, tag in MIN_TAG..=MAX_TAG) {
                         check_type(value, tag, WireType::LengthDelimited,
                                    encode_packed, merge_repeated,
-                                   encoded_len_packed)
+                                   encoded_len_packed)?;
                     }
                 }
             }
@@ -681,25 +684,28 @@ macro_rules! fixed_width {
 
             #[cfg(test)]
             mod test {
-                use quickcheck::{quickcheck, TestResult};
+                use proptest::prelude::*;
 
                 use super::super::test::{check_collection_type, check_type};
                 use super::*;
 
-                quickcheck! {
-                    fn check(value: $ty, tag: u32) -> TestResult {
+                proptest! {
+                    #[test]
+                    fn check(value: $ty, tag in MIN_TAG..=MAX_TAG) {
                         check_type(value, tag, $wire_type,
-                                   encode, merge, encoded_len)
+                                   encode, merge, encoded_len)?;
                     }
-                    fn check_repeated(value: Vec<$ty>, tag: u32) -> TestResult {
+                    #[test]
+                    fn check_repeated(value: Vec<$ty>, tag in MIN_TAG..=MAX_TAG) {
                         check_collection_type(value, tag, $wire_type,
                                               encode_repeated, merge_repeated,
-                                              encoded_len_repeated)
+                                              encoded_len_repeated)?;
                     }
-                    fn check_packed(value: Vec<$ty>, tag: u32) -> TestResult {
+                    #[test]
+                    fn check_packed(value: Vec<$ty>, tag in MIN_TAG..=MAX_TAG) {
                         check_type(value, tag, WireType::LengthDelimited,
                                    encode_packed, merge_repeated,
-                                   encoded_len_packed)
+                                   encoded_len_packed)?;
                     }
                 }
             }
@@ -853,20 +859,22 @@ pub mod string {
 
     #[cfg(test)]
     mod test {
-        use quickcheck::{quickcheck, TestResult};
+        use proptest::prelude::*;
 
         use super::super::test::{check_collection_type, check_type};
         use super::*;
 
-        quickcheck! {
-            fn check(value: String, tag: u32) -> TestResult {
+        proptest! {
+            #[test]
+            fn check(value: String, tag in MIN_TAG..=MAX_TAG) {
                 super::test::check_type(value, tag, WireType::LengthDelimited,
-                                        encode, merge, encoded_len)
+                                        encode, merge, encoded_len)?;
             }
-            fn check_repeated(value: Vec<String>, tag: u32) -> TestResult {
+            #[test]
+            fn check_repeated(value: Vec<String>, tag in MIN_TAG..=MAX_TAG) {
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
-                                                   encoded_len_repeated)
+                                                   encoded_len_repeated)?;
             }
         }
     }
@@ -995,34 +1003,38 @@ pub mod bytes {
 
     #[cfg(test)]
     mod test {
-        use quickcheck::{quickcheck, TestResult};
+        use proptest::prelude::*;
 
         use super::super::test::{check_collection_type, check_type};
         use super::*;
 
-        quickcheck! {
-            fn check_vec(value: Vec<u8>, tag: u32) -> TestResult {
+        proptest! {
+            #[test]
+            fn check_vec(value: Vec<u8>, tag in MIN_TAG..=MAX_TAG) {
                 super::test::check_type::<Vec<u8>, Vec<u8>>(value, tag, WireType::LengthDelimited,
-                                                            encode, merge, encoded_len)
+                                                            encode, merge, encoded_len)?;
             }
 
-            fn check_bytes(value: Vec<u8>, tag: u32) -> TestResult {
+            #[test]
+            fn check_bytes(value: Vec<u8>, tag in MIN_TAG..=MAX_TAG) {
                 let value = Bytes::from(value);
                 super::test::check_type::<Bytes, Bytes>(value, tag, WireType::LengthDelimited,
-                                                        encode, merge, encoded_len)
+                                                        encode, merge, encoded_len)?;
             }
 
-            fn check_repeated_vec(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+            #[test]
+            fn check_repeated_vec(value: Vec<Vec<u8>>, tag in MIN_TAG..=MAX_TAG) {
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
-                                                   encoded_len_repeated)
+                                                   encoded_len_repeated)?;
             }
 
-            fn check_repeated_bytes(value: Vec<Vec<u8>>, tag: u32) -> TestResult {
+            #[test]
+            fn check_repeated_bytes(value: Vec<Vec<u8>>, tag in MIN_TAG..=MAX_TAG) {
                 let value = value.into_iter().map(Bytes::from).collect();
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
-                                                   encoded_len_repeated)
+                                                   encoded_len_repeated)?;
             }
         }
     }
@@ -1404,7 +1416,7 @@ mod test {
     use core::u64;
 
     use ::bytes::{Bytes, BytesMut};
-    use quickcheck::TestResult;
+    use proptest::{prelude::*, test_runner::TestCaseResult};
 
     use crate::encoding::*;
 
@@ -1415,14 +1427,12 @@ mod test {
         encode: fn(u32, &B, &mut BytesMut),
         merge: fn(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         encoded_len: fn(u32, &B) -> usize,
-    ) -> TestResult
+    ) -> TestCaseResult
     where
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
     {
-        if tag > MAX_TAG || tag < MIN_TAG {
-            return TestResult::discard();
-        }
+        prop_assume!(MIN_TAG <= tag && tag <= MAX_TAG);
 
         let expected_len = encoded_len(tag, value.borrow());
 
@@ -1431,78 +1441,69 @@ mod test {
 
         let mut buf = buf.freeze();
 
-        if buf.remaining() != expected_len {
-            return TestResult::error(format!(
-                "encoded_len wrong; expected: {}, actual: {}",
-                expected_len,
-                buf.remaining()
-            ));
-        }
+        prop_assert_eq!(
+            buf.remaining(),
+            expected_len,
+            "encoded_len wrong; expected: {}, actual: {}",
+            expected_len,
+            buf.remaining()
+        );
 
         if !buf.has_remaining() {
             // Short circuit for empty packed values.
-            return TestResult::passed();
+            return Ok(());
         }
 
-        let (decoded_tag, decoded_wire_type) = match decode_key(&mut buf) {
-            Ok(key) => key,
-            Err(error) => return TestResult::error(format!("{:?}", error)),
-        };
+        let (decoded_tag, decoded_wire_type) =
+            decode_key(&mut buf).map_err(|error| TestCaseError::fail(error.to_string()))?;
+        prop_assert_eq!(
+            tag,
+            decoded_tag,
+            "decoded tag does not match; expected: {}, actual: {}",
+            tag,
+            decoded_tag
+        );
 
-        if tag != decoded_tag {
-            return TestResult::error(format!(
-                "decoded tag does not match; expected: {}, actual: {}",
-                tag, decoded_tag
-            ));
-        }
-
-        if wire_type != decoded_wire_type {
-            return TestResult::error(format!(
-                "decoded wire type does not match; expected: {:?}, actual: {:?}",
-                wire_type, decoded_wire_type
-            ));
-        }
+        prop_assert_eq!(
+            wire_type,
+            decoded_wire_type,
+            "decoded wire type does not match; expected: {:?}, actual: {:?}",
+            wire_type,
+            decoded_wire_type,
+        );
 
         match wire_type {
-            WireType::SixtyFourBit if buf.remaining() != 8 => {
-                return TestResult::error(format!(
-                    "64bit wire type illegal remaining: {}, tag: {}",
-                    buf.remaining(),
-                    tag
-                ));
-            }
-            WireType::ThirtyTwoBit if buf.remaining() != 4 => {
-                return TestResult::error(format!(
-                    "32bit wire type illegal remaining: {}, tag: {}",
-                    buf.remaining(),
-                    tag
-                ));
-            }
-            _ => (),
-        }
+            WireType::SixtyFourBit if buf.remaining() != 8 => Err(TestCaseError::fail(format!(
+                "64bit wire type illegal remaining: {}, tag: {}",
+                buf.remaining(),
+                tag
+            ))),
+            WireType::ThirtyTwoBit if buf.remaining() != 4 => Err(TestCaseError::fail(format!(
+                "32bit wire type illegal remaining: {}, tag: {}",
+                buf.remaining(),
+                tag
+            ))),
+            _ => Ok(()),
+        }?;
 
         let mut roundtrip_value = T::default();
-        if let Err(error) = merge(
+        merge(
             wire_type,
             &mut roundtrip_value,
             &mut buf,
             DecodeContext::default(),
-        ) {
-            return TestResult::error(error.to_string());
-        };
+        )
+        .map_err(|error| TestCaseError::fail(error.to_string()))?;
 
-        if buf.has_remaining() {
-            return TestResult::error(format!(
-                "expected buffer to be empty, remaining: {}",
-                buf.remaining()
-            ));
-        }
+        prop_assert!(
+            !buf.has_remaining(),
+            "expected buffer to be empty, remaining: {}",
+            buf.remaining()
+        );
 
-        if value == roundtrip_value {
-            TestResult::passed()
-        } else {
-            TestResult::failed()
-        }
+        prop_assert_eq!(value, roundtrip_value);
+
+        Ok(())
     }
 
     pub fn check_collection_type<T, B, E, M, L>(
@@ -1512,7 +1513,7 @@ mod test {
         encode: E,
         mut merge: M,
         encoded_len: L,
-    ) -> TestResult
+    ) -> TestCaseResult
     where
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
@@ -1520,9 +1521,7 @@ mod test {
         M: FnMut(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         L: FnOnce(u32, &B) -> usize,
     {
-        if tag > MAX_TAG || tag < MIN_TAG {
-            return TestResult::discard();
-        }
+        prop_assume!(MIN_TAG <= tag && tag <= MAX_TAG);
 
         let expected_len = encoded_len(tag, value.borrow());
 
@@ -1531,50 +1530,47 @@ mod test {
 
         let mut buf = buf.freeze();
 
-        if buf.remaining() != expected_len {
-            return TestResult::error(format!(
-                "encoded_len wrong; expected: {}, actual: {}",
-                expected_len,
-                buf.remaining()
-            ));
-        }
+        prop_assert_eq!(
+            buf.remaining(),
+            expected_len,
+            "encoded_len wrong; expected: {}, actual: {}",
+            expected_len,
+            buf.remaining()
+        );
 
         let mut roundtrip_value = Default::default();
         while buf.has_remaining() {
-            let (decoded_tag, decoded_wire_type) = match decode_key(&mut buf) {
-                Ok(key) => key,
-                Err(error) => return TestResult::error(format!("{:?}", error)),
-            };
+            let (decoded_tag, decoded_wire_type) =
+                decode_key(&mut buf).map_err(|error| TestCaseError::fail(error.to_string()))?;
 
-            if tag != decoded_tag {
-                return TestResult::error(format!(
-                    "decoded tag does not match; expected: {}, actual: {}",
-                    tag, decoded_tag
-                ));
-            }
+            prop_assert_eq!(
+                tag,
+                decoded_tag,
+                "decoded tag does not match; expected: {}, actual: {}",
+                tag,
+                decoded_tag
+            );
 
-            if wire_type != decoded_wire_type {
-                return TestResult::error(format!(
-                    "decoded wire type does not match; expected: {:?}, actual: {:?}",
-                    wire_type, decoded_wire_type
-                ));
-            }
+            prop_assert_eq!(
+                wire_type,
+                decoded_wire_type,
+                "decoded wire type does not match; expected: {:?}, actual: {:?}",
+                wire_type,
+                decoded_wire_type
+            );
 
-            if let Err(error) = merge(
+            merge(
                 wire_type,
                 &mut roundtrip_value,
                 &mut buf,
                 DecodeContext::default(),
-            ) {
-                return TestResult::error(error.to_string());
-            };
+            )
+            .map_err(|error| TestCaseError::fail(error.to_string()))?;
         }
 
-        if value == roundtrip_value {
-            TestResult::passed()
-        } else {
-            TestResult::failed()
-        }
+        prop_assert_eq!(value, roundtrip_value);
+
+        Ok(())
     }
 
     #[test]
@@ -1672,8 +1668,8 @@ mod test {
         );
     }
 
-    /// This big bowl o' macro soup generates a quickcheck encoding test for each
-    /// combination of map type, scalar map key, and value type.
+    /// This big bowl o' macro soup generates an encoding property test for each combination of map
+    /// type, scalar map key, and value type.
     /// TODO: these tests take a long time to compile, can this be improved?
     #[cfg(feature = "std")]
     macro_rules! map_tests {
@@ -1694,7 +1690,8 @@ mod test {
             $(
                 mod $key_proto {
                     use std::collections::$map_type;
-                    use quickcheck::{quickcheck, TestResult};
+
+                    use proptest::prelude::*;
 
                     use crate::encoding::*;
                     use crate::encoding::test::check_collection_type;
@@ -1709,8 +1706,9 @@ mod test {
                   ($key_ty:ty, $key_proto:ident),
                   [$(($val_ty:ty, $val_proto:ident)),*]) => {
             $(
-                quickcheck! {
-                    fn $val_proto(values: $map_type<$key_ty, $val_ty>, tag: u32) -> TestResult {
+                proptest! {
+                    #[test]
+                    fn $val_proto(values: $map_type<$key_ty, $val_ty>, tag in MIN_TAG..=MAX_TAG) {
                         check_collection_type(values, tag, WireType::LengthDelimited,
                                               |tag, values, buf| {
                                                   $mod_name::encode($key_proto::encode,
@@ -1734,7 +1732,7 @@ mod test {
                                                                          $val_proto::encoded_len,
                                                                          tag,
                                                                          values)
-                                              })
+                                              })?;
                     }
                 }
              )*
