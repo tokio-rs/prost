@@ -86,7 +86,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .flat_map(|&(_, ref field)| field.tags())
         .collect::<Vec<_>>();
     let num_tags = tags.len();
-    tags.sort();
+    tags.sort_unstable();
     tags.dedup();
     if tags.len() != num_tags {
         bail!("message {} has fields with duplicate tags", ident);
@@ -379,7 +379,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             Ok(field.tags()[0])
         })
         .collect::<Vec<_>>();
-    tags.sort();
+    tags.sort_unstable();
     tags.dedup();
     if tags.len() != fields.len() {
         panic!("invalid oneof {}: variants have duplicate tags", ident);

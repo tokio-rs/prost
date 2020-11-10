@@ -29,7 +29,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
     })
     .throughput(Throughput::Bytes(encoded_len));
 
-    let mut decode_values = values.clone();
+    let decode_values = values.clone();
     let decode = Benchmark::new("decode", move |b| {
         let mut buf = Vec::with_capacity(decode_values.len() * 10);
         for &value in &decode_values {
@@ -37,13 +37,12 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
         }
 
         b.iter(|| {
-            decode_values.clear();
             let mut buf = &mut buf.as_slice();
             while buf.has_remaining() {
-                let value = decode_varint(&mut buf).unwrap();
-                decode_values.push(value);
+                let result = decode_varint(&mut buf);
+                debug_assert!(result.is_ok());
+                criterion::black_box(&result);
             }
-            criterion::black_box(&decode_values);
         })
     })
     .throughput(Throughput::Bytes(decoded_len));
