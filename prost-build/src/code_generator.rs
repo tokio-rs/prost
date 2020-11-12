@@ -576,7 +576,9 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_doc(&mut self) {
-        Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf);
+        if !self.config.disable_comments {
+            Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf);
+        }
     }
 
     fn append_enum(&mut self, desc: EnumDescriptorProto) {

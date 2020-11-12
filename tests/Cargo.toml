@@ -7,9 +7,6 @@ edition = "2018"
 
 build = "src/build.rs"
 
-[lib]
-doctest = false
-
 [features]
 default = ["std"]
 std = []
