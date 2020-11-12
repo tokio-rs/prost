@@ -115,6 +115,7 @@ mod message_graph;
 use std::collections::HashMap;
 use std::default;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
 use std::io::{Error, ErrorKind, Result};
@@ -191,6 +192,7 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
+    protoc_args: Vec<OsString>,
 }
 
 impl Config {
@@ -543,6 +545,28 @@ impl Config {
         self
     }
 
+    /// Add an argument to the `protoc` protobuf compilation invocation.
+    ///
+    /// # Example `build.rs`
+    ///
+    /// ```rust,no_run
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    ///   // Enable a protoc experimental feature.
+    ///   prost_build.protoc_arg("--experimental_allow_proto3_optional");
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
+    /// }
+    /// ```
+    pub fn protoc_arg<S>(&mut self, arg: S) -> &mut Self
+    where
+        S: AsRef<OsStr>,
+    {
+        self.protoc_args.push(arg.as_ref().to_owned());
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -595,6 +619,10 @@ impl Config {
         // Set the protoc include after the user includes in case the user wants to
         // override one of the built-in .protos.
         cmd.arg("-I").arg(protoc_include());
+
+        for arg in &self.protoc_args {
+            cmd.arg(arg);
+        }
 
         for proto in protos {
             cmd.arg(proto.as_ref());
@@ -691,6 +719,7 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
+            protoc_args: Vec::new(),
         }
     }
 }

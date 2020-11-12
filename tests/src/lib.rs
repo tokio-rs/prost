@@ -87,6 +87,12 @@ pub mod groups {
     include!(concat!(env!("OUT_DIR"), "/groups.rs"));
 }
 
+pub mod proto3 {
+    pub mod presence {
+        include!(concat!(env!("OUT_DIR"), "/proto3.presence.rs"));
+    }
+}
+
 use alloc::format;
 use alloc::vec::Vec;
 
@@ -579,5 +585,12 @@ mod tests {
         check_message(&msg);
 
         check_message(&groups::OneofGroup::default());
+    }
+
+    #[test]
+    fn test_proto3_presence() {
+        let msg = proto3::presence::A { b: Some(42) };
+
+        check_message(&msg);
     }
 }
