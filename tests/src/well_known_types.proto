@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 package well_known_types;
 
@@ -10,4 +11,22 @@ message Foo {
     google.protobuf.NullValue null = 1;
     // message
     google.protobuf.Timestamp timestamp = 2;
+
+    google.protobuf.DoubleValue double = 3;
+
+    google.protobuf.FloatValue float = 4;
+
+    google.protobuf.Int64Value int64 = 5;
+
+    google.protobuf.UInt64Value uint64 = 6;
+
+    google.protobuf.Int32Value int32 = 7;
+
+    google.protobuf.UInt32Value uint32 = 8;
+
+    google.protobuf.BoolValue bool = 9;
+
+    google.protobuf.StringValue string = 10;
+
+    google.protobuf.BytesValue bytes = 11;
 }
