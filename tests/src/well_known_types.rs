@@ -15,7 +15,7 @@ fn test_well_known_types() {
         int32: Some(42_i32),
         uint32: Some(42_u32),
         bool: Some(false),
-        string: Some("value".to_owned()),
+        string: Some("value".into()),
         bytes: Some(b"value".to_vec()),
     };
 
