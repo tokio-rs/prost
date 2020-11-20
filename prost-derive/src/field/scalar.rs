@@ -556,10 +556,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        match self {
-            Ty::String | Ty::Bytes(..) => false,
-            _ => true,
-        }
+        !matches!(self, Ty::String | Ty::Bytes(..))
     }
 }
 

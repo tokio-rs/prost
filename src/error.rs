@@ -1,6 +1,7 @@
 //! Protobuf encoding and decoding errors.
 
 use alloc::borrow::Cow;
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use core::fmt;
@@ -10,8 +11,13 @@ use core::fmt;
 /// `DecodeError` indicates that the input buffer does not caontain a valid
 /// Protobuf message. The error details should be considered 'best effort': in
 /// general it is not possible to exactly pinpoint why data is malformed.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct DecodeError {
+    inner: Box<Inner>,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct Inner {
     /// A 'best effort' root cause description.
     description: Cow<'static, str>,
     /// A stack of (message, field) name pairs, which identify the specific
@@ -24,14 +30,13 @@ impl DecodeError {
     /// Creates a new `DecodeError` with a 'best effort' root cause description.
     ///
     /// Meant to be used only by `Message` implementations.
-    #[doc(hidden)]
-    pub fn new<S>(description: S) -> DecodeError
-    where
-        S: Into<Cow<'static, str>>,
-    {
+    #[cold]
+    pub(crate) fn new(description: impl Into<Cow<'static, str>>) -> DecodeError {
         DecodeError {
-            description: description.into(),
-            stack: Vec::new(),
+            inner: Box::new(Inner {
+                description: description.into(),
+                stack: Vec::new(),
+            }),
         }
     }
 
@@ -40,17 +45,26 @@ impl DecodeError {
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
     pub fn push(&mut self, message: &'static str, field: &'static str) {
-        self.stack.push((message, field));
+        self.inner.stack.push((message, field));
+    }
+}
+
+impl fmt::Debug for DecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DecodeError")
+            .field("description", &self.inner.description)
+            .field("stack", &self.inner.stack)
+            .finish()
     }
 }
 
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("failed to decode Protobuf message: ")?;
-        for &(message, field) in &self.stack {
+        for &(message, field) in &self.inner.stack {
             write!(f, "{}.{}: ", message, field)?;
         }
-        f.write_str(&self.description)
+        f.write_str(&self.inner.description)
     }
 }
 
