@@ -31,6 +31,15 @@ fn test_message_descriptor() {
             seconds: 99,
             nanos: 42,
         }),
+        double: None,
+        float: None,
+        int64: None,
+        uint64: None,
+        int32: None,
+        uint32: None,
+        bool: None,
+        string: None,
+        bytes: None,
     };
 
     assert_eq!(msg.message_name(), "Foo");
