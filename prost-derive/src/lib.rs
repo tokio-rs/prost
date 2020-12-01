@@ -221,7 +221,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl ::prost::MessageDescriptor for #ident {
+        impl #impl_generics ::prost::MessageDescriptor for #ident #ty_generics #where_clause {
             fn message_name(&self) -> &'static str {
                 stringify!(#ident)
             }
