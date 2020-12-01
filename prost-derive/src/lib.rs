@@ -10,11 +10,13 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields,
-          FieldsNamed, FieldsUnnamed, Ident, Variant, Meta};
+use syn::{
+    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
+    FieldsUnnamed, Ident, Meta, Variant,
+};
 
 mod field;
-use crate::field::{Field, prost_attrs};
+use crate::field::{prost_attrs, Field};
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
