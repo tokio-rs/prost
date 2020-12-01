@@ -61,7 +61,7 @@ jobs:
             default: true
             profile: minimal
       - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v1
+        uses: seanmiddleditch/gha-setup-ninja@v3
       - name: test
         uses: actions-rs/cargo@v1
         with:
