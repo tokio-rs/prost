@@ -36,6 +36,8 @@ mod debug;
 #[cfg(test)]
 mod deprecated_field;
 #[cfg(test)]
+mod generic_derive;
+#[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;
@@ -85,6 +87,12 @@ pub mod default_enum_value {
 
 pub mod groups {
     include!(concat!(env!("OUT_DIR"), "/groups.rs"));
+}
+
+pub mod proto3 {
+    pub mod presence {
+        include!(concat!(env!("OUT_DIR"), "/proto3.presence.rs"));
+    }
 }
 
 use alloc::format;
@@ -195,10 +203,11 @@ where
     let mut buf = &*buf;
     let roundtrip = M::decode(&mut buf).unwrap();
 
-    if buf.has_remaining() {
-        panic!("expected buffer to be empty: {}", buf.remaining());
-    }
-
+    assert!(
+        !buf.has_remaining(),
+        "expected buffer to be empty: {}",
+        buf.remaining()
+    );
     assert_eq!(msg, &roundtrip);
 }
 
@@ -578,5 +587,12 @@ mod tests {
         check_message(&msg);
 
         check_message(&groups::OneofGroup::default());
+    }
+
+    #[test]
+    fn test_proto3_presence() {
+        let msg = proto3::presence::A { b: Some(42) };
+
+        check_message(&msg);
     }
 }

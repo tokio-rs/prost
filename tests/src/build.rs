@@ -82,6 +82,11 @@ fn main() {
         .unwrap();
 
     config
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile_protos(&[src.join("proto3_presence.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 

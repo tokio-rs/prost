@@ -171,3 +171,10 @@ pub trait MessageDescriptor: Message + 'static {
     fn package_name(&self) -> &'static str;
     fn type_url(&self) -> &'static str;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const _MESSAGE_IS_OBJECT_SAFE: Option<&dyn Message> = None;
+}

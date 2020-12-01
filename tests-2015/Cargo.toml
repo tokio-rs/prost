@@ -18,7 +18,7 @@ std = []
 
 [dependencies]
 anyhow = "1"
-bytes = "0.5"
+bytes = "0.6"
 cfg-if = "0.1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
@@ -31,6 +31,6 @@ tempfile = "3"
 
 [build-dependencies]
 cfg-if = "0.1"
-env_logger = { version = "0.7", default-features = false }
+env_logger = { version = "0.8", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }
