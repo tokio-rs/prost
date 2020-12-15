@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/danburkert/prost.svg?branch=master)](https://travis-ci.org/danburkert/prost)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/24rpba3x2vqe8lje/branch/master?svg=true)](https://ci.appveyor.com/project/danburkert/prost/branch/master)
+![continuous integration](https://github.com/danburkert/prost/workflows/continuous%20integration/badge.svg)
 [![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
 [![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
 [![Dependency Status](https://deps.rs/repo/github/danburkert/prost/status.svg)](https://deps.rs/repo/github/danburkert/prost)

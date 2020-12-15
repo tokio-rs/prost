@@ -42,6 +42,7 @@ fn bundled_protoc() -> Option<PathBuf> {
         ("linux", "x86_64") => "protoc-linux-x86_64",
         ("linux", "aarch64") => "protoc-linux-aarch_64",
         ("macos", "x86_64") => "protoc-osx-x86_64",
+        ("macos", "aarch64") => "protoc-osx-x86_64", // will be translated to aarch64 by Rosetta
         ("windows", _) => "protoc-win32.exe",
         _ => return None,
     };
