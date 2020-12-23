@@ -46,7 +46,7 @@ criterion = "0.3"
 env_logger = { version = "0.8", default-features = false }
 log = "0.4"
 proptest = "0.10"
-rand = "0.7"
+rand = "0.8"
 
 [profile.bench]
 debug = true
