@@ -88,11 +88,7 @@ fn main() {
 
     {
         let mut config = prost_build::Config::new();
-        cfg_if! {
-            if #[cfg(not(doctest))] {
-                config.disable_comments();
-            }
-        };
+        config.disable_comments(&["."]);
 
         config
             .compile_protos(&[src.join("invalid_doctest.proto")], includes)

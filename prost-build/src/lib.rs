@@ -193,7 +193,7 @@ pub struct Config {
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
     protoc_args: Vec<OsString>,
-    disable_comments: bool,
+    disable_comments: Vec<String>,
 }
 
 impl Config {
@@ -422,19 +422,21 @@ impl Config {
     ///
     /// ```rust,ignore
     /// let mut config = prost_build::Config::new();
-    /// cfg_if! {
-    ///     if #[cfg(not(doctest))] {
-    ///         config.disable_comments();
-    ///     }
-    /// };
-    ///
+    /// config.disable_comments(".");
     /// config.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
     /// ```
     ///
+    /// As with other options which take a set of paths, comments can be disabled on a per-package
+    /// or per-symbol basis.
+    ///
     /// [1]: https://doc.rust-lang.org/rustdoc/documentation-tests.html#attributes
     /// [2]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#configuring-a-target
-    pub fn disable_comments(&mut self) -> &mut Self {
-        self.disable_comments = true;
+    pub fn disable_comments<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.disable_comments = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
         self
     }
 
@@ -748,7 +750,7 @@ impl default::Default for Config {
             out_dir: None,
             extern_paths: Vec::new(),
             protoc_args: Vec::new(),
-            disable_comments: false,
+            disable_comments: Vec::new(),
         }
     }
 }
