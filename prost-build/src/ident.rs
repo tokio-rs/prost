@@ -41,8 +41,8 @@ pub fn to_upper_camel(s: &str) -> String {
 }
 
 /// Matches a 'matcher' against a fully qualified identifier.
-pub fn match_ident(matcher: &str, msg: &str, field: Option<&str>) -> bool {
-    assert_eq!(b'.', msg.as_bytes()[0]);
+pub fn match_ident(matcher: &str, fq_name: &str, field_name: Option<&str>) -> bool {
+    assert_eq!(b'.', fq_name.as_bytes()[0]);
 
     if matcher.is_empty() {
         return false;
@@ -52,9 +52,9 @@ pub fn match_ident(matcher: &str, msg: &str, field: Option<&str>) -> bool {
 
     let match_paths = matcher.split('.').collect::<Vec<_>>();
     let field_paths = {
-        let mut paths = msg.split('.').collect::<Vec<_>>();
-        if let Some(field) = field {
-            paths.push(field);
+        let mut paths = fq_name.split('.').collect::<Vec<_>>();
+        if let Some(field_name) = field_name {
+            paths.push(field_name);
         }
         paths
     };

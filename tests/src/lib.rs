@@ -95,6 +95,12 @@ pub mod proto3 {
     }
 }
 
+pub mod invalid {
+    pub mod doctest {
+        include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));
+    }
+}
+
 use alloc::format;
 use alloc::vec::Vec;
 

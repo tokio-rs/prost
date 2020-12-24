@@ -81,10 +81,19 @@ fn main() {
         .compile_protos(&[src.join("deprecated_field.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)
         .unwrap();
+
+    {
+        let mut config = prost_build::Config::new();
+        config.disable_comments(&["."]);
+
+        config
+            .compile_protos(&[src.join("invalid_doctest.proto")], includes)
+            .unwrap();
+    }
 
     config
         .compile_protos(&[src.join("well_known_types.proto")], includes)
