@@ -36,6 +36,7 @@ fn env_protoc() -> Option<PathBuf> {
 }
 
 /// Returns the path to the bundled `protoc`, if it is available for the host platform.
+#[cfg(not(target_env = "musl"))]
 fn bundled_protoc() -> Option<PathBuf> {
     let protoc_bin_name = match (env::consts::OS, env::consts::ARCH) {
         ("linux", "x86") => "protoc-linux-x86_32",
@@ -48,6 +49,14 @@ fn bundled_protoc() -> Option<PathBuf> {
     };
 
     Some(bundle_path().join(protoc_bin_name))
+}
+
+/// `musl` build hosts do not have a bundled `protoc`.
+///
+/// Note: this checks the target of the `prost-build` build.rs, which is ultimately the host architecture.
+#[cfg(target_env = "musl")]
+fn bundled_protoc() -> Option<PathBuf> {
+    None
 }
 
 /// Returns the path to the `protoc` included on the `PATH`, if it exists.
