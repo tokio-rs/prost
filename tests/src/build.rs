@@ -45,6 +45,11 @@ fn main() {
     config.field_attribute("Foo.Custom.Attrs.Msg.field.a", "/// Oneof A docs");
     config.field_attribute("Foo.Custom.Attrs.Msg.field.b", "/// Oneof B docs");
 
+    config.file_descriptor_set_path(
+        PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
+            .join("file_descriptor_set.bin"),
+    );
+
     config
         .compile_protos(&[src.join("ident_conversion.proto")], includes)
         .unwrap();

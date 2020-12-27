@@ -21,9 +21,7 @@ Compared to other Protocol Buffers implementations, `prost`
 * Respects the Protobuf `package` specifier when organizing generated code
   into Rust modules.
 * Preserves unknown enum values during deserialization.
-* Does not include support for runtime reflection or message descriptors, but
-  allows encoded `FileDescriptorSet` messages to be saved alongside generated
-  code for use of consumers.
+* Does not include support for runtime reflection or message descriptors.
 
 ## Using `prost` in a Cargo Project
 
@@ -59,12 +57,6 @@ package foo.bar;
 ```
 
 All Rust types generated from the file will be in the `foo::bar` module.
-
-If the `include_file_descriptor_set` option is set on the `prost_build::Config`
-for the invocation of `prost_build`, an additional file named `file_descriptor_set.bin`
-will be written to the output directory. This can be used in conjunction with the
-`include_bytes` macro, and decoded using the `FileDescriptorSet` type from the
-`prost-types` crate in applications or libraries using Prost.
 
 ### Messages
 
@@ -257,6 +249,13 @@ pub struct AddressBook {
     pub people: Vec<Person>,
 }
 ```
+
+## Accessing the `protoc` `FileDescriptorSet`
+
+The `prost_build::Config::file_descriptor_set_path` option can be used to emit a file descriptor set
+during the build & code generation step. When used in conjunction with the `std::include_bytes`
+macro and the `prost_types::FileDescriptorSet` type, applications and libraries using Prost can
+implement introspection capabilities requiring details from the original `.proto` files.
 
 ## Using `prost` in a `no_std` Crate
 
