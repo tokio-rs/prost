@@ -601,4 +601,11 @@ mod tests {
 
         check_message(&msg);
     }
+
+    #[test]
+    fn test_file_descriptor_set_path() {
+        let file_descriptor_set_bytes =
+            include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+        prost_types::FileDescriptorSet::decode(&file_descriptor_set_bytes[..]).unwrap();
+    }
 }
