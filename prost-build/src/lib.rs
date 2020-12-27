@@ -97,14 +97,17 @@
 //! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
-//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in
-//! the prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux, macOS, and
-//! Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
+//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in the
+//! prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux (non-musl), macOS,
+//! and Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
 //! `protoc` or `protoc.exe` binary on the `PATH` is used. If `protoc` is not available in any of
 //! these fallback locations, then the build fails.
 //!
-//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
-//! in the prost-build crate is be used.
+//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
+//! bundled in the prost-build crate is be used.
+//!
+//! To force `prost-build` to use the `protoc` on the `PATH`, add `PROTOC=protoc` to the
+//! environment.
 
 mod ast;
 mod code_generator;
@@ -697,7 +700,13 @@ impl Config {
             cmd.arg(proto.as_ref());
         }
 
-        let output = cmd.output()?;
+        let output = cmd.output().map_err(|error| {
+            Error::new(
+                error.kind(),
+                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): {}", error),
+            )
+        })?;
+
         if !output.status.success() {
             return Err(Error::new(
                 ErrorKind::Other,
