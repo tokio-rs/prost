@@ -54,9 +54,9 @@ impl Comments {
                 }
                 buf.push_str("//");
                 buf.push_str(line);
-                buf.push_str("\n");
+                buf.push('\n');
             }
-            buf.push_str("\n");
+            buf.push('\n');
         }
 
         // Append leading comments.
@@ -66,7 +66,7 @@ impl Comments {
             }
             buf.push_str("///");
             buf.push_str(line);
-            buf.push_str("\n");
+            buf.push('\n');
         }
 
         // Append an empty comment line if there are leading and trailing comments.
@@ -84,7 +84,7 @@ impl Comments {
             }
             buf.push_str("///");
             buf.push_str(line);
-            buf.push_str("\n");
+            buf.push('\n');
         }
     }
 }
