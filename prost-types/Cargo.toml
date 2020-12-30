@@ -19,9 +19,14 @@ doctest = false
 default = ["std"]
 std = ["prost/std"]
 
+# Support conversion between Timestamp and chrono::DateTime
+chrono-conversions = ["chrono"]
+
+
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost = { version = "0.8.0", path = "..", default-features = false, features = ["prost-derive"] }
+chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
 proptest = "1"
