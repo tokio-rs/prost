@@ -16,29 +16,14 @@ use prost_types::{
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{match_ident, to_snake, to_upper_camel};
+use crate::ident::{to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::Config;
+use crate::{BytesType, Config, MapType};
 
 #[derive(PartialEq)]
 enum Syntax {
     Proto2,
     Proto3,
-}
-
-#[derive(PartialEq)]
-enum BytesTy {
-    Vec,
-    Bytes,
-}
-
-impl BytesTy {
-    fn as_str(&self) -> &'static str {
-        match self {
-            BytesTy::Vec => "\"vec\"",
-            BytesTy::Bytes => "\"bytes\"",
-        }
-    }
 }
 
 pub struct CodeGenerator<'a> {
@@ -267,24 +252,25 @@ impl<'a> CodeGenerator<'a> {
     fn append_type_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         // TODO: this clone is dirty, but expedious.
-        for (matcher, attribute) in self.config.type_attributes.clone() {
-            if match_ident(&matcher, fq_message_name, None) {
-                self.push_indent();
-                self.buf.push_str(&attribute);
-                self.buf.push('\n');
-            }
+        if let Some(attributes) = self.config.type_attributes.get(fq_message_name).cloned() {
+            self.push_indent();
+            self.buf.push_str(&attributes);
+            self.buf.push('\n');
         }
     }
 
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         // TODO: this clone is dirty, but expedious.
-        for (matcher, attribute) in self.config.field_attributes.clone() {
-            if match_ident(&matcher, fq_message_name, Some(field_name)) {
-                self.push_indent();
-                self.buf.push_str(&attribute);
-                self.buf.push('\n');
-            }
+        if let Some(attributes) = self
+            .config
+            .field_attributes
+            .get_field(fq_message_name, field_name)
+            .cloned()
+        {
+            self.push_indent();
+            self.buf.push_str(&attributes);
+            self.buf.push('\n');
         }
     }
 
@@ -321,9 +307,14 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&type_tag);
 
         if type_ == Type::Bytes {
-            self.buf.push('=');
+            let bytes_type = self
+                .config
+                .bytes_type
+                .get_field(fq_message_name, field.name())
+                .copied()
+                .unwrap_or_default();
             self.buf
-                .push_str(self.bytes_backing_type(&field, fq_message_name).as_str());
+                .push_str(&format!("={:?}", bytes_type.annotation()));
         }
 
         match field.label() {
@@ -431,23 +422,18 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(fq_message_name, Some(field.name()));
         self.push_indent();
 
-        let btree_map = self
+        let map_type = self
             .config
-            .btree_map
-            .iter()
-            .any(|matcher| match_ident(matcher, fq_message_name, Some(field.name())));
-        let (annotation_ty, lib_name, rust_ty) = if btree_map {
-            ("btree_map", "::prost::alloc::collections", "BTreeMap")
-        } else {
-            ("map", "::std::collections", "HashMap")
-        };
-
+            .map_type
+            .get_field(fq_message_name, field.name())
+            .copied()
+            .unwrap_or_default();
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
 
         self.buf.push_str(&format!(
             "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
-            annotation_ty,
+            map_type.annotation(),
             key_tag,
             value_tag,
             field.number()
@@ -455,10 +441,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(fq_message_name, field.name());
         self.push_indent();
         self.buf.push_str(&format!(
-            "pub {}: {}::{}<{}, {}>,\n",
+            "pub {}: {}<{}, {}>,\n",
             to_snake(field.name()),
-            lib_name,
-            rust_ty,
+            map_type.rust_type(),
             key_ty,
             value_ty
         ));
@@ -580,12 +565,15 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_doc(&mut self, fq_name: &str, field_name: Option<&str>) {
-        if !self
-            .config
-            .disable_comments
-            .iter()
-            .any(|matcher| match_ident(matcher, fq_name, field_name))
-        {
+        let append_doc = if let Some(field_name) = field_name {
+            self.config
+                .disable_comments
+                .get_field(fq_name, field_name)
+                .is_none()
+        } else {
+            self.config.disable_comments.get(fq_name).is_none()
+        };
+        if append_doc {
             Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf)
         }
     }
@@ -759,10 +747,14 @@ impl<'a> CodeGenerator<'a> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => String::from("::prost::alloc::string::String"),
-            Type::Bytes => match self.bytes_backing_type(field, fq_message_name) {
-                BytesTy::Bytes => String::from("::prost::bytes::Bytes"),
-                BytesTy::Vec => String::from("::prost::alloc::vec::Vec<u8>"),
-            },
+            Type::Bytes => self
+                .config
+                .bytes_type
+                .get_field(fq_message_name, field.name())
+                .copied()
+                .unwrap_or_default()
+                .rust_type()
+                .to_owned(),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }
@@ -842,19 +834,6 @@ impl<'a> CodeGenerator<'a> {
         match field.r#type() {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
-        }
-    }
-
-    fn bytes_backing_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> BytesTy {
-        let bytes = self
-            .config
-            .bytes
-            .iter()
-            .any(|matcher| match_ident(matcher, fq_message_name, Some(field.name())));
-        if bytes {
-            BytesTy::Bytes
-        } else {
-            BytesTy::Vec
         }
     }
 
@@ -1016,6 +995,42 @@ fn strip_enum_prefix<'a>(prefix: &str, name: &'a str) -> &'a str {
         stripped
     } else {
         name
+    }
+}
+
+impl MapType {
+    /// The `prost-derive` annotation type corresponding to the map type.
+    fn annotation(&self) -> &'static str {
+        match self {
+            MapType::HashMap => "map",
+            MapType::BTreeMap => "btree_map",
+        }
+    }
+
+    /// The fully-qualified Rust type corresponding to the map type.
+    fn rust_type(&self) -> &'static str {
+        match self {
+            MapType::HashMap => "::std::collections::HashMap",
+            MapType::BTreeMap => "::prost::alloc::collections::BTreeMap",
+        }
+    }
+}
+
+impl BytesType {
+    /// The `prost-derive` annotation type corresponding to the bytes type.
+    fn annotation(&self) -> &'static str {
+        match self {
+            BytesType::Vec => "vec",
+            BytesType::Bytes => "bytes",
+        }
+    }
+
+    /// The fully-qualified Rust type corresponding to the bytes type.
+    fn rust_type(&self) -> &'static str {
+        match self {
+            BytesType::Vec => "::prost::alloc::vec::Vec<u8>",
+            BytesType::Bytes => "::prost::bytes::Bytes",
+        }
     }
 }
 
