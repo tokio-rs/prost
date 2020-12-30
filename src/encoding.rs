@@ -314,7 +314,7 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B)
 where
     B: BufMut,
 {
-    debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+    debug_assert!((MIN_TAG..=MAX_TAG).contains(&tag));
     let key = (tag << 3) | wire_type as u32;
     encode_varint(u64::from(key), buf);
 }
