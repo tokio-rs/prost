@@ -15,10 +15,13 @@ doctest = false
 [features]
 default = ["std"]
 std = ["prost/std"]
+# Derive serde traits for the structs defined in this crate (unless they contain optional fields)
+serde-derive = ["serde"]
 
 [dependencies]
 bytes = { version = "0.6", default-features = false }
 prost = { version = "0.6.1", path = "..", default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", features = ["derive"], optional = true}
 
 [dev-dependencies]
 proptest = "0.9"
