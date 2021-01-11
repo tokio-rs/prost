@@ -1,151 +1,158 @@
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FileDescriptorSet {
-    #[prost(message, repeated, tag="1")]
+    #[prost(message, repeated, tag = "1")]
     pub file: ::prost::alloc::vec::Vec<FileDescriptorProto>,
 }
 /// Describes a complete .proto file.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// e.g. "foo", "foo.bar", etc.
-    #[prost(string, optional, tag="2")]
+    #[prost(string, optional, tag = "2")]
     pub package: ::core::option::Option<::prost::alloc::string::String>,
     /// Names of files imported by this file.
-    #[prost(string, repeated, tag="3")]
+    #[prost(string, repeated, tag = "3")]
     pub dependency: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Indexes of the public imported files in the dependency list above.
-    #[prost(int32, repeated, packed="false", tag="10")]
+    #[prost(int32, repeated, packed = "false", tag = "10")]
     pub public_dependency: ::prost::alloc::vec::Vec<i32>,
     /// Indexes of the weak imported files in the dependency list.
     /// For Google-internal migration only. Do not use.
-    #[prost(int32, repeated, packed="false", tag="11")]
+    #[prost(int32, repeated, packed = "false", tag = "11")]
     pub weak_dependency: ::prost::alloc::vec::Vec<i32>,
     /// All top-level definitions in this file.
-    #[prost(message, repeated, tag="4")]
+    #[prost(message, repeated, tag = "4")]
     pub message_type: ::prost::alloc::vec::Vec<DescriptorProto>,
-    #[prost(message, repeated, tag="5")]
+    #[prost(message, repeated, tag = "5")]
     pub enum_type: ::prost::alloc::vec::Vec<EnumDescriptorProto>,
-    #[prost(message, repeated, tag="6")]
+    #[prost(message, repeated, tag = "6")]
     pub service: ::prost::alloc::vec::Vec<ServiceDescriptorProto>,
-    #[prost(message, repeated, tag="7")]
+    #[prost(message, repeated, tag = "7")]
     pub extension: ::prost::alloc::vec::Vec<FieldDescriptorProto>,
-    #[prost(message, optional, tag="8")]
+    #[prost(message, optional, tag = "8")]
     pub options: ::core::option::Option<FileOptions>,
     /// This field contains optional information about the original source code.
     /// You may safely remove this entire field without harming runtime
     /// functionality of the descriptors -- the information is needed only by
     /// development tools.
-    #[prost(message, optional, tag="9")]
+    #[prost(message, optional, tag = "9")]
     pub source_code_info: ::core::option::Option<SourceCodeInfo>,
     /// The syntax of the proto file.
     /// The supported values are "proto2" and "proto3".
-    #[prost(string, optional, tag="12")]
+    #[prost(string, optional, tag = "12")]
     pub syntax: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Describes a message type.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub field: ::prost::alloc::vec::Vec<FieldDescriptorProto>,
-    #[prost(message, repeated, tag="6")]
+    #[prost(message, repeated, tag = "6")]
     pub extension: ::prost::alloc::vec::Vec<FieldDescriptorProto>,
-    #[prost(message, repeated, tag="3")]
+    #[prost(message, repeated, tag = "3")]
     pub nested_type: ::prost::alloc::vec::Vec<DescriptorProto>,
-    #[prost(message, repeated, tag="4")]
+    #[prost(message, repeated, tag = "4")]
     pub enum_type: ::prost::alloc::vec::Vec<EnumDescriptorProto>,
-    #[prost(message, repeated, tag="5")]
+    #[prost(message, repeated, tag = "5")]
     pub extension_range: ::prost::alloc::vec::Vec<descriptor_proto::ExtensionRange>,
-    #[prost(message, repeated, tag="8")]
+    #[prost(message, repeated, tag = "8")]
     pub oneof_decl: ::prost::alloc::vec::Vec<OneofDescriptorProto>,
-    #[prost(message, optional, tag="7")]
+    #[prost(message, optional, tag = "7")]
     pub options: ::core::option::Option<MessageOptions>,
-    #[prost(message, repeated, tag="9")]
+    #[prost(message, repeated, tag = "9")]
     pub reserved_range: ::prost::alloc::vec::Vec<descriptor_proto::ReservedRange>,
     /// Reserved field names, which may not be used by fields in the same message.
     /// A given name may only be reserved once.
-    #[prost(string, repeated, tag="10")]
+    #[prost(string, repeated, tag = "10")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `DescriptorProto`.
 pub mod descriptor_proto {
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct ExtensionRange {
         /// Inclusive.
-        #[prost(int32, optional, tag="1")]
+        #[prost(int32, optional, tag = "1")]
         pub start: ::core::option::Option<i32>,
         /// Exclusive.
-        #[prost(int32, optional, tag="2")]
+        #[prost(int32, optional, tag = "2")]
         pub end: ::core::option::Option<i32>,
-        #[prost(message, optional, tag="3")]
+        #[prost(message, optional, tag = "3")]
         pub options: ::core::option::Option<super::ExtensionRangeOptions>,
     }
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
     /// fields or extension ranges in the same message. Reserved ranges may
     /// not overlap.
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct ReservedRange {
         /// Inclusive.
-        #[prost(int32, optional, tag="1")]
+        #[prost(int32, optional, tag = "1")]
         pub start: ::core::option::Option<i32>,
         /// Exclusive.
-        #[prost(int32, optional, tag="2")]
+        #[prost(int32, optional, tag = "2")]
         pub end: ::core::option::Option<i32>,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExtensionRangeOptions {
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 /// Describes a field within a message.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FieldDescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(int32, optional, tag="3")]
+    #[prost(int32, optional, tag = "3")]
     pub number: ::core::option::Option<i32>,
-    #[prost(enumeration="field_descriptor_proto::Label", optional, tag="4")]
+    #[prost(enumeration = "field_descriptor_proto::Label", optional, tag = "4")]
     pub label: ::core::option::Option<i32>,
     /// If type_name is set, this need not be set.  If both this and type_name
     /// are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
-    #[prost(enumeration="field_descriptor_proto::Type", optional, tag="5")]
+    #[prost(enumeration = "field_descriptor_proto::Type", optional, tag = "5")]
     pub r#type: ::core::option::Option<i32>,
     /// For message and enum types, this is the name of the type.  If the name
     /// starts with a '.', it is fully-qualified.  Otherwise, C++-like scoping
     /// rules are used to find the type (i.e. first the nested types within this
     /// message are searched, then within the parent, on up to the root
     /// namespace).
-    #[prost(string, optional, tag="6")]
+    #[prost(string, optional, tag = "6")]
     pub type_name: ::core::option::Option<::prost::alloc::string::String>,
     /// For extensions, this is the name of the type being extended.  It is
     /// resolved in the same manner as type_name.
-    #[prost(string, optional, tag="2")]
+    #[prost(string, optional, tag = "2")]
     pub extendee: ::core::option::Option<::prost::alloc::string::String>,
     /// For numeric types, contains the original text representation of the value.
     /// For booleans, "true" or "false".
     /// For strings, contains the default text contents (not escaped in any way).
     /// For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
     /// TODO(kenton):  Base-64 encode?
-    #[prost(string, optional, tag="7")]
+    #[prost(string, optional, tag = "7")]
     pub default_value: ::core::option::Option<::prost::alloc::string::String>,
     /// If set, gives the index of a oneof in the containing type's oneof_decl
     /// list.  This field is a member of that oneof.
-    #[prost(int32, optional, tag="9")]
+    #[prost(int32, optional, tag = "9")]
     pub oneof_index: ::core::option::Option<i32>,
     /// JSON name of this field. The value is set by protocol compiler. If the
     /// user has set a "json_name" option on this field, that option's value
     /// will be used. Otherwise, it's deduced from the field's name by converting
     /// it to camelCase.
-    #[prost(string, optional, tag="10")]
+    #[prost(string, optional, tag = "10")]
     pub json_name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(message, optional, tag="8")]
+    #[prost(message, optional, tag = "8")]
     pub options: ::core::option::Option<FieldOptions>,
     /// If true, this is a proto3 "optional". When a proto3 field is optional, it
     /// tracks presence regardless of field type.
@@ -168,12 +175,13 @@ pub struct FieldDescriptorProto {
     ///
     /// Proto2 optional fields do not set this flag, because they already indicate
     /// optional with `LABEL_OPTIONAL`.
-    #[prost(bool, optional, tag="17")]
+    #[prost(bool, optional, tag = "17")]
     pub proto3_optional: ::core::option::Option<bool>,
 }
 /// Nested message and enum types in `FieldDescriptorProto`.
 pub mod field_descriptor_proto {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum Type {
         /// 0 is reserved for errors.
@@ -210,6 +218,7 @@ pub mod field_descriptor_proto {
         Sint64 = 18,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum Label {
         /// 0 is reserved for errors
@@ -220,29 +229,31 @@ pub mod field_descriptor_proto {
 }
 /// Describes a oneof.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OneofDescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub options: ::core::option::Option<OneofOptions>,
 }
 /// Describes an enum type.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EnumDescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub value: ::prost::alloc::vec::Vec<EnumValueDescriptorProto>,
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub options: ::core::option::Option<EnumOptions>,
     /// Range of reserved numeric values. Reserved numeric values may not be used
     /// by enum values in the same enum declaration. Reserved ranges may not
     /// overlap.
-    #[prost(message, repeated, tag="4")]
+    #[prost(message, repeated, tag = "4")]
     pub reserved_range: ::prost::alloc::vec::Vec<enum_descriptor_proto::EnumReservedRange>,
     /// Reserved enum value names, which may not be reused. A given name may only
     /// be reserved once.
-    #[prost(string, repeated, tag="5")]
+    #[prost(string, repeated, tag = "5")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `EnumDescriptorProto`.
@@ -254,53 +265,57 @@ pub mod enum_descriptor_proto {
     /// is inclusive such that it can appropriately represent the entire int32
     /// domain.
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct EnumReservedRange {
         /// Inclusive.
-        #[prost(int32, optional, tag="1")]
+        #[prost(int32, optional, tag = "1")]
         pub start: ::core::option::Option<i32>,
         /// Inclusive.
-        #[prost(int32, optional, tag="2")]
+        #[prost(int32, optional, tag = "2")]
         pub end: ::core::option::Option<i32>,
     }
 }
 /// Describes a value within an enum.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EnumValueDescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(int32, optional, tag="2")]
+    #[prost(int32, optional, tag = "2")]
     pub number: ::core::option::Option<i32>,
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub options: ::core::option::Option<EnumValueOptions>,
 }
 /// Describes a service.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ServiceDescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub method: ::prost::alloc::vec::Vec<MethodDescriptorProto>,
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub options: ::core::option::Option<ServiceOptions>,
 }
 /// Describes a method of a service.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MethodDescriptorProto {
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// Input and output type names.  These are resolved in the same way as
     /// FieldDescriptorProto.type_name, but must refer to a message type.
-    #[prost(string, optional, tag="2")]
+    #[prost(string, optional, tag = "2")]
     pub input_type: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(string, optional, tag="3")]
+    #[prost(string, optional, tag = "3")]
     pub output_type: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(message, optional, tag="4")]
+    #[prost(message, optional, tag = "4")]
     pub options: ::core::option::Option<MethodOptions>,
     /// Identifies if client streams multiple client messages
-    #[prost(bool, optional, tag="5", default="false")]
+    #[prost(bool, optional, tag = "5", default = "false")]
     pub client_streaming: ::core::option::Option<bool>,
     /// Identifies if server streams multiple server messages
-    #[prost(bool, optional, tag="6", default="false")]
+    #[prost(bool, optional, tag = "6", default = "false")]
     pub server_streaming: ::core::option::Option<bool>,
 }
 // ===================================================================
@@ -336,19 +351,20 @@ pub struct MethodDescriptorProto {
 //   to automatically assign option numbers.
 
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FileOptions {
     /// Sets the Java package where classes generated from this .proto will be
     /// placed.  By default, the proto package is used, but this is often
     /// inappropriate because proto packages do not normally start with backwards
     /// domain names.
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub java_package: ::core::option::Option<::prost::alloc::string::String>,
     /// If set, all the classes from the .proto file are wrapped in a single
     /// outer class with the given name.  This applies to both Proto1
     /// (equivalent to the old "--one_java_file" option) and Proto2 (where
     /// a .proto always translates to a single class, but you may want to
     /// explicitly choose the class name).
-    #[prost(string, optional, tag="8")]
+    #[prost(string, optional, tag = "8")]
     pub java_outer_classname: ::core::option::Option<::prost::alloc::string::String>,
     /// If set true, then the Java code generator will generate a separate .java
     /// file for each top-level message, enum, and service defined in the .proto
@@ -356,11 +372,11 @@ pub struct FileOptions {
     /// named by java_outer_classname.  However, the outer class will still be
     /// generated to contain the file's getDescriptor() method as well as any
     /// top-level extensions defined in the file.
-    #[prost(bool, optional, tag="10", default="false")]
+    #[prost(bool, optional, tag = "10", default = "false")]
     pub java_multiple_files: ::core::option::Option<bool>,
     /// This option does nothing.
     #[deprecated]
-    #[prost(bool, optional, tag="20")]
+    #[prost(bool, optional, tag = "20")]
     pub java_generate_equals_and_hash: ::core::option::Option<bool>,
     /// If set true, then the Java2 code generator will generate code that
     /// throws an exception whenever an attempt is made to assign a non-UTF-8
@@ -368,16 +384,21 @@ pub struct FileOptions {
     /// Message reflection will do the same.
     /// However, an extension field still accepts non-UTF-8 byte sequences.
     /// This option has no effect on when used with the lite runtime.
-    #[prost(bool, optional, tag="27", default="false")]
+    #[prost(bool, optional, tag = "27", default = "false")]
     pub java_string_check_utf8: ::core::option::Option<bool>,
-    #[prost(enumeration="file_options::OptimizeMode", optional, tag="9", default="Speed")]
+    #[prost(
+        enumeration = "file_options::OptimizeMode",
+        optional,
+        tag = "9",
+        default = "Speed"
+    )]
     pub optimize_for: ::core::option::Option<i32>,
     /// Sets the Go package where structs generated from this .proto will be
     /// placed. If omitted, the Go package will be derived from the following:
     ///   - The basename of the package import path, if provided.
     ///   - Otherwise, the package statement in the .proto file, if present.
     ///   - Otherwise, the basename of the .proto file, without extension.
-    #[prost(string, optional, tag="11")]
+    #[prost(string, optional, tag = "11")]
     pub go_package: ::core::option::Option<::prost::alloc::string::String>,
     /// Should generic services be generated in each language?  "Generic" services
     /// are not specific to any particular RPC system.  They are generated by the
@@ -389,65 +410,66 @@ pub struct FileOptions {
     /// that generate code specific to your particular RPC system.  Therefore,
     /// these default to false.  Old code which depends on generic services should
     /// explicitly set them to true.
-    #[prost(bool, optional, tag="16", default="false")]
+    #[prost(bool, optional, tag = "16", default = "false")]
     pub cc_generic_services: ::core::option::Option<bool>,
-    #[prost(bool, optional, tag="17", default="false")]
+    #[prost(bool, optional, tag = "17", default = "false")]
     pub java_generic_services: ::core::option::Option<bool>,
-    #[prost(bool, optional, tag="18", default="false")]
+    #[prost(bool, optional, tag = "18", default = "false")]
     pub py_generic_services: ::core::option::Option<bool>,
-    #[prost(bool, optional, tag="42", default="false")]
+    #[prost(bool, optional, tag = "42", default = "false")]
     pub php_generic_services: ::core::option::Option<bool>,
     /// Is this file deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for everything in the file, or it will be completely ignored; in the very
     /// least, this is a formalization for deprecating files.
-    #[prost(bool, optional, tag="23", default="false")]
+    #[prost(bool, optional, tag = "23", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// Enables the use of arenas for the proto messages in this file. This applies
     /// only to generated classes for C++.
-    #[prost(bool, optional, tag="31", default="true")]
+    #[prost(bool, optional, tag = "31", default = "true")]
     pub cc_enable_arenas: ::core::option::Option<bool>,
     /// Sets the objective c class prefix which is prepended to all objective c
     /// generated classes from this .proto. There is no default.
-    #[prost(string, optional, tag="36")]
+    #[prost(string, optional, tag = "36")]
     pub objc_class_prefix: ::core::option::Option<::prost::alloc::string::String>,
     /// Namespace for generated classes; defaults to the package.
-    #[prost(string, optional, tag="37")]
+    #[prost(string, optional, tag = "37")]
     pub csharp_namespace: ::core::option::Option<::prost::alloc::string::String>,
     /// By default Swift generators will take the proto package and CamelCase it
     /// replacing '.' with underscore and use that to prefix the types/symbols
     /// defined. When this options is provided, they will use this value instead
     /// to prefix the types/symbols defined.
-    #[prost(string, optional, tag="39")]
+    #[prost(string, optional, tag = "39")]
     pub swift_prefix: ::core::option::Option<::prost::alloc::string::String>,
     /// Sets the php class prefix which is prepended to all php generated classes
     /// from this .proto. Default is empty.
-    #[prost(string, optional, tag="40")]
+    #[prost(string, optional, tag = "40")]
     pub php_class_prefix: ::core::option::Option<::prost::alloc::string::String>,
     /// Use this option to change the namespace of php generated classes. Default
     /// is empty. When this option is empty, the package name will be used for
     /// determining the namespace.
-    #[prost(string, optional, tag="41")]
+    #[prost(string, optional, tag = "41")]
     pub php_namespace: ::core::option::Option<::prost::alloc::string::String>,
     /// Use this option to change the namespace of php generated metadata classes.
     /// Default is empty. When this option is empty, the proto file name will be
     /// used for determining the namespace.
-    #[prost(string, optional, tag="44")]
+    #[prost(string, optional, tag = "44")]
     pub php_metadata_namespace: ::core::option::Option<::prost::alloc::string::String>,
     /// Use this option to change the package of ruby generated classes. Default
     /// is empty. When this option is not set, the package name will be used for
     /// determining the ruby package.
-    #[prost(string, optional, tag="45")]
+    #[prost(string, optional, tag = "45")]
     pub ruby_package: ::core::option::Option<::prost::alloc::string::String>,
     /// The parser stores options it doesn't recognize here.
     /// See the documentation for the "Options" section above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 /// Nested message and enum types in `FileOptions`.
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
@@ -461,6 +483,7 @@ pub mod file_options {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MessageOptions {
     /// Set true to use the old proto1 MessageSet wire format for extensions.
     /// This is provided for backwards-compatibility with the MessageSet wire
@@ -480,18 +503,18 @@ pub struct MessageOptions {
     ///
     /// Because this is an option, the above two restrictions are not enforced by
     /// the protocol compiler.
-    #[prost(bool, optional, tag="1", default="false")]
+    #[prost(bool, optional, tag = "1", default = "false")]
     pub message_set_wire_format: ::core::option::Option<bool>,
     /// Disables the generation of the standard "descriptor()" accessor, which can
     /// conflict with a field of the same name.  This is meant to make migration
     /// from proto1 easier; new code should avoid fields named "descriptor".
-    #[prost(bool, optional, tag="2", default="false")]
+    #[prost(bool, optional, tag = "2", default = "false")]
     pub no_standard_descriptor_accessor: ::core::option::Option<bool>,
     /// Is this message deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the message, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating messages.
-    #[prost(bool, optional, tag="3", default="false")]
+    #[prost(bool, optional, tag = "3", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// Whether the message is an automatically generated map entry type for the
     /// maps field.
@@ -514,26 +537,32 @@ pub struct MessageOptions {
     /// NOTE: Do not set the option in .proto files. Always use the maps syntax
     /// instead. The option should only be implicitly set by the proto compiler
     /// parser.
-    #[prost(bool, optional, tag="7")]
+    #[prost(bool, optional, tag = "7")]
     pub map_entry: ::core::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
     /// representation of the field than it normally would.  See the specific
     /// options below.  This option is not yet implemented in the open source
     /// release -- sorry, we'll try to include it in a future version!
-    #[prost(enumeration="field_options::CType", optional, tag="1", default="String")]
+    #[prost(
+        enumeration = "field_options::CType",
+        optional,
+        tag = "1",
+        default = "String"
+    )]
     pub ctype: ::core::option::Option<i32>,
     /// The packed option can be enabled for repeated primitive fields to enable
     /// a more efficient representation on the wire. Rather than repeatedly
     /// writing the tag and type for each element, the entire array is encoded as
     /// a single length-delimited blob. In proto3, only explicit setting it to
     /// false will avoid using packed encoding.
-    #[prost(bool, optional, tag="2")]
+    #[prost(bool, optional, tag = "2")]
     pub packed: ::core::option::Option<bool>,
     /// The jstype option determines the JavaScript type used for values of the
     /// field.  The option is permitted only for 64 bit integral and fixed types
@@ -546,7 +575,12 @@ pub struct FieldOptions {
     ///
     /// This option is an enum to permit additional types to be added, e.g.
     /// goog.math.Integer.
-    #[prost(enumeration="field_options::JsType", optional, tag="6", default="JsNormal")]
+    #[prost(
+        enumeration = "field_options::JsType",
+        optional,
+        tag = "6",
+        default = "JsNormal"
+    )]
     pub jstype: ::core::option::Option<i32>,
     /// Should this field be parsed lazily?  Lazy applies only to message-type
     /// fields.  It means that when the outer message is initially parsed, the
@@ -576,24 +610,25 @@ pub struct FieldOptions {
     /// implementation must either *always* check its required fields, or *never*
     /// check its required fields, regardless of whether or not the message has
     /// been parsed.
-    #[prost(bool, optional, tag="5", default="false")]
+    #[prost(bool, optional, tag = "5", default = "false")]
     pub lazy: ::core::option::Option<bool>,
     /// Is this field deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for accessors, or it will be completely ignored; in the very least, this
     /// is a formalization for deprecating fields.
-    #[prost(bool, optional, tag="3", default="false")]
+    #[prost(bool, optional, tag = "3", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// For Google-internal migration only. Do not use.
-    #[prost(bool, optional, tag="10", default="false")]
+    #[prost(bool, optional, tag = "10", default = "false")]
     pub weak: ::core::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 /// Nested message and enum types in `FieldOptions`.
 pub mod field_options {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum CType {
         /// Default mode.
@@ -602,6 +637,7 @@ pub mod field_options {
         StringPiece = 2,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum JsType {
         /// Use the default type.
@@ -613,73 +649,81 @@ pub mod field_options {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EnumOptions {
     /// Set this option to true to allow mapping different tag names to the same
     /// value.
-    #[prost(bool, optional, tag="2")]
+    #[prost(bool, optional, tag = "2")]
     pub allow_alias: ::core::option::Option<bool>,
     /// Is this enum deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the enum, or it will be completely ignored; in the very least, this
     /// is a formalization for deprecating enums.
-    #[prost(bool, optional, tag="3", default="false")]
+    #[prost(bool, optional, tag = "3", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EnumValueOptions {
     /// Is this enum value deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the enum value, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating enum values.
-    #[prost(bool, optional, tag="1", default="false")]
+    #[prost(bool, optional, tag = "1", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ServiceOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     //   framework.  We apologize for hoarding these numbers to ourselves, but
     //   we were already using them long before we decided to release Protocol
     //   Buffers.
-
     /// Is this service deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the service, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating services.
-    #[prost(bool, optional, tag="33", default="false")]
+    #[prost(bool, optional, tag = "33", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MethodOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     //   framework.  We apologize for hoarding these numbers to ourselves, but
     //   we were already using them long before we decided to release Protocol
     //   Buffers.
-
     /// Is this method deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for the method, or it will be completely ignored; in the very least,
     /// this is a formalization for deprecating methods.
-    #[prost(bool, optional, tag="33", default="false")]
+    #[prost(bool, optional, tag = "33", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
-    #[prost(enumeration="method_options::IdempotencyLevel", optional, tag="34", default="IdempotencyUnknown")]
+    #[prost(
+        enumeration = "method_options::IdempotencyLevel",
+        optional,
+        tag = "34",
+        default = "IdempotencyUnknown"
+    )]
     pub idempotency_level: ::core::option::Option<i32>,
     /// The parser stores options it doesn't recognize here. See above.
-    #[prost(message, repeated, tag="999")]
+    #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 /// Nested message and enum types in `MethodOptions`.
@@ -688,6 +732,7 @@ pub mod method_options {
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum IdempotencyLevel {
         IdempotencyUnknown = 0,
@@ -704,22 +749,23 @@ pub mod method_options {
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UninterpretedOption {
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub name: ::prost::alloc::vec::Vec<uninterpreted_option::NamePart>,
     /// The value of the uninterpreted option, in whatever type the tokenizer
     /// identified it as during parsing. Exactly one of these should be set.
-    #[prost(string, optional, tag="3")]
+    #[prost(string, optional, tag = "3")]
     pub identifier_value: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(uint64, optional, tag="4")]
+    #[prost(uint64, optional, tag = "4")]
     pub positive_int_value: ::core::option::Option<u64>,
-    #[prost(int64, optional, tag="5")]
+    #[prost(int64, optional, tag = "5")]
     pub negative_int_value: ::core::option::Option<i64>,
-    #[prost(double, optional, tag="6")]
+    #[prost(double, optional, tag = "6")]
     pub double_value: ::core::option::Option<f64>,
-    #[prost(bytes="vec", optional, tag="7")]
+    #[prost(bytes = "vec", optional, tag = "7")]
     pub string_value: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
-    #[prost(string, optional, tag="8")]
+    #[prost(string, optional, tag = "8")]
     pub aggregate_value: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `UninterpretedOption`.
@@ -730,10 +776,11 @@ pub mod uninterpreted_option {
     /// E.g.,{ ["foo", false], ["bar.baz", true], ["qux", false] } represents
     /// "foo.(bar.baz).qux".
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct NamePart {
-        #[prost(string, required, tag="1")]
+        #[prost(string, required, tag = "1")]
         pub name_part: ::prost::alloc::string::String,
-        #[prost(bool, required, tag="2")]
+        #[prost(bool, required, tag = "2")]
         pub is_extension: bool,
     }
 }
@@ -743,6 +790,7 @@ pub mod uninterpreted_option {
 /// Encapsulates information about the original source file from which a
 /// FileDescriptorProto was generated.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SourceCodeInfo {
     /// A Location identifies a piece of source code in a .proto file which
     /// corresponds to a particular definition.  This information is intended
@@ -787,12 +835,13 @@ pub struct SourceCodeInfo {
     /// - Code which tries to interpret locations should probably be designed to
     ///   ignore those that it doesn't understand, as more types of locations could
     ///   be recorded in the future.
-    #[prost(message, repeated, tag="1")]
+    #[prost(message, repeated, tag = "1")]
     pub location: ::prost::alloc::vec::Vec<source_code_info::Location>,
 }
 /// Nested message and enum types in `SourceCodeInfo`.
 pub mod source_code_info {
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct Location {
         /// Identifies which part of the FileDescriptorProto was defined at this
         /// location.
@@ -817,14 +866,14 @@ pub mod source_code_info {
         ///   [ 4, 3, 2, 7 ]
         /// this path refers to the whole field declaration (from the beginning
         /// of the label to the terminating semicolon).
-        #[prost(int32, repeated, tag="1")]
+        #[prost(int32, repeated, tag = "1")]
         pub path: ::prost::alloc::vec::Vec<i32>,
         /// Always has exactly three or four elements: start line, start column,
         /// end line (optional, otherwise assumed same as start line), end column.
         /// These are packed into a single field for efficiency.  Note that line
         /// and column numbers are zero-based -- typically you will want to add
         /// 1 to each before displaying to a user.
-        #[prost(int32, repeated, tag="2")]
+        #[prost(int32, repeated, tag = "2")]
         pub span: ::prost::alloc::vec::Vec<i32>,
         /// If this SourceCodeInfo represents a complete declaration, these are any
         /// comments appearing before and after the declaration which appear to be
@@ -873,11 +922,11 @@ pub mod source_code_info {
         ///   optional int32 grault = 6;
         ///
         ///   // ignored detached comments.
-        #[prost(string, optional, tag="3")]
+        #[prost(string, optional, tag = "3")]
         pub leading_comments: ::core::option::Option<::prost::alloc::string::String>,
-        #[prost(string, optional, tag="4")]
+        #[prost(string, optional, tag = "4")]
         pub trailing_comments: ::core::option::Option<::prost::alloc::string::String>,
-        #[prost(string, repeated, tag="6")]
+        #[prost(string, repeated, tag = "6")]
         pub leading_detached_comments: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
 }
@@ -885,31 +934,33 @@ pub mod source_code_info {
 /// file. A GeneratedCodeInfo message is associated with only one generated
 /// source file, but may contain references to different source .proto files.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GeneratedCodeInfo {
     /// An Annotation connects some span of text in generated code to an element
     /// of its generating .proto file.
-    #[prost(message, repeated, tag="1")]
+    #[prost(message, repeated, tag = "1")]
     pub annotation: ::prost::alloc::vec::Vec<generated_code_info::Annotation>,
 }
 /// Nested message and enum types in `GeneratedCodeInfo`.
 pub mod generated_code_info {
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct Annotation {
         /// Identifies the element in the original source .proto file. This field
         /// is formatted the same as SourceCodeInfo.Location.path.
-        #[prost(int32, repeated, tag="1")]
+        #[prost(int32, repeated, tag = "1")]
         pub path: ::prost::alloc::vec::Vec<i32>,
         /// Identifies the filesystem path to the original source .proto.
-        #[prost(string, optional, tag="2")]
+        #[prost(string, optional, tag = "2")]
         pub source_file: ::core::option::Option<::prost::alloc::string::String>,
         /// Identifies the starting offset in bytes in the generated code
         /// that relates to the identified object.
-        #[prost(int32, optional, tag="3")]
+        #[prost(int32, optional, tag = "3")]
         pub begin: ::core::option::Option<i32>,
         /// Identifies the ending offset in bytes in the generated code that
         /// relates to the identified offset. The end offset should be one past
         /// the last relevant byte (so the length of the text = end - begin).
-        #[prost(int32, optional, tag="4")]
+        #[prost(int32, optional, tag = "4")]
         pub end: ::core::option::Option<i32>,
     }
 }
@@ -997,6 +1048,7 @@ pub mod generated_code_info {
 ///     }
 ///
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Any {
     /// A URL/resource name that uniquely identifies the type of the serialized
     /// protocol buffer message. This string must contain at least
@@ -1026,83 +1078,87 @@ pub struct Any {
     /// Schemes other than `http`, `https` (or the empty scheme) might be
     /// used with implementation specific semantics.
     ///
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub type_url: ::prost::alloc::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
-    #[prost(bytes="vec", tag="2")]
+    #[prost(bytes = "vec", tag = "2")]
     pub value: ::prost::alloc::vec::Vec<u8>,
 }
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SourceContext {
     /// The path-qualified name of the .proto file that contained the associated
     /// protobuf element.  For example: `"google/protobuf/source_context.proto"`.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub file_name: ::prost::alloc::string::String,
 }
 /// A protocol buffer message type.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Type {
     /// The fully qualified message name.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The list of fields.
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub fields: ::prost::alloc::vec::Vec<Field>,
     /// The list of types appearing in `oneof` definitions in this type.
-    #[prost(string, repeated, tag="3")]
+    #[prost(string, repeated, tag = "3")]
     pub oneofs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The protocol buffer options.
-    #[prost(message, repeated, tag="4")]
+    #[prost(message, repeated, tag = "4")]
     pub options: ::prost::alloc::vec::Vec<Option>,
     /// The source context.
-    #[prost(message, optional, tag="5")]
+    #[prost(message, optional, tag = "5")]
     pub source_context: ::core::option::Option<SourceContext>,
     /// The source syntax.
-    #[prost(enumeration="Syntax", tag="6")]
+    #[prost(enumeration = "Syntax", tag = "6")]
     pub syntax: i32,
 }
 /// A single field of a message type.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Field {
     /// The field type.
-    #[prost(enumeration="field::Kind", tag="1")]
+    #[prost(enumeration = "field::Kind", tag = "1")]
     pub kind: i32,
     /// The field cardinality.
-    #[prost(enumeration="field::Cardinality", tag="2")]
+    #[prost(enumeration = "field::Cardinality", tag = "2")]
     pub cardinality: i32,
     /// The field number.
-    #[prost(int32, tag="3")]
+    #[prost(int32, tag = "3")]
     pub number: i32,
     /// The field name.
-    #[prost(string, tag="4")]
+    #[prost(string, tag = "4")]
     pub name: ::prost::alloc::string::String,
     /// The field type URL, without the scheme, for message or enumeration
     /// types. Example: `"type.googleapis.com/google.protobuf.Timestamp"`.
-    #[prost(string, tag="6")]
+    #[prost(string, tag = "6")]
     pub type_url: ::prost::alloc::string::String,
     /// The index of the field type in `Type.oneofs`, for message or enumeration
     /// types. The first type has index 1; zero means the type is not in the list.
-    #[prost(int32, tag="7")]
+    #[prost(int32, tag = "7")]
     pub oneof_index: i32,
     /// Whether to use alternative packed wire representation.
-    #[prost(bool, tag="8")]
+    #[prost(bool, tag = "8")]
     pub packed: bool,
     /// The protocol buffer options.
-    #[prost(message, repeated, tag="9")]
+    #[prost(message, repeated, tag = "9")]
     pub options: ::prost::alloc::vec::Vec<Option>,
     /// The field JSON name.
-    #[prost(string, tag="10")]
+    #[prost(string, tag = "10")]
     pub json_name: ::prost::alloc::string::String,
     /// The string value of the default value of this field. Proto2 syntax only.
-    #[prost(string, tag="11")]
+    #[prost(string, tag = "11")]
     pub default_value: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `Field`.
 pub mod field {
     /// Basic field types.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum Kind {
         /// Field type unknown.
@@ -1146,6 +1202,7 @@ pub mod field {
     }
     /// Whether a field is optional, required, or repeated.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[repr(i32)]
     pub enum Cardinality {
         /// For fields with unknown cardinality.
@@ -1160,55 +1217,59 @@ pub mod field {
 }
 /// Enum type definition.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Enum {
     /// Enum type name.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Enum value definitions.
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub enumvalue: ::prost::alloc::vec::Vec<EnumValue>,
     /// Protocol buffer options.
-    #[prost(message, repeated, tag="3")]
+    #[prost(message, repeated, tag = "3")]
     pub options: ::prost::alloc::vec::Vec<Option>,
     /// The source context.
-    #[prost(message, optional, tag="4")]
+    #[prost(message, optional, tag = "4")]
     pub source_context: ::core::option::Option<SourceContext>,
     /// The source syntax.
-    #[prost(enumeration="Syntax", tag="5")]
+    #[prost(enumeration = "Syntax", tag = "5")]
     pub syntax: i32,
 }
 /// Enum value definition.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EnumValue {
     /// Enum value name.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Enum value number.
-    #[prost(int32, tag="2")]
+    #[prost(int32, tag = "2")]
     pub number: i32,
     /// Protocol buffer options.
-    #[prost(message, repeated, tag="3")]
+    #[prost(message, repeated, tag = "3")]
     pub options: ::prost::alloc::vec::Vec<Option>,
 }
 /// A protocol buffer option, which can be attached to a message, field,
 /// enumeration, etc.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Option {
     /// The option's name. For protobuf built-in options (options defined in
     /// descriptor.proto), this is the short name. For example, `"map_entry"`.
     /// For custom options, it should be the fully-qualified name. For example,
     /// `"google.api.http"`.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The option's value packed in an Any message. If the value is a primitive,
     /// the corresponding wrapper type defined in google/protobuf/wrappers.proto
     /// should be used. If the value is an enum, it should be stored as an int32
     /// value using the google.protobuf.Int32Value type.
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub value: ::core::option::Option<Any>,
 }
 /// The syntax in which a protocol buffer element is defined.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(i32)]
 pub enum Syntax {
     /// Syntax `proto2`.
@@ -1226,16 +1287,17 @@ pub enum Syntax {
 /// this message itself. See https://cloud.google.com/apis/design/glossary for
 /// detailed terminology.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Api {
     /// The fully qualified name of this interface, including package name
     /// followed by the interface's simple name.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The methods of this interface, in unspecified order.
-    #[prost(message, repeated, tag="2")]
+    #[prost(message, repeated, tag = "2")]
     pub methods: ::prost::alloc::vec::Vec<Method>,
     /// Any metadata attached to the interface.
-    #[prost(message, repeated, tag="3")]
+    #[prost(message, repeated, tag = "3")]
     pub options: ::prost::alloc::vec::Vec<Option>,
     /// A version string for this interface. If specified, must have the form
     /// `major-version.minor-version`, as in `1.10`. If the minor version is
@@ -1258,42 +1320,43 @@ pub struct Api {
     /// experimental, non-GA interfaces.
     ///
     ///
-    #[prost(string, tag="4")]
+    #[prost(string, tag = "4")]
     pub version: ::prost::alloc::string::String,
     /// Source context for the protocol buffer service represented by this
     /// message.
-    #[prost(message, optional, tag="5")]
+    #[prost(message, optional, tag = "5")]
     pub source_context: ::core::option::Option<SourceContext>,
     /// Included interfaces. See [Mixin][].
-    #[prost(message, repeated, tag="6")]
+    #[prost(message, repeated, tag = "6")]
     pub mixins: ::prost::alloc::vec::Vec<Mixin>,
     /// The source syntax of the service.
-    #[prost(enumeration="Syntax", tag="7")]
+    #[prost(enumeration = "Syntax", tag = "7")]
     pub syntax: i32,
 }
 /// Method represents a method of an API interface.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Method {
     /// The simple name of this method.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// A URL of the input message type.
-    #[prost(string, tag="2")]
+    #[prost(string, tag = "2")]
     pub request_type_url: ::prost::alloc::string::String,
     /// If true, the request is streamed.
-    #[prost(bool, tag="3")]
+    #[prost(bool, tag = "3")]
     pub request_streaming: bool,
     /// The URL of the output message type.
-    #[prost(string, tag="4")]
+    #[prost(string, tag = "4")]
     pub response_type_url: ::prost::alloc::string::String,
     /// If true, the response is streamed.
-    #[prost(bool, tag="5")]
+    #[prost(bool, tag = "5")]
     pub response_streaming: bool,
     /// Any metadata attached to the method.
-    #[prost(message, repeated, tag="6")]
+    #[prost(message, repeated, tag = "6")]
     pub options: ::prost::alloc::vec::Vec<Option>,
     /// The source syntax of this method.
-    #[prost(enumeration="Syntax", tag="7")]
+    #[prost(enumeration = "Syntax", tag = "7")]
     pub syntax: i32,
 }
 /// Declares an API Interface to be included in this interface. The including
@@ -1375,13 +1438,14 @@ pub struct Method {
 ///       ...
 ///     }
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// If non-empty specifies a path under which inherited HTTP paths
     /// are rooted.
-    #[prost(string, tag="2")]
+    #[prost(string, tag = "2")]
     pub root: ::prost::alloc::string::String,
 }
 /// A Duration represents a signed, fixed-length span of time represented
@@ -1445,11 +1509,12 @@ pub struct Mixin {
 ///
 ///
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
     /// to +315,576,000,000 inclusive. Note: these bounds are computed from:
     /// 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years
-    #[prost(int64, tag="1")]
+    #[prost(int64, tag = "1")]
     pub seconds: i64,
     /// Signed fractions of a second at nanosecond resolution of the span
     /// of time. Durations less than one second are represented with a 0
@@ -1457,7 +1522,7 @@ pub struct Duration {
     /// of one second or more, a non-zero value for the `nanos` field must be
     /// of the same sign as the `seconds` field. Must be from -999,999,999
     /// to +999,999,999 inclusive.
-    #[prost(int32, tag="2")]
+    #[prost(int32, tag = "2")]
     pub nanos: i32,
 }
 /// `FieldMask` represents a set of symbolic field paths, for example:
@@ -1660,9 +1725,10 @@ pub struct Duration {
 /// request should verify the included field paths, and return an
 /// `INVALID_ARGUMENT` error if any path is unmappable.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FieldMask {
     /// The set of field mask paths.
-    #[prost(string, repeated, tag="1")]
+    #[prost(string, repeated, tag = "1")]
     pub paths: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// `Struct` represents a structured data value, consisting of fields
@@ -1674,9 +1740,10 @@ pub struct FieldMask {
 ///
 /// The JSON representation for `Struct` is JSON object.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Struct {
     /// Unordered map of dynamically typed values.
-    #[prost(btree_map="string, message", tag="1")]
+    #[prost(btree_map = "string, message", tag = "1")]
     pub fields: ::prost::alloc::collections::BTreeMap<::prost::alloc::string::String, Value>,
 }
 /// `Value` represents a dynamically typed value which can be either
@@ -1686,33 +1753,35 @@ pub struct Struct {
 ///
 /// The JSON representation for `Value` is JSON value.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Value {
     /// The kind of value.
-    #[prost(oneof="value::Kind", tags="1, 2, 3, 4, 5, 6")]
+    #[prost(oneof = "value::Kind", tags = "1, 2, 3, 4, 5, 6")]
     pub kind: ::core::option::Option<value::Kind>,
 }
 /// Nested message and enum types in `Value`.
 pub mod value {
     /// The kind of value.
     #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub enum Kind {
         /// Represents a null value.
-        #[prost(enumeration="super::NullValue", tag="1")]
+        #[prost(enumeration = "super::NullValue", tag = "1")]
         NullValue(i32),
         /// Represents a double value.
-        #[prost(double, tag="2")]
+        #[prost(double, tag = "2")]
         NumberValue(f64),
         /// Represents a string value.
-        #[prost(string, tag="3")]
+        #[prost(string, tag = "3")]
         StringValue(::prost::alloc::string::String),
         /// Represents a boolean value.
-        #[prost(bool, tag="4")]
+        #[prost(bool, tag = "4")]
         BoolValue(bool),
         /// Represents a structured value.
-        #[prost(message, tag="5")]
+        #[prost(message, tag = "5")]
         StructValue(super::Struct),
         /// Represents a repeated `Value`.
-        #[prost(message, tag="6")]
+        #[prost(message, tag = "6")]
         ListValue(super::ListValue),
     }
 }
@@ -1720,9 +1789,10 @@ pub mod value {
 ///
 /// The JSON representation for `ListValue` is JSON array.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ListValue {
     /// Repeated field of dynamically typed values.
-    #[prost(message, repeated, tag="1")]
+    #[prost(message, repeated, tag = "1")]
     pub values: ::prost::alloc::vec::Vec<Value>,
 }
 /// `NullValue` is a singleton enumeration to represent the null value for the
@@ -1730,6 +1800,7 @@ pub struct ListValue {
 ///
 ///  The JSON representation for `NullValue` is JSON `null`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(i32)]
 pub enum NullValue {
     /// Null value.
@@ -1829,16 +1900,17 @@ pub enum NullValue {
 ///
 ///
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch
     /// 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
     /// 9999-12-31T23:59:59Z inclusive.
-    #[prost(int64, tag="1")]
+    #[prost(int64, tag = "1")]
     pub seconds: i64,
     /// Non-negative fractions of a second at nanosecond resolution. Negative
     /// second values with fractions must still have non-negative nanos values
     /// that count forward in time. Must be from 0 to 999,999,999
     /// inclusive.
-    #[prost(int32, tag="2")]
+    #[prost(int32, tag = "2")]
     pub nanos: i32,
 }
