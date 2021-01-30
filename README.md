@@ -29,9 +29,9 @@ First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
-prost = "0.6"
+prost = "0.7"
 # Only necessary if using Protobuf well-known types:
-prost-types = "0.6"
+prost-types = "0.7"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
@@ -249,6 +249,13 @@ pub struct AddressBook {
     pub people: Vec<Person>,
 }
 ```
+
+## Accessing the `protoc` `FileDescriptorSet`
+
+The `prost_build::Config::file_descriptor_set_path` option can be used to emit a file descriptor set
+during the build & code generation step. When used in conjunction with the `std::include_bytes`
+macro and the `prost_types::FileDescriptorSet` type, applications and libraries using Prost can
+implement introspection capabilities requiring details from the original `.proto` files.
 
 ## Using `prost` in a `no_std` Crate
 

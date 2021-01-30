@@ -95,6 +95,12 @@ pub mod proto3 {
     }
 }
 
+pub mod invalid {
+    pub mod doctest {
+        include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));
+    }
+}
+
 use alloc::format;
 use alloc::vec::Vec;
 
@@ -594,5 +600,12 @@ mod tests {
         let msg = proto3::presence::A { b: Some(42) };
 
         check_message(&msg);
+    }
+
+    #[test]
+    fn test_file_descriptor_set_path() {
+        let file_descriptor_set_bytes =
+            include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+        prost_types::FileDescriptorSet::decode(&file_descriptor_set_bytes[..]).unwrap();
     }
 }

@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.6.1")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.7.0")]
 #![allow(clippy::option_as_ref_deref)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -97,20 +97,24 @@
 //! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
-//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in
-//! the prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux, macOS, and
-//! Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
+//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in the
+//! prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux (non-musl), macOS,
+//! and Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
 //! `protoc` or `protoc.exe` binary on the `PATH` is used. If `protoc` is not available in any of
 //! these fallback locations, then the build fails.
 //!
-//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory bundled
-//! in the prost-build crate is be used.
+//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
+//! bundled in the prost-build crate is be used.
+//!
+//! To force `prost-build` to use the `protoc` on the `PATH`, add `PROTOC=protoc` to the
+//! environment.
 
 mod ast;
 mod code_generator;
 mod extern_paths;
 mod ident;
 mod message_graph;
+mod path;
 
 use std::collections::HashMap;
 use std::default;
@@ -131,6 +135,7 @@ use crate::code_generator::CodeGenerator;
 use crate::extern_paths::ExternPaths;
 use crate::ident::to_snake;
 use crate::message_graph::MessageGraph;
+use crate::path::PathMap;
 
 type Module = Vec<String>;
 
@@ -179,20 +184,54 @@ pub trait ServiceGenerator {
     fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
 }
 
+/// The map collection type to output for Protobuf `map` fields.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum MapType {
+    /// The [`std::collections::HashMap`] type.
+    HashMap,
+    /// The [`std::collections::BTreeMap`] type.
+    BTreeMap,
+}
+
+impl Default for MapType {
+    fn default() -> MapType {
+        MapType::HashMap
+    }
+}
+
+/// The bytes collection type to output for Protobuf `bytes` fields.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum BytesType {
+    /// The [`alloc::collections::Vec::<u8>`] type.
+    Vec,
+    /// The [`bytes::Bytes`] type.
+    Bytes,
+}
+
+impl Default for BytesType {
+    fn default() -> BytesType {
+        BytesType::Vec
+    }
+}
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
+    file_descriptor_set_path: Option<PathBuf>,
     service_generator: Option<Box<dyn ServiceGenerator>>,
-    btree_map: Vec<String>,
-    bytes: Vec<String>,
-    type_attributes: Vec<(String, String)>,
-    field_attributes: Vec<(String, String)>,
+    map_type: PathMap<MapType>,
+    bytes_type: PathMap<BytesType>,
+    type_attributes: PathMap<String>,
+    field_attributes: PathMap<String>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
     protoc_args: Vec<OsString>,
+    disable_comments: PathMap<()>,
 }
 
 impl Config {
@@ -254,7 +293,11 @@ impl Config {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.btree_map = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.map_type.clear();
+        for matcher in paths {
+            self.map_type
+                .insert(matcher.as_ref().to_string(), MapType::BTreeMap);
+        }
         self
     }
 
@@ -311,7 +354,11 @@ impl Config {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.bytes = paths.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.bytes_type.clear();
+        for matcher in paths {
+            self.bytes_type
+                .insert(matcher.as_ref().to_string(), BytesType::Bytes);
+        }
         self
     }
 
@@ -344,7 +391,7 @@ impl Config {
         A: AsRef<str>,
     {
         self.field_attributes
-            .push((path.as_ref().to_string(), attribute.as_ref().to_string()));
+            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
         self
     }
 
@@ -393,7 +440,7 @@ impl Config {
         A: AsRef<str>,
     {
         self.type_attributes
-            .push((path.as_ref().to_string(), attribute.as_ref().to_string()));
+            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
         self
     }
 
@@ -407,6 +454,39 @@ impl Config {
     /// types, and instead generate Protobuf well-known types from their `.proto` definitions.
     pub fn compile_well_known_types(&mut self) -> &mut Self {
         self.prost_types = false;
+        self
+    }
+
+    /// Configures the code generator to omit documentation comments on generated Protobuf types.
+    ///
+    /// # Example
+    ///
+    /// Occasionally `.proto` files contain code blocks which are not valid Rust. To avoid doctest
+    /// failures, annotate the invalid code blocks with an [`ignore` or `no_run` attribute][1], or
+    /// disable doctests for the crate with a [Cargo.toml entry][2]. If neither of these options
+    /// are possible, then omit comments on generated code during doctest builds:
+    ///
+    /// ```rust,ignore
+    /// let mut config = prost_build::Config::new();
+    /// config.disable_comments(".");
+    /// config.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    /// ```
+    ///
+    /// As with other options which take a set of paths, comments can be disabled on a per-package
+    /// or per-symbol basis.
+    ///
+    /// [1]: https://doc.rust-lang.org/rustdoc/documentation-tests.html#attributes
+    /// [2]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#configuring-a-target
+    pub fn disable_comments<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.disable_comments.clear();
+        for matcher in paths {
+            self.disable_comments
+                .insert(matcher.as_ref().to_string(), ());
+        }
         self
     }
 
@@ -522,6 +602,39 @@ impl Config {
         self
     }
 
+    /// When set, the `FileDescriptorSet` generated by `protoc` is written to the provided
+    /// filesystem path.
+    ///
+    /// This option can be used in conjunction with the [`include_bytes!`] macro and the types in
+    /// the `prost-types` crate for implementing reflection capabilities, among other things.
+    ///
+    /// ## Example
+    ///
+    /// In `build.rs`:
+    ///
+    /// ```rust
+    /// # use std::env;
+    /// # use std::path::PathBuf;
+    /// # let mut config = prost_build::Config::new();
+    /// config.file_descriptor_set_path(
+    ///     PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
+    ///         .join("file_descriptor_set.bin"));
+    /// ```
+    ///
+    /// In `lib.rs`:
+    ///
+    /// ```rust,ignore
+    /// let file_descriptor_set_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+    /// let file_descriptor_set = prost_types::FileDescriptorSet::decode(&file_descriptor_set_bytes[..]).unwrap();
+    /// ```
+    pub fn file_descriptor_set_path<P>(&mut self, path: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.file_descriptor_set_path = Some(path.into());
+        self
+    }
+
     /// Configures the code generator to not strip the enum name from variant names.
     ///
     /// Protobuf enum definitions commonly include the enum name as a prefix of every variant name.
@@ -603,14 +716,20 @@ impl Config {
         // this figured out.
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
-        let tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
-        let descriptor_set = tmp.path().join("prost-descriptor-set");
+        let tmp;
+        let file_descriptor_set_path = match self.file_descriptor_set_path.clone() {
+            Some(file_descriptor_set_path) => file_descriptor_set_path,
+            None => {
+                tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
+                tmp.path().join("prost-descriptor-set")
+            }
+        };
 
         let mut cmd = Command::new(protoc());
         cmd.arg("--include_imports")
             .arg("--include_source_info")
             .arg("-o")
-            .arg(&descriptor_set);
+            .arg(&file_descriptor_set_path);
 
         for include in includes {
             cmd.arg("-I").arg(include.as_ref());
@@ -628,7 +747,13 @@ impl Config {
             cmd.arg(proto.as_ref());
         }
 
-        let output = cmd.output()?;
+        let output = cmd.output().map_err(|error| {
+            Error::new(
+                error.kind(),
+                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): {}", error),
+            )
+        })?;
+
         if !output.status.success() {
             return Err(Error::new(
                 ErrorKind::Other,
@@ -636,15 +761,15 @@ impl Config {
             ));
         }
 
-        let buf = fs::read(descriptor_set)?;
-        let descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
+        let buf = fs::read(file_descriptor_set_path)?;
+        let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
                 format!("invalid FileDescriptorSet: {}", error.to_string()),
             )
         })?;
 
-        let modules = self.generate(descriptor_set.file)?;
+        let modules = self.generate(file_descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = module.join(".");
             filename.push_str(".rs");
@@ -710,16 +835,18 @@ impl Config {
 impl default::Default for Config {
     fn default() -> Config {
         Config {
+            file_descriptor_set_path: None,
             service_generator: None,
-            btree_map: Vec::new(),
-            bytes: Vec::new(),
-            type_attributes: Vec::new(),
-            field_attributes: Vec::new(),
+            map_type: PathMap::default(),
+            bytes_type: PathMap::default(),
+            type_attributes: PathMap::default(),
+            field_attributes: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
             protoc_args: Vec::new(),
+            disable_comments: PathMap::default(),
         }
     }
 }
@@ -727,13 +854,21 @@ impl default::Default for Config {
 impl fmt::Debug for Config {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("Config")
-            .field("btree_map", &self.btree_map)
+            .field("file_descriptor_set_path", &self.file_descriptor_set_path)
+            .field(
+                "service_generator",
+                &self.file_descriptor_set_path.is_some(),
+            )
+            .field("map_type", &self.map_type)
+            .field("bytes_type", &self.bytes_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
             .field("out_dir", &self.out_dir)
             .field("extern_paths", &self.extern_paths)
+            .field("protoc_args", &self.protoc_args)
+            .field("disable_comments", &self.disable_comments)
             .finish()
     }
 }

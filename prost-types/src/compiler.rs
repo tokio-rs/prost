@@ -127,6 +127,11 @@ pub mod code_generator_response {
         /// The file contents.
         #[prost(string, optional, tag="15")]
         pub content: ::core::option::Option<::prost::alloc::string::String>,
+        /// Information describing the file content being inserted. If an insertion
+        /// point is used, this information will be appropriately offset and inserted
+        /// into the code generation metadata for the generated files.
+        #[prost(message, optional, tag="16")]
+        pub generated_code_info: ::core::option::Option<super::super::GeneratedCodeInfo>,
     }
     /// Sync with code_generator.h.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

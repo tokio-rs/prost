@@ -978,10 +978,13 @@ pub mod generated_code_info {
 ///  Example 4: Pack and unpack a message in Go
 ///
 ///      foo := &pb.Foo{...}
-///      any, err := ptypes.MarshalAny(foo)
+///      any, err := anypb.New(foo)
+///      if err != nil {
+///        ...
+///      }
 ///      ...
 ///      foo := &pb.Foo{}
-///      if err := ptypes.UnmarshalAny(any, foo); err != nil {
+///      if err := any.UnmarshalTo(foo); err != nil {
 ///        ...
 ///      }
 ///
@@ -1376,7 +1379,7 @@ pub struct Method {
 /// The mixin construct implies that all methods in `AccessControl` are
 /// also declared with same name and request/response types in
 /// `Storage`. A documentation generator or annotation processor will
-/// see the effective `Storage.GetAcl` method after inherting
+/// see the effective `Storage.GetAcl` method after inheriting
 /// documentation and annotations as follows:
 ///
 ///     service Storage {
@@ -1825,7 +1828,16 @@ pub enum NullValue {
 ///         .setNanos((int) ((millis % 1000) * 1000000)).build();
 ///
 ///
-/// Example 5: Compute Timestamp from current time in Python.
+/// Example 5: Compute Timestamp from Java `Instant.now()`.
+///
+///     Instant now = Instant.now();
+///
+///     Timestamp timestamp =
+///         Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+///             .setNanos(now.getNano()).build();
+///
+///
+/// Example 6: Compute Timestamp from current time in Python.
 ///
 ///     timestamp = Timestamp()
 ///     timestamp.GetCurrentTime()
