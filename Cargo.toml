@@ -1,6 +1,6 @@
 [package]
 name = "prost"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["Dan Burkert <dan@danburkert.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/danburkert/prost"
@@ -10,10 +10,6 @@ description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
 edition = "2018"
-
-[badges]
-travis-ci = { repository = "danburkert/prost" }
-appveyor = { repository = "danburkert/prost" }
 
 [workspace]
 members = [
@@ -42,15 +38,15 @@ no-recursion-limit = []
 std = []
 
 [dependencies]
-bytes = { version = "0.5", default-features = false }
-prost-derive = { version = "0.6.1", path = "prost-derive", optional = true }
+bytes = { version = "1", default-features = false }
+prost-derive = { version = "0.7.0", path = "prost-derive", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
-env_logger = { version = "0.7", default-features = false }
+env_logger = { version = "0.8", default-features = false }
 log = "0.4"
-quickcheck = "0.9"
-rand = "0.7"
+proptest = "0.10"
+rand = "0.8"
 
 [profile.bench]
 debug = true

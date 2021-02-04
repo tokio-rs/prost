@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/danburkert/prost.svg?branch=master)](https://travis-ci.org/danburkert/prost)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/24rpba3x2vqe8lje/branch/master?svg=true)](https://ci.appveyor.com/project/danburkert/prost/branch/master)
+![continuous integration](https://github.com/danburkert/prost/workflows/continuous%20integration/badge.svg)
 [![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
 [![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
 [![Dependency Status](https://deps.rs/repo/github/danburkert/prost/status.svg)](https://deps.rs/repo/github/danburkert/prost)
@@ -30,9 +29,9 @@ First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
-prost = "0.6"
+prost = "0.7"
 # Only necessary if using Protobuf well-known types:
-prost-types = "0.6"
+prost-types = "0.7"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
@@ -251,6 +250,13 @@ pub struct AddressBook {
 }
 ```
 
+## Accessing the `protoc` `FileDescriptorSet`
+
+The `prost_build::Config::file_descriptor_set_path` option can be used to emit a file descriptor set
+during the build & code generation step. When used in conjunction with the `std::include_bytes`
+macro and the `prost_types::FileDescriptorSet` type, applications and libraries using Prost can
+implement introspection capabilities requiring details from the original `.proto` files.
+
 ## Using `prost` in a `no_std` Crate
 
 `prost` is compatible with `no_std` crates. To enable `no_std` support, disable
@@ -297,36 +303,41 @@ the `tag` attribute on the first field after the gap. The following fields will
 be tagged sequentially starting from the next number.
 
 ```rust
-#[derive(Clone, Debug, PartialEq, Message)]
+use prost;
+use prost::{Enumeration, Message};
+
+#[derive(Clone, PartialEq, Message)]
 struct Person {
-  pub id: String, // tag=1
-
-  // NOTE: Old "name" field has been removed
-  // pub name: String, // tag=2 (Removed)
-
-  #[prost(tag="6")]
-  pub given_name: String, // tag=6
-  pub family_name: String, // tag=7
-  pub formatted_name: String, // tag=8
-
-  #[prost(tag="3")]
-  pub age: u32, // tag=3
-  pub height: u32, // tag=4
-  #[prost(enumeration="Gender")]
-  pub gender: i32, // tag=5
-
-  // NOTE: Skip to less commonly occurring fields
-  #[prost(tag="16")]
-  pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
-  pub name_suffix: String, // tag=17  (eg. jr/esq)
-  pub maiden_name: String, // tag=18
+    #[prost(string, tag = "1")]
+    pub id: String, // tag=1
+    // NOTE: Old "name" field has been removed
+    // pub name: String, // tag=2 (Removed)
+    #[prost(string, tag = "6")]
+    pub given_name: String, // tag=6
+    #[prost(string)]
+    pub family_name: String, // tag=7
+    #[prost(string)]
+    pub formatted_name: String, // tag=8
+    #[prost(uint32, tag = "3")]
+    pub age: u32, // tag=3
+    #[prost(uint32)]
+    pub height: u32, // tag=4
+    #[prost(enumeration = "Gender")]
+    pub gender: i32, // tag=5
+    // NOTE: Skip to less commonly occurring fields
+    #[prost(string, tag = "16")]
+    pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
+    #[prost(string)]
+    pub name_suffix: String, // tag=17  (eg. jr/esq)
+    #[prost(string)]
+    pub maiden_name: String, // tag=18
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
 pub enum Gender {
-  Unknown = 0,
-  Female = 1,
-  Male = 2,
+    Unknown = 0,
+    Female = 1,
+    Male = 2,
 }
 ```
 

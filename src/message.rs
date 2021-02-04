@@ -165,3 +165,10 @@ where
         (**self).clear()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const _MESSAGE_IS_OBJECT_SAFE: Option<&dyn Message> = None;
+}
