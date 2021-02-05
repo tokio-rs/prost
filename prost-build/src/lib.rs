@@ -1097,9 +1097,9 @@ mod tests {
         let gen = MockServiceGenerator::new(Rc::clone(&state));
 
         Config::new()
-            .service_generator(Box::new(ServiceTraitGenerator))
+            .service_generator(Box::new(gen))
             .include_file("_protos.rs")
-            .compile_protos(&["src/smoke_test.proto"], &["src"])
+            .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
             .unwrap();
 
         let state = state.borrow();
