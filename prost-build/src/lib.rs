@@ -848,7 +848,7 @@ impl Config {
             if subwritten != matching.len() {
                 let modname = matching[0][..=depth].join(".");
                 if let Some(buf) = basepath {
-                    self.write_line(outfile, depth + 1, &format!("include!(\"{:?}/{}.rs\");", buf, modname))?;
+                    self.write_line(outfile, depth + 1, &format!("include!(\"{}/{}.rs\");", buf.display(), modname))?;
                 } else {
                     self.write_line(outfile, depth + 1, &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));", modname))?;
                 }
