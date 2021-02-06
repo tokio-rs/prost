@@ -269,7 +269,7 @@ prost = { version = "0.6", default-features = false, features = ["prost-derive"]
 prost-types = { version = "0.6", default-features = false }
 ```
 
-Additionally, configure `prost-buid` to output `BTreeMap`s instead of `HashMap`s
+Additionally, configure `prost-build` to output `BTreeMap`s instead of `HashMap`s
 for all Protobuf `map` fields in your `build.rs`:
 
 ```rust
