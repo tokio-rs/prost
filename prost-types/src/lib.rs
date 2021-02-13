@@ -26,6 +26,7 @@ pub mod compiler {
 // are defined in both directions.
 
 const NANOS_PER_SECOND: i32 = 1_000_000_000;
+const NANOS_MAX: i32 = NANOS_PER_SECOND - 1;
 
 impl Duration {
     /// Normalizes the duration to a canonical format.
@@ -35,17 +36,39 @@ impl Duration {
     pub fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
-            self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
-            self.nanos %= NANOS_PER_SECOND;
+            if let Some(seconds) = self.seconds.checked_add((self.nanos / NANOS_PER_SECOND) as i64) {
+                self.seconds = seconds;
+                self.nanos %= NANOS_PER_SECOND;
+            } else if self.nanos < 0 {
+                // Negative overflow! Set to the least normal value.
+                self.seconds = i64::MIN;
+                self.nanos = -NANOS_MAX;
+            } else {
+                // Positive overflow! Set to the greatest normal value.
+                self.seconds = i64::MAX;
+                self.nanos = NANOS_MAX;
+            }
         }
 
         // nanos should have the same sign as seconds.
         if self.seconds < 0 && self.nanos > 0 {
-            self.seconds += 1;
-            self.nanos -= NANOS_PER_SECOND;
+            if let Some(seconds) = self.seconds.checked_add(1) {
+                self.seconds = seconds;
+                self.nanos -= NANOS_PER_SECOND;
+            } else {
+                // Positive overflow! Set to the greatest normal value.
+                debug_assert_eq!(self.seconds, i64::MAX);
+                self.nanos = NANOS_MAX;
+            }
         } else if self.seconds > 0 && self.nanos < 0 {
-            self.seconds -= 1;
-            self.nanos += NANOS_PER_SECOND;
+            if let Some(seconds) = self.seconds.checked_sub(1) {
+                self.seconds = seconds;
+                self.nanos += NANOS_PER_SECOND;
+            } else {
+                // Negative overflow! Set to the least normal value.
+                debug_assert_eq!(self.seconds, i64::MIN);
+                self.nanos = -NANOS_MAX;
+            }
         }
         // TODO: should this be checked?
         // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
@@ -104,14 +127,30 @@ impl Timestamp {
     pub fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
-            self.seconds += (self.nanos / NANOS_PER_SECOND) as i64;
-            self.nanos %= NANOS_PER_SECOND;
+            if let Some(seconds) = self.seconds.checked_add((self.nanos / NANOS_PER_SECOND) as i64) {
+                self.seconds = seconds;
+                self.nanos %= NANOS_PER_SECOND;
+            } else if self.nanos < 0 {
+                // Negative overflow! Set to the earliest normal value.
+                self.seconds = i64::MIN;
+                self.nanos = 0;
+            } else {
+                // Positive overflow! Set to the latest normal value.
+                self.seconds = i64::MAX;
+                self.nanos = 999_999_999;
+            }
         }
 
         // For Timestamp nanos should be in the range [0, 999999999].
         if self.nanos < 0 {
-            self.seconds -= 1;
-            self.nanos += NANOS_PER_SECOND;
+            if let Some(seconds) = self.seconds.checked_sub(1) {
+                self.seconds = seconds;
+                self.nanos += NANOS_PER_SECOND;
+            } else {
+                // Negative overflow! Set to the earliest normal value.
+                debug_assert_eq!(self.seconds, i64::MIN);
+                self.nanos = 0;
+            }
         }
 
         // TODO: should this be checked?
@@ -242,5 +281,155 @@ mod tests {
                 nanos: 12_345_679
             }
         );
+    }
+
+    #[test]
+    fn check_duration_normalize() {
+        let cases = [
+            // --- Table of test cases ---
+            //        test seconds      test nanos  expected seconds  expected nanos
+            (line!(),            0,              0,                0,              0),
+            (line!(),            1,              1,                1,              1),
+            (line!(),           -1,             -1,               -1,             -1),
+            (line!(),            0,    999_999_999,                0,    999_999_999),
+            (line!(),            0,   -999_999_999,                0,   -999_999_999),
+            (line!(),            0,  1_000_000_000,                1,              0),
+            (line!(),            0, -1_000_000_000,               -1,              0),
+            (line!(),            0,  1_000_000_001,                1,              1),
+            (line!(),            0, -1_000_000_001,               -1,             -1),
+            (line!(),           -1,              1,                0,   -999_999_999),
+            (line!(),            1,             -1,                0,    999_999_999),
+            (line!(),           -1,  1_000_000_000,                0,              0),
+            (line!(),            1, -1_000_000_000,                0,              0),
+            (line!(), i64::MIN    ,              0,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1,              0,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    ,              1,     i64::MIN + 1,   -999_999_999),
+            (line!(), i64::MIN    ,  1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_000_000_000,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -1_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_999_999_998,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -1_999_999_998,     i64::MIN    ,   -999_999_998),
+            (line!(), i64::MIN + 2, -1_999_999_998,     i64::MIN + 1,   -999_999_998),
+            (line!(), i64::MIN    , -1_999_999_999,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -1_999_999_999,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 2, -1_999_999_999,     i64::MIN + 1,   -999_999_999),
+            (line!(), i64::MIN    , -2_000_000_000,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -2_000_000_000,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 2, -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN    ,   -999_999_998,     i64::MIN    ,   -999_999_998),
+            (line!(), i64::MIN + 1,   -999_999_998,     i64::MIN + 1,   -999_999_998),
+            (line!(), i64::MAX    ,              0,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 1,              0,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,             -1,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  1_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 2,  1_000_000_000,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,  1_999_999_998,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 2,  1_999_999_998,     i64::MAX - 1,    999_999_998),
+            (line!(), i64::MAX    ,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  1_999_999_999,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  2_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX    ,    999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 1,    999_999_998,     i64::MAX - 1,    999_999_998),
+        ];
+
+        for case in cases.iter() {
+            let mut test_duration = crate::Duration {
+                seconds: case.1,
+                nanos: case.2,
+            };
+            test_duration.normalize();
+
+            assert_eq!(
+                test_duration,
+                crate::Duration {
+                    seconds: case.3,
+                    nanos: case.4,
+                },
+                "test case on line {} doesn't match",
+                case.0,
+            );
+        }
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_timestamp_normalize() {
+        // Make sure that `Timestamp::normalize` behaves correctly on and near overflow.
+        let cases = [
+            // --- Table of test cases ---
+            //        test seconds      test nanos  expected seconds  expected nanos
+            (line!(),            0,              0,                0,              0),
+            (line!(),            1,              1,                1,              1),
+            (line!(),           -1,             -1,               -2,    999_999_999),
+            (line!(),            0,    999_999_999,                0,    999_999_999),
+            (line!(),            0,   -999_999_999,               -1,              1),
+            (line!(),            0,  1_000_000_000,                1,              0),
+            (line!(),            0, -1_000_000_000,               -1,              0),
+            (line!(),            0,  1_000_000_001,                1,              1),
+            (line!(),            0, -1_000_000_001,               -2,    999_999_999),
+            (line!(),           -1,              1,               -1,              1),
+            (line!(),            1,             -1,                0,    999_999_999),
+            (line!(),           -1,  1_000_000_000,                0,              0),
+            (line!(),            1, -1_000_000_000,                0,              0),
+            (line!(), i64::MIN    ,              0,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1,              0,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    ,              1,     i64::MIN    ,              1),
+            (line!(), i64::MIN    ,  1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -1_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_999_999_998,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -1_999_999_998,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_999_999_998,     i64::MIN    ,              2),
+            (line!(), i64::MIN    , -1_999_999_999,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -1_999_999_999,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_999_999_999,     i64::MIN    ,              1),
+            (line!(), i64::MIN    , -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN    ,   -999_999_998,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1,   -999_999_998,     i64::MIN    ,              2),
+            (line!(), i64::MAX    ,              0,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 1,              0,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,             -1,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  1_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 2,  1_000_000_000,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,  1_999_999_998,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 2,  1_999_999_998,     i64::MAX - 1,    999_999_998),
+            (line!(), i64::MAX    ,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  1_999_999_999,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  2_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX    ,    999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 1,    999_999_998,     i64::MAX - 1,    999_999_998),
+        ];
+
+        for case in cases.iter() {
+            let mut test_timestamp = crate::Timestamp {
+                seconds: case.1,
+                nanos: case.2,
+            };
+            test_timestamp.normalize();
+
+            assert_eq!(
+                test_timestamp,
+                crate::Timestamp {
+                    seconds: case.3,
+                    nanos: case.4,
+                },
+                "test case on line {} doesn't match",
+                case.0,
+            );
+        }
     }
 }
