@@ -183,16 +183,39 @@ impl From<std::time::SystemTime> for Timestamp {
 }
 
 #[cfg(feature = "std")]
-impl From<Timestamp> for std::time::SystemTime {
-    fn from(mut timestamp: Timestamp) -> std::time::SystemTime {
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct TimestampOutOfSystemRangeError {
+    pub timestamp: Timestamp,
+}
+
+#[cfg(feature = "std")]
+impl core::fmt::Display for TimestampOutOfSystemRangeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?} is not representable as a `SystemTime` because it is out of range", self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for TimestampOutOfSystemRangeError {}
+
+#[cfg(feature = "std")]
+impl TryFrom<Timestamp> for std::time::SystemTime {
+    type Error = TimestampOutOfSystemRangeError;
+
+    fn try_from(mut timestamp: Timestamp) -> Result<std::time::SystemTime, Self::Error> {
+        let orig_timestamp = timestamp.clone();
         timestamp.normalize();
+
         let system_time = if timestamp.seconds >= 0 {
-            std::time::UNIX_EPOCH + time::Duration::from_secs(timestamp.seconds as u64)
+            std::time::UNIX_EPOCH.checked_add(time::Duration::from_secs(timestamp.seconds as u64))
         } else {
-            std::time::UNIX_EPOCH - time::Duration::from_secs((-timestamp.seconds) as u64)
+            std::time::UNIX_EPOCH.checked_sub(time::Duration::from_secs((-timestamp.seconds) as u64))
         };
 
-        system_time + time::Duration::from_nanos(timestamp.nanos as u64)
+        let system_time = system_time.and_then(|system_time| system_time.checked_add(time::Duration::from_nanos(timestamp.nanos as u64)));
+
+        system_time.ok_or(TimestampOutOfSystemRangeError { timestamp: orig_timestamp })
     }
 }
 
@@ -210,7 +233,19 @@ mod tests {
         fn check_system_time_roundtrip(
             system_time in SystemTime::arbitrary(),
         ) {
-            prop_assert_eq!(SystemTime::from(Timestamp::from(system_time)), system_time);
+            prop_assert_eq!(SystemTime::try_from(Timestamp::from(system_time)).unwrap(), system_time);
+        }
+
+        #[test]
+        fn check_timestamp_roundtrip_via_system_time(
+            seconds in i64::arbitrary(),
+            nanos in i32::arbitrary(),
+        ) {
+            let mut timestamp = Timestamp { seconds, nanos };
+            timestamp.normalize();
+            if let Ok(system_time) = SystemTime::try_from(timestamp.clone()) {
+                prop_assert_eq!(Timestamp::from(system_time), timestamp);
+            }
         }
     }
 
