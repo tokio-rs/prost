@@ -182,6 +182,13 @@ impl From<std::time::SystemTime> for Timestamp {
     }
 }
 
+/// Indicates that a [`Timestamp`] could not be converted to
+/// [`SystemTime`][std::time::SystemTime] because it is out of range.
+///
+/// The range of times that can be represented by `SystemTime` depends on the platform.
+/// All `Timestamp`s are likely representable on 64-bit Unix-like platforms, but
+/// other platforms, such as Windows and 32-bit Linux, may not be able to represent
+/// the full range of `Timestamp`s.
 #[cfg(feature = "std")]
 #[derive(Debug)]
 #[non_exhaustive]
