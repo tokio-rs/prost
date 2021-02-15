@@ -36,7 +36,10 @@ impl Duration {
     pub fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
-            if let Some(seconds) = self.seconds.checked_add((self.nanos / NANOS_PER_SECOND) as i64) {
+            if let Some(seconds) = self
+                .seconds
+                .checked_add((self.nanos / NANOS_PER_SECOND) as i64)
+            {
                 self.seconds = seconds;
                 self.nanos %= NANOS_PER_SECOND;
             } else if self.nanos < 0 {
@@ -127,7 +130,10 @@ impl Timestamp {
     pub fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
-            if let Some(seconds) = self.seconds.checked_add((self.nanos / NANOS_PER_SECOND) as i64) {
+            if let Some(seconds) = self
+                .seconds
+                .checked_add((self.nanos / NANOS_PER_SECOND) as i64)
+            {
                 self.seconds = seconds;
                 self.nanos %= NANOS_PER_SECOND;
             } else if self.nanos < 0 {
@@ -199,7 +205,11 @@ pub struct TimestampOutOfSystemRangeError {
 #[cfg(feature = "std")]
 impl core::fmt::Display for TimestampOutOfSystemRangeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:?} is not representable as a `SystemTime` because it is out of range", self)
+        write!(
+            f,
+            "{:?} is not representable as a `SystemTime` because it is out of range",
+            self
+        )
     }
 }
 
@@ -217,12 +227,17 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
         let system_time = if timestamp.seconds >= 0 {
             std::time::UNIX_EPOCH.checked_add(time::Duration::from_secs(timestamp.seconds as u64))
         } else {
-            std::time::UNIX_EPOCH.checked_sub(time::Duration::from_secs((-timestamp.seconds) as u64))
+            std::time::UNIX_EPOCH
+                .checked_sub(time::Duration::from_secs((-timestamp.seconds) as u64))
         };
 
-        let system_time = system_time.and_then(|system_time| system_time.checked_add(time::Duration::from_nanos(timestamp.nanos as u64)));
+        let system_time = system_time.and_then(|system_time| {
+            system_time.checked_add(time::Duration::from_nanos(timestamp.nanos as u64))
+        });
 
-        system_time.ok_or(TimestampOutOfSystemRangeError { timestamp: orig_timestamp })
+        system_time.ok_or(TimestampOutOfSystemRangeError {
+            timestamp: orig_timestamp,
+        })
     }
 }
 
@@ -327,6 +342,7 @@ mod tests {
 
     #[test]
     fn check_duration_normalize() {
+        #[rustfmt::skip] // Don't mangle the table formatting.
         let cases = [
             // --- Table of test cases ---
             //        test seconds      test nanos  expected seconds  expected nanos
@@ -403,6 +419,7 @@ mod tests {
     #[test]
     fn check_timestamp_normalize() {
         // Make sure that `Timestamp::normalize` behaves correctly on and near overflow.
+        #[rustfmt::skip] // Don't mangle the table formatting.
         let cases = [
             // --- Table of test cases ---
             //        test seconds      test nanos  expected seconds  expected nanos
