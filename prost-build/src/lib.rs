@@ -36,14 +36,14 @@
 //!
 //! // A snazzy new shirt!
 //! message Shirt {
-//! enum Size {
-//!     SMALL = 0;
-//!     MEDIUM = 1;
-//!     LARGE = 2;
-//! }
+//!     enum Size {
+//!         SMALL = 0;
+//!         MEDIUM = 1;
+//!         LARGE = 2;
+//!     }
 //!
-//! string color = 1;
-//! Size size = 2;
+//!     string color = 1;
+//!     Size size = 2;
 //! }
 //! ```
 //!
@@ -51,8 +51,7 @@
 //! `build.rs` build-script:
 //!
 //! ```rust,no_run
-//! # use std::io::Result;
-//! fn main() -> Result<()> {
+//! fn main() -> Result<(), std::io::Error> {
 //!   prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
 //!   Ok(())
 //! }
