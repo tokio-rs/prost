@@ -32,7 +32,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
-        let attrs = prost_attrs(attrs)?;
+        let attrs = prost_attrs(attrs);
 
         // TODO: check for ignore attribute.
 
@@ -58,7 +58,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
-        let attrs = prost_attrs(attrs)?;
+        let attrs = prost_attrs(attrs);
 
         // TODO: check for ignore attribute.
 
@@ -224,8 +224,8 @@ impl fmt::Display for Label {
 }
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
-pub(super) fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
-    Ok(attrs
+fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
+    attrs
         .iter()
         .flat_map(Attribute::parse_meta)
         .flat_map(|meta| match meta {
@@ -244,7 +244,7 @@ pub(super) fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
                 NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
             }
         })
-        .collect())
+        .collect()
 }
 
 pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<(), Error>
