@@ -144,5 +144,8 @@ fn main() {
     // Run the last command again, while skipping the protoc run.  Since file_descriptor_set_path
     // has been set, it will already exist, and should produce the same result.  The inputs are also
     // ignored, so provide fake input.
-    config.skip_protoc_run().compile_protos(&[], &[]).unwrap();
+    config
+        .skip_protoc_run()
+        .compile_protos(&[] as &[&str], &[] as &[&str])
+        .unwrap();
 }
