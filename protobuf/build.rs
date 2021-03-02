@@ -9,7 +9,7 @@ use curl::easy::Easy;
 use flate2::bufread::GzDecoder;
 use tar::Archive;
 
-const VERSION: &str = "3.13.0";
+const VERSION: &str = "3.14.0";
 
 static TEST_PROTOS: &[&str] = &[
     "test_messages_proto2.proto",
@@ -270,8 +270,5 @@ fn install_datasets(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
         .with_context(|| format!("failed to move {}", dataset.display()))?;
     }
 
-    download_tarball(
-        "https://storage.googleapis.com/protobuf_opensource_benchmark_data/datasets.tar.gz",
-        share_dir,
-    )
+    Ok(())
 }

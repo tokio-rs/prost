@@ -32,8 +32,9 @@ fn main() -> io::Result<()> {
             Err(error) => conformance_response::Result::ParseError(format!("{:?}", error)),
         };
 
-        let mut response = ConformanceResponse::default();
-        response.result = Some(result);
+        let response = ConformanceResponse {
+            result: Some(result),
+        };
 
         let len = response.encoded_len();
         bytes.clear();

@@ -39,7 +39,7 @@ where
         'outer: loop {
             i = 0;
 
-            let uninit_slice = buf.bytes_mut();
+            let uninit_slice = buf.chunk_mut();
             for offset in 0..uninit_slice.len() {
                 i += 1;
                 let ptr = uninit_slice.as_mut_ptr().add(offset);
@@ -65,7 +65,7 @@ pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError>
 where
     B: Buf,
 {
-    let bytes = buf.bytes();
+    let bytes = buf.chunk();
     let len = bytes.len();
     if len == 0 {
         return Err(DecodeError::new("invalid varint"));
@@ -259,6 +259,7 @@ impl DecodeContext {
 
     #[cfg(feature = "no-recursion-limit")]
     #[inline]
+    #[allow(clippy::unnecessary_wraps)] // needed in other features
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         Ok(())
     }
@@ -314,7 +315,7 @@ pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B)
 where
     B: BufMut,
 {
-    debug_assert!(tag >= MIN_TAG && tag <= MAX_TAG);
+    debug_assert!((MIN_TAG..=MAX_TAG).contains(&tag));
     let key = (tag << 3) | wire_type as u32;
     encode_varint(u64::from(key), buf);
 }

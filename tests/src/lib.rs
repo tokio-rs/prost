@@ -36,6 +36,8 @@ mod debug;
 #[cfg(test)]
 mod deprecated_field;
 #[cfg(test)]
+mod generic_derive;
+#[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;
@@ -85,6 +87,18 @@ pub mod default_enum_value {
 
 pub mod groups {
     include!(concat!(env!("OUT_DIR"), "/groups.rs"));
+}
+
+pub mod proto3 {
+    pub mod presence {
+        include!(concat!(env!("OUT_DIR"), "/proto3.presence.rs"));
+    }
+}
+
+pub mod invalid {
+    pub mod doctest {
+        include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));
+    }
 }
 
 use alloc::format;
@@ -579,5 +593,19 @@ mod tests {
         check_message(&msg);
 
         check_message(&groups::OneofGroup::default());
+    }
+
+    #[test]
+    fn test_proto3_presence() {
+        let msg = proto3::presence::A { b: Some(42) };
+
+        check_message(&msg);
+    }
+
+    #[test]
+    fn test_file_descriptor_set_path() {
+        let file_descriptor_set_bytes =
+            include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+        prost_types::FileDescriptorSet::decode(&file_descriptor_set_bytes[..]).unwrap();
     }
 }
