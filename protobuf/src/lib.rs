@@ -34,27 +34,6 @@ pub mod benchmarks {
             ))
         }
 
-        pub fn google_message3_2() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_2.pb"
-            ))
-        }
-
-        pub fn google_message3_3() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_3.pb"
-            ))
-        }
-
-        pub fn google_message3_4() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_4.pb"
-            ))
-        }
-
         pub fn google_message3_5() -> &'static Path {
             Path::new(concat!(
                 env!("PROTOBUF"),
