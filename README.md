@@ -107,10 +107,91 @@ Scalar value types are converted as follows:
 #### Enumerations
 
 All `.proto` enumeration types convert to the Rust `i32` type. Additionally,
-each enumeration type gets a corresponding Rust `enum` type, with helper methods
-to convert `i32` values to the enum type. The `enum` type isn't used directly as
-a field, because the Protobuf spec mandates that enumerations values are 'open',
-and decoding unrecognized enumeration values must be possible.
+each enumeration type gets a corresponding Rust `enum` type. For example, this
+`proto` enum:
+
+```proto
+enum PhoneType {
+  MOBILE = 0;
+  HOME = 1;
+  WORK = 2;
+}
+```
+
+gets this corresponding Rust enum [1]:
+
+```rust
+pub enum PhoneType {
+    Mobile = 0,
+    Home = 1,
+    Work = 2,
+}
+```
+
+You can convert a `PhoneType` value to an `i32` by doing:
+
+```rust
+PhoneType::Mobile as i32
+```
+
+The `#[derive(::prost::Enumeration)]` annotation added to the generated
+`PhoneType` adds these associated functions to the type:
+
+```rust
+impl PhoneType {
+    pub fn is_valid(value: i32) -> bool { ... }
+    pub fn from_i32(value: i32) -> Option<PhoneType> { ... }
+}
+```
+
+so you can convert an `i32` to its corresponding `PhoneType` value by doing,
+for example:
+
+```rust
+let phone_type = 2i32;
+
+match PhoneType::from_i32(phone_type) {
+    Some(PhoneType::Mobile) => ...,
+    Some(PhoneType::Home) => ...,
+    Some(PhoneType::Work) => ...,
+    None => ...,
+}
+```
+
+Additionally, wherever a `proto` enum is used as a field in a `Message`, the
+message will have 'accessor' methods to get/set the value of the field as the
+Rust enum type. For instance, this proto `PhoneNumber` message that has a field
+named `type` of type `PhoneType`:
+
+```proto
+message PhoneNumber {
+  string number = 1;
+  PhoneType type = 2;
+}
+```
+
+will become the following Rust type [1] with methods `type` and `set_type`:
+
+```rust
+pub struct PhoneNumber {
+    pub number: String,
+    pub r#type: i32, // the `r#` is needed because `type` is a Rust keyword
+}
+
+impl PhoneNumber {
+    pub fn r#type(&self) -> PhoneType { ... }
+    pub fn set_type(&mut self, value: PhoneType) { ... }
+}
+```
+
+Note that the getter methods will return the Rust enum's default value if the
+field has an invalid `i32` value.
+
+The `enum` type isn't used directly as a field, because the Protobuf spec
+mandates that enumerations values are 'open', and decoding unrecognized
+enumeration values must be possible.
+
+[1] Annotations have been elided for clarity. See below for a full example.
 
 #### Field Modifiers
 
