@@ -352,7 +352,7 @@ prost = { version = "0.6", default-features = false, features = ["prost-derive"]
 prost-types = { version = "0.6", default-features = false }
 ```
 
-Additionally, configure `prost-buid` to output `BTreeMap`s instead of `HashMap`s
+Additionally, configure `prost-build` to output `BTreeMap`s instead of `HashMap`s
 for all Protobuf `map` fields in your `build.rs`:
 
 ```rust
@@ -432,7 +432,7 @@ pub enum Gender {
   There are two complications with trying to serialize Protobuf messages with
   Serde:
 
-  - Protobuf fields require a numbered tag, and curently there appears to be no
+  - Protobuf fields require a numbered tag, and currently there appears to be no
     mechanism suitable for this in `serde`.
   - The mapping of Protobuf type to Rust type is not 1-to-1. As a result,
     trait-based approaches to dispatching don't work very well. Example: six
