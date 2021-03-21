@@ -51,9 +51,10 @@
 //! `build.rs` build-script:
 //!
 //! ```rust,no_run
-//! fn main() -> Result<(), std::io::Error> {
-//!   prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
-//!   Ok(())
+//! use std::io::Result;
+//! fn main() -> Result<()> {
+//!     prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
+//!     Ok(())
 //! }
 //! ```
 //!

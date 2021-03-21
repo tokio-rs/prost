@@ -270,8 +270,5 @@ fn install_datasets(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
         .with_context(|| format!("failed to move {}", dataset.display()))?;
     }
 
-    download_tarball(
-        "https://storage.googleapis.com/protobuf_opensource_benchmark_data/datasets.tar.gz",
-        share_dir,
-    )
+    Ok(())
 }
