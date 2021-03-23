@@ -9,6 +9,7 @@ edition = "2018"
 bytes = { version = "1", default-features = false }
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
+serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
 anyhow = "1"

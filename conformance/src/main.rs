@@ -8,7 +8,7 @@ use protobuf::conformance::{
 };
 use protobuf::test_messages::proto2::TestAllTypesProto2;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
-use tests::{roundtrip, RoundtripResult};
+use tests::{roundtrip, roundtrip_json, RoundtripResult};
 
 fn main() -> io::Result<()> {
     env_logger::init();
@@ -55,11 +55,6 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 "output format unspecified".to_string(),
             );
         }
-        WireFormat::Json => {
-            return conformance_response::Result::Skipped(
-                "JSON output is not supported".to_string(),
-            );
-        }
         WireFormat::Jspb => {
             return conformance_response::Result::Skipped(
                 "JSPB output is not supported".to_string(),
@@ -70,9 +65,39 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 "TEXT_FORMAT output is not supported".to_string(),
             );
         }
-        WireFormat::Protobuf => (),
+        WireFormat::Protobuf | WireFormat::Json => (),
     };
 
+    if let WireFormat::Json = request.requested_output_format() {
+	if let Some(conformance_request::Payload::JsonPayload(json_str)) = request.payload {
+	    let roundtrip = match &*request.message_type {
+		"protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip_json::<TestAllTypesProto2>(json_str),
+		"protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip_json::<TestAllTypesProto3>(json_str),
+		_ => {
+		    return conformance_response::Result::ParseError(format!(
+			"unknown message type: {}",
+			request.message_type
+		    ));
+		}
+	    };
+	    
+	    return match roundtrip {
+		RoundtripResult::Ok(buf) => conformance_response::Result::JsonPayload(match std::str::from_utf8(&buf) {
+		    Ok(str) => str.to_string(),
+		    Err(error) => return conformance_response::Result::ParseError(error.to_string())
+		}),
+		RoundtripResult::DecodeError(error) => {
+		    conformance_response::Result::ParseError(error.to_string())
+		}
+		RoundtripResult::Error(error) => {
+		    conformance_response::Result::RuntimeError(error.to_string())
+		}
+	    }
+	    
+	}
+	unreachable!()
+    }
+    
     let buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
         Some(conformance_request::Payload::JsonPayload(_)) => {

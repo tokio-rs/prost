@@ -257,6 +257,18 @@ impl<'a> CodeGenerator<'a> {
             self.buf.push_str(&attributes);
             self.buf.push('\n');
         }
+	if let Some(_) = self
+	    .config
+	    .json_mapping
+	    .get(fq_message_name) {
+		self.push_indent();
+		self.buf.push_str("#[derive(serde::Deserialize, serde::Serialize)]");
+		self.buf.push('\n');
+		self.push_indent();
+		self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
+		self.buf.push('\n');
+	    }
+
     }
 
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {

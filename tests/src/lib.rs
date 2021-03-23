@@ -109,6 +109,8 @@ use bytes::Buf;
 
 use prost::Message;
 
+use serde::{Serialize, Deserialize};
+
 pub enum RoundtripResult {
     /// The roundtrip succeeded.
     Ok(Vec<u8>),
@@ -194,6 +196,41 @@ where
 
     RoundtripResult::Ok(buf1)
 }
+
+/// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
+/// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
+pub fn roundtrip_json<'de, M>(data: &'de str) -> RoundtripResult
+where
+    M: Message + Default + Serialize + Deserialize<'de>,
+{
+    // Try to decode a message from the data. If decoding fails, continue.
+    let all_types: M = match serde_json::from_str(data) {
+        Ok(all_types) => all_types,
+        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+    };
+
+    let str1 = match serde_json::to_string(&all_types) {
+	Ok(str) => str,
+	Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+    };
+
+    let roundtrip = match serde_json::from_str(&str1) {
+        Ok(roundtrip) => roundtrip,
+        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+    };
+
+    let str2 = match serde_json::to_string(&roundtrip) {
+	Ok(str) => str,
+	Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+    };
+
+    if str1 != str2 {
+        return RoundtripResult::Error(anyhow!("roundtripped JSON encoded strings do not match"));
+    }
+
+    RoundtripResult::Ok(str1.into_bytes())
+}
+
 
 /// Generic rountrip serialization check for messages.
 pub fn check_message<M>(msg: &M)
