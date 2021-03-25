@@ -71,8 +71,8 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     if let WireFormat::Json = request.requested_output_format() {
 	if let Some(conformance_request::Payload::JsonPayload(json_str)) = request.payload {
 	    let roundtrip = match &*request.message_type {
-		"protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip_json::<TestAllTypesProto2>(json_str),
-		"protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip_json::<TestAllTypesProto3>(json_str),
+		"protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip_json::<TestAllTypesProto2>(&json_str),
+		"protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip_json::<TestAllTypesProto3>(&json_str),
 		_ => {
 		    return conformance_response::Result::ParseError(format!(
 			"unknown message type: {}",
@@ -93,9 +93,11 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
 		    conformance_response::Result::RuntimeError(error.to_string())
 		}
 	    }
-	    
 	}
-	unreachable!()
+	// TODO(konradjniemiec) support proto -> json and json -> proto conformance
+	return conformance_response::Result::Skipped(
+                "only json <-> json is supported".to_string(),
+        );
     }
     
     let buf = match request.payload {
