@@ -17,7 +17,7 @@ fn main() {
 
     let no_opts = RequestNoOpts {
         id: uuid.to_string(),
-        meta: None,
+        meta: Some(meta),
     };
 
     let mut with_opts_buf = Vec::new();

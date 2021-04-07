@@ -18,7 +18,8 @@ fn main() {
     // The source directory. The indirection is necessary in order to support the tests-2015 crate,
     // which sets the current directory to tests-2015 during build script evaluation.
     let src = PathBuf::from("../tests/src");
-    let includes = &[src.clone()];
+    let root = PathBuf::from("..");
+    let includes = &[src.clone(), root.clone()];
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
@@ -76,6 +77,10 @@ fn main() {
 
     config
         .compile_protos(&[src.join("default_enum_value.proto")], includes)
+        .unwrap();
+
+    config
+        .compile_protos(&[src.join("must.proto")], includes)
         .unwrap();
 
     config

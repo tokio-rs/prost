@@ -171,6 +171,16 @@ impl Field {
             _ => None,
         }
     }
+
+    pub fn is_must(&self) -> bool {
+        match self {
+            Field::Scalar(field) => matches!(field.kind, scalar::Kind::Must(_)),
+            Field::Message(field) => matches!(field.label, Label::Must),
+            Field::Map(_) => false,
+            Field::Oneof(_) => false,
+            Field::Group(field) => matches!(field.label, Label::Must),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -181,6 +191,9 @@ pub enum Label {
     Required,
     /// A repeated field.
     Repeated,
+
+    /// Prosit extension. Must fields error if not present in the protobuf.
+    Must,
 }
 
 impl Label {
@@ -189,11 +202,17 @@ impl Label {
             Label::Optional => "optional",
             Label::Required => "required",
             Label::Repeated => "repeated",
+            Label::Must => "must",
         }
     }
 
     fn variants() -> slice::Iter<'static, Label> {
-        const VARIANTS: &[Label] = &[Label::Optional, Label::Required, Label::Repeated];
+        const VARIANTS: &[Label] = &[
+            Label::Optional,
+            Label::Required,
+            Label::Repeated,
+            Label::Must,
+        ];
         VARIANTS.iter()
     }
 

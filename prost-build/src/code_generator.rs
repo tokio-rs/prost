@@ -325,7 +325,7 @@ impl<'a> CodeGenerator<'a> {
                         if let Some(opts) = &opts.codegen {
                             if let Some(required) = opts.required {
                                 if required {
-                                    self.buf.push_str(", required");
+                                    self.buf.push_str(", must");
                                 }
                             }
                         }
