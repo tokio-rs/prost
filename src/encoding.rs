@@ -859,7 +859,7 @@ pub mod uuid {
         B: Buf,
     {
         // TODO this allocates but shouldn't need to
-        let mut str = value.to_string();
+        let mut str = String::with_capacity(36);
         string::merge(wire_type, &mut str, buf, ctx)?;
         let mut uuid =
             ::uuid::Uuid::parse_str(&str).map_err(|_| DecodeError::new("invalid uuid"))?;

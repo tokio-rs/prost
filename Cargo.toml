@@ -40,7 +40,7 @@ std = []
 
 [dependencies]
 bytes = { version = "1", default-features = false }
-prost-derive = { version = "0.7.0", path = "prost-derive", optional = true }
+prost-derive = { path = "prost-derive", optional = true }
 uuid = "0.8"
 
 [dev-dependencies]

@@ -590,7 +590,28 @@ pub struct FieldOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
+
+    #[prost(message, optional, tag="796111")]
+    pub codegen: ::core::option::Option<RustCodeGen>
 }
+
+/// See root level rust.proto
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RustCodeGen {
+    #[prost(enumeration="RustTypes", optional, tag="1", default="Default")]
+    pub r#type: ::core::option::Option<i32>,
+    #[prost(bool, optional, tag="2", default="false")]
+    pub required: ::core::option::Option<bool>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum RustTypes {
+    Default = 0,
+    Uuid = 1,
+}
+
+
 /// Nested message and enum types in `FieldOptions`.
 pub mod field_options {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
