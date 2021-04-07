@@ -5,6 +5,7 @@ use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
+use uuid::Uuid;
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
 
@@ -383,6 +384,9 @@ pub enum Ty {
     String,
     Bytes(BytesTy),
     Enumeration(Path),
+
+    // Custom types, not part of the proto standard.
+    Uuid,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -426,6 +430,9 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
             Meta::Path(ref name) if name.is_ident("string") => Ty::String,
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
+
+            Meta::Path(ref name) if name.is_ident("uuid") => Ty::Uuid,
+
             Meta::NameValue(MetaNameValue {
                 ref path,
                 lit: Lit::Str(ref l),
@@ -476,6 +483,7 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
+            "uuid" => Ty::Uuid,
             s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
                 let s = &s[enumeration_len..].trim();
                 match s.chars().next() {
@@ -513,6 +521,8 @@ impl Ty {
             Ty::String => "string",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
+
+            Ty::Uuid => "uuid",
         }
     }
 
@@ -521,6 +531,7 @@ impl Ty {
         match self {
             Ty::String => quote!(::prost::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(),
+            Ty::Uuid => quote!(::uuid::Uuid),
             _ => self.rust_ref_type(),
         }
     }
@@ -544,6 +555,7 @@ impl Ty {
             Ty::String => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
+            Ty::Uuid => quote!(&uuid::Uuid),
         }
     }
 
@@ -556,7 +568,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        !matches!(self, Ty::String | Ty::Bytes(..))
+        !matches!(self, Ty::String | Ty::Bytes(..) | Ty::Uuid)
     }
 }
 
@@ -601,6 +613,8 @@ pub enum DefaultValue {
     Bytes(Vec<u8>),
     Enumeration(TokenStream),
     Path(Path),
+
+    Uuid(Uuid),
 }
 
 impl DefaultValue {
@@ -760,6 +774,8 @@ impl DefaultValue {
             Ty::String => DefaultValue::String(String::new()),
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
+
+            Ty::Uuid => DefaultValue::Uuid(Uuid::nil()),
         }
     }
 
@@ -805,6 +821,7 @@ impl ToTokens for DefaultValue {
             }
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
+            DefaultValue::Uuid(_) => quote!(uuid::Uuid::default()).to_tokens(tokens),
         }
     }
 }

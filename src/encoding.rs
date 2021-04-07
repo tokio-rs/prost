@@ -801,6 +801,75 @@ macro_rules! length_delimited {
     };
 }
 
+macro_rules! length_delimited_const_sized {
+    ($ty:ty, $size:tt) => {
+        encode_repeated!($ty);
+
+        pub fn merge_repeated<B>(
+            wire_type: WireType,
+            values: &mut Vec<$ty>,
+            buf: &mut B,
+            ctx: DecodeContext,
+        ) -> Result<(), DecodeError>
+        where
+            B: Buf,
+        {
+            check_wire_type(WireType::LengthDelimited, wire_type)?;
+            let mut value = Default::default();
+            merge(wire_type, &mut value, buf, ctx)?;
+            values.push(value);
+            Ok(())
+        }
+
+        #[inline]
+        pub fn encoded_len(tag: u32, _: &$ty) -> usize {
+            key_len(tag) + encoded_len_varint($size as u64) + $size
+        }
+
+        #[inline]
+        pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
+            key_len(tag) * values.len()
+                + values
+                    .iter()
+                    .map(|_| encoded_len_varint($size as u64) + $size)
+                    .sum::<usize>()
+        }
+    };
+}
+
+pub mod uuid {
+    use super::*;
+
+    pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        // TODO this allocates but shouldn't need to
+        let str = value.to_string();
+        string::encode(tag, &str, buf)
+    }
+
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut ::uuid::Uuid,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        // TODO this allocates but shouldn't need to
+        let mut str = value.to_string();
+        string::merge(wire_type, &mut str, buf, ctx)?;
+        let mut uuid =
+            ::uuid::Uuid::parse_str(&str).map_err(|_| DecodeError::new("invalid uuid"))?;
+        std::mem::swap(value, &mut uuid);
+        Ok(())
+    }
+
+    length_delimited_const_sized!(::uuid::Uuid, 36);
+}
+
 pub mod string {
     use super::*;
 
@@ -812,6 +881,7 @@ pub mod string {
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value.as_bytes());
     }
+
     pub fn merge<B>(
         wire_type: WireType,
         value: &mut String,

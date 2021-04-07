@@ -387,3 +387,92 @@ pub enum BasicOneof {
     #[prost(string, tag = "9")]
     String(String),
 }
+
+#[cfg(feature = "uuid")]
+mod uuid_test {
+    use super::*;
+
+    #[test]
+    fn test_uuid() {
+        use uuid::Uuid;
+
+        #[derive(Clone, Message, PartialEq)]
+        struct UuidMessage {
+            #[prost(string, tag = "1")]
+            pub field1: String,
+            #[prost(uuid, tag = "2")]
+            pub field2: Uuid,
+            #[prost(string, tag = "3")]
+            pub field3: String,
+        }
+
+        let msg = UuidMessage {
+            field2: Uuid::new_v4(),
+            ..Default::default()
+        };
+
+        check_message(&msg)
+    }
+
+    #[test]
+    fn test_repeated_uuid() {
+        use ::uuid::Uuid;
+
+        #[derive(Clone, Message, PartialEq)]
+        struct UuidMessage {
+            #[prost(string, tag = "1")]
+            pub field1: String,
+            #[prost(uuid, repeated, tag = "2")]
+            pub field2: Vec<Uuid>,
+            #[prost(string, tag = "3")]
+            pub field3: String,
+        }
+
+        let msg = UuidMessage {
+            field2: vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()],
+            ..Default::default()
+        };
+
+        check_message(&msg)
+    }
+
+    /// Checks that the uuid type is interchangeable with the String type (from encode/decode perspective).
+    #[test]
+    fn test_uuid_aswell_as_string() {
+        use ::uuid::Uuid;
+
+        #[derive(Clone, Message, PartialEq)]
+        struct UuidMessage {
+            #[prost(string, tag = "1")]
+            pub field1: String,
+            #[prost(uuid, tag = "2")]
+            pub field2: Uuid,
+            #[prost(string, tag = "3")]
+            pub field3: String,
+        }
+
+        #[derive(Clone, Message, PartialEq)]
+        struct StringMessage {
+            #[prost(string, tag = "1")]
+            pub field1: String,
+            #[prost(string, tag = "2")]
+            pub field2: String,
+            #[prost(string, tag = "3")]
+            pub field3: String,
+        }
+
+        let uuid = Uuid::new_v4();
+
+        let b = StringMessage {
+            field2: uuid.to_string(),
+            ..Default::default()
+        };
+
+        let a = UuidMessage {
+            field2: uuid,
+            ..Default::default()
+        };
+
+        check_serialize_equivalent(&a, &b)
+    }
+}

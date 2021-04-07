@@ -293,7 +293,6 @@ impl<'a> CodeGenerator<'a> {
             ty,
             boxed
         );
-
         self.append_doc(fq_message_name, Some(field.name()));
 
         if deprecated {
@@ -321,6 +320,16 @@ impl<'a> CodeGenerator<'a> {
             Label::Optional => {
                 if optional {
                     self.buf.push_str(", optional");
+                } else {
+                    if let Some(opts) = &field.options {
+                        if let Some(opts) = &opts.codegen {
+                            if let Some(required) = opts.required {
+                                if required {
+                                    self.buf.push_str(", required");
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Label::Required => self.buf.push_str(", required"),
@@ -738,6 +747,16 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+        if let Some(opts) = &field.options {
+            if let Some(opts) = &opts.codegen {
+                if let Some(tag) = opts.r#type {
+                    match tag {
+                        1 => return String::from("::uuid::Uuid"),
+                        _ => (),
+                    }
+                }
+            }
+        }
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -787,6 +806,17 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+        if let Some(opts) = &field.options {
+            if let Some(opts) = &opts.codegen {
+                if let Some(tag) = opts.r#type {
+                    match tag {
+                        1 => return Cow::Borrowed("uuid"),
+                        _ => (),
+                    }
+                }
+            }
+        }
+
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -823,6 +853,14 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn optional(&self, field: &FieldDescriptorProto) -> bool {
+        if let Some(opts) = &field.options {
+            if let Some(opts) = &opts.codegen {
+                if let Some(required) = opts.required {
+                    return !required;
+                }
+            }
+        }
+
         if field.proto3_optional.unwrap_or(false) {
             return true;
         }

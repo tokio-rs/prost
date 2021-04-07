@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package rust;
+
+import "google/protobuf/descriptor.proto";
+
+enum RustLibraryTypes {
+  RS_DEFAULT = 0;
+  UUID = 1;
+}
+
+extend google.protobuf.FieldOptions {
+  optional RustFieldRules codegen = 796111;
+}
+
+message RustFieldRules {
+  RustLibraryTypes type = 1;
+  bool required = 2;
+}

@@ -769,6 +769,8 @@ impl Config {
             )
         })?;
 
+        dbg!(&file_descriptor_set);
+
         let modules = self.generate(file_descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = module.join(".");

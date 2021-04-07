@@ -18,6 +18,7 @@ members = [
   "prost-derive",
   "prost-types",
   "protobuf",
+  "prosit-test",
   "tests",
   "tests-2015",
   "tests-no-std",
@@ -40,6 +41,7 @@ std = []
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.7.0", path = "prost-derive", optional = true }
+uuid = "0.8"
 
 [dev-dependencies]
 criterion = "0.3"

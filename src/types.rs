@@ -17,6 +17,7 @@ use crate::{
     },
     DecodeError, Message,
 };
+use uuid::Uuid;
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {
@@ -421,4 +422,44 @@ impl Message for () {
         0
     }
     fn clear(&mut self) {}
+}
+
+impl Message for uuid::Uuid {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        // TODO this allocates a string, which shouldn't be necessary.
+        string::encode(1, &self.to_string(), buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        // TODO this allocates a string, which shouldn't be necessary.
+        let mut string = String::with_capacity(36);
+        string.merge_field(tag, wire_type, buf, ctx)?;
+        let mut uuid = uuid::Uuid::parse_str(&string)
+            .map_err(|_| DecodeError::new("unable to decode uuid"))?;
+        std::mem::swap(self, &mut uuid);
+        Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        // TODO this could be const, as it is always the same.
+        string::encoded_len(1, &self.to_string())
+    }
+
+    fn clear(&mut self) {
+        std::mem::swap(self, &mut Uuid::nil());
+    }
 }

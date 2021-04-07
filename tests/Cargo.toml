@@ -8,7 +8,7 @@ edition = "2018"
 build = "src/build.rs"
 
 [features]
-default = ["std"]
+default = ["std", "uuid/v4"]
 std = []
 
 [dependencies]
@@ -18,6 +18,8 @@ cfg-if = "0.1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
+
+uuid = { version = "0.8", optional = true }
 
 [dev-dependencies]
 diff = "0.1"
