@@ -111,10 +111,6 @@ pub trait Message: Debug + Send + Sync {
     {
         let ctx = DecodeContext::default();
 
-        // TODO(kaiserkarel) this could be more elegant with bitsets or something else. Technically
-        // required fields is known during compile time, but trait methods may not be const. LLVM may
-        // optimize this away anyways though.
-        // (would be great to at least get rid of the Vec allocation)
         let required_fields = Self::required_fields().unwrap_or_default();
         let mut decoded_fields = Vec::with_capacity(required_fields.len());
 
@@ -123,13 +119,15 @@ pub trait Message: Debug + Send + Sync {
             decoded_fields.push(tag);
             self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
         }
+        decoded_fields.sort();
 
+        // TODO This cannot be efficient for large messages.
         let remaining: Vec<_> = required_fields
             .iter()
-            .filter(|i| decoded_fields.binary_search(i).is_err())
+            .filter(|set| !set.iter().any(|i| decoded_fields.binary_search(i).is_ok()))
             .collect();
 
-        if !remaining.is_empty(){
+        if !remaining.is_empty() {
             return Err(DecodeError::new(format!(
                 "missing the following required fields (tags): {:?}",
                 remaining
@@ -159,7 +157,7 @@ pub trait Message: Debug + Send + Sync {
 
     // TODO(kaiserkarel) If we want to enable `must` for oneofs, we'll need to return sets of u32,
     // and require at most one of each u32 within the set to be set,
-    fn required_fields() -> Option<&'static [u32]> {
+    fn required_fields() -> Option<&'static [(&'static [u32])]> {
         None
     }
 }

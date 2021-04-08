@@ -5,8 +5,13 @@ package prosit_test;
 import "rust.proto";
 
 message Request {
+  option (rust.message).oneofs_required = true;
   string id = 1 [(rust.codegen).type = UUID ];
   Meta meta = 2 [(rust.codegen).required = true];
+  oneof foo {
+    string bar = 3;
+    int32 bax = 4;
+  }
 }
 
 message Meta {
@@ -16,4 +21,8 @@ message Meta {
 message RequestNoOpts {
   string id = 1;
   Meta meta = 2;
+  oneof foo {
+    string bar = 3;
+    int32 bax = 4;
+  }
 }

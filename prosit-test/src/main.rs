@@ -13,11 +13,15 @@ fn main() {
     let with_opts = Request {
         id: uuid.clone(),
         meta: meta.clone(),
+        foo: request::Foo::Bax(1),
+        ..Default::default()
     };
 
     let no_opts = RequestNoOpts {
-        id: uuid.to_string(),
-        meta: Some(meta),
+        id: String::from("bar"),
+        meta: None,
+        foo: None,
+        ..Default::default()
     };
 
     let mut with_opts_buf = Vec::new();

@@ -5,15 +5,31 @@ package must;
 import "rust.proto";
 
 message Request {
-  string id = 1 [(rust.codegen).type = UUID ];
+  string id = 1;
   Meta meta = 2 [(rust.codegen).required = true];
-}
-
-message Meta {
-  string id = 1 [(rust.codegen).type = UUID ];
 }
 
 message RequestNoOpts {
   string id = 1;
   Meta meta = 2;
+}
+
+message Meta {
+  string id = 1;
+}
+
+message OneofRequired {
+  option (rust.message).oneofs_required = true;
+
+  oneof foobar {
+    string foo = 1;
+    string bar = 2;
+  }
+}
+
+message OneofOptional {
+  oneof foobar {
+    string foo = 1;
+    string bar = 2;
+  }
 }

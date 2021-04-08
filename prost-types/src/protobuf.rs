@@ -72,6 +72,8 @@ pub struct DescriptorProto {
     #[prost(string, repeated, tag="10")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
+
+
 /// Nested message and enum types in `DescriptorProto`.
 pub mod descriptor_proto {
     #[derive(Clone, PartialEq, ::prost::Message)]
@@ -519,7 +521,17 @@ pub struct MessageOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
+
+    #[prost(message, optional, tag="796112")]
+    pub codegen: ::core::option::Option<RustMessageOptions>,
 }
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RustMessageOptions {
+    #[prost(bool, optional, tag="1")]
+    pub oneofs_required: ::core::option::Option<bool>,
+}
+
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different

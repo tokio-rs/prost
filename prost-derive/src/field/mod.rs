@@ -177,7 +177,7 @@ impl Field {
             Field::Scalar(field) => matches!(field.kind, scalar::Kind::Must(_)),
             Field::Message(field) => matches!(field.label, Label::Must),
             Field::Map(_) => false,
-            Field::Oneof(_) => false,
+            Field::Oneof(oneof) => oneof.required,
             Field::Group(field) => matches!(field.label, Label::Must),
         }
     }

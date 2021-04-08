@@ -3,12 +3,13 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{set_option, tags_attr};
+use crate::field::{set_option, tags_attr, Label};
 
 #[derive(Clone)]
 pub struct Field {
     pub ty: Path,
     pub tags: Vec<u32>,
+    pub required: bool,
 }
 
 impl Field {
@@ -16,6 +17,7 @@ impl Field {
         let mut ty = None;
         let mut tags = None;
         let mut unknown_attrs = Vec::new();
+        let mut required = false;
 
         for attr in attrs {
             if attr.path().is_ident("oneof") {
@@ -41,6 +43,11 @@ impl Field {
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;
+            } else if let Some(label) = Label::from_attr(attr) {
+                match label {
+                    Label::Must => required = true,
+                    _ => required = false,
+                }
             } else {
                 unknown_attrs.push(attr);
             }
@@ -65,14 +72,20 @@ impl Field {
             None => bail!("oneof field is missing a tags attribute"),
         };
 
-        Ok(Some(Field { ty, tags }))
+        Ok(Some(Field { ty, tags, required }))
     }
 
     /// Returns a statement which encodes the oneof field.
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
-        quote! {
-            if let Some(ref oneof) = #ident {
-                oneof.encode(buf)
+        if self.required {
+            quote! {
+                #ident.encode(buf)
+            }
+        } else {
+            quote! {
+                if let Some(ref oneof) = #ident {
+                    oneof.encode(buf)
+                }
             }
         }
     }
@@ -88,12 +101,21 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the oneof field.
     pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let ty = &self.ty;
-        quote! {
-            #ident.as_ref().map_or(0, #ty::encoded_len)
+        if self.required {
+            quote! { #ty::encoded_len(&#ident) }
+        } else {
+            quote! {
+                #ident.as_ref().map_or(0, #ty::encoded_len)
+            }
         }
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident = ::core::option::Option::None)
+        let ty = &self.ty;
+        if self.required {
+            quote!(#ident = #ty::__PROSIT_NONE)
+        } else {
+            quote!(#ident = ::core::option::Option::None)
+        }
     }
 }
