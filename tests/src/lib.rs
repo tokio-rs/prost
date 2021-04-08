@@ -1,7 +1,8 @@
 #![allow(
     clippy::cognitive_complexity,
     clippy::module_inception,
-    clippy::unreadable_literal
+    clippy::unreadable_literal,
+    clippy::upper_case_acronyms
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -30,8 +31,6 @@ pub mod packages;
 pub mod unittest;
 
 #[cfg(test)]
-mod bootstrap;
-#[cfg(test)]
 mod debug;
 #[cfg(test)]
 mod deprecated_field;
@@ -41,6 +40,7 @@ mod generic_derive;
 #[cfg(test)]
 mod must;
 
+#[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;

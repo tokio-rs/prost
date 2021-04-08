@@ -6,7 +6,6 @@ extern crate alloc;
 extern crate proc_macro;
 
 use anyhow::{bail, Error};
-use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -102,11 +101,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
         let merge = field.merge(quote!(value));
-        let tags = field
-            .tags()
-            .into_iter()
-            .map(|tag| quote!(#tag))
-            .intersperse(quote!(|));
+        let tags = itertools::Itertools::intersperse(
+            field.tags().into_iter().map(|tag| quote!(#tag)),
+            quote!(|),
+        );
         quote! {
             #(#tags)* => {
                 let mut value = &mut self.#field_ident;
@@ -219,7 +217,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #(#clear;)*
             }
 
-            fn required_fields() -> ::core::option::Option<&'static [(&'static [u32])]> {
+            fn required_fields(&self) -> ::core::option::Option<&'static [(&'static [u32])]> {
                 const required_fields: [&'static [u32]; #required_fields_len] = [#(#required_fields_quote),*];
                 Some(&required_fields)
             }
@@ -363,8 +361,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     // TODO(kaiserkarel) should probably create an attribute #[prost(oneof_default)] to discriminate this variant
     let oneof_must = variants
         .iter()
-        .find(|variant| variant.ident.to_string().as_str() == "__PROSIT_NONE")
-        .is_some();
+        .any(|variant| variant.ident.to_string().as_str() == "__PROSIT_NONE");
 
     // Map the variants into 'fields'.
     let mut fields: Vec<(Ident, Field)> = Vec::new();

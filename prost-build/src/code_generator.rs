@@ -332,14 +332,10 @@ impl<'a> CodeGenerator<'a> {
             Label::Optional => {
                 if optional {
                     self.buf.push_str(", optional");
-                } else {
-                    if let Some(opts) = &field.options {
-                        if let Some(opts) = &opts.codegen {
-                            if let Some(required) = opts.required {
-                                if required {
-                                    self.buf.push_str(", must");
-                                }
-                            }
+                } else if let Some(opts) = &field.options {
+                    if let Some(opts) = &opts.codegen {
+                        if let Some(true) = opts.required {
+                            self.buf.push_str(", must");
                         }
                     }
                 }
@@ -531,7 +527,8 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
 
         if must {
-            self.buf.push_str("#[allow(non_camel_case_types)]\n")
+            self.buf
+                .push_str("#[allow(non_camel_case_types, clippy::manual_non_exhaustive)]\n")
         }
 
         self.buf
@@ -546,7 +543,7 @@ impl<'a> CodeGenerator<'a> {
 
         if must {
             // create the None variant, used for the default impl.
-            self.buf.push_str("#[doc(hidden)]\n__PROSIT_NONE,");
+            self.buf.push_str("#[doc(hidden)]\n__PROSIT_NONE,\n");
         }
 
         for (field, idx) in fields {
@@ -602,9 +599,8 @@ impl<'a> CodeGenerator<'a> {
                 r"impl ::core::default::Default for {} {{ ",
                 &to_upper_camel(oneof.name())
             ));
-            self.buf.push_str(&format!(
-                r#"fn default() -> Self {{ Self::__PROSIT_NONE }} }}"#
-            ))
+            self.buf
+                .push_str(r#"fn default() -> Self { Self::__PROSIT_NONE } }"#)
         }
     }
 
@@ -794,11 +790,8 @@ impl<'a> CodeGenerator<'a> {
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
         if let Some(opts) = &field.options {
             if let Some(opts) = &opts.codegen {
-                if let Some(tag) = opts.r#type {
-                    match tag {
-                        1 => return String::from("::uuid::Uuid"),
-                        _ => (),
-                    }
+                if let Some(1) = opts.r#type {
+                    return String::from("::uuid::Uuid");
                 }
             }
         }
@@ -853,11 +846,8 @@ impl<'a> CodeGenerator<'a> {
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         if let Some(opts) = &field.options {
             if let Some(opts) = &opts.codegen {
-                if let Some(tag) = opts.r#type {
-                    match tag {
-                        1 => return Cow::Borrowed("uuid"),
-                        _ => (),
-                    }
+                if let Some(1) = opts.r#type {
+                    return Cow::Borrowed("uuid");
                 }
             }
         }

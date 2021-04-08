@@ -839,30 +839,38 @@ macro_rules! length_delimited_const_sized {
 
 pub mod uuid {
     use super::*;
+    use std::str::FromStr;
 
     pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
     where
         B: BufMut,
     {
-        // TODO this allocates but shouldn't need to
-        let str = value.to_string();
-        string::encode(tag, &str, buf)
+        let mut b = [b'!'; 36];
+        value.to_hyphenated_ref().encode_lower(&mut b);
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(b.len() as u64, buf);
+        buf.put_slice(&b);
     }
 
     pub fn merge<B>(
         wire_type: WireType,
         value: &mut ::uuid::Uuid,
         buf: &mut B,
-        ctx: DecodeContext,
+        _: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        // TODO this allocates but shouldn't need to
-        let mut str = String::with_capacity(36);
-        string::merge(wire_type, &mut str, buf, ctx)?;
-        let mut uuid =
-            ::uuid::Uuid::parse_str(&str).map_err(|_| DecodeError::new("invalid uuid"))?;
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(DecodeError::new("buffer underflow"));
+        }
+        let bytes = buf.copy_to_bytes(len as usize);
+        let str =
+            std::str::from_utf8(&bytes).map_err(|_| DecodeError::new("invalid utf-8 uuid"))?;
+        let mut uuid = ::uuid::Uuid::from_str(str)
+            .map_err(|err| DecodeError::new(format!("invalid uuid: {}", err)))?;
         std::mem::swap(value, &mut uuid);
         Ok(())
     }

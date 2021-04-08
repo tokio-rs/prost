@@ -18,10 +18,7 @@ members = [
   "prost-derive",
   "prost-types",
   "protobuf",
-  "prosit-test",
   "tests",
-  "tests-2015",
-  "tests-no-std",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,

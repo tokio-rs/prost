@@ -12,12 +12,11 @@ use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::{
     encoding::{
-        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
+        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64, uuid,
         DecodeContext, WireType,
     },
     DecodeError, Message,
 };
-use uuid::Uuid;
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {
@@ -424,14 +423,13 @@ impl Message for () {
     fn clear(&mut self) {}
 }
 
-impl Message for uuid::Uuid {
+impl Message for ::uuid::Uuid {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,
         Self: Sized,
     {
-        // TODO this allocates a string, which shouldn't be necessary.
-        string::encode(1, &self.to_string(), buf)
+        uuid::encode(1, &self, buf)
     }
 
     fn merge_field<B>(
@@ -445,21 +443,18 @@ impl Message for uuid::Uuid {
         B: Buf,
         Self: Sized,
     {
-        // TODO this allocates a string, which shouldn't be necessary.
-        let mut string = String::with_capacity(36);
-        string.merge_field(tag, wire_type, buf, ctx)?;
-        let mut uuid = uuid::Uuid::parse_str(&string)
-            .map_err(|_| DecodeError::new("unable to decode uuid"))?;
-        std::mem::swap(self, &mut uuid);
-        Ok(())
+        if tag == 1 {
+            uuid::merge(wire_type, self, buf, ctx)
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
     }
 
     fn encoded_len(&self) -> usize {
-        // TODO this could be const, as it is always the same.
-        string::encoded_len(1, &self.to_string())
+        uuid::encoded_len(1, self)
     }
 
     fn clear(&mut self) {
-        std::mem::swap(self, &mut Uuid::nil());
+        std::mem::swap(self, &mut ::uuid::Uuid::nil());
     }
 }
