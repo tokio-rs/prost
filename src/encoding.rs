@@ -801,6 +801,83 @@ macro_rules! length_delimited {
     };
 }
 
+macro_rules! length_delimited_const_sized {
+    ($ty:ty, $size:tt) => {
+        encode_repeated!($ty);
+
+        pub fn merge_repeated<B>(
+            wire_type: WireType,
+            values: &mut Vec<$ty>,
+            buf: &mut B,
+            ctx: DecodeContext,
+        ) -> Result<(), DecodeError>
+        where
+            B: Buf,
+        {
+            check_wire_type(WireType::LengthDelimited, wire_type)?;
+            let mut value = Default::default();
+            merge(wire_type, &mut value, buf, ctx)?;
+            values.push(value);
+            Ok(())
+        }
+
+        #[inline]
+        pub fn encoded_len(tag: u32, _: &$ty) -> usize {
+            key_len(tag) + encoded_len_varint($size as u64) + $size
+        }
+
+        #[inline]
+        pub fn encoded_len_repeated(tag: u32, values: &[$ty]) -> usize {
+            key_len(tag) * values.len()
+                + values
+                    .iter()
+                    .map(|_| encoded_len_varint($size as u64) + $size)
+                    .sum::<usize>()
+        }
+    };
+}
+
+pub mod uuid {
+    use super::*;
+    use std::str::FromStr;
+
+    pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        let mut b = [b'!'; 36];
+        value.to_hyphenated_ref().encode_lower(&mut b);
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(b.len() as u64, buf);
+        buf.put_slice(&b);
+    }
+
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut ::uuid::Uuid,
+        buf: &mut B,
+        _: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(DecodeError::new("buffer underflow"));
+        }
+        let bytes = buf.copy_to_bytes(len as usize);
+        let str =
+            std::str::from_utf8(&bytes).map_err(|_| DecodeError::new("invalid utf-8 uuid"))?;
+        let mut uuid = ::uuid::Uuid::from_str(str)
+            .map_err(|err| DecodeError::new(format!("invalid uuid: {}", err)))?;
+        std::mem::swap(value, &mut uuid);
+        Ok(())
+    }
+
+    length_delimited_const_sized!(::uuid::Uuid, 36);
+}
+
 pub mod string {
     use super::*;
 
@@ -812,6 +889,7 @@ pub mod string {
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value.as_bytes());
     }
+
     pub fn merge<B>(
         wire_type: WireType,
         value: &mut String,

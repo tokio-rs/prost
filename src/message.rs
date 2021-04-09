@@ -110,10 +110,31 @@ pub trait Message: Debug + Send + Sync {
         Self: Sized,
     {
         let ctx = DecodeContext::default();
+
+        let required_fields = self.required_fields().unwrap_or_default();
+
+        let mut decoded_fields = Vec::with_capacity(required_fields.len());
+
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
+            decoded_fields.push(tag);
             self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
         }
+        decoded_fields.sort_unstable();
+
+        // TODO This cannot be efficient for large messages.
+        let remaining: Vec<_> = required_fields
+            .iter()
+            .filter(|set| !set.iter().any(|i| decoded_fields.binary_search(i).is_ok()))
+            .collect();
+
+        if !remaining.is_empty() {
+            return Err(DecodeError::new(format!(
+                "missing the following required fields (tags): {:?}",
+                remaining
+            )));
+        }
+
         Ok(())
     }
 
@@ -134,6 +155,12 @@ pub trait Message: Debug + Send + Sync {
 
     /// Clears the message, resetting all fields to their default.
     fn clear(&mut self);
+
+    // TODO(kaiserkarel) If we want to enable `must` for oneofs, we'll need to return sets of u32,
+    // and require at most one of each u32 within the set to be set,
+    fn required_fields(&self) -> Option<&'static [&'static [u32]]> {
+        None
+    }
 }
 
 impl<M> Message for Box<M>

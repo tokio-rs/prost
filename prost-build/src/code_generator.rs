@@ -198,6 +198,16 @@ impl<'a> CodeGenerator<'a> {
         }
         self.path.pop();
 
+        let oneof_must = if let Some(opts) = &message.options {
+            if let Some(codegen) = &opts.codegen {
+                codegen.oneofs_required.unwrap_or_default()
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
         self.path.push(8);
         for (idx, oneof) in message.oneof_decl.iter().enumerate() {
             let idx = idx as i32;
@@ -208,7 +218,8 @@ impl<'a> CodeGenerator<'a> {
             };
 
             self.path.push(idx);
-            self.append_oneof_field(&message_name, &fq_message_name, oneof, fields);
+
+            self.append_oneof_field(&message_name, &fq_message_name, oneof, fields, oneof_must);
             self.path.pop();
         }
         self.path.pop();
@@ -242,6 +253,7 @@ impl<'a> CodeGenerator<'a> {
                     oneof,
                     idx,
                     oneof_fields.remove(&idx).unwrap(),
+                    oneof_must,
                 );
             }
 
@@ -293,7 +305,6 @@ impl<'a> CodeGenerator<'a> {
             ty,
             boxed
         );
-
         self.append_doc(fq_message_name, Some(field.name()));
 
         if deprecated {
@@ -321,6 +332,12 @@ impl<'a> CodeGenerator<'a> {
             Label::Optional => {
                 if optional {
                     self.buf.push_str(", optional");
+                } else if let Some(opts) = &field.options {
+                    if let Some(opts) = &opts.codegen {
+                        if let Some(true) = opts.required {
+                            self.buf.push_str(", must");
+                        }
+                    }
                 }
             }
             Label::Required => self.buf.push_str(", required"),
@@ -455,6 +472,7 @@ impl<'a> CodeGenerator<'a> {
         fq_message_name: &str,
         oneof: &OneofDescriptorProto,
         fields: &[(FieldDescriptorProto, usize)],
+        must: bool,
     ) {
         let name = format!(
             "{}::{}",
@@ -463,9 +481,13 @@ impl<'a> CodeGenerator<'a> {
         );
         self.append_doc(fq_message_name, None);
         self.push_indent();
+
+        let label = if must { "must, " } else { "" };
+
         self.buf.push_str(&format!(
-            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
+            "#[prost(oneof=\"{}\", {} tags=\"{}\")]\n",
             name,
+            label,
             fields
                 .iter()
                 .map(|&(ref field, _)| field.number())
@@ -473,11 +495,17 @@ impl<'a> CodeGenerator<'a> {
         ));
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
-        self.buf.push_str(&format!(
-            "pub {}: ::core::option::Option<{}>,\n",
-            to_snake(oneof.name()),
-            name
-        ));
+
+        if must {
+            self.buf
+                .push_str(&format!("pub {}: {},\n", to_snake(oneof.name()), name));
+        } else {
+            self.buf.push_str(&format!(
+                "pub {}: ::core::option::Option<{}>,\n",
+                to_snake(oneof.name()),
+                name
+            ));
+        }
     }
 
     fn append_oneof(
@@ -486,6 +514,7 @@ impl<'a> CodeGenerator<'a> {
         oneof: OneofDescriptorProto,
         idx: i32,
         fields: Vec<(FieldDescriptorProto, usize)>,
+        must: bool,
     ) {
         self.path.push(8);
         self.path.push(idx);
@@ -496,6 +525,12 @@ impl<'a> CodeGenerator<'a> {
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
+
+        if must {
+            self.buf
+                .push_str("#[allow(non_camel_case_types, clippy::manual_non_exhaustive)]\n")
+        }
+
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
         self.push_indent();
@@ -505,6 +540,12 @@ impl<'a> CodeGenerator<'a> {
 
         self.path.push(2);
         self.depth += 1;
+
+        if must {
+            // create the None variant, used for the default impl.
+            self.buf.push_str("#[doc(hidden)]\n__PROSIT_NONE,\n");
+        }
+
         for (field, idx) in fields {
             let type_ = field.r#type();
 
@@ -552,6 +593,15 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("}\n");
+
+        if must {
+            self.buf.push_str(&format!(
+                r"impl ::core::default::Default for {} {{ ",
+                &to_upper_camel(oneof.name())
+            ));
+            self.buf
+                .push_str(r#"fn default() -> Self { Self::__PROSIT_NONE } }"#)
+        }
     }
 
     fn location(&self) -> &Location {
@@ -738,6 +788,13 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+        if let Some(opts) = &field.options {
+            if let Some(opts) = &opts.codegen {
+                if let Some(1) = opts.r#type {
+                    return String::from("::uuid::Uuid");
+                }
+            }
+        }
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -787,6 +844,14 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+        if let Some(opts) = &field.options {
+            if let Some(opts) = &opts.codegen {
+                if let Some(1) = opts.r#type {
+                    return Cow::Borrowed("uuid");
+                }
+            }
+        }
+
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -823,6 +888,14 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn optional(&self, field: &FieldDescriptorProto) -> bool {
+        if let Some(opts) = &field.options {
+            if let Some(opts) = &opts.codegen {
+                if let Some(required) = opts.required {
+                    return !required;
+                }
+            }
+        }
+
         if field.proto3_optional.unwrap_or(false) {
             return true;
         }

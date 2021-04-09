@@ -12,7 +12,7 @@ use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::{
     encoding::{
-        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
+        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64, uuid,
         DecodeContext, WireType,
     },
     DecodeError, Message,
@@ -421,4 +421,40 @@ impl Message for () {
         0
     }
     fn clear(&mut self) {}
+}
+
+impl Message for ::uuid::Uuid {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        uuid::encode(1, &self, buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        if tag == 1 {
+            uuid::merge(wire_type, self, buf, ctx)
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        uuid::encoded_len(1, self)
+    }
+
+    fn clear(&mut self) {
+        std::mem::swap(self, &mut ::uuid::Uuid::nil());
+    }
 }

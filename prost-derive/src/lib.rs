@@ -6,7 +6,6 @@ extern crate alloc;
 extern crate proc_macro;
 
 use anyhow::{bail, Error};
-use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -102,11 +101,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
         let merge = field.merge(quote!(value));
-        let tags = field
-            .tags()
-            .into_iter()
-            .map(|tag| quote!(#tag))
-            .intersperse(quote!(|));
+        let tags = itertools::Itertools::intersperse(
+            field.tags().into_iter().map(|tag| quote!(#tag)),
+            quote!(|),
+        );
         quote! {
             #(#tags)* => {
                 let mut value = &mut self.#field_ident;
@@ -116,6 +114,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 })
             },
         }
+    });
+
+    let required_fields: Vec<_> = fields
+        .iter()
+        .filter(|(_, field)| field.is_must())
+        .map(|(_, field)| field.tags())
+        .collect();
+
+    let required_fields_len = required_fields.len();
+
+    let required_fields_quote = required_fields.iter().map(|set| {
+        quote!(
+            &[#(#set),*]
+        )
     });
 
     let struct_name = if fields.is_empty() {
@@ -203,6 +215,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
             fn clear(&mut self) {
                 #(#clear;)*
+            }
+
+            fn required_fields(&self) -> ::core::option::Option<&'static [(&'static [u32])]> {
+                const required_fields: [&'static [u32]; #required_fields_len] = [#(#required_fields_quote),*];
+                Some(&required_fields)
             }
         }
 
@@ -341,6 +358,11 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // TODO(kaiserkarel) should probably create an attribute #[prost(oneof_default)] to discriminate this variant
+    let oneof_must = variants
+        .iter()
+        .any(|variant| variant.ident.to_string().as_str() == "__PROSIT_NONE");
+
     // Map the variants into 'fields'.
     let mut fields: Vec<(Ident, Field)> = Vec::new();
     for Variant {
@@ -348,7 +370,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         ident: variant_ident,
         fields: variant_fields,
         ..
-    } in variants
+    } in variants.into_iter().skip(if oneof_must { 1 } else { 0 })
     {
         let variant_fields = match variant_fields {
             Fields::Unit => Punctuated::new(),
@@ -358,7 +380,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }) => fields,
         };
         if variant_fields.len() != 1 {
-            bail!("Oneof enum variants must have a single field");
+            bail!("Oneof enum variants must have a single field: {}", ident);
         }
         match Field::new_oneof(attrs)? {
             Some(field) => fields.push((variant_ident, field)),
@@ -393,7 +415,24 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
         let tag = field.tags()[0];
         let merge = field.merge(quote!(value));
-        quote! {
+
+        if oneof_must {
+            quote! {
+            #tag => {
+                match field {
+                    #ident::#variant_ident(ref mut value) => {
+                        #merge
+                    },
+                    _ => {
+                        let mut owned_value = ::core::default::Default::default();
+                        let value = &mut owned_value;
+                        #merge.map(|_| *field = #ident::#variant_ident(owned_value))
+                    }
+                }
+            }
+        }
+        } else {
+            quote! {
             #tag => {
                 match field {
                     ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
@@ -403,9 +442,10 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                         let mut owned_value = ::core::default::Default::default();
                         let value = &mut owned_value;
                         #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
-                    },
+                    }
                 }
             }
+        }
         }
     });
 
@@ -424,40 +464,84 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         })
     });
 
-    let expanded = quote! {
-        impl #impl_generics #ident #ty_generics #where_clause {
-            pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
-                match *self {
-                    #(#encode,)*
+    let expanded = if oneof_must {
+        quote! {
+            impl #impl_generics #ident #ty_generics #where_clause {
+                pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+                    match *self {
+                        #(#encode,)*
+                        _ => panic!("Invalid enum variant (do not use __PROSIT_NONE)"),
+                    }
+                }
+
+                pub fn merge<B>(
+                    field: &mut #ident #ty_generics,
+                    tag: u32,
+                    wire_type: ::prost::encoding::WireType,
+                    buf: &mut B,
+                    ctx: ::prost::encoding::DecodeContext,
+                ) -> ::core::result::Result<(), ::prost::DecodeError>
+                where B: ::prost::bytes::Buf {
+                    match tag {
+                        #(#merge,)*
+                        _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
+                    }
+                }
+
+                #[inline]
+                pub fn encoded_len(&self) -> usize {
+                    match *self {
+                        #(#encoded_len,)*
+                        _ => unreachable!(concat!("invalid ", stringify!(#ident), "(do not use __PROSIT_NONE)")),
+                    }
                 }
             }
 
-            pub fn merge<B>(
-                field: &mut ::core::option::Option<#ident #ty_generics>,
-                tag: u32,
-                wire_type: ::prost::encoding::WireType,
-                buf: &mut B,
-                ctx: ::prost::encoding::DecodeContext,
-            ) -> ::core::result::Result<(), ::prost::DecodeError>
-            where B: ::prost::bytes::Buf {
-                match tag {
-                    #(#merge,)*
-                    _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
-                }
-            }
-
-            #[inline]
-            pub fn encoded_len(&self) -> usize {
-                match *self {
-                    #(#encoded_len,)*
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    match *self {
+                        #(#debug,)*
+                        #ident::__PROSIT_NONE => write!(f, "__PROSIT_NONE"),
+                    }
                 }
             }
         }
+    } else {
+        quote! {
+            impl #impl_generics #ident #ty_generics #where_clause {
+                pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+                    match *self {
+                        #(#encode,)*
+                    }
+                }
 
-        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                match *self {
-                    #(#debug,)*
+                pub fn merge<B>(
+                    field: &mut ::core::option::Option<#ident #ty_generics>,
+                    tag: u32,
+                    wire_type: ::prost::encoding::WireType,
+                    buf: &mut B,
+                    ctx: ::prost::encoding::DecodeContext,
+                ) -> ::core::result::Result<(), ::prost::DecodeError>
+                where B: ::prost::bytes::Buf {
+                    match tag {
+                        #(#merge,)*
+                        _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
+                    }
+                }
+
+                #[inline]
+                pub fn encoded_len(&self) -> usize {
+                    match *self {
+                        #(#encoded_len,)*
+                    }
+                }
+            }
+
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    match *self {
+                        #(#debug,)*
+                    }
                 }
             }
         }

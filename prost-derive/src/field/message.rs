@@ -81,7 +81,7 @@ impl Field {
                     ::prost::encoding::message::encode(#tag, msg, buf);
                 }
             },
-            Label::Required => quote! {
+            Label::Required | Label::Must => quote! {
                 ::prost::encoding::message::encode(#tag, &#ident, buf);
             },
             Label::Repeated => quote! {
@@ -100,7 +100,7 @@ impl Field {
                                                  buf,
                                                  ctx)
             },
-            Label::Required => quote! {
+            Label::Required | Label::Must => quote! {
                 ::prost::encoding::message::merge(wire_type, #ident, buf, ctx)
             },
             Label::Repeated => quote! {
@@ -115,7 +115,7 @@ impl Field {
             Label::Optional => quote! {
                 #ident.as_ref().map_or(0, |msg| ::prost::encoding::message::encoded_len(#tag, msg))
             },
-            Label::Required => quote! {
+            Label::Required | Label::Must => quote! {
                 ::prost::encoding::message::encoded_len(#tag, &#ident)
             },
             Label::Repeated => quote! {
@@ -127,7 +127,7 @@ impl Field {
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => quote!(#ident = ::core::option::Option::None),
-            Label::Required => quote!(#ident.clear()),
+            Label::Required | Label::Must => quote!(#ident.clear()),
             Label::Repeated => quote!(#ident.clear()),
         }
     }

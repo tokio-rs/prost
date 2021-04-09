@@ -5,6 +5,7 @@ use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
+use uuid::Uuid;
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
 
@@ -84,6 +85,10 @@ impl Field {
                 Kind::Packed
             }
             (Some(Label::Repeated), _, false) => Kind::Repeated,
+            (Some(Label::Must), _, false) => Kind::Must(default),
+            (Some(Label::Must), _, true) => {
+                bail!("must fields may not have a default value");
+            }
         };
 
         Ok(Some(Field { ty, kind, tag }))
@@ -97,7 +102,9 @@ impl Field {
                     Ok(Some(field))
                 }
                 Kind::Optional(..) => bail!("invalid optional attribute on oneof field"),
-                Kind::Required(..) => bail!("invalid required attribute on oneof field"),
+                Kind::Required(..) | Kind::Must(..) => {
+                    bail!("invalid required attribute on oneof field")
+                }
                 Kind::Packed | Kind::Repeated => bail!("invalid repeated attribute on oneof field"),
             }
         } else {
@@ -108,7 +115,9 @@ impl Field {
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let encode_fn = match self.kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) | Kind::Must(..) => {
+                quote!(encode)
+            }
             Kind::Repeated => quote!(encode_repeated),
             Kind::Packed => quote!(encode_packed),
         };
@@ -129,7 +138,7 @@ impl Field {
                     #encode_fn(#tag, value, buf);
                 }
             },
-            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+            Kind::Required(..) | Kind::Repeated | Kind::Packed | Kind::Must(..) => quote! {
                 #encode_fn(#tag, &#ident, buf);
             },
         }
@@ -140,13 +149,19 @@ impl Field {
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let merge_fn = match self.kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) | Kind::Must(..) => {
+                quote!(merge)
+            }
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
         };
         let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
 
         match self.kind {
-            Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+            Kind::Plain(..)
+            | Kind::Required(..)
+            | Kind::Repeated
+            | Kind::Packed
+            | Kind::Must(..) => quote! {
                 #merge_fn(wire_type, #ident, buf, ctx)
             },
             Kind::Optional(..) => quote! {
@@ -162,7 +177,9 @@ impl Field {
     pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let encoded_len_fn = match self.kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encoded_len),
+            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) | Kind::Must(..) => {
+                quote!(encoded_len)
+            }
             Kind::Repeated => quote!(encoded_len_repeated),
             Kind::Packed => quote!(encoded_len_packed),
         };
@@ -183,7 +200,7 @@ impl Field {
             Kind::Optional(..) => quote! {
                 #ident.as_ref().map_or(0, |value| #encoded_len_fn(#tag, value))
             },
-            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+            Kind::Must(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
                 #encoded_len_fn(#tag, &#ident)
             },
         }
@@ -191,7 +208,7 @@ impl Field {
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.kind {
-            Kind::Plain(ref default) | Kind::Required(ref default) => {
+            Kind::Plain(ref default) | Kind::Required(ref default) | Kind::Must(ref default) => {
                 let default = default.typed();
                 match self.ty {
                     Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
@@ -206,7 +223,9 @@ impl Field {
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
+            Kind::Plain(ref value) | Kind::Required(ref value) | Kind::Must(ref value) => {
+                value.owned()
+            }
             Kind::Optional(_) => quote!(::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
@@ -238,7 +257,7 @@ impl Field {
         let wrapper = self.debug_inner(quote!(Inner));
         let inner_ty = self.ty.rust_type();
         match self.kind {
-            Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
+            Kind::Plain(_) | Kind::Required(_) | Kind::Must(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
                 struct #wrapper_name<'a>(&'a ::core::option::Option<#inner_ty>);
                 impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
@@ -277,7 +296,9 @@ impl Field {
             let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
             let set_doc = format!("Sets `{}` to the provided enum value.", ident_str);
             Some(match self.kind {
-                Kind::Plain(ref default) | Kind::Required(ref default) => {
+                Kind::Plain(ref default)
+                | Kind::Required(ref default)
+                | Kind::Must(ref default) => {
                     let get_doc = format!(
                         "Returns the enum value of `{}`, \
                          or the default if the field is set to an invalid enum value.",
@@ -383,6 +404,9 @@ pub enum Ty {
     String,
     Bytes(BytesTy),
     Enumeration(Path),
+
+    // Custom types, not part of the proto standard.
+    Uuid,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -426,6 +450,9 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
             Meta::Path(ref name) if name.is_ident("string") => Ty::String,
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
+
+            Meta::Path(ref name) if name.is_ident("uuid") => Ty::Uuid,
+
             Meta::NameValue(MetaNameValue {
                 ref path,
                 lit: Lit::Str(ref l),
@@ -476,6 +503,7 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
+            "uuid" => Ty::Uuid,
             s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
                 let s = &s[enumeration_len..].trim();
                 match s.chars().next() {
@@ -513,6 +541,8 @@ impl Ty {
             Ty::String => "string",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
+
+            Ty::Uuid => "uuid",
         }
     }
 
@@ -521,6 +551,7 @@ impl Ty {
         match self {
             Ty::String => quote!(::prost::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(),
+            Ty::Uuid => quote!(::uuid::Uuid),
             _ => self.rust_ref_type(),
         }
     }
@@ -544,6 +575,7 @@ impl Ty {
             Ty::String => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
+            Ty::Uuid => quote!(&uuid::Uuid),
         }
     }
 
@@ -556,7 +588,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        !matches!(self, Ty::String | Ty::Bytes(..))
+        !matches!(self, Ty::String | Ty::Bytes(..) | Ty::Uuid)
     }
 }
 
@@ -585,6 +617,8 @@ pub enum Kind {
     Repeated,
     /// A packed repeated scalar field.
     Packed,
+
+    Must(DefaultValue),
 }
 
 /// Scalar Protobuf field default value.
@@ -601,6 +635,8 @@ pub enum DefaultValue {
     Bytes(Vec<u8>),
     Enumeration(TokenStream),
     Path(Path),
+
+    Uuid(Uuid),
 }
 
 impl DefaultValue {
@@ -760,6 +796,8 @@ impl DefaultValue {
             Ty::String => DefaultValue::String(String::new()),
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
+
+            Ty::Uuid => DefaultValue::Uuid(Uuid::nil()),
         }
     }
 
@@ -805,6 +843,7 @@ impl ToTokens for DefaultValue {
             }
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
+            DefaultValue::Uuid(_) => quote!(uuid::Uuid::default()).to_tokens(tokens),
         }
     }
 }

@@ -18,7 +18,8 @@ fn main() {
     // The source directory. The indirection is necessary in order to support the tests-2015 crate,
     // which sets the current directory to tests-2015 during build script evaluation.
     let src = PathBuf::from("../tests/src");
-    let includes = &[src.clone()];
+    let root = PathBuf::from("..");
+    let includes = &[src.clone(), root];
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
@@ -79,6 +80,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("must.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 
@@ -123,16 +128,7 @@ fn main() {
     fs::create_dir_all(out_dir).expect("failed to create prefix directory");
     config.out_dir(out_dir);
 
-    // Compile some of the module examples as an extern path. The extern path syntax is edition
-    // specific, since the way crate-internal fully qualified paths has changed.
-    cfg_if! {
-        if #[cfg(feature = "edition-2015")] {
-            const EXTERN_PATH: &str = "::packages::gizmo";
-        } else {
-            const EXTERN_PATH: &str = "crate::packages::gizmo";
-        }
-    };
-    config.extern_path(".packages.gizmo", EXTERN_PATH);
+    config.extern_path(".packages.gizmo", "crate::packages::gizmo");
 
     config
         .compile_protos(
