@@ -67,8 +67,3 @@ jobs:
         with:
           command: test
           args: --workspace --all-targets
-      - name: test no-default-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features
