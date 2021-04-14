@@ -116,7 +116,7 @@ mod ident;
 mod message_graph;
 mod path;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::default;
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -216,6 +216,10 @@ impl Default for BytesType {
     }
 }
 
+pub enum CustomType {
+    Uuid
+}
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
@@ -232,6 +236,7 @@ pub struct Config {
     extern_paths: Vec<(String, String)>,
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
+    custom_type: PathMap<CustomType>
 }
 
 impl Config {
@@ -680,6 +685,14 @@ impl Config {
         self
     }
 
+    pub fn add_type_mapping<M>(&mut self, to_match: M, custom_type: CustomType) -> &mut Self
+        where
+            M: ToString,
+    {
+        self.custom_type.insert(to_match.to_string(), custom_type);
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -847,6 +860,7 @@ impl default::Default for Config {
             extern_paths: Vec::new(),
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
+            custom_type: PathMap::default(),
         }
     }
 }
