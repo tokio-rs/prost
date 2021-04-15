@@ -883,6 +883,83 @@ pub mod string {
     }
 }
 
+pub mod uuid {
+    use super::*;
+    use std::str::FromStr;
+
+    pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
+        where
+            B: BufMut,
+    {
+        super::string::encode(tag, &value.to_string(), buf)
+    }
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut ::uuid::Uuid,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+        where
+            B: Buf,
+    {
+        let mut to_merge = String::with_capacity(16);
+
+        super::string::merge(wire_type, &mut to_merge, buf, ctx)?;
+
+        // Check if the merged string is an actual uuid
+        match ::uuid::Uuid::from_str(&to_merge) {
+            Ok(uuid) => {
+                *value = uuid;
+
+                Ok(())
+            },
+            Err(err) => {
+                Err(DecodeError::new(
+                    format!("invalid Uuid value: {}, error: {}", value, err),
+                ))
+            }
+        }
+    }
+
+    encode_repeated!(::uuid::Uuid);
+
+    pub fn merge_repeated<B>(
+        wire_type: WireType,
+        values: &mut Vec<::uuid::Uuid>,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+        where
+            B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut value = Default::default();
+        merge(wire_type, &mut value, buf, ctx)?;
+        values.push(value);
+        Ok(())
+    }
+
+    #[inline]
+    pub fn encoded_len(tag: u32, value: &::uuid::Uuid) -> usize {
+        let len = value.to_string().len();
+
+        key_len(tag) + encoded_len_varint(len as u64) + len
+    }
+
+    #[inline]
+    pub fn encoded_len_repeated(tag: u32, values: &[::uuid::Uuid]) -> usize {
+        key_len(tag) * values.len()
+            + values
+            .iter()
+            .map(|value| {
+                let len = value.to_string().len();
+
+                encoded_len_varint(len as u64) + len
+            })
+            .sum::<usize>()
+    }
+}
+
 pub trait BytesAdapter: sealed::BytesAdapter {}
 
 mod sealed {

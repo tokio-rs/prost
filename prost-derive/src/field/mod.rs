@@ -11,6 +11,7 @@ use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
+use crate::field::scalar::{Kind, Ty};
 
 #[derive(Clone)]
 pub enum Field {
@@ -51,6 +52,61 @@ impl Field {
         };
 
         Ok(Some(field))
+    }
+
+    pub fn validate(&self, ident: &Ident) -> TokenStream {
+        let empty = quote! {};
+        let field = match self {
+            Field::Scalar(s) => s,
+            Field::Message(f) => {
+                return if ident.to_string().starts_with("o_") {
+                    quote! {
+                        if self.#ident.is_none() {
+                            return Err(::prost::ValidateError::new("Empty non-nil message"))
+                        }
+                    }
+                } else {
+                    empty
+                }
+            }
+            _ => return empty
+        };
+
+        match field.kind {
+            Kind::Plain(_) => {
+                // Continue
+            },
+            _ => return empty
+        };
+
+        // Bit ugly
+        let encode_error = quote! {
+            debug_assert!(false);
+
+            return Err(::prost::EncodeError::new(0, 0))
+        };
+
+        match field.ty {
+            Ty::Uuid => {
+                quote! {
+                    if self.#ident == uuid::Uuid::nil() {
+                        debug_assert!(false);
+
+                        return Err(::prost::ValidateError::new("Uuid was nil"))
+                    }
+                }
+            },
+            Ty::Enumeration(_) => {
+                quote! {
+                    if self.#ident == 0 {
+                        debug_assert!(false);
+
+                        return Err(::prost::ValidateError::new("0 is an illegal case"))
+                    }
+                }
+            }
+            _ => empty
+        }
     }
 
     /// Creates a new oneof `Field` from an iterator of field attributes.

@@ -173,6 +173,13 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(f.debug_tuple(stringify!(#ident)))
     };
 
+    // Validations fields:
+    // - Uuids are not default
+    // - Enum is not set to the first case
+    let validate = fields
+        .iter()
+        .map(|(ident, field)| field.validate(&ident));
+
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
@@ -199,6 +206,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             #[inline]
             fn encoded_len(&self) -> usize {
                 0 #(+ #encoded_len)*
+            }
+
+            fn validate(&self) -> Result<(), ::prost::ValidateError> {
+                #(#validate)*
+
+                Ok(())
             }
 
             fn clear(&mut self) {

@@ -381,6 +381,7 @@ pub enum Ty {
     Sfixed64,
     Bool,
     String,
+    Uuid,
     Bytes(BytesTy),
     Enumeration(Path),
 }
@@ -425,6 +426,7 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("sfixed64") => Ty::Sfixed64,
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
             Meta::Path(ref name) if name.is_ident("string") => Ty::String,
+            Meta::Path(ref name) if name.is_ident("uuid") => Ty::Uuid,
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
             Meta::NameValue(MetaNameValue {
                 ref path,
@@ -511,6 +513,7 @@ impl Ty {
             Ty::Sfixed64 => "sfixed64",
             Ty::Bool => "bool",
             Ty::String => "string",
+            Ty::Uuid => "uuid",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
         }
@@ -542,6 +545,7 @@ impl Ty {
             Ty::Sfixed64 => quote!(i64),
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
+            Ty::Uuid => quote!(uuid::Uuid),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
         }
@@ -598,6 +602,7 @@ pub enum DefaultValue {
     U64(u64),
     Bool(bool),
     String(String),
+    Uuid,
     Bytes(Vec<u8>),
     Enumeration(TokenStream),
     Path(Path),
@@ -758,6 +763,7 @@ impl DefaultValue {
 
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
+            Ty::Uuid => DefaultValue::Uuid,
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
@@ -799,6 +805,11 @@ impl ToTokens for DefaultValue {
             DefaultValue::U64(value) => value.to_tokens(tokens),
             DefaultValue::Bool(value) => value.to_tokens(tokens),
             DefaultValue::String(ref value) => value.to_tokens(tokens),
+            DefaultValue::Uuid => {
+                tokens.append_all(quote! {
+                    uuid::Uuid::nil()
+                });
+            }
             DefaultValue::Bytes(ref value) => {
                 let byte_str = LitByteStr::new(value, Span::call_site());
                 tokens.append_all(quote!(#byte_str as &[u8]));
