@@ -55,6 +55,7 @@ mod generated {
 #[cfg(test)]
 mod test {
     use super::*;
+    use prost::Message;
 
     #[test]
     fn equal() {
