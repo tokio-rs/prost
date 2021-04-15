@@ -11,9 +11,7 @@ mod b_generated {
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
-        #[derive(
-        Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration,
-        )]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration)]
         #[repr(i32)]
         pub enum Size {
             Small = 0,
@@ -38,9 +36,7 @@ mod generated {
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
-        #[derive(
-        Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration,
-        )]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration)]
         #[repr(i32)]
         pub enum Size {
             Small = 0,
@@ -136,4 +132,3 @@ mod test {
         assert!(shirt.encode_buffer().is_ok());
     }
 }
-

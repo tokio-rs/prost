@@ -116,7 +116,7 @@ mod ident;
 mod message_graph;
 mod path;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::default;
 use std::env;
 use std::ffi::{OsStr, OsString};
