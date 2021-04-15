@@ -18,7 +18,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType, CustomType};
+use crate::{BytesType, Config, CustomType, MapType};
 
 #[derive(PartialEq)]
 enum Syntax {
@@ -741,9 +741,10 @@ impl<'a> CodeGenerator<'a> {
         if let Some(the_type) = self
             .config
             .custom_type
-            .get_field(fq_message_name, field.name()) {
+            .get_field(fq_message_name, field.name())
+        {
             match the_type {
-                CustomType::Uuid => "uuid::Uuid".to_string()
+                CustomType::Uuid => "uuid::Uuid".to_string(),
             }
         } else {
             match field.r#type() {
@@ -795,13 +796,18 @@ impl<'a> CodeGenerator<'a> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> Cow<'static, str> {
+    fn field_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+    ) -> Cow<'static, str> {
         if let Some(the_type) = self
             .config
             .custom_type
-            .get_field(fq_message_name, field.name()) {
+            .get_field(fq_message_name, field.name())
+        {
             match the_type {
-                CustomType::Uuid => Cow::Borrowed("uuid")
+                CustomType::Uuid => Cow::Borrowed("uuid"),
             }
         } else {
             match field.r#type() {
@@ -830,7 +836,11 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn map_value_type_tag(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> Cow<'static, str> {
+    fn map_value_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+    ) -> Cow<'static, str> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",

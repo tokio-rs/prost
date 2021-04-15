@@ -176,9 +176,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // Validations fields:
     // - Uuids are not default
     // - Enum is not set to the first case
-    let validate = fields
-        .iter()
-        .map(|(ident, field)| field.validate(&ident));
+    let validate = fields.iter().map(|(ident, field)| field.validate(&ident));
 
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {

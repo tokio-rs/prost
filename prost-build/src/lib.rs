@@ -217,7 +217,7 @@ impl Default for BytesType {
 }
 
 pub enum CustomType {
-    Uuid
+    Uuid,
 }
 
 /// Configuration options for Protobuf code generation.
@@ -236,7 +236,7 @@ pub struct Config {
     extern_paths: Vec<(String, String)>,
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
-    custom_type: PathMap<CustomType>
+    custom_type: PathMap<CustomType>,
 }
 
 impl Config {
@@ -686,8 +686,8 @@ impl Config {
     }
 
     pub fn add_type_mapping<M>(&mut self, to_match: M, custom_type: CustomType) -> &mut Self
-        where
-            M: ToString,
+    where
+        M: ToString,
     {
         self.custom_type.insert(to_match.to_string(), custom_type);
         self

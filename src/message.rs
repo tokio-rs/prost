@@ -7,9 +7,9 @@ use bytes::{Buf, BufMut};
 use crate::encoding::{
     decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
 };
+use crate::error::ValidateError;
 use crate::DecodeError;
 use crate::EncodeError;
-use crate::error::ValidateError;
 
 /// A Protocol Buffers message.
 pub trait Message: Debug + Send + Sync {
@@ -42,7 +42,10 @@ pub trait Message: Debug + Send + Sync {
     /// Returns the encoded length of the message without a length delimiter.
     fn encoded_len(&self) -> usize;
 
-    fn encode_buffer(&self) -> Result<Vec<u8>, EncodeError> where Self: Sized {
+    fn encode_buffer(&self) -> Result<Vec<u8>, EncodeError>
+    where
+        Self: Sized,
+    {
         let mut buffer = Vec::with_capacity(self.encoded_len());
 
         self.encode(&mut buffer)?;

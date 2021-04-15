@@ -2,16 +2,18 @@ mod b_generated {
     /// A snazzy new shirt!
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Shirt {
-        #[prost(uuid, tag="1")]
+        #[prost(uuid, tag = "1")]
         pub color: uuid::Uuid,
-        #[prost(enumeration="shirt::Size", tag="2")]
+        #[prost(enumeration = "shirt::Size", tag = "2")]
         pub size: i32,
-        #[prost(message, optional, tag="3")]
+        #[prost(message, optional, tag = "3")]
         pub o_option: std::option::Option<Option>,
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+        )]
         #[repr(i32)]
         pub enum Size {
             Small = 0,
@@ -20,24 +22,25 @@ mod b_generated {
         }
     }
     #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct Option {
-    }
+    pub struct Option {}
 }
 
 mod generated {
     /// A snazzy new shirt!
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Shirt {
-        #[prost(string, tag="1")]
+        #[prost(string, tag = "1")]
         pub a_color: crate::alloc::prelude::v1::String,
-        #[prost(enumeration="shirt::Size", tag="2")]
+        #[prost(enumeration = "shirt::Size", tag = "2")]
         pub size: i32,
-        #[prost(message, optional, tag="3")]
+        #[prost(message, optional, tag = "3")]
         pub option: std::option::Option<Option>,
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+        )]
         #[repr(i32)]
         pub enum Size {
             Small = 0,
@@ -46,8 +49,7 @@ mod generated {
         }
     }
     #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct Option {
-    }
+    pub struct Option {}
 }
 
 #[cfg(test)]
@@ -61,12 +63,12 @@ mod test {
         let g = b_generated::Shirt {
             color: uuid,
             size,
-            o_option: Some(b_generated::Option {})
+            o_option: Some(b_generated::Option {}),
         };
         let b = generated::Shirt {
             a_color: uuid.to_string(),
             size,
-            option: Some(generated::Option {})
+            option: Some(generated::Option {}),
         };
 
         let g = g.encode_buffer().uwnrap();
@@ -81,7 +83,7 @@ mod test {
         let mut shirt = generated::Shirt {
             a_color: uuid::Uuid::new_v4().to_string()[1..].to_string(),
             size: 1,
-            option: Some(generated::Option {})
+            option: Some(generated::Option {}),
         };
 
         macro_rules! check_invalid {
@@ -115,7 +117,7 @@ mod test {
         let mut shirt = b_generated::Shirt {
             color: uuid::Uuid::new_v4(),
             size: 0,
-            o_option: Some(b_generated::Option {})
+            o_option: Some(b_generated::Option {}),
         };
 
         // Invalid size

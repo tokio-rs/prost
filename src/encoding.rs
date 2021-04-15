@@ -888,8 +888,8 @@ pub mod uuid {
     use std::str::FromStr;
 
     pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
-        where
-            B: BufMut,
+    where
+        B: BufMut,
     {
         super::string::encode(tag, &value.to_string(), buf)
     }
@@ -899,8 +899,8 @@ pub mod uuid {
         buf: &mut B,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
-        where
-            B: Buf,
+    where
+        B: Buf,
     {
         let mut to_merge = String::with_capacity(16);
 
@@ -912,12 +912,11 @@ pub mod uuid {
                 *value = uuid;
 
                 Ok(())
-            },
-            Err(err) => {
-                Err(DecodeError::new(
-                    format!("invalid Uuid value: {}, error: {}", value, err),
-                ))
             }
+            Err(err) => Err(DecodeError::new(format!(
+                "invalid Uuid value: {}, error: {}",
+                value, err
+            ))),
         }
     }
 
@@ -929,8 +928,8 @@ pub mod uuid {
         buf: &mut B,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
-        where
-            B: Buf,
+    where
+        B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut value = Default::default();
@@ -950,13 +949,13 @@ pub mod uuid {
     pub fn encoded_len_repeated(tag: u32, values: &[::uuid::Uuid]) -> usize {
         key_len(tag) * values.len()
             + values
-            .iter()
-            .map(|value| {
-                let len = value.to_string().len();
+                .iter()
+                .map(|value| {
+                    let len = value.to_string().len();
 
-                encoded_len_varint(len as u64) + len
-            })
-            .sum::<usize>()
+                    encoded_len_varint(len as u64) + len
+                })
+                .sum::<usize>()
     }
 }
 

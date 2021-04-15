@@ -121,13 +121,13 @@ impl fmt::Display for EncodeError {
 }
 
 pub struct ValidateError {
-    error: String
+    error: String,
 }
 
 impl ValidateError {
     pub fn new<I: ToString>(t: I) -> Self {
         Self {
-            error: t.to_string()
+            error: t.to_string(),
         }
     }
 }

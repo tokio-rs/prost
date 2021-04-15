@@ -9,10 +9,10 @@ pub(crate) struct PathMap<T> {
     matchers: HashMap<String, T>,
 }
 
-impl <T> Default for PathMap<T> {
+impl<T> Default for PathMap<T> {
     fn default() -> Self {
         Self {
-            matchers: HashMap::new()
+            matchers: HashMap::new(),
         }
     }
 }

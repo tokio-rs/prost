@@ -7,11 +7,11 @@ mod scalar;
 use std::fmt;
 use std::slice;
 
+use crate::field::scalar::{Kind, Ty};
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
-use crate::field::scalar::{Kind, Ty};
 
 #[derive(Clone)]
 pub enum Field {
@@ -69,14 +69,14 @@ impl Field {
                     empty
                 }
             }
-            _ => return empty
+            _ => return empty,
         };
 
         match field.kind {
             Kind::Plain(_) => {
                 // Continue
-            },
-            _ => return empty
+            }
+            _ => return empty,
         };
 
         // Bit ugly
@@ -95,7 +95,7 @@ impl Field {
                         return Err(::prost::ValidateError::new("Uuid was nil"))
                     }
                 }
-            },
+            }
             Ty::Enumeration(_) => {
                 quote! {
                     if self.#ident == 0 {
@@ -105,7 +105,7 @@ impl Field {
                     }
                 }
             }
-            _ => empty
+            _ => empty,
         }
     }
 
