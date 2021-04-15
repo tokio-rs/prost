@@ -98,7 +98,7 @@ mod test {
         check_invalid!();
 
         // Test invalid size
-        shirt.a_color = uuid::Uuid::new_v4();
+        shirt.a_color = uuid::Uuid::new_v4().to_string();
         shirt.size = 0;
 
         check_invalid!();
