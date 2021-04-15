@@ -30,7 +30,7 @@ mod generated {
     #[derive(Clone, PartialEq, prost::Message)]
     pub struct Shirt {
         #[prost(string, tag = "1")]
-        pub a_color: crate::alloc::prelude::v1::String,
+        pub a_color: String,
         #[prost(enumeration = "shirt::Size", tag = "2")]
         pub size: i32,
         #[prost(message, optional, tag = "3")]
@@ -72,8 +72,8 @@ mod test {
             option: Some(generated::Option {}),
         };
 
-        let g = g.encode_buffer().uwnrap();
-        let b = b.encode_buffer().uwnrap();
+        let g = g.encode_buffer().unwrap();
+        let b = b.encode_buffer().unwrap();
 
         assert_eq!(g, b);
     }
