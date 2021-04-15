@@ -93,7 +93,7 @@ mod test {
             a_color: uuid::Uuid::new_v4().to_string()[1..].to_string(),
             size: 1,
             o_option: Some(generated::Option {}),
-            option: Some(generated::Option {})
+            option: Some(generated::Option {}),
         })
     }
 
@@ -104,7 +104,7 @@ mod test {
             a_color: uuid::Uuid::new_v4().to_string(),
             size: 0,
             o_option: Some(generated::Option {}),
-            option: Some(generated::Option {})
+            option: Some(generated::Option {}),
         })
     }
 
@@ -115,7 +115,7 @@ mod test {
             a_color: uuid::Uuid::new_v4().to_string(),
             size: 999,
             o_option: Some(generated::Option {}),
-            option: Some(generated::Option {})
+            option: Some(generated::Option {}),
         })
     }
 
@@ -126,7 +126,7 @@ mod test {
             a_color: uuid::Uuid::new_v4().to_string(),
             size: 1,
             o_option: Some(generated::Option {}),
-            option: None
+            option: None,
         })
     }
 
@@ -136,7 +136,7 @@ mod test {
             a_color: uuid::Uuid::new_v4().to_string(),
             size: 1,
             o_option: None,
-            option: Some(generated::Option {})
+            option: Some(generated::Option {}),
         })
     }
 }

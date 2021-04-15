@@ -58,17 +58,22 @@ impl Field {
         let empty = quote! {};
         let field = match self {
             Field::Scalar(s) => s,
-            Field::Message(_) => {
-                return if !ident.to_string().starts_with("o_") {
-                    quote! {
-                        if self.#ident.is_none() {
-                            debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
+            Field::Message(f) => {
+                return match f.label {
+                    Label::Required => {
+                        if !ident.to_string().starts_with("o_") {
+                            quote! {
+                                if self.#ident.is_none() {
+                                    debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
 
-                            return Err(::prost::ValidateError::new("Empty non-nil message"))
+                                    return Err(::prost::ValidateError::new("Empty non-nil message"))
+                                }
+                            }
+                        } else {
+                            empty
                         }
                     }
-                } else {
-                    empty
+                    _ => empty,
                 }
             }
             _ => return empty,
