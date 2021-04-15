@@ -7,7 +7,7 @@ mod b_generated {
         #[prost(enumeration="shirt::Size", tag="2")]
         pub size: i32,
         #[prost(message, optional, tag="3")]
-        pub o_option: ::core::option::Option<Option>,
+        pub o_option: std::option::Option<Option>,
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
@@ -29,11 +29,11 @@ mod generated {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Shirt {
         #[prost(string, tag="1")]
-        pub a_color: ::prost::alloc::string::String,
+        pub a_color: crate::alloc::prelude::v1::String,
         #[prost(enumeration="shirt::Size", tag="2")]
         pub size: i32,
         #[prost(message, optional, tag="3")]
-        pub option: ::core::option::Option<Option>,
+        pub option: std::option::Option<Option>,
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
@@ -69,8 +69,8 @@ mod test {
             option: Some(generated::Option {})
         };
 
-        let g = g.encoded_buffer().uwnrap();
-        let b = b.encoded_buffer().uwnrap();
+        let g = g.encode_buffer().uwnrap();
+        let b = b.encode_buffer().uwnrap();
 
         assert_eq!(g, b);
     }
@@ -86,7 +86,7 @@ mod test {
 
         macro_rules! check_invalid {
             () => {
-                let mut b = shirt.encoded_buffer().unwrap();
+                let mut b = shirt.encode_buffer().unwrap();
 
                 assert!(b_generated::Shirt::decode(b.as_slice()).is_err());
             };
@@ -106,7 +106,7 @@ mod test {
         shirt.option = None;
 
         // Make sure it passes when using the correct configuration
-        let mut b = shirt.encoded_buffer().unwrap();
+        let mut b = shirt.encode_buffer().unwrap();
 
         assert!(b_generated::Shirt::decode(b.as_slice()).is_ok());
 
@@ -119,17 +119,17 @@ mod test {
         };
 
         // Invalid size
-        assert!(shirt.encoded_buffer().is_err());
+        assert!(shirt.encode_buffer().is_err());
 
         shirt.size = 1;
         shirt.o_option = None;
 
         // Invalid o_option
-        assert!(shirt.encoded_buffer().is_err());
+        assert!(shirt.encode_buffer().is_err());
 
         shirt.o_option = Some(b_generated::Option {});
         // Everything valid
 
-        assert!(shirt.encoded_buffer().is_ok());
+        assert!(shirt.encode_buffer().is_ok());
     }
 }

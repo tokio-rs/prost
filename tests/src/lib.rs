@@ -28,7 +28,6 @@ cfg_if! {
 pub mod extern_paths;
 pub mod packages;
 pub mod unittest;
-pub mod uuid_strict_enum;
 
 #[cfg(test)]
 mod bootstrap;
