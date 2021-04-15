@@ -21,6 +21,7 @@ members = [
   "tests",
   "tests-2015",
   "tests-no-std",
+  "b_tests",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,
@@ -40,7 +41,6 @@ std = []
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.7.0", path = "prost-derive", optional = true }
-uuid = { version = "0.8", features = ["v4"] }
 
 [dev-dependencies]
 criterion = "0.3"

@@ -22,7 +22,6 @@ pub use crate::message::Message;
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
-pub mod uuid_strict_enum;
 
 // See `encoding::DecodeContext` for more info.
 // 100 is the default recursion limit in the C++ implementation.
