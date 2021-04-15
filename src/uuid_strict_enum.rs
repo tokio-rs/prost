@@ -1,6 +1,6 @@
 mod b_generated {
     /// A snazzy new shirt!
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, post_derive::Message)]
     pub struct Shirt {
         #[prost(uuid, tag = "1")]
         pub color: uuid::Uuid,
@@ -12,7 +12,7 @@ mod b_generated {
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
         #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, post_derive::Enumeration,
         )]
         #[repr(i32)]
         pub enum Size {
@@ -21,13 +21,13 @@ mod b_generated {
             Large = 2,
         }
     }
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, post_derive::Message)]
     pub struct Option {}
 }
 
 mod generated {
     /// A snazzy new shirt!
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, post_derive::Message)]
     pub struct Shirt {
         #[prost(string, tag = "1")]
         pub a_color: crate::alloc::prelude::v1::String,
@@ -39,7 +39,7 @@ mod generated {
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
         #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, post_derive::Enumeration,
         )]
         #[repr(i32)]
         pub enum Size {
@@ -48,7 +48,7 @@ mod generated {
             Large = 2,
         }
     }
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, post_derive::Message)]
     pub struct Option {}
 }
 

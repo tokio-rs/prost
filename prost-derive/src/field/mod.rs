@@ -58,7 +58,7 @@ impl Field {
         let empty = quote! {};
         let field = match self {
             Field::Scalar(s) => s,
-            Field::Message(f) => {
+            Field::Message(_) => {
                 return if ident.to_string().starts_with("o_") {
                     quote! {
                         if self.#ident.is_none() {
@@ -78,14 +78,6 @@ impl Field {
             }
             _ => return empty,
         };
-
-        // Bit ugly
-        let encode_error = quote! {
-            debug_assert!(false);
-
-            return Err(::prost::EncodeError::new(0, 0))
-        };
-
         match field.ty {
             Ty::Uuid => {
                 quote! {
