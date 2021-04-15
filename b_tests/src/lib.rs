@@ -8,6 +8,8 @@ mod b_generated {
         pub size: i32,
         #[prost(message, optional, tag = "3")]
         pub o_option: std::option::Option<Option>,
+        #[prost(message, optional, tag = "4")]
+        pub option: std::option::Option<Option>,
     }
     /// Nested message and enum types in `Shirt`.
     pub mod shirt {
@@ -32,6 +34,8 @@ mod generated {
         #[prost(enumeration = "shirt::Size", tag = "2")]
         pub size: i32,
         #[prost(message, optional, tag = "3")]
+        pub o_option: std::option::Option<Option>,
+        #[prost(message, optional, tag = "4")]
         pub option: std::option::Option<Option>,
     }
     /// Nested message and enum types in `Shirt`.
@@ -61,10 +65,12 @@ mod test {
             color: uuid,
             size,
             o_option: Some(b_generated::Option {}),
+            option: Some(b_generated::Option {}),
         };
         let b = generated::Shirt {
             a_color: uuid.to_string(),
             size,
+            o_option: Some(generated::Option {}),
             option: Some(generated::Option {}),
         };
 
@@ -74,61 +80,63 @@ mod test {
         assert_eq!(g, b);
     }
 
-    #[test]
-    fn fails() {
-        // Invalid color
-        let mut shirt = generated::Shirt {
-            a_color: uuid::Uuid::new_v4().to_string()[1..].to_string(),
-            size: 1,
-            option: Some(generated::Option {}),
-        };
-
-        macro_rules! check_invalid {
-            () => {
-                let mut b = shirt.encode_buffer().unwrap();
-
-                assert!(b_generated::Shirt::decode(b.as_slice()).is_err());
-            };
-        }
-
-        // The uuid is invalid
-        check_invalid!();
-
-        // Test invalid size
-        shirt.a_color = uuid::Uuid::new_v4().to_string();
-        shirt.size = 0;
-
-        check_invalid!();
-
-        // Check invalid option
-        shirt.size = 1;
-        shirt.option = None;
-
-        // Make sure it passes when using the correct configuration
+    fn check_shirt(shirt: generated::Shirt) {
         let mut b = shirt.encode_buffer().unwrap();
 
-        assert!(b_generated::Shirt::decode(b.as_slice()).is_ok());
+        let _ = b_generated::Shirt::decode(b.as_slice());
+    }
 
-        // Above is encoding, now try decoding
-        // Check
-        let mut shirt = b_generated::Shirt {
-            color: uuid::Uuid::new_v4(),
+    #[test]
+    #[should_panic]
+    fn invalid_color() {
+        check_shirt(generated::Shirt {
+            a_color: uuid::Uuid::new_v4().to_string()[1..].to_string(),
+            size: 1,
+            o_option: Some(generated::Option {}),
+            option: Some(generated::Option {})
+        })
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_size_0() {
+        check_shirt(generated::Shirt {
+            a_color: uuid::Uuid::new_v4().to_string(),
             size: 0,
-            o_option: Some(b_generated::Option {}),
-        };
+            o_option: Some(generated::Option {}),
+            option: Some(generated::Option {})
+        })
+    }
 
-        // Invalid size
-        assert!(shirt.encode_buffer().is_err());
+    #[test]
+    #[should_panic]
+    fn invalid_size_over_max() {
+        check_shirt(generated::Shirt {
+            a_color: uuid::Uuid::new_v4().to_string(),
+            size: 999,
+            o_option: Some(generated::Option {}),
+            option: Some(generated::Option {})
+        })
+    }
 
-        shirt.size = 1;
-        shirt.o_option = None;
+    #[test]
+    #[should_panic]
+    fn invalid_option() {
+        check_shirt(generated::Shirt {
+            a_color: uuid::Uuid::new_v4().to_string(),
+            size: 1,
+            o_option: Some(generated::Option {}),
+            option: None
+        })
+    }
 
-        // Invalid o_option
-        assert!(shirt.encode_buffer().is_err());
-
-        shirt.o_option = Some(b_generated::Option {});
-        // Everything valid
-
-        assert!(shirt.encode_buffer().is_ok());
+    #[test]
+    fn valid_option() {
+        check_shirt(generated::Shirt {
+            a_color: uuid::Uuid::new_v4().to_string(),
+            size: 1,
+            o_option: None,
+            option: Some(generated::Option {})
+        })
     }
 }

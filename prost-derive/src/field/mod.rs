@@ -59,9 +59,11 @@ impl Field {
         let field = match self {
             Field::Scalar(s) => s,
             Field::Message(_) => {
-                return if ident.to_string().starts_with("o_") {
+                return if !ident.to_string().starts_with("o_") {
                     quote! {
                         if self.#ident.is_none() {
+                            debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
+
                             return Err(::prost::ValidateError::new("Empty non-nil message"))
                         }
                     }
@@ -82,18 +84,18 @@ impl Field {
             Ty::Uuid => {
                 quote! {
                     if self.#ident == uuid::Uuid::nil() {
-                        debug_assert!(false);
+                        debug_assert!(false, "Uuid was nil");
 
                         return Err(::prost::ValidateError::new("Uuid was nil"))
                     }
                 }
             }
-            Ty::Enumeration(_) => {
+            Ty::Enumeration(ref path) => {
                 quote! {
-                    if self.#ident == 0 {
-                        debug_assert!(false);
+                    if self.#ident == 0 || !#path::is_valid(self.#ident) {
+                        debug_assert!(false, "Invalid case: {}", self.#ident);
 
-                        return Err(::prost::ValidateError::new("0 is an illegal case"))
+                        return Err(::prost::ValidateError::new(format!("Illegal case found: {}", self.#ident)))
                     }
                 }
             }
