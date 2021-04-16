@@ -185,7 +185,7 @@ mod test {
             #[test]
             #[should_panic]
             fn $method_name() {
-                let $shirt = generated_shirt();
+                let mut $shirt = generated_shirt();
 
                 $change;
 
