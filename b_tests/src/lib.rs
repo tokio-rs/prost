@@ -128,11 +128,14 @@ mod generated {
 mod test {
     use super::*;
     use prost::Message;
+    use std::str::FromStr;
+
+    const UUID: &'static str = "cd663747-6cb1-4ddc-bdfe-3dc76db62724";
 
     fn b_generated_shirt() -> b_generated::Shirt {
         b_generated::Shirt {
             a_color: "color".to_string(),
-            uuid: uuid::Uuid::new_v4(),
+            uuid: uuid::Uuid::from_str(UUID).unwrap(),
             size: 1,
             size_outer: 1,
             option: Some(b_generated::Option {}),
@@ -171,13 +174,14 @@ mod test {
         assert_eq!(g.encoded_len(), b.encoded_len());
 
         // Check if encoding works
-        b_generated::Shirt::decode(b.as_slice());
-        generated::Shirt::decode(g.as_slice());
+        b_generated::Shirt::decode(b.as_slice()).unwrap();
+        generated::Shirt::decode(g.as_slice()).unwrap();
     }
 
     fn check_shirt(shirt: generated::Shirt) {
         let b = shirt.encode_buffer().unwrap();
-        let _ = b_generated::Shirt::decode(b.as_slice());
+
+        b_generated::Shirt::decode(b.as_slice()).unwrap();
     }
 
     macro_rules! write_invalid_test {
@@ -195,10 +199,10 @@ mod test {
     }
 
     write_invalid_test!(
-        invalid_color,
+        invalid_uuid,
         shirt,
         ({
-            shirt.a_color = shirt.a_color[1..].to_string();
+            shirt.uuid = shirt.uuid[1..].to_string();
         })
     );
     write_invalid_test!(
