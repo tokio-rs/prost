@@ -237,7 +237,7 @@ pub struct Config {
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
     custom_type: PathMap<CustomType>,
-    strict_messages: bool
+    strict_messages: bool,
 }
 
 impl Config {
@@ -867,7 +867,7 @@ impl default::Default for Config {
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
             custom_type: PathMap::default(),
-            strict_messages: false
+            strict_messages: false,
         }
     }
 }

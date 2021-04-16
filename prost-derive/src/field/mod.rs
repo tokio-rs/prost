@@ -65,20 +65,8 @@ impl Field {
         };
         let field = match self {
             Field::Scalar(s) => s,
-            Field::Message(f) => {
-                return if f.strict {
-                    expect_non_nil
-                } else {
-                    empty
-                }
-            },
-            Field::Oneof(f) => {
-                return if f.strict {
-                    expect_non_nil
-                } else {
-                    empty
-                }
-            }
+            Field::Message(f) => return if f.strict { expect_non_nil } else { empty },
+            Field::Oneof(f) => return if f.strict { expect_non_nil } else { empty },
             _ => return empty,
         };
 

@@ -383,24 +383,20 @@ impl<'a> CodeGenerator<'a> {
 
         if self.config.strict_messages {
             match field.r#type() {
-                Type::Message => {
-                    match field.label() {
-                        Label::Optional => {
-                            if let Some(ref s) = field.name {
-                                if !s.starts_with("o_") {
-                                    self.buf.push_str("#[prost(strict)]\n");
-                                }
+                Type::Message => match field.label() {
+                    Label::Optional => {
+                        if let Some(ref s) = field.name {
+                            if !s.starts_with("o_") {
+                                self.buf.push_str("#[prost(strict)]\n");
                             }
-                        },
-                        _ => {}
+                        }
                     }
+                    _ => {}
                 },
                 Type::Enum => {
                     self.buf.push_str("#[prost(strict)]\n");
-                },
-                _ => {
-
                 }
+                _ => {}
             }
         }
 

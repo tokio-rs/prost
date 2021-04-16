@@ -3,13 +3,13 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{set_option, tags_attr, word_attr, set_bool};
+use crate::field::{set_bool, set_option, tags_attr, word_attr};
 
 #[derive(Clone)]
 pub struct Field {
     pub ty: Path,
     pub tags: Vec<u32>,
-    pub strict: bool
+    pub strict: bool,
 }
 
 impl Field {
@@ -41,7 +41,7 @@ impl Field {
                     _ => bail!("invalid oneof attribute: {:?}", attr),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
-            }else if word_attr("strict", attr) {
+            } else if word_attr("strict", attr) {
                 set_bool(&mut strict, "duplicate strict attribute")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;

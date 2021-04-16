@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{bool_attr, set_option, tag_attr, Label, word_attr, set_bool};
+use crate::field::{bool_attr, set_bool, set_option, tag_attr, word_attr, Label};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -90,7 +90,12 @@ impl Field {
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        Ok(Some(Field { ty, kind, tag, strict }))
+        Ok(Some(Field {
+            ty,
+            kind,
+            tag,
+            strict,
+        }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
