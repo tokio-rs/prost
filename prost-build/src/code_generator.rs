@@ -380,6 +380,30 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
+
+        if self.config.strict_messages {
+            match field.r#type() {
+                Type::Message => {
+                    match field.label() {
+                        Label::Optional => {
+                            if let Some(ref s) = field.name {
+                                if !s.starts_with("o_") {
+                                    self.buf.push_str("#[prost(strict)]\n");
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                },
+                Type::Enum => {
+                    self.buf.push_str("#[prost(strict)]\n");
+                },
+                _ => {
+
+                }
+            }
+        }
+
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -471,6 +495,9 @@ impl<'a> CodeGenerator<'a> {
                 .map(|&(ref field, _)| field.number())
                 .join(", ")
         ));
+        if self.config.strict_messages && !oneof.name.clone().unwrap().starts_with("o_") {
+            self.buf.push_str("#[prost(strict)]\n");
+        }
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(

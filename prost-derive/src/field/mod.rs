@@ -56,24 +56,27 @@ impl Field {
 
     pub fn validate(&self, ident: &Ident) -> TokenStream {
         let empty = quote! {};
+        let expect_non_nil = quote! {
+            if self.#ident.is_none() {
+                debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
+
+                return Err(::prost::ValidateError::new("Empty non-nil message"))
+            }
+        };
         let field = match self {
             Field::Scalar(s) => s,
             Field::Message(f) => {
-                return match f.label {
-                    Label::Required => {
-                        if !ident.to_string().starts_with("o_") {
-                            quote! {
-                                if self.#ident.is_none() {
-                                    debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
-
-                                    return Err(::prost::ValidateError::new("Empty non-nil message"))
-                                }
-                            }
-                        } else {
-                            empty
-                        }
-                    }
-                    _ => empty,
+                return if f.strict {
+                    expect_non_nil
+                } else {
+                    empty
+                }
+            },
+            Field::Oneof(f) => {
+                return if f.strict {
+                    expect_non_nil
+                } else {
+                    empty
                 }
             }
             _ => return empty,
@@ -95,12 +98,12 @@ impl Field {
                     }
                 }
             }
-            Ty::Enumeration(ref path) => {
+            Ty::Enumeration(ref path) if field.strict => {
                 quote! {
                     if self.#ident == 0 || !#path::is_valid(self.#ident) {
                         debug_assert!(false, "Invalid case: {}", self.#ident);
 
-                        return Err(::prost::ValidateError::new(format!("Illegal case found: {}", self.#ident)))
+                        return Err(::prost::ValidateError::new("Illegal case found"))
                     }
                 }
             }

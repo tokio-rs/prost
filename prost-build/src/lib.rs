@@ -237,6 +237,7 @@ pub struct Config {
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
     custom_type: PathMap<CustomType>,
+    strict_messages: bool
 }
 
 impl Config {
@@ -693,6 +694,11 @@ impl Config {
         self
     }
 
+    pub fn strict_messages(&mut self) -> &mut Self {
+        self.strict_messages = true;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -861,6 +867,7 @@ impl default::Default for Config {
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
             custom_type: PathMap::default(),
+            strict_messages: false
         }
     }
 }
