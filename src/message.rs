@@ -42,11 +42,11 @@ pub trait Message: Debug + Send + Sync {
     /// Returns the encoded length of the message without a length delimiter.
     fn encoded_len(&self) -> usize;
 
-    fn encode_buffer(&self) -> Result<Vec<u8>, EncodeError>
+    fn encode_buffer(&self) -> Result<alloc::vec::Vec<u8>, EncodeError>
     where
         Self: Sized,
     {
-        let mut buffer = Vec::with_capacity(self.encoded_len());
+        let mut buffer = alloc::vec::Vec::with_capacity(self.encoded_len());
 
         self.encode(&mut buffer)?;
 

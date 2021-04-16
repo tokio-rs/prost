@@ -886,6 +886,7 @@ pub mod string {
 pub mod uuid {
     use super::*;
     use crate::alloc::str::FromStr;
+    use crate::alloc::string::ToString;
 
     pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
     where
