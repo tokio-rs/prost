@@ -120,10 +120,12 @@ impl fmt::Display for EncodeError {
     }
 }
 
+#[cfg(feature = "std")]
 pub struct ValidateError {
     error: String,
 }
 
+#[cfg(feature = "std")]
 impl ValidateError {
     pub fn new<I: ToString>(t: I) -> Self {
         Self {
@@ -132,12 +134,14 @@ impl ValidateError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<ValidateError> for DecodeError {
     fn from(s: ValidateError) -> Self {
         DecodeError::new(s.error)
     }
 }
 
+#[cfg(feature = "std")]
 impl From<ValidateError> for EncodeError {
     fn from(_: ValidateError) -> Self {
         // This is ugly but whatever
