@@ -206,7 +206,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 0 #(+ #encoded_len)*
             }
 
-            #[cfg(feature = "std")]
             fn validate(&self) -> Result<(), ::prost::ValidateError> {
                 #(#validate)*
 

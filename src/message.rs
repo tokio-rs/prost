@@ -7,7 +7,6 @@ use bytes::{Buf, BufMut};
 use crate::encoding::{
     decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
 };
-#[cfg(feature = "std")]
 use crate::error::ValidateError;
 use crate::DecodeError;
 use crate::EncodeError;
@@ -73,7 +72,6 @@ pub trait Message: Debug + Send + Sync {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     fn validate(&self) -> Result<(), ValidateError> {
         Ok(())
     }

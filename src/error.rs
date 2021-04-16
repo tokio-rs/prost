@@ -120,28 +120,28 @@ impl fmt::Display for EncodeError {
     }
 }
 
-#[cfg(feature = "std")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ValidateError {
-    error: String,
+    inner: Box<Inner>,
 }
 
-#[cfg(feature = "std")]
 impl ValidateError {
-    pub fn new<I: ToString>(t: I) -> Self {
+    pub fn new(description: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            error: t.to_string(),
+            inner: Box::new(Inner {
+                description: description.into(),
+                stack: Vec::new(),
+            }),
         }
     }
 }
 
-#[cfg(feature = "std")]
 impl From<ValidateError> for DecodeError {
     fn from(s: ValidateError) -> Self {
-        DecodeError::new(s.error)
+        DecodeError { inner: s.inner }
     }
 }
 
-#[cfg(feature = "std")]
 impl From<ValidateError> for EncodeError {
     fn from(_: ValidateError) -> Self {
         // This is ugly but whatever
