@@ -115,6 +115,31 @@ impl Field {
     }
 
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
+        let tag = self.tag;
+        if matches!(self.ty, Ty::InlinedEnum(_)) {
+            match self.kind {
+                Kind::Plain(_) => {
+                    return quote! {
+                        if #ident != Default::default() {
+                            ::prost::encoding::int32::encode(#tag, &(#ident as i32), buf);
+                        }
+                    }
+                }
+                Kind::Packed => {
+                    // This is a vec
+                    return quote! {
+                        ::prost::encoding::int32::encode_packed(#tag, #ident.iter().map(|i| i as i32).collect(), buf);
+                    }
+                },
+                Kind::Required(_) => {
+                    // This is inside a oneof
+                    return quote! {
+                        ::prost::encoding::int32::encode(#tag, &(*value as i32), buf);
+                    }
+                }
+                _ => panic!("Encode not supported")
+            }
+        }
         let module = self.ty.module();
         let encode_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
@@ -122,7 +147,6 @@ impl Field {
             Kind::Packed => quote!(encode_packed),
         };
         let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
-        let tag = self.tag;
 
         match self.kind {
             Kind::Plain(ref default) => {
@@ -177,6 +201,32 @@ impl Field {
         };
         let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
         let tag = self.tag;
+
+        if matches!(self.ty, Ty::InlinedEnum(_)) {
+            return match self.kind {
+                Kind::Plain(ref default) => {
+                    let default = default.typed();
+                    quote! {
+                        if #ident != #default {
+                            ::prost::encoding::int32::encoded_len(#tag, &(#ident as i32))
+                        } else {
+                            0
+                        }
+                    }
+                }
+                Kind::Packed => {
+                    quote! {
+                        ::prost::encoding::int32::encoded_len_packed(#tag, #ident.iter().map(|i| i as i32).collect())
+                    }
+                },
+                Kind::Required(_) => {
+                    quote! {
+                        ::prost::encoding::int32::encoded_len(#tag, &(*value as i32))
+                    }
+                },
+                _ => panic!("Encoded len not supported")
+            }
+        }
 
         match self.kind {
             Kind::Plain(ref default) => {
@@ -391,6 +441,7 @@ pub enum Ty {
     Bool,
     String,
     Uuid,
+    InlinedEnum(Path),
     Bytes(BytesTy),
     Enumeration(Path),
 }
@@ -463,6 +514,27 @@ impl Ty {
                     bail!("invalid enumeration attribute: only a single identifier is supported");
                 }
             }
+            Meta::NameValue(MetaNameValue {
+                ref path,
+                lit: Lit::Str(ref l),
+                ..
+            }) if path.is_ident("inlined_enum") => Ty::InlinedEnum(parse_str::<Path>(&l.value())?),
+            Meta::List(MetaList {
+               ref path,
+               ref nested,
+               ..
+           }) if path.is_ident("inlined_enum") => {
+                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
+                if nested.len() == 1 {
+                    if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
+                        Ty::InlinedEnum(path.clone())
+                    } else {
+                        bail!("invalid enumeration attribute: item must be an identifier");
+                    }
+                } else {
+                    bail!("invalid enumeration attribute: only a single identifier is supported");
+                }
+            }
             _ => return Ok(None),
         };
         Ok(Some(ty))
@@ -523,6 +595,7 @@ impl Ty {
             Ty::Bool => "bool",
             Ty::String => "string",
             Ty::Uuid => "uuid",
+            Ty::InlinedEnum(_) => "inlined_enum",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
         }
@@ -555,6 +628,7 @@ impl Ty {
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
             Ty::Uuid => quote!(uuid::Uuid),
+            Ty::InlinedEnum(_) => quote!(i32),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
         }
@@ -562,7 +636,7 @@ impl Ty {
 
     pub fn module(&self) -> Ident {
         match *self {
-            Ty::Enumeration(..) => Ident::new("int32", Span::call_site()),
+            Ty::Enumeration(..) | Ty::InlinedEnum(_) => Ident::new("int32", Span::call_site()),
             _ => Ident::new(self.as_str(), Span::call_site()),
         }
     }
@@ -612,6 +686,7 @@ pub enum DefaultValue {
     Bool(bool),
     String(String),
     Uuid,
+    InlinedEnum,
     Bytes(Vec<u8>),
     Enumeration(TokenStream),
     Path(Path),
@@ -773,6 +848,7 @@ impl DefaultValue {
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
             Ty::Uuid => DefaultValue::Uuid,
+            Ty::InlinedEnum(_) => DefaultValue::InlinedEnum,
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
@@ -818,7 +894,12 @@ impl ToTokens for DefaultValue {
                 tokens.append_all(quote! {
                     uuid::Uuid::nil()
                 });
-            }
+            },
+            DefaultValue::InlinedEnum => {
+                tokens.append_all(quote! {
+                    Default::default()
+                });
+            },
             DefaultValue::Bytes(ref value) => {
                 let byte_str = LitByteStr::new(value, Span::call_site());
                 tokens.append_all(quote!(#byte_str as &[u8]));

@@ -238,6 +238,7 @@ pub struct Config {
     disable_comments: PathMap<()>,
     custom_type: PathMap<CustomType>,
     strict_messages: bool,
+    inline_enums: bool,
 }
 
 impl Config {
@@ -699,6 +700,11 @@ impl Config {
         self
     }
 
+    pub fn inline_enums(&mut self) -> &mut Self {
+        self.inline_enums = true;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -868,6 +874,7 @@ impl default::Default for Config {
             disable_comments: PathMap::default(),
             custom_type: PathMap::default(),
             strict_messages: false,
+            inline_enums: false,
         }
     }
 }

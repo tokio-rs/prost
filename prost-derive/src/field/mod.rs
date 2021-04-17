@@ -2,12 +2,12 @@ mod group;
 mod map;
 mod message;
 mod oneof;
-mod scalar;
+pub mod scalar;
 
 use std::fmt;
 use std::slice;
 
-use crate::field::scalar::{Kind, Ty};
+pub use crate::field::scalar::{Kind, Ty};
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -94,7 +94,16 @@ impl Field {
                         return Err(::prost::ValidateError::new("Illegal case found"))
                     }
                 }
-            }
+            },
+            Ty::InlinedEnum(_) => {
+                quote! {
+                    if self.#ident as i32 == 0 || self.#ident == Default::default() {
+                        debug_assert!(false, "Invalid case");
+
+                        return Err(::prost::ValidateError::new("Illegal case found"))
+                    }
+                }
+            },
             _ => empty,
         }
     }

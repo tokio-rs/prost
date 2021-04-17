@@ -369,6 +369,7 @@ impl<'a> CodeGenerator<'a> {
                 } else {
                     &enum_value
                 };
+
                 self.buf.push_str(stripped_prefix);
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
@@ -394,7 +395,13 @@ impl<'a> CodeGenerator<'a> {
                     _ => {}
                 },
                 Type::Enum => {
-                    self.buf.push_str("#[prost(strict)]\n");
+                    if !self.config.inline_enums {
+                        if self.config.inline_enums {
+                            self.buf.push_str("#[prost(inlined)]\n");
+                        } else {
+                            self.buf.push_str("#[prost(strict)]\n");
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -769,6 +776,8 @@ impl<'a> CodeGenerator<'a> {
             match the_type {
                 CustomType::Uuid => "uuid::Uuid".to_string(),
             }
+        } else if self.config.inline_enums && matches!(field.r#type(), Type::Enum) {
+            self.resolve_ident(field.type_name())
         } else {
             match field.r#type() {
                 Type::Float => String::from("f32"),
@@ -832,6 +841,11 @@ impl<'a> CodeGenerator<'a> {
             match the_type {
                 CustomType::Uuid => Cow::Borrowed("uuid"),
             }
+        } else if self.config.inline_enums && matches!(field.r#type(), Type::Enum) {
+            Cow::Owned(format!(
+                "inlined_enum={:?}",
+                self.resolve_ident(field.type_name())
+            ))
         } else {
             match field.r#type() {
                 Type::Float => Cow::Borrowed("float"),
