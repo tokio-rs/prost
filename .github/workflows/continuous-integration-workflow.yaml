@@ -15,6 +15,8 @@ jobs:
             default: true
             profile: minimal
             components: rustfmt
+      - name: build b_tests
+        run: cargo build --package b_tests
       - name: rustfmt
         uses: actions-rs/cargo@v1
         with:
