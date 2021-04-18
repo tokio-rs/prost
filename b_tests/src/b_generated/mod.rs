@@ -6,4 +6,3 @@ pub use money::*;
 
 mod stores;
 pub use stores::*;
-

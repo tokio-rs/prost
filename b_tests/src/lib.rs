@@ -3,10 +3,10 @@ mod generated;
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use prost::Message;
     use std::str::FromStr;
     use uuid::Uuid;
-    use prost::Message;
-    use super::*;
 
     const UUID: &'static str = "cd663747-6cb1-4ddc-bdfe-3dc76db62724";
 
@@ -46,7 +46,10 @@ mod test {
             no_uuid: get_no_uuid(),
             no_uuids: vec![get_custom()],
             order_inner: b_generated::order::OrderInner::InnerAnother,
-            order_inners: vec![b_generated::order::OrderInner::InnerAnother, b_generated::order::OrderInner::InnerAnother2],
+            order_inners: vec![
+                b_generated::order::OrderInner::InnerAnother,
+                b_generated::order::OrderInner::InnerAnother2,
+            ],
             something: Some(b_generated::order::Something::AlsoUuid(get_uuid())),
         }
     }
@@ -74,8 +77,13 @@ mod test {
             no_uuid: get_no_uuid(),
             no_uuids: vec![get_custom()],
             order_inner: generated::order::OrderInner::InnerAnother as i32,
-            order_inners: vec![generated::order::OrderInner::InnerAnother as i32, generated::order::OrderInner::InnerAnother2 as i32],
-            something: Some(generated::order::Something::AlsoUuid(get_uuid().to_string())),
+            order_inners: vec![
+                generated::order::OrderInner::InnerAnother as i32,
+                generated::order::OrderInner::InnerAnother2 as i32,
+            ],
+            something: Some(generated::order::Something::AlsoUuid(
+                get_uuid().to_string(),
+            )),
         }
     }
 
