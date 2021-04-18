@@ -128,16 +128,16 @@ impl Field {
                 Kind::Packed => {
                     // This is a vec
                     return quote! {
-                        ::prost::encoding::int32::encode_packed(#tag, #ident.iter().map(|i| i as i32).collect(), buf);
-                    }
-                },
+                        ::prost::encoding::int32::encode_packed(#tag, #ident.iter().map(|i| (*i as i32)).collect::<Vec<_>>().as_slice(), buf);
+                    };
+                }
                 Kind::Required(_) => {
                     // This is inside a oneof
                     return quote! {
                         ::prost::encoding::int32::encode(#tag, &(*value as i32), buf);
-                    }
+                    };
                 }
-                _ => panic!("Encode not supported")
+                _ => panic!("Encode not supported"),
             }
         }
         let module = self.ty.module();
@@ -216,16 +216,16 @@ impl Field {
                 }
                 Kind::Packed => {
                     quote! {
-                        ::prost::encoding::int32::encoded_len_packed(#tag, #ident.iter().map(|i| i as i32).collect())
+                        ::prost::encoding::int32::encoded_len_packed(#tag, #ident.iter().map(|i| (*i as i32)).collect::<Vec<_>>().as_slice())
                     }
-                },
+                }
                 Kind::Required(_) => {
                     quote! {
                         ::prost::encoding::int32::encoded_len(#tag, &(*value as i32))
                     }
-                },
-                _ => panic!("Encoded len not supported")
-            }
+                }
+                _ => panic!("Encoded len not supported"),
+            };
         }
 
         match self.kind {
@@ -520,10 +520,10 @@ impl Ty {
                 ..
             }) if path.is_ident("inlined_enum") => Ty::InlinedEnum(parse_str::<Path>(&l.value())?),
             Meta::List(MetaList {
-               ref path,
-               ref nested,
-               ..
-           }) if path.is_ident("inlined_enum") => {
+                ref path,
+                ref nested,
+                ..
+            }) if path.is_ident("inlined_enum") => {
                 // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
                 if nested.len() == 1 {
                     if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
@@ -606,6 +606,9 @@ impl Ty {
         match self {
             Ty::String => quote!(::prost::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(),
+            Ty::InlinedEnum(path) => quote! {
+                #path
+            },
             _ => self.rust_ref_type(),
         }
     }
@@ -894,12 +897,12 @@ impl ToTokens for DefaultValue {
                 tokens.append_all(quote! {
                     uuid::Uuid::nil()
                 });
-            },
+            }
             DefaultValue::InlinedEnum => {
                 tokens.append_all(quote! {
                     Default::default()
                 });
-            },
+            }
             DefaultValue::Bytes(ref value) => {
                 let byte_str = LitByteStr::new(value, Span::call_site());
                 tokens.append_all(quote!(#byte_str as &[u8]));

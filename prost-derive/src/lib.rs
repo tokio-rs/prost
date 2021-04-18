@@ -17,7 +17,6 @@ use syn::{
 
 mod field;
 use crate::field::{Field, Kind, Ty};
-
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
@@ -150,8 +149,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
                                         self.#field_ident = owned.into_iter().filter_map(|n| #p::from_i32(n)).collect();
 
-                                        if owned_len != self.#field_ident.len() {
-                                            return Err(::prost::DecodeError::new("Mismatch in decoded enum len"));
+                                        if owned_len == self.#field_ident.len() {
+                                            Ok(())
+                                        } else {
+                                            Err(::prost::DecodeError::new("Mismatch in decoded enum len"))
                                         }
                                     },
                                 }

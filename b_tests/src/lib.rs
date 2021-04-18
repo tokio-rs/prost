@@ -1,171 +1,88 @@
-mod b_generated {
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct Shirt {
-        #[prost(string, tag = "1")]
-        pub a_color: ::prost::alloc::string::String,
-        #[prost(uuid, tag = "12")]
-        pub uuid: uuid::Uuid,
-        #[prost(enumeration = "shirt::Inner", tag = "2")]
-        #[prost(strict)]
-        pub size: i32,
-        #[prost(enumeration = "Outer", tag = "11")]
-        #[prost(strict)]
-        pub size_outer: i32,
-        #[prost(message, optional, tag = "3")]
-        #[prost(strict)]
-        pub option: ::core::option::Option<Option>,
-        #[prost(message, optional, tag = "8")]
-        pub o_option: ::core::option::Option<Option>,
-        #[prost(message, repeated, tag = "9")]
-        pub options: ::prost::alloc::vec::Vec<Option>,
-        #[prost(oneof = "shirt::SomethingElse", tags = "4, 5, 6, 7")]
-        #[prost(strict)]
-        pub something_else: ::core::option::Option<shirt::SomethingElse>,
-        #[prost(oneof = "shirt::OSomethingElse", tags = "10")]
-        pub o_something_else: ::core::option::Option<shirt::OSomethingElse>,
-    }
-    /// Nested message and enum types in `Shirt`.
-    pub mod shirt {
-        #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
-        )]
-        #[repr(i32)]
-        pub enum Inner {
-            Small = 0,
-            Medium = 1,
-            Large = 2,
-        }
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
-        pub enum SomethingElse {
-            #[prost(message, tag = "4")]
-            O(super::Option),
-            #[prost(string, tag = "5")]
-            S(::prost::alloc::string::String),
-            #[prost(int32, tag = "6")]
-            I(i32),
-            #[prost(enumeration = "Inner", tag = "7")]
-            E(i32),
-        }
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
-        pub enum OSomethingElse {
-            #[prost(string, tag = "10")]
-            Jmr(::prost::alloc::string::String),
-        }
-    }
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct Option {}
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Outer {
-        Small = 0,
-        Medium = 1,
-        Large = 2,
-    }
-}
-
-mod generated {
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct Shirt {
-        #[prost(string, tag = "1")]
-        pub a_color: ::prost::alloc::string::String,
-        #[prost(string, tag = "12")]
-        pub uuid: ::prost::alloc::string::String,
-        #[prost(enumeration = "shirt::Inner", tag = "2")]
-        pub size: i32,
-        #[prost(enumeration = "Outer", tag = "11")]
-        pub size_outer: i32,
-        #[prost(message, optional, tag = "3")]
-        pub option: ::core::option::Option<Option>,
-        #[prost(message, optional, tag = "8")]
-        pub o_option: ::core::option::Option<Option>,
-        #[prost(message, repeated, tag = "9")]
-        pub options: ::prost::alloc::vec::Vec<Option>,
-        #[prost(oneof = "shirt::SomethingElse", tags = "4, 5, 6, 7")]
-        pub something_else: ::core::option::Option<shirt::SomethingElse>,
-        #[prost(oneof = "shirt::OSomethingElse", tags = "10")]
-        pub o_something_else: ::core::option::Option<shirt::OSomethingElse>,
-    }
-    /// Nested message and enum types in `Shirt`.
-    pub mod shirt {
-        #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
-        )]
-        #[repr(i32)]
-        pub enum Inner {
-            Small = 0,
-            Medium = 1,
-            Large = 2,
-        }
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
-        pub enum SomethingElse {
-            #[prost(message, tag = "4")]
-            O(super::Option),
-            #[prost(string, tag = "5")]
-            S(::prost::alloc::string::String),
-            #[prost(int32, tag = "6")]
-            I(i32),
-            #[prost(enumeration = "Inner", tag = "7")]
-            E(i32),
-        }
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
-        pub enum OSomethingElse {
-            #[prost(string, tag = "10")]
-            Jmr(::prost::alloc::string::String),
-        }
-    }
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct Option {}
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Outer {
-        Small = 0,
-        Medium = 1,
-        Large = 2,
-    }
-}
+mod b_generated;
+mod generated;
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use prost::Message;
     use std::str::FromStr;
+    use uuid::Uuid;
+    use prost::Message;
+    use super::*;
 
     const UUID: &'static str = "cd663747-6cb1-4ddc-bdfe-3dc76db62724";
 
-    fn b_generated_shirt() -> b_generated::Shirt {
-        b_generated::Shirt {
-            a_color: "color".to_string(),
-            uuid: uuid::Uuid::from_str(UUID).unwrap(),
-            size: 1,
-            size_outer: 1,
-            option: Some(b_generated::Option {}),
-            o_option: None,
-            options: vec![b_generated::Option {}],
-            something_else: Some(b_generated::shirt::SomethingElse::O(b_generated::Option {})),
-            o_something_else: None,
+    fn get_uuid() -> Uuid {
+        uuid::Uuid::from_str(UUID).unwrap()
+    }
+
+    fn get_no_uuid() -> String {
+        "no_uuid".to_string()
+    }
+
+    fn get_custom() -> String {
+        "custom".to_string()
+    }
+
+    fn get_amount() -> i32 {
+        1
+    }
+
+    fn b_generated_order() -> b_generated::Order {
+        b_generated::Order {
+            gender: b_generated::Gender::Female,
+            genders: vec![b_generated::Gender::Female, b_generated::Gender::Other],
+            currency: Some(b_generated::Currency {
+                c: Some(b_generated::currency::C::Amount(get_amount())),
+            }),
+            o_currency: None,
+            currencies: vec![
+                b_generated::Currency {
+                    c: Some(b_generated::currency::C::Custom(get_custom())),
+                },
+                b_generated::Currency {
+                    c: Some(b_generated::currency::C::Amount(get_amount())),
+                },
+            ],
+            uuid: get_uuid(),
+            no_uuid: get_no_uuid(),
+            no_uuids: vec![get_custom()],
+            order_inner: b_generated::order::OrderInner::InnerAnother,
+            order_inners: vec![b_generated::order::OrderInner::InnerAnother, b_generated::order::OrderInner::InnerAnother2],
+            something: Some(b_generated::order::Something::AlsoUuid(get_uuid())),
         }
     }
 
-    fn generated_shirt() -> generated::Shirt {
-        let g = b_generated_shirt();
-
-        generated::Shirt {
-            a_color: g.a_color.clone(),
-            uuid: g.uuid.to_string(),
-            size: g.size,
-            size_outer: g.size_outer,
-            option: Some(generated::Option {}),
-            o_option: None,
-            options: vec![generated::Option {}],
-            something_else: Some(generated::shirt::SomethingElse::O(generated::Option {})),
-            o_something_else: None,
+    fn generated_order() -> generated::Order {
+        generated::Order {
+            gender: generated::Gender::Female as i32,
+            genders: vec![
+                generated::Gender::Female as i32,
+                generated::Gender::Other as i32,
+            ],
+            currency: Some(generated::Currency {
+                c: Some(generated::currency::C::Amount(get_amount())),
+            }),
+            o_currency: None,
+            currencies: vec![
+                generated::Currency {
+                    c: Some(generated::currency::C::Custom(get_custom())),
+                },
+                generated::Currency {
+                    c: Some(generated::currency::C::Amount(get_amount())),
+                },
+            ],
+            uuid: get_uuid().to_string(),
+            no_uuid: get_no_uuid(),
+            no_uuids: vec![get_custom()],
+            order_inner: generated::order::OrderInner::InnerAnother as i32,
+            order_inners: vec![generated::order::OrderInner::InnerAnother as i32, generated::order::OrderInner::InnerAnother2 as i32],
+            something: Some(generated::order::Something::AlsoUuid(get_uuid().to_string())),
         }
     }
 
     #[test]
     fn equal() {
-        let g = b_generated_shirt();
-        let b = generated_shirt();
+        let g = b_generated_order();
+        let b = generated_order();
 
         let g = g.encode_buffer().unwrap();
         let b = b.encode_buffer().unwrap();
@@ -174,77 +91,85 @@ mod test {
         assert_eq!(g.encoded_len(), b.encoded_len());
 
         // Check if encoding works
-        b_generated::Shirt::decode(b.as_slice()).unwrap();
-        generated::Shirt::decode(g.as_slice()).unwrap();
+        b_generated::Order::decode(b.as_slice()).unwrap();
+        generated::Order::decode(g.as_slice()).unwrap();
     }
 
-    fn check_shirt(shirt: generated::Shirt) {
-        let b = shirt.encode_buffer().unwrap();
+    fn check_order(order: generated::Order) {
+        let b = order.encode_buffer().unwrap();
 
-        b_generated::Shirt::decode(b.as_slice()).unwrap();
+        b_generated::Order::decode(b.as_slice()).unwrap();
     }
 
     macro_rules! write_invalid_test {
-        ($method_name: ident, $shirt: ident, $change: tt) => {
+        ($method_name: ident, $order: ident, $change: tt) => {
             #[test]
             #[should_panic]
             fn $method_name() {
-                let mut $shirt = generated_shirt();
+                let mut $order = generated_order();
 
                 $change;
 
-                check_shirt($shirt);
+                check_order($order);
             }
         };
     }
 
     write_invalid_test!(
+        invalid_gender_zero,
+        order,
+        ({
+            order.gender = 0;
+        })
+    );
+    write_invalid_test!(
+        invalid_gender_over_max,
+        order,
+        ({
+            order.gender = 999;
+        })
+    );
+    write_invalid_test!(
+        empty_currency,
+        order,
+        ({
+            order.currency = None;
+        })
+    );
+    write_invalid_test!(
         invalid_uuid,
-        shirt,
+        order,
         ({
-            shirt.uuid = shirt.uuid[1..].to_string();
+            order.uuid = order.uuid[1..].to_string();
+        })
+    );
+
+    write_invalid_test!(
+        invalid_inner_zero,
+        order,
+        ({
+            order.order_inner = 0;
         })
     );
     write_invalid_test!(
-        invalid_inner_size_0,
-        shirt,
+        invalid_inner_over_max,
+        order,
         ({
-            shirt.size = 0;
+            order.order_inner = 999;
         })
     );
     write_invalid_test!(
-        over_max_inner_size,
-        shirt,
+        empty_something,
+        order,
         ({
-            shirt.size = 999;
+            order.something = None;
         })
     );
     write_invalid_test!(
-        invalid_outer_size_0,
-        shirt,
+        something_invalid_uuid,
+        order,
         ({
-            shirt.size_outer = 0;
-        })
-    );
-    write_invalid_test!(
-        over_max_outer_size,
-        shirt,
-        ({
-            shirt.size_outer = 999;
-        })
-    );
-    write_invalid_test!(
-        none_option,
-        shirt,
-        ({
-            shirt.option = None;
-        })
-    );
-    write_invalid_test!(
-        none_oneof,
-        shirt,
-        ({
-            shirt.something_else = None;
+            order.something = Some(generated::order::Something::AlsoUuid(get_no_uuid()));
         })
     );
 }

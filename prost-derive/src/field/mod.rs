@@ -94,7 +94,7 @@ impl Field {
                         return Err(::prost::ValidateError::new("Illegal case found"))
                     }
                 }
-            },
+            }
             Ty::InlinedEnum(_) => {
                 quote! {
                     if self.#ident as i32 == 0 || self.#ident == Default::default() {
@@ -103,7 +103,7 @@ impl Field {
                         return Err(::prost::ValidateError::new("Illegal case found"))
                     }
                 }
-            },
+            }
             _ => empty,
         }
     }

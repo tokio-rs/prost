@@ -5,6 +5,9 @@ authors = ["Jasper Visser <jasperav@hotmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[build-dependencies]
+prost-build = { path = "../prost-build" }
+
 
 [dependencies]
 uuid = { version = "0.8", features = ["v4"] }
