@@ -47,7 +47,7 @@ fn main() {
 
                 let m = s.strip_suffix(".rs").unwrap();
 
-                writeln!($file, "mod {};\npub use {}::*;\n", m, m).unwrap();
+                writeln!($file, "#[rustfmt::skip]\nmod {};\npub use {}::*;", m, m).unwrap();
             }
         };
     }
