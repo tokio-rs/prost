@@ -6,7 +6,8 @@ fn main() {
 
     macro_rules! initialize_dir {
         ($name: expr) => {{
-            std::fs::remove_dir_all(src.join($name)).unwrap();
+            // Maybe the dir doesn't exists yet
+            let _ = std::fs::remove_dir_all(src.join($name));
             std::fs::create_dir(src.join($name)).unwrap();
             std::fs::File::create(src.join($name).join("mod.rs")).unwrap()
         }};
