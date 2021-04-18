@@ -116,7 +116,7 @@ mod ident;
 mod message_graph;
 mod path;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::default;
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -237,6 +237,8 @@ pub struct Config {
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
     custom_type: PathMap<CustomType>,
+    strict_messages: bool,
+    inline_enums: bool,
 }
 
 impl Config {
@@ -693,6 +695,16 @@ impl Config {
         self
     }
 
+    pub fn strict_messages(&mut self) -> &mut Self {
+        self.strict_messages = true;
+        self
+    }
+
+    pub fn inline_enums(&mut self) -> &mut Self {
+        self.inline_enums = true;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -861,6 +873,8 @@ impl default::Default for Config {
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
             custom_type: PathMap::default(),
+            strict_messages: false,
+            inline_enums: false,
         }
     }
 }

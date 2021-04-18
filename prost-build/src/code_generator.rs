@@ -369,6 +369,7 @@ impl<'a> CodeGenerator<'a> {
                 } else {
                     &enum_value
                 };
+
                 self.buf.push_str(stripped_prefix);
             } else {
                 // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
@@ -380,6 +381,32 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
+
+        if self.config.strict_messages {
+            match field.r#type() {
+                Type::Message => match field.label() {
+                    Label::Optional => {
+                        if let Some(ref s) = field.name {
+                            if !s.starts_with("o_") {
+                                self.buf.push_str("#[prost(strict)]\n");
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Type::Enum => {
+                    if !self.config.inline_enums {
+                        if self.config.inline_enums {
+                            self.buf.push_str("#[prost(inlined)]\n");
+                        } else {
+                            self.buf.push_str("#[prost(strict)]\n");
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -471,6 +498,9 @@ impl<'a> CodeGenerator<'a> {
                 .map(|&(ref field, _)| field.number())
                 .join(", ")
         ));
+        if self.config.strict_messages && !oneof.name.clone().unwrap().starts_with("o_") {
+            self.buf.push_str("#[prost(strict)]\n");
+        }
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(
@@ -746,6 +776,8 @@ impl<'a> CodeGenerator<'a> {
             match the_type {
                 CustomType::Uuid => "uuid::Uuid".to_string(),
             }
+        } else if self.config.inline_enums && matches!(field.r#type(), Type::Enum) {
+            self.resolve_ident(field.type_name())
         } else {
             match field.r#type() {
                 Type::Float => String::from("f32"),
@@ -809,6 +841,11 @@ impl<'a> CodeGenerator<'a> {
             match the_type {
                 CustomType::Uuid => Cow::Borrowed("uuid"),
             }
+        } else if self.config.inline_enums && matches!(field.r#type(), Type::Enum) {
+            Cow::Owned(format!(
+                "inlined_enum={:?}",
+                self.resolve_ident(field.type_name())
+            ))
         } else {
             match field.r#type() {
                 Type::Float => Cow::Borrowed("float"),

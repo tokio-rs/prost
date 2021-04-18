@@ -3,18 +3,20 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{set_option, tags_attr};
+use crate::field::{set_bool, set_option, tags_attr, word_attr};
 
 #[derive(Clone)]
 pub struct Field {
     pub ty: Path,
     pub tags: Vec<u32>,
+    pub strict: bool,
 }
 
 impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut tags = None;
+        let mut strict = false;
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
@@ -39,6 +41,8 @@ impl Field {
                     _ => bail!("invalid oneof attribute: {:?}", attr),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
+            } else if word_attr("strict", attr) {
+                set_bool(&mut strict, "duplicate strict attribute")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;
             } else {
@@ -65,7 +69,7 @@ impl Field {
             None => bail!("oneof field is missing a tags attribute"),
         };
 
-        Ok(Some(Field { ty, tags }))
+        Ok(Some(Field { ty, tags, strict }))
     }
 
     /// Returns a statement which encodes the oneof field.

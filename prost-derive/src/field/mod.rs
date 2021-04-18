@@ -2,12 +2,12 @@ mod group;
 mod map;
 mod message;
 mod oneof;
-mod scalar;
+pub mod scalar;
 
 use std::fmt;
 use std::slice;
 
-use crate::field::scalar::{Kind, Ty};
+pub use crate::field::scalar::{Kind, Ty};
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -56,19 +56,17 @@ impl Field {
 
     pub fn validate(&self, ident: &Ident) -> TokenStream {
         let empty = quote! {};
+        let expect_non_nil = quote! {
+            if self.#ident.is_none() {
+                debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
+
+                return Err(::prost::ValidateError::new("Empty non-nil message"))
+            }
+        };
         let field = match self {
             Field::Scalar(s) => s,
-            Field::Message(f) => {
-                return if ident.to_string().starts_with("o_") {
-                    quote! {
-                        if self.#ident.is_none() {
-                            return Err(::prost::ValidateError::new("Empty non-nil message"))
-                        }
-                    }
-                } else {
-                    empty
-                }
-            }
+            Field::Message(f) => return if f.strict { expect_non_nil } else { empty },
+            Field::Oneof(f) => return if f.strict { expect_non_nil } else { empty },
             _ => return empty,
         };
 
@@ -78,30 +76,31 @@ impl Field {
             }
             _ => return empty,
         };
-
-        // Bit ugly
-        let encode_error = quote! {
-            debug_assert!(false);
-
-            return Err(::prost::EncodeError::new(0, 0))
-        };
-
         match field.ty {
             Ty::Uuid => {
                 quote! {
                     if self.#ident == uuid::Uuid::nil() {
-                        debug_assert!(false);
+                        debug_assert!(false, "Uuid was nil");
 
                         return Err(::prost::ValidateError::new("Uuid was nil"))
                     }
                 }
             }
-            Ty::Enumeration(_) => {
+            Ty::Enumeration(ref path) if field.strict => {
                 quote! {
-                    if self.#ident == 0 {
-                        debug_assert!(false);
+                    if self.#ident == 0 || !#path::is_valid(self.#ident) {
+                        debug_assert!(false, "Invalid case: {}", self.#ident);
 
-                        return Err(::prost::ValidateError::new("0 is an illegal case"))
+                        return Err(::prost::ValidateError::new("Illegal case found"))
+                    }
+                }
+            }
+            Ty::InlinedEnum(_) => {
+                quote! {
+                    if self.#ident as i32 == 0 || self.#ident == Default::default() {
+                        debug_assert!(false, "Invalid case");
+
+                        return Err(::prost::ValidateError::new("Illegal case found"))
                     }
                 }
             }

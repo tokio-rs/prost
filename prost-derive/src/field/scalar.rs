@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{bool_attr, set_option, tag_attr, Label};
+use crate::field::{bool_attr, set_bool, set_option, tag_attr, word_attr, Label};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -14,6 +14,7 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
+    pub strict: bool,
 }
 
 impl Field {
@@ -23,12 +24,15 @@ impl Field {
         let mut packed = None;
         let mut default = None;
         let mut tag = None;
+        let mut strict = false;
 
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
             if let Some(t) = Ty::from_attr(attr)? {
                 set_option(&mut ty, t, "duplicate type attributes")?;
+            } else if word_attr("strict", attr) {
+                set_bool(&mut strict, "duplicate strict attribute")?;
             } else if let Some(p) = bool_attr("packed", attr)? {
                 set_option(&mut packed, p, "duplicate packed attributes")?;
             } else if let Some(t) = tag_attr(attr)? {
@@ -86,7 +90,12 @@ impl Field {
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        Ok(Some(Field { ty, kind, tag }))
+        Ok(Some(Field {
+            ty,
+            kind,
+            tag,
+            strict,
+        }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
@@ -106,6 +115,31 @@ impl Field {
     }
 
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
+        let tag = self.tag;
+        if matches!(self.ty, Ty::InlinedEnum(_)) {
+            match self.kind {
+                Kind::Plain(_) => {
+                    return quote! {
+                        if #ident != Default::default() {
+                            ::prost::encoding::int32::encode(#tag, &(#ident as i32), buf);
+                        }
+                    }
+                }
+                Kind::Packed => {
+                    // This is a vec
+                    return quote! {
+                        ::prost::encoding::int32::encode_packed(#tag, #ident.iter().map(|i| (*i as i32)).collect::<Vec<_>>().as_slice(), buf);
+                    };
+                }
+                Kind::Required(_) => {
+                    // This is inside a oneof
+                    return quote! {
+                        ::prost::encoding::int32::encode(#tag, &(*value as i32), buf);
+                    };
+                }
+                _ => panic!("Encode not supported"),
+            }
+        }
         let module = self.ty.module();
         let encode_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
@@ -113,7 +147,6 @@ impl Field {
             Kind::Packed => quote!(encode_packed),
         };
         let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
-        let tag = self.tag;
 
         match self.kind {
             Kind::Plain(ref default) => {
@@ -168,6 +201,32 @@ impl Field {
         };
         let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
         let tag = self.tag;
+
+        if matches!(self.ty, Ty::InlinedEnum(_)) {
+            return match self.kind {
+                Kind::Plain(ref default) => {
+                    let default = default.typed();
+                    quote! {
+                        if #ident != #default {
+                            ::prost::encoding::int32::encoded_len(#tag, &(#ident as i32))
+                        } else {
+                            0
+                        }
+                    }
+                }
+                Kind::Packed => {
+                    quote! {
+                        ::prost::encoding::int32::encoded_len_packed(#tag, #ident.iter().map(|i| (*i as i32)).collect::<Vec<_>>().as_slice())
+                    }
+                }
+                Kind::Required(_) => {
+                    quote! {
+                        ::prost::encoding::int32::encoded_len(#tag, &(*value as i32))
+                    }
+                }
+                _ => panic!("Encoded len not supported"),
+            };
+        }
 
         match self.kind {
             Kind::Plain(ref default) => {
@@ -382,6 +441,7 @@ pub enum Ty {
     Bool,
     String,
     Uuid,
+    InlinedEnum(Path),
     Bytes(BytesTy),
     Enumeration(Path),
 }
@@ -454,6 +514,27 @@ impl Ty {
                     bail!("invalid enumeration attribute: only a single identifier is supported");
                 }
             }
+            Meta::NameValue(MetaNameValue {
+                ref path,
+                lit: Lit::Str(ref l),
+                ..
+            }) if path.is_ident("inlined_enum") => Ty::InlinedEnum(parse_str::<Path>(&l.value())?),
+            Meta::List(MetaList {
+                ref path,
+                ref nested,
+                ..
+            }) if path.is_ident("inlined_enum") => {
+                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
+                if nested.len() == 1 {
+                    if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
+                        Ty::InlinedEnum(path.clone())
+                    } else {
+                        bail!("invalid enumeration attribute: item must be an identifier");
+                    }
+                } else {
+                    bail!("invalid enumeration attribute: only a single identifier is supported");
+                }
+            }
             _ => return Ok(None),
         };
         Ok(Some(ty))
@@ -514,6 +595,7 @@ impl Ty {
             Ty::Bool => "bool",
             Ty::String => "string",
             Ty::Uuid => "uuid",
+            Ty::InlinedEnum(_) => "inlined_enum",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
         }
@@ -524,6 +606,9 @@ impl Ty {
         match self {
             Ty::String => quote!(::prost::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(),
+            Ty::InlinedEnum(path) => quote! {
+                #path
+            },
             _ => self.rust_ref_type(),
         }
     }
@@ -546,6 +631,7 @@ impl Ty {
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
             Ty::Uuid => quote!(uuid::Uuid),
+            Ty::InlinedEnum(_) => quote!(i32),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
         }
@@ -553,7 +639,7 @@ impl Ty {
 
     pub fn module(&self) -> Ident {
         match *self {
-            Ty::Enumeration(..) => Ident::new("int32", Span::call_site()),
+            Ty::Enumeration(..) | Ty::InlinedEnum(_) => Ident::new("int32", Span::call_site()),
             _ => Ident::new(self.as_str(), Span::call_site()),
         }
     }
@@ -603,6 +689,7 @@ pub enum DefaultValue {
     Bool(bool),
     String(String),
     Uuid,
+    InlinedEnum,
     Bytes(Vec<u8>),
     Enumeration(TokenStream),
     Path(Path),
@@ -764,6 +851,7 @@ impl DefaultValue {
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
             Ty::Uuid => DefaultValue::Uuid,
+            Ty::InlinedEnum(_) => DefaultValue::InlinedEnum,
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
@@ -808,6 +896,11 @@ impl ToTokens for DefaultValue {
             DefaultValue::Uuid => {
                 tokens.append_all(quote! {
                     uuid::Uuid::nil()
+                });
+            }
+            DefaultValue::InlinedEnum => {
+                tokens.append_all(quote! {
+                    Default::default()
                 });
             }
             DefaultValue::Bytes(ref value) => {

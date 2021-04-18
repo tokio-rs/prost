@@ -9,6 +9,7 @@ use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
 pub struct Field {
     pub label: Label,
     pub tag: u32,
+    pub strict: bool,
 }
 
 impl Field {
@@ -16,6 +17,7 @@ impl Field {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
+        let mut strict = false;
         let mut boxed = false;
 
         let mut unknown_attrs = Vec::new();
@@ -23,6 +25,8 @@ impl Field {
         for attr in attrs {
             if word_attr("message", attr) {
                 set_bool(&mut message, "duplicate message attribute")?;
+            } else if word_attr("strict", attr) {
+                set_bool(&mut strict, "duplicate strict attribute")?;
             } else if word_attr("boxed", attr) {
                 set_bool(&mut boxed, "duplicate boxed attribute")?;
             } else if let Some(t) = tag_attr(attr)? {
@@ -55,6 +59,7 @@ impl Field {
         Ok(Some(Field {
             label: label.unwrap_or(Label::Optional),
             tag,
+            strict,
         }))
     }
 

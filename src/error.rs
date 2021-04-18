@@ -120,21 +120,25 @@ impl fmt::Display for EncodeError {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct ValidateError {
-    error: String,
+    inner: Box<Inner>,
 }
 
 impl ValidateError {
-    pub fn new<I: ToString>(t: I) -> Self {
+    pub fn new(description: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            error: t.to_string(),
+            inner: Box::new(Inner {
+                description: description.into(),
+                stack: Vec::new(),
+            }),
         }
     }
 }
 
 impl From<ValidateError> for DecodeError {
     fn from(s: ValidateError) -> Self {
-        DecodeError::new(s.error)
+        DecodeError { inner: s.inner }
     }
 }
 
