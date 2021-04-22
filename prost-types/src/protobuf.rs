@@ -521,15 +521,6 @@ pub struct MessageOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
-
-    #[prost(message, optional, tag="796112")]
-    pub codegen: ::core::option::Option<RustMessageOptions>,
-}
-
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RustMessageOptions {
-    #[prost(bool, optional, tag="1")]
-    pub oneofs_required: ::core::option::Option<bool>,
 }
 
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -614,6 +605,9 @@ pub struct RustCodeGen {
     pub r#type: ::core::option::Option<i32>,
     #[prost(bool, optional, tag="2", default="false")]
     pub required: ::core::option::Option<bool>,
+
+    #[prost(bool, optional, tag="3", default="false")]
+    pub secret: ::core::option::Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -650,6 +644,9 @@ pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
+
+    #[prost(bool, optional, tag="796112")]
+    pub required: ::core::option::Option<bool>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumOptions {

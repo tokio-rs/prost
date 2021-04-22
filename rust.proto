@@ -9,8 +9,8 @@ enum RustLibraryTypes {
   UUID = 1;
 }
 
-extend google.protobuf.MessageOptions {
-  optional RustMessageOptions message = 796112;
+extend google.protobuf.OneofOptions {
+  optional bool required = 796112;
 }
 
 extend google.protobuf.FieldOptions {
@@ -20,9 +20,5 @@ extend google.protobuf.FieldOptions {
 message RustFieldRules {
   RustLibraryTypes type = 1;
   bool required = 2;
-}
-
-message RustMessageOptions {
-  bool oneofs_required = 1;
-  string bar = 2;
+  bool secret = 3;
 }

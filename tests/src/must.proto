@@ -19,9 +19,10 @@ message Meta {
 }
 
 message OneofRequired {
-  option (rust.message).oneofs_required = true;
 
   oneof foobar {
+    option (rust.required) = true;
+
     string foo = 1;
     string bar = 2;
   }
