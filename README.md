@@ -43,11 +43,9 @@ message Data {
   Foo foo = 2 [(rust.codegen).required = true];
   
 message Foo {
-  // either one of the oneof messages has to be present in the message. Protobuf does not define attributes
-  // on oneoffs, so this is message level.
-  option (rust.message).oneofs_required = true;
-  
   oneof biz {
+    option (rust.required) = true;
+
     string bar = 1;
     string bax = 2;
   }
