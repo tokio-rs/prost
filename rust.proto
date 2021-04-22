@@ -7,6 +7,7 @@ import "google/protobuf/descriptor.proto";
 enum RustLibraryTypes {
   RS_DEFAULT = 0;
   UUID = 1;
+  URL = 2;
 }
 
 extend google.protobuf.OneofOptions {
@@ -20,5 +21,4 @@ extend google.protobuf.FieldOptions {
 message RustFieldRules {
   RustLibraryTypes type = 1;
   bool required = 2;
-  bool secret = 3;
 }

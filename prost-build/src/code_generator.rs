@@ -10,7 +10,7 @@ use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
+    FieldOptions, FileDescriptorProto, OneofDescriptorProto, RustTypes, ServiceDescriptorProto,
     SourceCodeInfo,
 };
 
@@ -789,11 +789,16 @@ impl<'a> CodeGenerator<'a> {
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
         if let Some(opts) = &field.options {
             if let Some(opts) = &opts.codegen {
-                if let Some(1) = opts.r#type {
-                    return String::from("::uuid::Uuid");
-                }
-            }
-        }
+                if let Some(i) = opts.r#type {
+                    match RustTypes::from_i32(i).expect("unknown RustTypes enum variant") {
+                        RustTypes::Uuid => return String::from("::uuid::Uuid"),
+                        RustTypes::Url => return String::from("::url::Url"),
+                        RustTypes::Default => (),
+                    };
+                };
+            };
+        };
+
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -845,11 +850,15 @@ impl<'a> CodeGenerator<'a> {
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         if let Some(opts) = &field.options {
             if let Some(opts) = &opts.codegen {
-                if let Some(1) = opts.r#type {
-                    return Cow::Borrowed("uuid");
-                }
-            }
-        }
+                if let Some(i) = opts.r#type {
+                    match RustTypes::from_i32(i).expect("unknown RustTypes enum variant") {
+                        RustTypes::Uuid => return Cow::Borrowed("uuid"),
+                        RustTypes::Url => return Cow::Borrowed("url"),
+                        RustTypes::Default => (),
+                    };
+                };
+            };
+        };
 
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),

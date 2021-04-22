@@ -84,6 +84,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("url.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 

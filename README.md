@@ -42,6 +42,10 @@ message Data {
   // does not wrap Foo in an option, but instead errors during parsing if foo is missing.
   Foo foo = 2 [(rust.codegen).required = true];
   
+  // generates the url type.
+  string url = 3 [(rust.codegen).type = URL];
+}
+
 message Foo {
   oneof biz {
     option (rust.required) = true;

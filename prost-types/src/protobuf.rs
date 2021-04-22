@@ -615,6 +615,7 @@ pub struct RustCodeGen {
 pub enum RustTypes {
     Default = 0,
     Uuid = 1,
+    Url = 2,
 }
 
 

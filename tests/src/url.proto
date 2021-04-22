@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package url;
+
+import "rust.proto";
+
+message Request {
+  string url = 1 [(rust.codegen).type = URL];
+}
+
+message RequestNoOpts {
+  string url = 1;
+}

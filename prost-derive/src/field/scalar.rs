@@ -8,6 +8,7 @@ use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, Nest
 use uuid::Uuid;
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
+use url::Url;
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -407,6 +408,7 @@ pub enum Ty {
 
     // Custom types, not part of the proto standard.
     Uuid,
+    Url,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -452,6 +454,7 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
 
             Meta::Path(ref name) if name.is_ident("uuid") => Ty::Uuid,
+            Meta::Path(ref name) if name.is_ident("url") => Ty::Url,
 
             Meta::NameValue(MetaNameValue {
                 ref path,
@@ -504,6 +507,7 @@ impl Ty {
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
             "uuid" => Ty::Uuid,
+            "url" => Ty::Url,
             s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
                 let s = &s[enumeration_len..].trim();
                 match s.chars().next() {
@@ -541,8 +545,8 @@ impl Ty {
             Ty::String => "string",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
-
             Ty::Uuid => "uuid",
+            Ty::Url => "url",
         }
     }
 
@@ -552,6 +556,7 @@ impl Ty {
             Ty::String => quote!(::prost::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(),
             Ty::Uuid => quote!(::uuid::Uuid),
+            Ty::Url => quote!(::url::Url),
             _ => self.rust_ref_type(),
         }
     }
@@ -575,7 +580,8 @@ impl Ty {
             Ty::String => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
-            Ty::Uuid => quote!(&uuid::Uuid),
+            Ty::Uuid => quote!(&::uuid::Uuid),
+            Ty::Url => quote!(&::url::Url),
         }
     }
 
@@ -637,6 +643,7 @@ pub enum DefaultValue {
     Path(Path),
 
     Uuid(Uuid),
+    Url(Url),
 }
 
 impl DefaultValue {
@@ -798,6 +805,7 @@ impl DefaultValue {
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
 
             Ty::Uuid => DefaultValue::Uuid(Uuid::nil()),
+            Ty::Url => DefaultValue::Url(Url::parse("https://www.rust-lang.org/").unwrap()),
         }
     }
 
@@ -843,7 +851,10 @@ impl ToTokens for DefaultValue {
             }
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
-            DefaultValue::Uuid(_) => quote!(uuid::Uuid::default()).to_tokens(tokens),
+            DefaultValue::Uuid(_) => quote!(::uuid::Uuid::default()).to_tokens(tokens),
+            DefaultValue::Url(_) => {
+                quote!(::url::Url::parse("https://www.rust-lang.org/").unwrap()).to_tokens(tokens)
+            }
         }
     }
 }

@@ -878,6 +878,73 @@ pub mod uuid {
     length_delimited_const_sized!(::uuid::Uuid, 36);
 }
 
+pub mod url {
+    use super::*;
+
+    pub fn encode<B>(tag: u32, value: &::url::Url, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(value.as_str().len() as u64, buf);
+        buf.put_slice(value.as_str().as_bytes());
+    }
+
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut ::url::Url,
+        buf: &mut B,
+        _: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(DecodeError::new("buffer underflow"));
+        }
+        let bytes = buf.copy_to_bytes(len as usize);
+        let str =
+            std::str::from_utf8(&bytes).map_err(|_| DecodeError::new("invalid utf-8 uuid"))?;
+        let mut url = ::url::Url::parse(str).map_err(|_| DecodeError::new("invalid url"))?;
+        std::mem::swap(value, &mut url);
+        Ok(())
+    }
+
+    encode_repeated!(::url::Url);
+
+    pub fn merge_repeated<B>(
+        wire_type: WireType,
+        values: &mut Vec<::url::Url>,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut value = ::url::Url::parse("https://google.com").unwrap();
+        merge(wire_type, &mut value, buf, ctx)?;
+        values.push(value);
+        Ok(())
+    }
+
+    #[inline]
+    pub fn encoded_len(tag: u32, value: &::url::Url) -> usize {
+        key_len(tag) + encoded_len_varint(value.as_str().len() as u64) + value.as_str().len()
+    }
+
+    #[inline]
+    pub fn encoded_len_repeated(tag: u32, values: &[::url::Url]) -> usize {
+        key_len(tag) * values.len()
+            + values
+                .iter()
+                .map(|value| encoded_len_varint(value.as_str().len() as u64) + value.as_str().len())
+                .sum::<usize>()
+    }
+}
+
 pub mod string {
     use super::*;
 
