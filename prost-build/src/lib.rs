@@ -216,6 +216,7 @@ impl Default for BytesType {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum CustomType {
     Uuid,
 }
@@ -402,6 +403,18 @@ impl Config {
         self
     }
 
+    pub fn fields_attribute<P, A>(&mut self, paths: &[P], attribute: A) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        for path in paths.iter() {
+            self.field_attribute(path, &attribute);
+        }
+
+        self
+    }
+
     /// Add additional attribute to matched messages, enums and one-ofs.
     ///
     /// # Arguments
@@ -448,6 +461,19 @@ impl Config {
     {
         self.type_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    pub fn types_attribute<P, A>(&mut self, paths: &[P], attribute: A) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        for path in paths.iter() {
+            self.type_attributes
+                .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        }
+
         self
     }
 
@@ -692,6 +718,17 @@ impl Config {
         M: ToString,
     {
         self.custom_type.insert(to_match.to_string(), custom_type);
+        self
+    }
+
+    pub fn add_types_mapping<M>(&mut self, to_match: &[M], custom_type: CustomType) -> &mut Self
+    where
+        M: ToString,
+    {
+        for to_match in to_match.iter() {
+            self.custom_type.insert(to_match.to_string(), custom_type);
+        }
+
         self
     }
 
