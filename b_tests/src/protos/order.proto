@@ -13,7 +13,8 @@ message Order {
   repeated money.Currency currencies = 3;
   string uuid = 4;
   string no_uuid = 5;
-  repeated string no_uuids = 10;
+  repeated string uuids = 10;
+  repeated string no_uuids = 15;
 
   enum OrderInner {
     INNER = 0;

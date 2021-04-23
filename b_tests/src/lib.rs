@@ -44,6 +44,7 @@ mod test {
             ],
             uuid: get_uuid(),
             no_uuid: get_no_uuid(),
+            uuids: vec![get_uuid(), get_uuid()],
             no_uuids: vec![get_custom()],
             order_inner: b_generated::order::OrderInner::InnerAnother,
             order_inners: vec![
@@ -75,6 +76,7 @@ mod test {
             ],
             uuid: get_uuid().to_string(),
             no_uuid: get_no_uuid(),
+            uuids: vec![get_uuid().to_string(), get_uuid().to_string()],
             no_uuids: vec![get_custom()],
             order_inner: generated::order::OrderInner::InnerAnother as i32,
             order_inners: vec![
@@ -135,6 +137,13 @@ mod test {
         order,
         ({
             order.gender = 999;
+        })
+    );
+    write_invalid_test!(
+        invalid_uuids,
+        order,
+        ({
+            order.uuids = vec![get_uuid().to_string(), get_no_uuid().to_string()];
         })
     );
     write_invalid_test!(

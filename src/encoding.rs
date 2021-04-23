@@ -903,20 +903,26 @@ pub mod uuid {
     where
         B: Buf,
     {
-        let mut to_merge = String::with_capacity(16);
+        let mut to_merge = String::with_capacity(36);
 
         super::string::merge(wire_type, &mut to_merge, buf, ctx)?;
 
-        // Check if the merged string is an actual uuid
-        match ::uuid::Uuid::from_str(&to_merge) {
-            Ok(uuid) => {
-                *value = uuid;
+        let uuid = string_to_uuid(&to_merge)?;
 
-                Ok(())
+        *value = uuid;
+
+        Ok(())
+    }
+
+    fn string_to_uuid(s: &str) -> Result<::uuid::Uuid, DecodeError> {
+        // Check if the merged string is an actual uuid
+        match ::uuid::Uuid::from_str(s) {
+            Ok(uuid) => {
+                Ok(uuid)
             }
             Err(err) => Err(DecodeError::new(format!(
                 "invalid Uuid value: {}, error: {}",
-                value, err
+                s, err
             ))),
         }
     }
@@ -932,31 +938,27 @@ pub mod uuid {
     where
         B: Buf,
     {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let mut value = Default::default();
-        merge(wire_type, &mut value, buf, ctx)?;
-        values.push(value);
+        let mut strings = vec![];
+
+        super::string::merge_repeated(wire_type, &mut strings, buf, ctx)?;
+
+        for string in strings {
+            let uuid = string_to_uuid(&string)?;
+
+            values.push(uuid);
+        }
+
         Ok(())
     }
 
     #[inline]
     pub fn encoded_len(tag: u32, value: &::uuid::Uuid) -> usize {
-        let len = value.to_string().len();
-
-        key_len(tag) + encoded_len_varint(len as u64) + len
+        super::string::encoded_len(tag, &value.to_string())
     }
 
     #[inline]
     pub fn encoded_len_repeated(tag: u32, values: &[::uuid::Uuid]) -> usize {
-        key_len(tag) * values.len()
-            + values
-                .iter()
-                .map(|value| {
-                    let len = value.to_string().len();
-
-                    encoded_len_varint(len as u64) + len
-                })
-                .sum::<usize>()
+        super::string::encoded_len_repeated(tag, values.iter().map(|u| u.to_string()).collect::<Vec<_>>().as_slice())
     }
 }
 

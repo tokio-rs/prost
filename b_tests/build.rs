@@ -48,7 +48,7 @@ fn main() {
 
                 let m = s.strip_suffix(".rs").unwrap();
 
-                writeln!($file, "#[rustfmt::skip]\nmod {};\npub use {}::*;", m, m).unwrap();
+                writeln!($file, "mod {};\npub use {}::*;", m, m).unwrap();
             }
         };
     }
@@ -57,26 +57,11 @@ fn main() {
 
     config
         .add_type_mapping("uuid", CustomType::Uuid)
+        .add_type_mapping("uuids", CustomType::Uuid)
         .add_type_mapping("also_uuid", CustomType::Uuid)
         .strict_messages()
         .inline_enums();
 
     go_generate!("b_generated", b_generated, config);
     go_generate!("generated", generated, Config::new());
-
-    // Config::new()
-    //     .compile_protos(protos.as_slice(), &["src/protos/".to_string()])
-    //     .unwrap();
-    //
-    // std::env::set_var(
-    //     "OUT_DIR",
-    //     src.join("b_generated").to_str().unwrap(),
-    // );
-    //
-    // Config::new()
-    //     .add_type_mapping("uuid", CustomType::Uuid)
-    //     .strict_messages()
-    //     .inline_enums()
-    //     .compile_protos(protos.as_slice(), &["src/protos/".to_string()])
-    //     .unwrap();
 }
