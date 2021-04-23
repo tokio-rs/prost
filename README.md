@@ -61,7 +61,8 @@ This wil generate approximately the following code:
 ```rust
 pub struct Data {
    id: ::uuid::Uuid,
-   foo: Foo
+   foo: Foo,
+   url: ::url::Url,
 }
 
 pub struct Foo {
