@@ -11,8 +11,8 @@ fn test() {
     use prost::{bytes::Bytes, Message};
 
     let _ = original_names::NoConflictsInEnumNames {
-        field2: original_names::Enum1_2::A1.into(),
-        field1: original_names::Enum12::A2.into(),
+        field2: original_names::Enum1_2::A1_2.into(),
+        field1: original_names::Enum12::A12.into(),
     };
 
     let value = original_names::IPPrefix {

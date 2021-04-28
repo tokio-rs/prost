@@ -14,10 +14,10 @@ message IPPrefix {
 }
 
 enum Enum1_2 {
-  A1 = 0;
+  A1_2 = 0;
 }
 enum Enum12 {
-  A2 = 0;
+  A12 = 0;
 }
 
 message NoConflictsInEnumNames {
