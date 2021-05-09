@@ -24,6 +24,8 @@ pub fn to_snake(s: &str) -> String {
         | "async" | "await" | "try" => ident.insert_str(0, "r#"),
         // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
         "self" | "super" | "extern" | "crate" => ident += "_",
+        // In case the identifier is a number or starts with one
+        _ if ident.chars().next().map_or(false, |c| c.is_numeric()) => ident.insert_str(0, "_"),
         _ => (),
     }
     ident
@@ -64,6 +66,9 @@ mod tests {
         assert_eq!("fuzz", &to_snake("fuzz_"));
         assert_eq!("fuzz", &to_snake("Fuzz_"));
         assert_eq!("fuz_z", &to_snake("FuzZ_"));
+        assert_eq!("_123", &to_snake("_123"));
+        assert_eq!("_123", &to_snake("123"));
+        assert_eq!("_123", &to_snake("123_"));
 
         // From test_messages_proto3.proto.
         assert_eq!("fieldname1", &to_snake("fieldname1"));
