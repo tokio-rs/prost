@@ -116,6 +116,7 @@ mod ident;
 mod message_graph;
 mod path;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default;
 use std::env;
@@ -224,8 +225,8 @@ pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     map_type: PathMap<MapType>,
     bytes_type: PathMap<BytesType>,
-    type_attributes: PathMap<String>,
-    field_attributes: PathMap<String>,
+    type_attributes: PathMap<RefCell<String>>,
+    field_attributes: PathMap<RefCell<String>>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
@@ -390,8 +391,11 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.field_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        match self.field_attributes.get(path.as_ref()) {
+            Some(attributes) => attributes.borrow_mut().push(attribute.as_ref().to_string()),
+            None => self.field_attributes.insert(path.as_ref().to_string(), RefCell::new(attribute.as_ref().to_string())),
+        }
+
         self
     }
 
@@ -439,8 +443,11 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.type_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        match self.type_attributes.get(path.as_ref()) {
+            Some(attributes) => attributes.borrow_mut().push(attribute.as_ref().to_string()),
+            None => self.type_attributes.insert(path.as_ref().to_string(), RefCell::new(attribute.as_ref().to_string())),
+        }
+
         self
     }
 
