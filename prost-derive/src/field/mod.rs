@@ -27,30 +27,36 @@ pub enum Field {
 }
 
 impl Field {
-    /// Creates a new `Field` from an iterator of field attributes.
+    /// Creates a new list of `Field`s from an iterator of field attributes.
     ///
     /// If the meta items are invalid, an error will be returned.
-    /// If the field should be ignored, `None` is returned.
-    pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
-        let attrs = prost_attrs(attrs);
+    pub fn new(attrs: Vec<Attribute>, mut inferred_tag: Option<u32>) -> Result<Vec<Field>, Error> {
+        let nested_attrs = prost_nested_attrs(attrs);
+        let mut fields = Vec::with_capacity(nested_attrs.len());
 
-        // TODO: check for ignore attribute.
+        for attrs in nested_attrs {
+            // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
-            Field::Scalar(field)
-        } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
-            Field::Message(field)
-        } else if let Some(field) = map::Field::new(&attrs, inferred_tag)? {
-            Field::Map(field)
-        } else if let Some(field) = oneof::Field::new(&attrs)? {
-            Field::Oneof(field)
-        } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
-            Field::Group(field)
-        } else {
-            bail!("no type attribute");
-        };
+            let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
+                Field::Scalar(field)
+            } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
+                Field::Message(field)
+            } else if let Some(field) = map::Field::new(&attrs, inferred_tag)? {
+                Field::Map(field)
+            } else if let Some(field) = oneof::Field::new(&attrs)? {
+                Field::Oneof(field)
+            } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
+                Field::Group(field)
+            } else {
+                bail!("no type attribute");
+            };
 
-        Ok(Some(field))
+            inferred_tag = field.tags().iter().max().map(|t| t + 1).or(inferred_tag);
+
+            fields.push(field);
+        }
+
+        Ok(fields)
     }
 
     /// Creates a new oneof `Field` from an iterator of field attributes.
@@ -243,6 +249,31 @@ fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
                 NestedMeta::Meta(attr) => Ok(attr),
                 NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
             }
+        })
+        .collect()
+}
+
+/// Get the items belonging to each of the 'prost' list attributes, e.g.
+/// ```
+/// #[prost(foo, bar="baz")]
+/// #[prost(bar, foo="baz")]
+/// ```
+fn prost_nested_attrs(attrs: Vec<Attribute>) -> Vec<Vec<Meta>> {
+    attrs
+        .iter()
+        .flat_map(Attribute::parse_meta)
+        .filter_map(|meta| match meta {
+            Meta::List(MetaList { path, nested, .. }) if path.is_ident("prost") => nested
+                .into_iter()
+                .flat_map(|attr| -> Result<_, _> {
+                    match attr {
+                        NestedMeta::Meta(attr) => Ok(attr),
+                        NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .into(),
+            _ => None,
         })
         .collect()
 }

@@ -59,14 +59,19 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 .ident
                 .unwrap_or_else(|| Ident::new(&idx.to_string(), Span::call_site()));
             match Field::new(field.attrs, Some(next_tag)) {
-                Ok(Some(field)) => {
-                    next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
-                    Some(Ok((field_ident, field)))
+                Ok(fields) if !fields.is_empty() => {
+                    next_tag = fields
+                        .iter()
+                        .flat_map(Field::tags)
+                        .max()
+                        .map(|t| t + 1)
+                        .unwrap_or(next_tag);
+                    fields.into_iter().map(|field| Ok((field_ident.clone(), field))).collect()
                 }
-                Ok(None) => None,
-                Err(err) => Some(Err(
+                Ok(_) => Vec::new(),
+                Err(err) => vec![Err(
                     err.context(format!("invalid message field {}.{}", ident, field_ident))
-                )),
+                )],
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
