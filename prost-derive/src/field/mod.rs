@@ -10,7 +10,7 @@ use std::slice;
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
+use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 
 #[derive(Clone)]
 pub enum Field {
@@ -395,3 +395,26 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
         _ => bail!("invalid tag attribute: {:?}", attr),
     }
 }
+
+macro_rules! path_attr {
+    ($fn:ident, $attr:literal) => {
+        fn $fn(attr: &Meta) -> Result<Option<Path>, Error> {
+            if !attr.path().is_ident($attr) {
+                return Ok(None);
+            }
+
+            match *attr {
+                Meta::NameValue(MetaNameValue {
+                    lit: Lit::Str(ref lit),
+                    ..
+                }) => Ok(Some(lit.parse()?)),
+                _ => bail!("invalid {} attribute: {:?}", $attr, attr),
+            }
+        }
+    };
+}
+
+path_attr!(as_msg_attr, "as_msg");
+path_attr!(to_msg_attr, "to_msg");
+path_attr!(from_msg_attr, "from_msg");
+path_attr!(merge_msg_attr, "merge_msg");

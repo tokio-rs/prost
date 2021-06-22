@@ -1,12 +1,21 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use anyhow::{anyhow, bail, Error};
+use anyhow::{anyhow, bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{bool_attr, set_option, tag_attr, Label};
+use crate::field::{
+    as_msg_attr,
+    bool_attr,
+    from_msg_attr,
+    merge_msg_attr,
+    set_option,
+    tag_attr,
+    to_msg_attr,
+    Label,
+};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -14,6 +23,10 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
+    pub as_msg: Option<Path>,
+    pub to_msg: Option<Path>,
+    pub from_msg: Option<Path>,
+    pub merge_msg: Option<Path>,
 }
 
 impl Field {
@@ -23,6 +36,10 @@ impl Field {
         let mut packed = None;
         let mut default = None;
         let mut tag = None;
+        let mut as_msg = None;
+        let mut to_msg = None;
+        let mut from_msg = None;
+        let mut merge_msg = None;
 
         let mut unknown_attrs = Vec::new();
 
@@ -37,6 +54,14 @@ impl Field {
                 set_option(&mut label, l, "duplicate label attributes")?;
             } else if let Some(d) = DefaultValue::from_attr(attr)? {
                 set_option(&mut default, d, "duplicate default attributes")?;
+            } else if let Some(a) = as_msg_attr(attr)? {
+                set_option(&mut as_msg, a, "duplicate as_msg attributes")?;
+            } else if let Some(t) = to_msg_attr(attr)? {
+                set_option(&mut to_msg, t, "duplicate to_msg attributes")?;
+            } else if let Some(f) = from_msg_attr(attr)? {
+                set_option(&mut from_msg, f, "duplicate from_msg attributes")?;
+            } else if let Some(m) = merge_msg_attr(attr)? {
+                set_option(&mut merge_msg, m, "duplicate merge_msg attributes")?;
             } else {
                 unknown_attrs.push(attr);
             }
@@ -86,7 +111,17 @@ impl Field {
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        Ok(Some(Field { ty, kind, tag }))
+        ensure!(
+            (as_msg.is_none() && to_msg.is_none()) || (from_msg.is_some() || merge_msg.is_some()),
+            "missing from_msg or merge_msg attribute",
+        );
+
+        ensure!(
+            (from_msg.is_none() && merge_msg.is_none()) || (as_msg.is_some() || to_msg.is_some()),
+            "missing as_msg or to_msg attribute",
+        );
+
+        Ok(Some(Field { ty, kind, tag, as_msg, to_msg, from_msg, merge_msg, }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
@@ -107,31 +142,89 @@ impl Field {
 
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
-        let encode_fn = match self.kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
-            Kind::Repeated => quote!(encode_repeated),
-            Kind::Packed => quote!(encode_packed),
-        };
-        let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
+        let encoding_mod = quote!(::prost::encoding::#module);
         let tag = self.tag;
 
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
+                match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote! {
+                        let msg = #as_msg(&#ident);
+                        if *msg != #default {
+                            #encoding_mod::encode(#tag, msg, buf);
+                        }
+                    },
+                    (None, Some(to_msg)) => quote! {
+                        let msg = #to_msg(&#ident);
+                        if msg != #default {
+                            #encoding_mod::encode(#tag, &msg, buf);
+                        }
+                    },
+                    (None, None) => quote! {
+                        if #ident != #default {
+                            #encoding_mod::encode(#tag, &#ident, buf);
+                        }
+                    },
+                }
+            },
+            Kind::Optional(..) => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote!(#as_msg(value)),
+                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                    (None, None) => quote!(value),
+                };
+
                 quote! {
-                    if #ident != #default {
-                        #encode_fn(#tag, &#ident, buf);
+                    if let ::core::option::Option::Some(ref value) = #ident {
+                        #encoding_mod::encode(#tag, #msg, buf);
                     }
                 }
             }
-            Kind::Optional(..) => quote! {
-                if let ::core::option::Option::Some(ref value) = #ident {
-                    #encode_fn(#tag, value, buf);
+            Kind::Required(..) => match (&self.as_msg, &self.to_msg) {
+                (Some(as_msg), _) => quote! {
+                    #encoding_mod::encode(#tag, #as_msg(&#ident), buf);
+                },
+                (None, Some(to_msg)) => quote! {
+                    #encoding_mod::encode(#tag, &#to_msg(&#ident), buf);
+                },
+                (None, None) => quote! {
+                    #encoding_mod::encode(#tag, &#ident, buf);
+                },
+            },
+            Kind::Repeated => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote!(#as_msg(value)),
+                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                    (None, None) => quote!(value),
+                };
+
+                quote! {
+                    for value in &#ident {
+                        #encoding_mod::encode(#tag, #msg, buf);
+                    }
                 }
-            },
-            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #encode_fn(#tag, &#ident, buf);
-            },
+            }
+            Kind::Packed => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (_, Some(to_msg)) => quote! {
+                        #ident.iter().map(#to_msg).collect::<::prost::alloc::vec::Vec<_>>().as_ref()
+                    },
+                    (Some(as_msg), None) => quote! {
+                        #ident
+                            .iter()
+                            .map(#as_msg)
+                            .cloned()
+                            .collect::<::prost::alloc::vec::Vec<_>>()
+                            .as_ref()
+                    },
+                    (None, None) => quote!(&#ident)
+                };
+
+                quote! {
+                    #encoding_mod::encode_packed(#tag, #msg, buf);
+                }
+            }
         }
     }
 
@@ -139,21 +232,78 @@ impl Field {
     /// scalar value into the field.
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
-        let merge_fn = match self.kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
-            Kind::Repeated | Kind::Packed => quote!(merge_repeated),
-        };
-        let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
+        let encoding_mod = quote!(::prost::encoding::#module);
 
         match self.kind {
-            Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #merge_fn(wire_type, #ident, buf, ctx)
-            },
-            Kind::Optional(..) => quote! {
-                #merge_fn(wire_type,
-                          #ident.get_or_insert_with(Default::default),
-                          buf,
-                          ctx)
+            Kind::Plain(..) | Kind::Required(..) => match (&self.from_msg, &self.merge_msg) {
+                (_, Some(merge_msg)) => quote! {{
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| #merge_msg(#ident, msg))
+                }},
+                (Some(from_msg), None) => quote! {{
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| *#ident = #from_msg(msg))
+                }},
+                (None, None) => quote! {
+                    #encoding_mod::merge(wire_type, #ident, buf, ctx)
+                }
+            }
+            Kind::Optional(..) => match (&self.from_msg, &self.merge_msg) {
+                (Some(from_msg), Some(merge_msg)) => quote! {{
+                    let mut msg = ::core::option::Option::None;
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| {
+                       match (msg, #ident.as_mut()) {
+                           (Some(msg), Some(field)) => #merge_msg(field, msg),
+                           (Some(msg), None) => {
+                               *#ident = ::core::option::Option::Some(#from_msg(msg));
+                           }
+                           (None, _) => *#ident = ::core::option::Option::None,
+                       }
+                    })
+                }},
+                (None, Some(merge_msg)) => quote! {{
+                    let mut msg = ::core::option::Option::None;
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| match msg {
+                        Some(msg) => #merge_msg(#ident.get_or_insert_with(Default::default), msg),
+                        None => *#ident = ::core::option::Option::None,
+                    })
+                }},
+                (Some(from_msg), None) => quote! {{
+                    let mut msg = ::core::option::Option::None;
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| match msg {
+                        Some(msg) => *#ident = ::core::option::Option::Some(#from_msg(msg)),
+                        None => *#ident = ::core::option::Option::None,
+                    })
+                }},
+                (None, None) => quote! {
+                    #encoding_mod::merge(
+                        wire_type,
+                        #ident.get_or_insert_with(Default::default),
+                        buf,
+                        ctx,
+                    )
+                },
+            }
+            Kind::Repeated | Kind::Packed => match (&self.from_msg, &self.merge_msg) {
+                (Some(from_msg), _) => quote! {{
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| {
+                        #ident.push(#from_msg(msg));
+                    })
+                }},
+                (None, Some(merge_msg)) => quote! {{
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| {
+                        let mut val = Default::default();
+                        #merge_msg(&mut val, msg);
+                        #ident.push(val);
+                    })
+                }},
+                (None, None) => quote! {
+                    #encoding_mod::merge_repeated(wire_type, #ident, buf, ctx)
+                }
             },
         }
     }
@@ -161,44 +311,109 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
-        let encoded_len_fn = match self.kind {
-            Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encoded_len),
-            Kind::Repeated => quote!(encoded_len_repeated),
-            Kind::Packed => quote!(encoded_len_packed),
-        };
-        let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
+        let encoding_mod = quote!(::prost::encoding::#module);
         let tag = self.tag;
 
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
-                quote! {
-                    if #ident != #default {
-                        #encoded_len_fn(#tag, &#ident)
-                    } else {
-                        0
+                match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote! {{
+                        let msg = #as_msg(&#ident);
+                        if *msg != #default {
+                            #encoding_mod::encoded_len(#tag, msg)
+                        } else {
+                            0
+                        }
+                    }},
+                    (None, Some(to_msg)) => quote! {{
+                        let msg = #to_msg(&#ident);
+                        if msg != #default {
+                            #encoding_mod::encoded_len(#tag, &msg)
+                        } else {
+                            0
+                        }
+                    }},
+                    (None, None) => quote! {
+                        if #ident != #default {
+                            #encoding_mod::encoded_len(#tag, &#ident)
+                        } else {
+                            0
+                        }
                     }
                 }
             }
-            Kind::Optional(..) => quote! {
-                #ident.as_ref().map_or(0, |value| #encoded_len_fn(#tag, value))
-            },
-            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
-                #encoded_len_fn(#tag, &#ident)
-            },
+            Kind::Optional(..) => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote!(#as_msg(value)),
+                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                    (None, None) => quote!(value),
+                };
+
+                quote! {
+                    #ident.as_ref().map_or(0, |value| #encoding_mod::encoded_len(#tag, #msg))
+                }
+            }
+            Kind::Required(..) => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote!(#as_msg(&#ident)),
+                    (None, Some(to_msg)) => quote!(&#to_msg(&#ident)),
+                    (None, None) => quote!(&#ident),
+                };
+
+                quote! {
+                    #encoding_mod::encoded_len(#tag, #msg)
+                }
+            }
+            Kind::Repeated => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (Some(as_msg), _) => quote!(#as_msg(value)),
+                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                    (None, None) => quote!(value),
+                };
+
+                quote! {
+                    #ident.iter().map(|value| #encoding_mod::encoded_len(#tag, #msg)).sum::<usize>()
+                }
+            }
+            Kind::Packed => {
+                let msg = match (&self.as_msg, &self.to_msg) {
+                    (_, Some(to_msg)) => quote! {
+                        #ident.iter().map(#to_msg).collect::<::prost::alloc::vec::Vec<_>>().as_ref()
+                    },
+                    (Some(as_msg), None) => quote! {
+                        #ident
+                            .iter()
+                            .map(#as_msg)
+                            .cloned()
+                            .collect::<::prost::alloc::vec::Vec<_>>()
+                            .as_ref()
+                    },
+                    (None, None) => quote!(&#ident)
+                };
+
+                quote! {
+                    #encoding_mod::encoded_len_packed(#tag, #msg)
+                }
+            }
         }
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
-                let default = default.typed();
-                match self.ty {
-                    Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
-                    _ => quote!(#ident = #default),
+                let owned = default.owned();
+                let typed = default.typed();
+                match (&self.from_msg, &self.merge_msg) {
+                    (_, Some(merge_msg)) => quote!(#merge_msg(&mut #ident, #owned)),
+                    (Some(from_msg), None) => quote!(#ident = #from_msg(#owned)),
+                    (None, None) => match self.ty {
+                        Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
+                        _ => quote!(#ident = #typed),
+                    },
                 }
             }
-            Kind::Optional(_) => quote!(#ident = ::core::option::Option::None),
+            Kind::Optional(..) => quote!(#ident = ::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
     }
@@ -206,8 +421,19 @@ impl Field {
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
-            Kind::Optional(_) => quote!(::core::option::Option::None),
+            Kind::Plain(ref default) | Kind::Required(ref default) => {
+                let default = default.owned();
+                match (&self.from_msg, &self.merge_msg) {
+                    (Some(from_msg), _) => quote!(#from_msg(#default)),
+                    (None, Some(merge_msg)) => quote! {{
+                        let mut val = Default::default();
+                        #merge_msg(&mut val, #default);
+                        val
+                    }},
+                    (None, None) => default,
+                }
+            }
+            Kind::Optional(..) => quote!(::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
     }

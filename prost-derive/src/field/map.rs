@@ -41,6 +41,10 @@ fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
         ty,
         kind,
         tag: 0, // Not used here
+        as_msg: None,
+        to_msg: None,
+        from_msg: None,
+        merge_msg: None,
     }
 }
 

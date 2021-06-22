@@ -138,10 +138,13 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|&(ref field_ident, ref field)| field.clear(quote!(self.#field_ident)));
 
-    let default = fields.iter().map(|&(ref field_ident, ref field)| {
-        let value = field.default();
-        quote!(#field_ident: #value,)
-    });
+    let default = fields
+        .iter()
+        .dedup_by(|(field_ident1, _), (field_ident2, _)| field_ident1 == field_ident2)
+        .map(|&(ref field_ident, ref field)| {
+            let value = field.default();
+            quote!(#field_ident: #value,)
+        });
 
     let methods = fields
         .iter()
