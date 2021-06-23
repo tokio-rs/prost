@@ -74,8 +74,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             let field_ident = field
                 .ident
                 .unwrap_or_else(|| Ident::new(&idx.to_string(), Span::call_site()));
-            let field_ty = field.ty;
-            match Field::new(quote!(#field_ty), field.attrs, Some(next_tag)) {
+            match Field::new(field.ty, field.attrs, Some(next_tag)) {
                 Ok(fields) if !fields.is_empty() => {
                     next_tag = fields
                         .iter()

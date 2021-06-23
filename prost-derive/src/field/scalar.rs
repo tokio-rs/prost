@@ -4,7 +4,7 @@ use std::fmt;
 use anyhow::{anyhow, bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
+use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type};
 
 use crate::field::{
     as_msg_attr,
@@ -20,7 +20,7 @@ use crate::field::{
 /// A scalar protobuf field.
 #[derive(Clone)]
 pub struct Field {
-    pub field_ty: TokenStream,
+    pub field_ty: Type,
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
@@ -32,7 +32,7 @@ pub struct Field {
 
 impl Field {
     pub fn new(
-        field_ty: &TokenStream,
+        field_ty: &Type,
         attrs: &[Meta],
         inferred_tag: Option<u32>,
     ) -> Result<Option<Field>, Error> {
@@ -139,7 +139,7 @@ impl Field {
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(&quote!(), attrs, None)? {
+        if let Some(mut field) = Field::new(&Type::Verbatim(quote!()), attrs, None)? {
             ensure!(
                 field.as_msg.is_none() && field.to_msg.is_none()
                     && field.from_msg.is_none() && field.merge_msg.is_none(),

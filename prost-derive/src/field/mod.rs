@@ -10,7 +10,7 @@ use std::slice;
 use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Path};
+use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type};
 
 #[derive(Clone)]
 pub enum Field {
@@ -33,7 +33,7 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     pub fn new(
-        field_ty: TokenStream,
+        field_ty: Type,
         attrs: Vec<Attribute>,
         mut inferred_tag: Option<u32>,
     ) -> Result<Vec<Field>, Error> {
@@ -59,7 +59,7 @@ impl Field {
                 Field::Scalar(field)
             } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
                 Field::Message(field)
-            } else if let Some(field) = map::Field::new(&attrs, inferred_tag)? {
+            } else if let Some(field) = map::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Map(field)
             } else if let Some(field) = oneof::Field::new(&attrs)? {
                 Field::Oneof(field)

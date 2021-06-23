@@ -188,15 +188,13 @@ impl Field {
             Label::Required => match (&self.from_msg, &self.merge_msg) {
                 (_, Some(merge_msg)) => quote! {{
                     let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                        #merge_msg(#ident, msg);
-                    })
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| #merge_msg(#ident, msg))
                 }},
                 (Some(from_msg), None) => quote! {{
                     let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                        *#ident = #from_msg(msg);
-                    })
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| *#ident = #from_msg(msg))
                 }},
                 (None, None) => quote! {
                     ::prost::encoding::message::merge(wire_type, #ident, buf, ctx)
@@ -205,9 +203,8 @@ impl Field {
             Label::Repeated => match (&self.from_msg, &self.merge_msg) {
                 (Some(from_msg), _) => quote! {{
                     let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                        #ident.push(#from_msg(msg));
-                    })
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| #ident.push(#from_msg(msg)))
                 }},
                 (None, Some(merge_msg)) => quote! {{
                     let mut msg = Default::default();
