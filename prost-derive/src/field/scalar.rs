@@ -20,6 +20,7 @@ use crate::field::{
 /// A scalar protobuf field.
 #[derive(Clone)]
 pub struct Field {
+    pub field_ty: TokenStream,
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
@@ -30,7 +31,11 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
+    pub fn new(
+        field_ty: &TokenStream,
+        attrs: &[Meta],
+        inferred_tag: Option<u32>,
+    ) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut label = None;
         let mut packed = None;
@@ -121,11 +126,26 @@ impl Field {
             "missing as_msg or to_msg attribute",
         );
 
-        Ok(Some(Field { ty, kind, tag, as_msg, to_msg, from_msg, merge_msg, }))
+        Ok(Some(Field {
+            field_ty: field_ty.clone(),
+            ty,
+            kind,
+            tag,
+            as_msg,
+            to_msg,
+            from_msg,
+            merge_msg,
+        }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(attrs, None)? {
+        if let Some(mut field) = Field::new(&quote!(), attrs, None)? {
+            ensure!(
+                field.as_msg.is_none() && field.to_msg.is_none()
+                    && field.from_msg.is_none() && field.merge_msg.is_none(),
+                "oneof messages cannot have as_msg, to_msg, from_msg, or merge_msg attributes",
+            );
+
             match field.kind {
                 Kind::Plain(default) => {
                     field.kind = Kind::Required(default);
@@ -170,14 +190,14 @@ impl Field {
             },
             Kind::Optional(..) => {
                 let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
+                    (Some(as_msg), _) => quote!(#as_msg(&#ident)),
+                    (None, Some(to_msg)) => quote!(#to_msg(&#ident).as_ref()),
+                    (None, None) => quote!(#ident.as_ref()),
                 };
 
                 quote! {
-                    if let ::core::option::Option::Some(ref value) = #ident {
-                        #encoding_mod::encode(#tag, #msg, buf);
+                    if let ::core::option::Option::Some(value) = #msg {
+                        #encoding_mod::encode(#tag, value, buf);
                     }
                 }
             }
@@ -251,31 +271,15 @@ impl Field {
                 }
             }
             Kind::Optional(..) => match (&self.from_msg, &self.merge_msg) {
-                (Some(from_msg), Some(merge_msg)) => quote! {{
-                    let mut msg = ::core::option::Option::None;
-                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                       match (msg, #ident.as_mut()) {
-                           (Some(msg), Some(field)) => #merge_msg(field, msg),
-                           (Some(msg), None) => {
-                               *#ident = ::core::option::Option::Some(#from_msg(msg));
-                           }
-                           (None, _) => *#ident = ::core::option::Option::None,
-                       }
-                    })
-                }},
-                (None, Some(merge_msg)) => quote! {{
-                    let mut msg = ::core::option::Option::None;
-                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| match msg {
-                        Some(msg) => #merge_msg(#ident.get_or_insert_with(Default::default), msg),
-                        None => *#ident = ::core::option::Option::None,
-                    })
+                (_, Some(merge_msg)) => quote! {{
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| #merge_msg(#ident, Some(msg)))
                 }},
                 (Some(from_msg), None) => quote! {{
-                    let mut msg = ::core::option::Option::None;
-                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| match msg {
-                        Some(msg) => *#ident = ::core::option::Option::Some(#from_msg(msg)),
-                        None => *#ident = ::core::option::Option::None,
-                    })
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| *#ident = #from_msg(Some(msg)))
                 }},
                 (None, None) => quote! {
                     #encoding_mod::merge(
@@ -345,13 +349,13 @@ impl Field {
             }
             Kind::Optional(..) => {
                 let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
+                    (Some(as_msg), _) => quote!(#as_msg(&#ident)),
+                    (None, Some(to_msg)) => quote!(#to_msg(&#ident).as_ref()),
+                    (None, None) => quote!(#ident.as_ref()),
                 };
 
                 quote! {
-                    #ident.as_ref().map_or(0, |value| #encoding_mod::encoded_len(#tag, #msg))
+                    #msg.map_or(0, |value| #encoding_mod::encoded_len(#tag, value))
                 }
             }
             Kind::Required(..) => {
@@ -413,18 +417,29 @@ impl Field {
                     },
                 }
             }
-            Kind::Optional(..) => quote!(#ident = ::core::option::Option::None),
+            Kind::Optional(..) => match (&self.from_msg, &self.merge_msg) {
+                (_, Some(merge_msg)) => quote! {
+                    #merge_msg(&mut #ident, ::core::option::Option::None)
+                },
+                (Some(from_msg), None) => quote! {
+                    #ident = #from_msg(::core::option::Option::None)
+                },
+                (None, None) => quote! {
+                    #ident = ::core::option::Option::None
+                }
+            },
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
     }
 
-    /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
                 let default = default.owned();
                 match (&self.from_msg, &self.merge_msg) {
-                    (Some(from_msg), _) => quote!(#from_msg(#default)),
+                    (Some(from_msg), _) => quote! {
+                        #from_msg(#default)
+                    },
                     (None, Some(merge_msg)) => quote! {{
                         let mut val = Default::default();
                         #merge_msg(&mut val, #default);
@@ -433,7 +448,19 @@ impl Field {
                     (None, None) => default,
                 }
             }
-            Kind::Optional(..) => quote!(::core::option::Option::None),
+            Kind::Optional(..) => match (&self.from_msg, &self.merge_msg) {
+                (Some(from_msg), _) => quote! {
+                    #from_msg(::core::option::Option::None)
+                },
+                (None, Some(merge_msg)) => quote! {{
+                    let mut val = Default::default();
+                    #merge_msg(&mut val, ::core::option::Option::None);
+                    val
+                }},
+                (None, None) => quote! {
+                    ::core::option::Option::None
+                },
+            }
             Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
     }
@@ -463,19 +490,55 @@ impl Field {
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
         let inner_ty = self.ty.rust_type();
+        let field_ty = &self.field_ty;
+
         match self.kind {
-            Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
-            Kind::Optional(_) => quote! {
-                struct #wrapper_name<'a>(&'a ::core::option::Option<#inner_ty>);
-                impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
-                    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                        #wrapper
-                        ::core::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+            Kind::Plain(..) | Kind::Required(..) => match (&self.as_msg, &self.to_msg) {
+                (Some(as_msg), _) => quote! {
+                    fn #wrapper_name(v: &#field_ty) -> &#inner_ty {
+                        #as_msg(v)
+                    }
+                },
+                (None, Some(to_msg)) => quote! {
+                    fn #wrapper_name(v: &#field_ty) -> #inner_ty {
+                        #to_msg(v)
+                    }
+                },
+                (None, None) => self.debug_inner(wrapper_name),
+            },
+            Kind::Optional(..) => match (&self.as_msg, &self.to_msg) {
+                (Some(msg_fn), _) | (None, Some(msg_fn)) => quote! {
+                    struct #wrapper_name<'a>(&'a #field_ty);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            ::core::fmt::Debug::fmt(&#msg_fn(self.0), f)
+                        }
+                    }
+                },
+                (None, None) => quote! {
+                    struct #wrapper_name<'a>(&'a ::core::option::Option<#inner_ty>);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            #wrapper
+                            ::core::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
+                        }
                     }
                 }
             },
-            Kind::Repeated | Kind::Packed => {
-                quote! {
+            Kind::Repeated | Kind::Packed => match (&self.as_msg, &self.to_msg) {
+                (Some(msg_fn), _) | (None, Some(msg_fn)) => quote! {
+                    struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#field_ty>);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            let mut vec_builder = f.debug_list();
+                            for v in &self.0 {
+                                vec_builder.entry(&#msg_fn(v));
+                            }
+                            vec_builder.finish()
+                        }
+                    }
+                },
+                (None, None) => quote! {
                     struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#inner_ty>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
@@ -487,13 +550,17 @@ impl Field {
                             vec_builder.finish()
                         }
                     }
-                }
-            }
+                },
+            },
         }
     }
 
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
+        if self.as_msg.is_some() || self.to_msg.is_some() {
+            return None;
+        }
+
         let mut ident_str = ident.to_string();
         if ident_str.starts_with("r#") {
             ident_str = ident_str[2..].to_owned();

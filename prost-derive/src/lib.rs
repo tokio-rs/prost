@@ -58,7 +58,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             let field_ident = field
                 .ident
                 .unwrap_or_else(|| Ident::new(&idx.to_string(), Span::call_site()));
-            match Field::new(field.attrs, Some(next_tag)) {
+            let field_ty = field.ty;
+            match Field::new(quote!(#field_ty), field.attrs, Some(next_tag)) {
                 Ok(fields) if !fields.is_empty() => {
                     next_tag = fields
                         .iter()
@@ -140,9 +141,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let default = fields
         .iter()
-        .dedup_by(|(field_ident1, _), (field_ident2, _)| field_ident1 == field_ident2)
-        .map(|&(ref field_ident, ref field)| {
-            let value = field.default();
+        .dedup_by_with_count(|(field_ident1, _), (field_ident2, _)| field_ident1 == field_ident2)
+        .map(|(count, &(ref field_ident, ref field))| {
+            let value = if count == 1 {
+                field.default()
+            } else {
+                quote!(::core::default::Default::default())
+            };
+
             quote!(#field_ident: #value,)
         });
 
@@ -368,6 +374,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         if variant_fields.len() != 1 {
             bail!("Oneof enum variants must have a single field");
         }
+
         match Field::new_oneof(attrs)? {
             Some(field) => fields.push((variant_ident, field)),
             None => bail!("invalid oneof variant: oneof variants may not be ignored"),

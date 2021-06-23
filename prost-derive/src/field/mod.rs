@@ -30,14 +30,18 @@ impl Field {
     /// Creates a new list of `Field`s from an iterator of field attributes.
     ///
     /// If the meta items are invalid, an error will be returned.
-    pub fn new(attrs: Vec<Attribute>, mut inferred_tag: Option<u32>) -> Result<Vec<Field>, Error> {
+    pub fn new(
+        field_ty: TokenStream,
+        attrs: Vec<Attribute>,
+        mut inferred_tag: Option<u32>,
+    ) -> Result<Vec<Field>, Error> {
         let nested_attrs = prost_nested_attrs(attrs);
         let mut fields = Vec::with_capacity(nested_attrs.len());
 
         for attrs in nested_attrs {
             // TODO: check for ignore attribute.
 
-            let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
+            let field = if let Some(field) = scalar::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Scalar(field)
             } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
                 Field::Message(field)
@@ -166,6 +170,7 @@ impl Field {
                     }
                 }
             }
+            Field::Message(ref message) => message.debug(ident),
             _ => quote!(&#ident),
         }
     }

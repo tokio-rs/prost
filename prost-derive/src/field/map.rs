@@ -38,6 +38,7 @@ impl MapTy {
 fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
     let kind = scalar::Kind::Plain(scalar::DefaultValue::new(&ty));
     scalar::Field {
+        field_ty: ty.rust_type(),
         ty,
         kind,
         tag: 0, // Not used here

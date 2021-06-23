@@ -100,6 +100,12 @@ impl Field {
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs, None)? {
+            ensure!(
+                field.as_msg.is_none() && field.to_msg.is_none()
+                    && field.from_msg.is_none() && field.merge_msg.is_none(),
+                "oneof messages cannot have as_msg, to_msg, from_msg, or merge_msg attributes",
+            );
+
             if let Some(attr) = attrs.iter().find(|attr| Label::from_attr(attr).is_some()) {
                 bail!(
                     "invalid attribute for oneof field: {}",
@@ -119,14 +125,14 @@ impl Field {
         match self.label {
             Label::Optional => {
                 let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
+                    (Some(as_msg), _) => quote!(#as_msg(&#ident)),
+                    (None, Some(to_msg)) => quote!(#to_msg(&#ident).as_ref()),
+                    (None, None) => quote!(#ident.as_ref()),
                 };
 
                 quote! {
-                    if let ::core::option::Option::Some(ref value) = #ident {
-                        ::prost::encoding::message::encode(#tag, #msg, buf);
+                    if let ::core::option::Option::Some(value) = #msg {
+                        ::prost::encoding::message::encode(#tag, value, buf);
                     }
                 }
             }
@@ -160,33 +166,15 @@ impl Field {
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => match (&self.from_msg, &self.merge_msg) {
-                (Some(from_msg), Some(merge_msg)) => quote! {{
+                (_, Some(merge_msg)) => quote! {{
                     let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                        if let Some(field) = #ident.as_mut() {
-                            #merge_msg(field, msg);
-                        } else {
-                            #ident.insert(#from_msg(msg));
-                        }
-                    })
-                }},
-                (None, Some(merge_msg)) => quote! {{
-                    let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                        if let Some(field) = #ident.as_mut() {
-                            #merge_msg(field, msg);
-                        } else {
-                            let mut field = Default::default();
-                            #merge_msg(&mut field, msg);
-                            #ident.insert(field);
-                        }
-                    })
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| #merge_msg(#ident, Some(msg)))
                 }},
                 (Some(from_msg), None) => quote! {{
                     let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
-                        #ident.insert(#from_msg(msg));
-                    })
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx)
+                        .map(|_| *#ident = #from_msg(Some(msg)))
                 }},
                 (None, None) => quote! {
                     ::prost::encoding::message::merge(
@@ -195,7 +183,7 @@ impl Field {
                         buf,
                         ctx,
                     )
-                }
+                },
             },
             Label::Required => match (&self.from_msg, &self.merge_msg) {
                 (_, Some(merge_msg)) => quote! {{
@@ -242,15 +230,13 @@ impl Field {
         match self.label {
             Label::Optional => {
                 let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
+                    (Some(as_msg), _) => quote!(#as_msg(&#ident)),
+                    (None, Some(to_msg)) => quote!(#to_msg(&#ident).as_ref()),
+                    (None, None) => quote!(#ident.as_ref()),
                 };
 
                 quote! {
-                    #ident.as_ref().map_or(0, |value| {
-                        ::prost::encoding::message::encoded_len(#tag, #msg)
-                    })
+                    #msg.map_or(0, |value| ::prost::encoding::message::encoded_len(#tag, value))
                 }
             }
             Label::Required => {
@@ -282,13 +268,31 @@ impl Field {
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.label {
-            Label::Optional => quote!(#ident = ::core::option::Option::None),
+            Label::Optional => match (&self.from_msg, &self.merge_msg) {
+                (_, Some(merge_msg)) => quote! {
+                    #merge_msg(&mut #ident, ::core::option::Option::None)
+                },
+                (Some(from_msg), None) => quote! {
+                    #ident = #from_msg(::core::option::Option::None)
+                },
+                (None, None) => quote! {
+                    #ident = ::core::option::Option::None
+                }
+            },
             Label::Required => match (&self.from_msg, &self.merge_msg) {
                 (_, Some(merge_msg)) => quote!(#merge_msg(&mut #ident, Default::default())),
                 (Some(from_msg), None) => quote!(#ident = #from_msg(Default::default())),
                 (None, None) => quote!(#ident.clear()),
             }
             Label::Repeated => quote!(#ident.clear()),
+        }
+    }
+
+    pub fn debug(&self, ident: TokenStream) -> TokenStream {
+        match (&self.as_msg, &self.to_msg) {
+            (Some(as_msg), _) => quote!(#as_msg(&#ident)),
+            (None, Some(to_msg)) => quote!(&#to_msg(&#ident)),
+            (None, None) => quote!(&#ident),
         }
     }
 }
