@@ -7,7 +7,7 @@ mod scalar;
 use std::fmt;
 use std::slice;
 
-use anyhow::{bail, Error};
+use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Path};
@@ -24,6 +24,8 @@ pub enum Field {
     Oneof(oneof::Field),
     /// A group field.
     Group(group::Field),
+    /// An ignored field.
+    Ignore,
 }
 
 impl Field {
@@ -38,9 +40,21 @@ impl Field {
         let nested_attrs = prost_nested_attrs(attrs);
         let mut fields = Vec::with_capacity(nested_attrs.len());
 
-        for attrs in nested_attrs {
-            // TODO: check for ignore attribute.
+        if nested_attrs.iter().any(|attrs| attrs.iter().any(|attr| word_attr("ignore", attr))) {
+            ensure!(
+                nested_attrs.len() == 1,
+                "ignore attribute used but other attributes were found",
+            );
 
+            ensure!(
+                nested_attrs[0].len() == 1,
+                "ignore attribute used but other attributes were found",
+            );
+
+            return Ok(vec![Field::Ignore]);
+        }
+
+        for attrs in nested_attrs {
             let field = if let Some(field) = scalar::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Scalar(field)
             } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
@@ -94,6 +108,7 @@ impl Field {
             Field::Map(ref map) => vec![map.tag],
             Field::Oneof(ref oneof) => oneof.tags.clone(),
             Field::Group(ref group) => vec![group.tag],
+            Field::Ignore => vec![],
         }
     }
 
@@ -105,6 +120,7 @@ impl Field {
             Field::Map(ref map) => map.encode(ident),
             Field::Oneof(ref oneof) => oneof.encode(ident),
             Field::Group(ref group) => group.encode(ident),
+            Field::Ignore => quote!(),
         }
     }
 
@@ -117,6 +133,7 @@ impl Field {
             Field::Map(ref map) => map.merge(ident),
             Field::Oneof(ref oneof) => oneof.merge(ident),
             Field::Group(ref group) => group.merge(ident),
+            Field::Ignore => quote!(),
         }
     }
 
@@ -128,6 +145,7 @@ impl Field {
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
             Field::Group(ref group) => group.encoded_len(ident),
+            Field::Ignore => quote!(0),
         }
     }
 
@@ -139,6 +157,7 @@ impl Field {
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),
             Field::Group(ref group) => group.clear(ident),
+            Field::Ignore => quote!(),
         }
     }
 
