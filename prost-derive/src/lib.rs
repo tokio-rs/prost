@@ -16,12 +16,28 @@ use syn::{
 };
 
 mod field;
-use crate::field::Field;
+use crate::field::{bool_attr, prost_attrs, set_option, Field};
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
     let ident = input.ident;
+
+    let mut enable_debug = None;
+    let mut unknown_attrs = Vec::new();
+    for attr in prost_attrs(input.attrs) {
+        if let Some(d) = bool_attr("debug", &attr)? {
+            set_option(&mut enable_debug, d, "duplicate debug attribute")?;
+        } else {
+            unknown_attrs.push(attr);
+        }
+    }
+
+    match unknown_attrs.len() {
+        0 => (),
+        1 => bail!("unknown attribute: {:?}", unknown_attrs[0]),
+        _ => bail!("unknown attributes: {:?}", unknown_attrs),
+    }
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -168,25 +184,40 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
-        let wrapper = field.debug(quote!(self.#field_ident));
-        let call = if is_struct {
-            quote!(builder.field(stringify!(#field_ident), &wrapper))
+    let debug = if enable_debug.unwrap_or(true) {
+        let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
+            let wrapper = field.debug(quote!(self.#field_ident));
+            let call = if is_struct {
+                quote!(builder.field(stringify!(#field_ident), &wrapper))
+            } else {
+                quote!(builder.field(&wrapper))
+            };
+            quote! {
+                let builder = {
+                    let wrapper = #wrapper;
+                    #call
+                };
+            }
+        });
+        let debug_builder = if is_struct {
+            quote!(f.debug_struct(stringify!(#ident)))
         } else {
-            quote!(builder.field(&wrapper))
+            quote!(f.debug_tuple(stringify!(#ident)))
         };
+
         quote! {
-             let builder = {
-                 let wrapper = #wrapper;
-                 #call
-             };
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    let mut builder = #debug_builder;
+                    #(#debugs;)*
+                    builder.finish()
+                }
+            }
         }
-    });
-    let debug_builder = if is_struct {
-        quote!(f.debug_struct(stringify!(#ident)))
     } else {
-        quote!(f.debug_tuple(stringify!(#ident)))
+        quote!()
     };
+
 
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
@@ -229,13 +260,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                let mut builder = #debug_builder;
-                #(#debugs;)*
-                builder.finish()
-            }
-        }
+        #debug
 
         #methods
     };

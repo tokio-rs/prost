@@ -254,7 +254,7 @@ impl fmt::Display for Label {
 }
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
-fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
+pub fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
     attrs
         .iter()
         .flat_map(Attribute::parse_meta)
@@ -324,7 +324,7 @@ pub fn set_bool(b: &mut bool, message: &str) -> Result<(), Error> {
 
 /// Unpacks an attribute into a (key, boolean) pair, returning the boolean value.
 /// If the key doesn't match the attribute, `None` is returned.
-fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
+pub fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
     if !attr.path().is_ident(key) {
         return Ok(None);
     }
