@@ -23,11 +23,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let ident = input.ident;
 
-    let mut enable_debug = None;
+    let mut impl_debug = None;
+    let mut impl_default = None;
     let mut unknown_attrs = Vec::new();
     for attr in prost_attrs(input.attrs) {
         if let Some(d) = bool_attr("debug", &attr)? {
-            set_option(&mut enable_debug, d, "duplicate debug attribute")?;
+            set_option(&mut impl_debug, d, "duplicate debug attribute")?;
+        } else if let Some(d) = bool_attr("default", &attr)? {
+            set_option(&mut impl_default, d, "duplicate default attribute")?;
         } else {
             unknown_attrs.push(attr);
         }
@@ -155,18 +158,32 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|&(ref field_ident, ref field)| field.clear(quote!(self.#field_ident)));
 
-    let default = fields
-        .iter()
-        .dedup_by_with_count(|(field_ident1, _), (field_ident2, _)| field_ident1 == field_ident2)
-        .map(|(count, &(ref field_ident, ref field))| {
-            let value = if count == 1 {
-                field.default()
-            } else {
-                quote!(::core::default::Default::default())
-            };
+    let default = if impl_default.unwrap_or(true) {
+        let default = fields
+            .iter()
+            .dedup_by_with_count(|(field_ident1, _), (field_ident2, _)| field_ident1 == field_ident2)
+            .map(|(count, &(ref field_ident, ref field))| {
+                let value = if count == 1 {
+                    field.default()
+                } else {
+                    quote!(::core::default::Default::default())
+                };
 
-            quote!(#field_ident: #value,)
-        });
+                quote!(#field_ident: #value,)
+            });
+
+        quote! {
+            impl #impl_generics Default for #ident #ty_generics #where_clause {
+                fn default() -> Self {
+                    #ident {
+                        #(#default)*
+                    }
+                }
+            }
+        }
+    } else {
+        quote!()
+    };
 
     let methods = fields
         .iter()
@@ -183,7 +200,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    let debug = if enable_debug.unwrap_or(true) {
+    let debug = if impl_debug.unwrap_or(true) {
         let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
             let wrapper = field.debug(quote!(self.#field_ident));
             let call = if is_struct {
@@ -251,17 +268,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics Default for #ident #ty_generics #where_clause {
-            fn default() -> Self {
-                #ident {
-                    #(#default)*
-                }
-            }
-        }
-
-        #debug
+        #default
 
         #methods
+
+        #debug
     };
 
     Ok(expanded.into())

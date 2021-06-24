@@ -3,6 +3,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     AngleBracketedGenericArguments,
+    Expr,
     GenericArgument,
     Ident,
     Lit,
@@ -77,10 +78,10 @@ pub struct Field {
     pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
-    pub as_msg: Option<Path>,
-    pub to_msg: Option<Path>,
-    pub from_msg: Option<Path>,
-    pub merge_msg: Option<Path>,
+    pub as_msg: Option<Expr>,
+    pub to_msg: Option<Expr>,
+    pub from_msg: Option<Expr>,
+    pub merge_msg: Option<Expr>,
 }
 
 impl Field {

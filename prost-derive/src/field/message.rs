@@ -1,7 +1,7 @@
 use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Meta, Path};
+use syn::{Expr, Meta};
 
 use crate::field::{
     as_msg_attr,
@@ -19,10 +19,10 @@ use crate::field::{
 pub struct Field {
     pub label: Label,
     pub tag: u32,
-    pub as_msg: Option<Path>,
-    pub to_msg: Option<Path>,
-    pub from_msg: Option<Path>,
-    pub merge_msg: Option<Path>,
+    pub as_msg: Option<Expr>,
+    pub to_msg: Option<Expr>,
+    pub from_msg: Option<Expr>,
+    pub merge_msg: Option<Expr>,
 }
 
 impl Field {

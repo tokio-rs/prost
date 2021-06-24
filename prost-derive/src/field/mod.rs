@@ -10,7 +10,7 @@ use std::slice;
 use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type};
+use syn::{Attribute, Expr, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Type};
 
 #[derive(Clone)]
 pub enum Field {
@@ -39,22 +39,19 @@ impl Field {
     ) -> Result<Vec<Field>, Error> {
         let nested_attrs = prost_nested_attrs(attrs);
         let mut fields = Vec::with_capacity(nested_attrs.len());
-
-        if nested_attrs.iter().any(|attrs| attrs.iter().any(|attr| word_attr("ignore", attr))) {
-            ensure!(
-                nested_attrs.len() == 1,
-                "ignore attribute used but other attributes were found",
-            );
-
-            ensure!(
-                nested_attrs[0].len() == 1,
-                "ignore attribute used but other attributes were found",
-            );
-
-            return Ok(vec![Field::Ignore]);
-        }
+        let mut ignore = false;
 
         for attrs in nested_attrs {
+            let attrs = attrs?;
+
+            ensure!(!ignore, "ignore attribute used but other attributes were found: {:?}", attrs);
+            if attrs.iter().any(|attr| word_attr("ignore", attr)) {
+                fields.push(Field::Ignore);
+                ignore = true;
+
+                continue;
+            }
+
             let field = if let Some(field) = scalar::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Scalar(field)
             } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
@@ -282,22 +279,28 @@ pub fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
 /// #[prost(foo, bar="baz")]
 /// #[prost(bar, foo="baz")]
 /// ```
-fn prost_nested_attrs(attrs: Vec<Attribute>) -> Vec<Vec<Meta>> {
+fn prost_nested_attrs(attrs: Vec<Attribute>) -> Vec<Result<Vec<Meta>, Error>> {
     attrs
         .iter()
-        .flat_map(Attribute::parse_meta)
-        .filter_map(|meta| match meta {
-            Meta::List(MetaList { path, nested, .. }) if path.is_ident("prost") => nested
-                .into_iter()
-                .flat_map(|attr| -> Result<_, _> {
-                    match attr {
-                        NestedMeta::Meta(attr) => Ok(attr),
-                        NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
-                    }
-                })
-                .collect::<Vec<_>>()
-                .into(),
-            _ => None,
+        .filter_map(|attr| match Attribute::parse_meta(attr) {
+            Ok(meta) => match meta {
+                Meta::List(MetaList { path, nested, .. }) if path.is_ident("prost") => {
+                    let mut attrs = Vec::with_capacity(nested.len());
+                    nested
+                        .into_iter()
+                        .try_for_each(|attr| match attr {
+                            NestedMeta::Meta(attr) => {
+                                attrs.push(attr);
+                                Ok(())
+                            }
+                            NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
+                        })
+                        .map(|_| attrs)
+                        .into()
+                }
+                _ => None,
+            },
+            Err(err) => Some(Err(err.into())),
         })
         .collect()
 }
@@ -422,7 +425,7 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
 
 macro_rules! path_attr {
     ($fn:ident, $attr:literal) => {
-        fn $fn(attr: &Meta) -> Result<Option<Path>, Error> {
+        fn $fn(attr: &Meta) -> Result<Option<Expr>, Error> {
             if !attr.path().is_ident($attr) {
                 return Ok(None);
             }

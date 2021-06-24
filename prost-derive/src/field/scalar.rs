@@ -4,7 +4,19 @@ use std::fmt;
 use anyhow::{anyhow, bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type};
+use syn::{
+    parse_str,
+    Expr,
+    Ident,
+    Lit,
+    LitByteStr,
+    Meta,
+    MetaList,
+    MetaNameValue,
+    NestedMeta,
+    Path,
+    Type,
+};
 
 use crate::field::{
     as_msg_attr,
@@ -24,10 +36,10 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
-    pub as_msg: Option<Path>,
-    pub to_msg: Option<Path>,
-    pub from_msg: Option<Path>,
-    pub merge_msg: Option<Path>,
+    pub as_msg: Option<Expr>,
+    pub to_msg: Option<Expr>,
+    pub from_msg: Option<Expr>,
+    pub merge_msg: Option<Expr>,
 }
 
 impl Field {
