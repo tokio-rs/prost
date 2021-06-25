@@ -85,7 +85,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                         .max()
                         .map(|t| t + 1)
                         .unwrap_or(next_tag);
-                    fields.into_iter().map(|field| Ok((field_ident.clone(), field))).collect()
+                    fields
+                        .into_iter()
+                        .map(|field| Ok((field_ident.clone(), field)))
+                        .collect()
                 }
                 Ok(_) => Vec::new(),
                 Err(err) => vec![Err(
@@ -131,7 +134,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
 
         let merge = field.merge(quote!(value));
-        let tags = tags.into_iter().map(|tag| quote!(#tag)).intersperse(quote!(|));
+        let tags = tags
+            .into_iter()
+            .map(|tag| quote!(#tag))
+            .intersperse(quote!(|));
         Some(quote! {
             #(#tags)* => {
                 let mut value = &mut self.#field_ident;
@@ -161,7 +167,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let default = if impl_default.unwrap_or(true) {
         let default = fields
             .iter()
-            .dedup_by_with_count(|(field_ident1, _), (field_ident2, _)| field_ident1 == field_ident2)
+            .dedup_by_with_count(|(field_ident1, _), (field_ident2, _)| {
+                field_ident1 == field_ident2
+            })
             .map(|(count, &(ref field_ident, ref field))| {
                 let value = if count == 1 {
                     field.default()
@@ -233,7 +241,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     } else {
         quote!()
     };
-
 
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {

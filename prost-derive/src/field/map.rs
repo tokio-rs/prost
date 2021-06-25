@@ -2,29 +2,12 @@ use anyhow::{bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    AngleBracketedGenericArguments,
-    Expr,
-    GenericArgument,
-    Ident,
-    Lit,
-    Meta,
-    MetaNameValue,
-    NestedMeta,
-    Path,
-    PathArguments,
-    PathSegment,
-    Type,
-    TypePath,
+    AngleBracketedGenericArguments, Expr, GenericArgument, Ident, Lit, Meta, MetaNameValue,
+    NestedMeta, Path, PathArguments, PathSegment, Type, TypePath,
 };
 
 use crate::field::{
-    as_msg_attr,
-    from_msg_attr,
-    merge_msg_attr,
-    scalar,
-    set_option,
-    tag_attr,
-    to_msg_attr,
+    as_msg_attr, from_msg_attr, merge_msg_attr, scalar, set_option, tag_attr, to_msg_attr,
 };
 
 #[derive(Clone, Debug)]
@@ -98,14 +81,17 @@ impl Field {
         let mut merge_msg = None;
 
         let field_value_ty;
-        if let Type::Path(TypePath { path: Path { segments, .. }, .. }) = field_ty {
+        if let Type::Path(TypePath {
+            path: Path { segments, .. },
+            ..
+        }) = field_ty
+        {
             if let Some(PathSegment {
-                arguments: PathArguments::AngleBracketed(AngleBracketedGenericArguments {
-                    args,
-                    ..
-                }),
+                arguments:
+                    PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }),
                 ..
-            }) = segments.last() {
+            }) = segments.last()
+            {
                 if let Some(GenericArgument::Type(ty)) = args.last() {
                     field_value_ty = ty.clone();
                 } else {
@@ -117,7 +103,6 @@ impl Field {
         } else {
             return Ok(None);
         }
-
 
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
@@ -213,7 +198,7 @@ impl Field {
                     from_msg,
                     merge_msg,
                 })
-            },
+            }
             _ => None,
         })
     }
@@ -221,8 +206,10 @@ impl Field {
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(field) = Field::new(&Type::Verbatim(quote!()), attrs, None)? {
             ensure!(
-                field.as_msg.is_none() && field.to_msg.is_none()
-                    && field.from_msg.is_none() && field.merge_msg.is_none(),
+                field.as_msg.is_none()
+                    && field.to_msg.is_none()
+                    && field.from_msg.is_none()
+                    && field.merge_msg.is_none(),
                 "oneof messages cannot have as_msg, to_msg, from_msg, or merge_msg attributes",
             );
 
@@ -259,7 +246,7 @@ impl Field {
             ValueTy::Scalar(value_ty) => {
                 let val_mod = value_ty.module();
                 quote!(::prost::encoding::#val_mod)
-            },
+            }
             ValueTy::Message => quote!(::prost::encoding::message),
         };
 
@@ -487,8 +474,8 @@ impl Field {
                             builder.finish()
                         }
                     }
-                }
-            }
+                },
+            },
         }
     }
 }

@@ -44,7 +44,11 @@ impl Field {
         for attrs in nested_attrs {
             let attrs = attrs?;
 
-            ensure!(!ignore, "ignore attribute used but other attributes were found: {:?}", attrs);
+            ensure!(
+                !ignore,
+                "ignore attribute used but other attributes were found: {:?}",
+                attrs
+            );
             if attrs.iter().any(|attr| word_attr("ignore", attr)) {
                 fields.push(Field::Ignore);
                 ignore = true;

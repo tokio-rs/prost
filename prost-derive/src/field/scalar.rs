@@ -5,28 +5,11 @@ use anyhow::{anyhow, bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{
-    parse_str,
-    Expr,
-    Ident,
-    Lit,
-    LitByteStr,
-    Meta,
-    MetaList,
-    MetaNameValue,
-    NestedMeta,
-    Path,
-    Type,
+    parse_str, Expr, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type,
 };
 
 use crate::field::{
-    as_msg_attr,
-    bool_attr,
-    from_msg_attr,
-    merge_msg_attr,
-    set_option,
-    tag_attr,
-    to_msg_attr,
-    Label,
+    as_msg_attr, bool_attr, from_msg_attr, merge_msg_attr, set_option, tag_attr, to_msg_attr, Label,
 };
 
 /// A scalar protobuf field.
@@ -153,8 +136,10 @@ impl Field {
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(&Type::Verbatim(quote!()), attrs, None)? {
             ensure!(
-                field.as_msg.is_none() && field.to_msg.is_none()
-                    && field.from_msg.is_none() && field.merge_msg.is_none(),
+                field.as_msg.is_none()
+                    && field.to_msg.is_none()
+                    && field.from_msg.is_none()
+                    && field.merge_msg.is_none(),
                 "oneof messages cannot have as_msg, to_msg, from_msg, or merge_msg attributes",
             );
 
@@ -199,7 +184,7 @@ impl Field {
                         }
                     },
                 }
-            },
+            }
             Kind::Optional(..) => {
                 let msg = match (&self.as_msg, &self.to_msg) {
                     (Some(as_msg), _) => quote!(#as_msg(&#ident)),
@@ -250,7 +235,7 @@ impl Field {
                             .collect::<::prost::alloc::vec::Vec<_>>()
                             .as_ref()
                     },
-                    (None, None) => quote!(&#ident)
+                    (None, None) => quote!(&#ident),
                 };
 
                 quote! {
@@ -280,8 +265,8 @@ impl Field {
                 }},
                 (None, None) => quote! {
                     #encoding_mod::merge(wire_type, #ident, buf, ctx)
-                }
-            }
+                },
+            },
             Kind::Optional(..) => match (&self.from_msg, &self.merge_msg) {
                 (_, Some(merge_msg)) => quote! {{
                     let mut msg = Default::default();
@@ -301,7 +286,7 @@ impl Field {
                         ctx,
                     )
                 },
-            }
+            },
             Kind::Repeated | Kind::Packed => match (&self.from_msg, &self.merge_msg) {
                 (Some(from_msg), _) => quote! {{
                     let mut msg = Default::default();
@@ -319,7 +304,7 @@ impl Field {
                 }},
                 (None, None) => quote! {
                     #encoding_mod::merge_repeated(wire_type, #ident, buf, ctx)
-                }
+                },
             },
         }
     }
@@ -356,7 +341,7 @@ impl Field {
                         } else {
                             0
                         }
-                    }
+                    },
                 }
             }
             Kind::Optional(..) => {
@@ -405,7 +390,7 @@ impl Field {
                             .collect::<::prost::alloc::vec::Vec<_>>()
                             .as_ref()
                     },
-                    (None, None) => quote!(&#ident)
+                    (None, None) => quote!(&#ident),
                 };
 
                 quote! {
@@ -438,7 +423,7 @@ impl Field {
                 },
                 (None, None) => quote! {
                     #ident = ::core::option::Option::None
-                }
+                },
             },
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
@@ -472,7 +457,7 @@ impl Field {
                 (None, None) => quote! {
                     ::core::option::Option::None
                 },
-            }
+            },
             Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
     }
@@ -535,7 +520,7 @@ impl Field {
                             ::core::fmt::Debug::fmt(&self.0.as_ref().map(Inner), f)
                         }
                     }
-                }
+                },
             },
             Kind::Repeated | Kind::Packed => match (&self.as_msg, &self.to_msg) {
                 (Some(msg_fn), _) | (None, Some(msg_fn)) => quote! {

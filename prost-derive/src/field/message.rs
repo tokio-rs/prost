@@ -4,15 +4,8 @@ use quote::{quote, ToTokens};
 use syn::{Expr, Meta};
 
 use crate::field::{
-    as_msg_attr,
-    from_msg_attr,
-    merge_msg_attr,
-    set_bool,
-    set_option,
-    tag_attr,
-    to_msg_attr,
-    word_attr,
-    Label,
+    as_msg_attr, from_msg_attr, merge_msg_attr, set_bool, set_option, tag_attr, to_msg_attr,
+    word_attr, Label,
 };
 
 #[derive(Clone)]
@@ -77,7 +70,7 @@ impl Field {
             Some(tag) => tag,
             None => bail!("message field is missing a tag attribute"),
         };
-        
+
         ensure!(
             (as_msg.is_none() && to_msg.is_none()) || (from_msg.is_some() || merge_msg.is_some()),
             "missing from_msg or merge_msg attribute",
@@ -101,8 +94,10 @@ impl Field {
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         if let Some(mut field) = Field::new(attrs, None)? {
             ensure!(
-                field.as_msg.is_none() && field.to_msg.is_none()
-                    && field.from_msg.is_none() && field.merge_msg.is_none(),
+                field.as_msg.is_none()
+                    && field.to_msg.is_none()
+                    && field.from_msg.is_none()
+                    && field.merge_msg.is_none(),
                 "oneof messages cannot have as_msg, to_msg, from_msg, or merge_msg attributes",
             );
 
@@ -198,7 +193,7 @@ impl Field {
                 }},
                 (None, None) => quote! {
                     ::prost::encoding::message::merge(wire_type, #ident, buf, ctx)
-                }
+                },
             },
             Label::Repeated => match (&self.from_msg, &self.merge_msg) {
                 (Some(from_msg), _) => quote! {{
@@ -216,8 +211,8 @@ impl Field {
                 }},
                 (None, None) => quote! {{
                     ::prost::encoding::message::merge_repeated(wire_type, #ident, buf, ctx)
-                }}
-            }
+                }},
+            },
         }
     }
 
@@ -274,13 +269,13 @@ impl Field {
                 },
                 (None, None) => quote! {
                     #ident = ::core::option::Option::None
-                }
+                },
             },
             Label::Required => match (&self.from_msg, &self.merge_msg) {
                 (_, Some(merge_msg)) => quote!(#merge_msg(&mut #ident, Default::default())),
                 (Some(from_msg), None) => quote!(#ident = #from_msg(Default::default())),
                 (None, None) => quote!(#ident.clear()),
-            }
+            },
             Label::Repeated => quote!(#ident.clear()),
         }
     }
