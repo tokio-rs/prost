@@ -81,7 +81,7 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
-/// Issue https://github.com/danburkert/prost/issues/118
+/// Issue https://github.com/tokio-rs/prost/issues/118
 ///
 /// When a message contains an enum field with a default value, we
 /// must ensure that the appropriate name conventions are used.
@@ -503,7 +503,7 @@ mod tests {
         // Checks that skip_field will error appropriately when given a big stack of StartGroup
         // tags. When the no-recursion-limit feature is enabled this results in stack overflow.
         //
-        // https://github.com/danburkert/prost/issues/267
+        // https://github.com/tokio-rs/prost/issues/267
         let buf = vec![b'C'; 1 << 20];
         <() as Message>::decode(&buf[..]).err().unwrap();
     }
