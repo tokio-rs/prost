@@ -10,7 +10,7 @@ use std::slice;
 use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Expr, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Type};
+use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Type};
 
 #[derive(Clone)]
 pub enum Field {
@@ -58,7 +58,7 @@ impl Field {
 
             let field = if let Some(field) = scalar::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Scalar(field)
-            } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
+            } else if let Some(field) = message::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Message(field)
             } else if let Some(field) = map::Field::new(&field_ty, &attrs, inferred_tag)? {
                 Field::Map(field)
@@ -429,7 +429,7 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
 
 macro_rules! path_attr {
     ($fn:ident, $attr:literal) => {
-        fn $fn(attr: &Meta) -> Result<Option<Expr>, Error> {
+        fn $fn(attr: &Meta) -> Result<Option<TokenStream>, Error> {
             if !attr.path().is_ident($attr) {
                 return Ok(None);
             }

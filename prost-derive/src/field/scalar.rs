@@ -4,9 +4,7 @@ use std::fmt;
 use anyhow::{anyhow, bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{
-    parse_str, Expr, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type,
-};
+use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type};
 
 use crate::field::{
     as_msg_attr, bool_attr, from_msg_attr, merge_msg_attr, set_option, tag_attr, to_msg_attr, Label,
@@ -19,10 +17,10 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
-    pub as_msg: Option<Expr>,
-    pub to_msg: Option<Expr>,
-    pub from_msg: Option<Expr>,
-    pub merge_msg: Option<Expr>,
+    pub as_msg: Option<TokenStream>,
+    pub to_msg: Option<TokenStream>,
+    pub from_msg: Option<TokenStream>,
+    pub merge_msg: Option<TokenStream>,
 }
 
 impl Field {
@@ -524,11 +522,11 @@ impl Field {
             },
             Kind::Repeated | Kind::Packed => match (&self.as_msg, &self.to_msg) {
                 (Some(msg_fn), _) | (None, Some(msg_fn)) => quote! {
-                    struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#field_ty>);
+                    struct #wrapper_name<'a>(&'a #field_ty);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
-                            for v in &self.0 {
+                            for v in self.0 {
                                 vec_builder.entry(&#msg_fn(v));
                             }
                             vec_builder.finish()

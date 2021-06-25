@@ -1,7 +1,7 @@
 use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Expr, Meta};
+use syn::{Meta, Type};
 
 use crate::field::{
     as_msg_attr, from_msg_attr, merge_msg_attr, set_bool, set_option, tag_attr, to_msg_attr,
@@ -10,16 +10,21 @@ use crate::field::{
 
 #[derive(Clone)]
 pub struct Field {
+    pub field_ty: Type,
     pub label: Label,
     pub tag: u32,
-    pub as_msg: Option<Expr>,
-    pub to_msg: Option<Expr>,
-    pub from_msg: Option<Expr>,
-    pub merge_msg: Option<Expr>,
+    pub as_msg: Option<TokenStream>,
+    pub to_msg: Option<TokenStream>,
+    pub from_msg: Option<TokenStream>,
+    pub merge_msg: Option<TokenStream>,
 }
 
 impl Field {
-    pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
+    pub fn new(
+        field_ty: &Type,
+        attrs: &[Meta],
+        inferred_tag: Option<u32>,
+    ) -> Result<Option<Field>, Error> {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
@@ -82,6 +87,7 @@ impl Field {
         );
 
         Ok(Some(Field {
+            field_ty: field_ty.clone(),
             label: label.unwrap_or(Label::Optional),
             tag,
             as_msg,
@@ -92,7 +98,7 @@ impl Field {
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(attrs, None)? {
+        if let Some(mut field) = Field::new(&Type::Verbatim(quote!()), attrs, None)? {
             ensure!(
                 field.as_msg.is_none()
                     && field.to_msg.is_none()
@@ -281,10 +287,30 @@ impl Field {
     }
 
     pub fn debug(&self, ident: TokenStream) -> TokenStream {
-        match (&self.as_msg, &self.to_msg) {
-            (Some(as_msg), _) => quote!(#as_msg(&#ident)),
-            (None, Some(to_msg)) => quote!(&#to_msg(&#ident)),
-            (None, None) => quote!(&#ident),
+        match self.label {
+            Label::Optional | Label::Required => match (&self.as_msg, &self.to_msg) {
+                (Some(msg_fn), _) | (None, Some(msg_fn)) => quote!(&#msg_fn(&#ident)),
+                (None, None) => quote!(&#ident),
+            }
+            Label::Repeated => match (&self.as_msg, &self.to_msg) {
+                (Some(msg_fn), _) | (None, Some(msg_fn)) => {
+                    let field_ty = &self.field_ty;
+                    quote! {{
+                        struct RepeatedWrapper<'a>(&'a #field_ty);
+                        impl<'a> ::core::fmt::Debug for RepeatedWrapper<'a> {
+                            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                                let mut vec_builder = f.debug_list();
+                                for v in self.0 {
+                                    vec_builder.entry(&#msg_fn(v));
+                                }
+                                vec_builder.finish()
+                            }
+                        }
+                        RepeatedWrapper(&#ident)
+                    }}
+                }
+                (None, None) => quote!(&#ident),
+            }
         }
     }
 }

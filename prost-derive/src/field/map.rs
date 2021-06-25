@@ -2,8 +2,8 @@ use anyhow::{bail, ensure, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    AngleBracketedGenericArguments, Expr, GenericArgument, Ident, Lit, Meta, MetaNameValue,
-    NestedMeta, Path, PathArguments, PathSegment, Type, TypePath,
+    AngleBracketedGenericArguments, GenericArgument, Ident, Lit, Meta, MetaNameValue, NestedMeta,
+    Path, PathArguments, PathSegment, Type, TypePath,
 };
 
 use crate::field::{
@@ -61,10 +61,10 @@ pub struct Field {
     pub key_ty: scalar::Ty,
     pub value_ty: ValueTy,
     pub tag: u32,
-    pub as_msg: Option<Expr>,
-    pub to_msg: Option<Expr>,
-    pub from_msg: Option<Expr>,
-    pub merge_msg: Option<Expr>,
+    pub as_msg: Option<TokenStream>,
+    pub to_msg: Option<TokenStream>,
+    pub from_msg: Option<TokenStream>,
+    pub merge_msg: Option<TokenStream>,
 }
 
 impl Field {
