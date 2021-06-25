@@ -40,6 +40,10 @@ mod generic_derive;
 #[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
+mod msg_fns;
+#[cfg(test)]
+mod no_traits;
+#[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
 mod well_known_types;
