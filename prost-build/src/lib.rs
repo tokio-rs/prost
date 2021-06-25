@@ -116,7 +116,7 @@ mod ident;
 mod message_graph;
 mod path;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::default;
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -126,6 +126,7 @@ use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use itertools::Itertools;
 use log::trace;
 use prost::Message;
 use prost_types::compiler::code_generator_response::File;
@@ -139,6 +140,7 @@ use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
 
 type Module = Vec<String>;
+type DepMap = BTreeMap<String, BTreeSet<String>>;
 
 /// A service generator takes a service descriptor and generates Rust code.
 ///
@@ -226,7 +228,8 @@ const DISABLE_COMMENTS: &str = "disable_comments";
 const EXTERN_PATH: &str = "extern_path";
 const RETAIN_ENUM_PREFIX: &str = "retain_enum_prefix";
 const INCLUDE_FILE: &str = "include_file";
-pub const PROTOC_OPTS: [&str; 9] = [
+const GEN_CRATE: &str = "gen_crate";
+pub const PROTOC_OPTS: [&str; 10] = [
     BTREE_MAP,
     BYTES,
     FIELD_ATTR,
@@ -236,6 +239,7 @@ pub const PROTOC_OPTS: [&str; 9] = [
     EXTERN_PATH,
     RETAIN_ENUM_PREFIX,
     INCLUDE_FILE,
+    GEN_CRATE,
 ];
 
 /// Configuration options for Protobuf code generation.
@@ -257,6 +261,7 @@ pub struct Config {
     disable_comments: PathMap<()>,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
+    manifest_tpl: Option<PathBuf>,
 }
 
 impl Config {
@@ -298,6 +303,7 @@ impl Config {
                 [EXTERN_PATH, k, v] => self.extern_paths.push((k.to_string(), v.to_string())),
                 [RETAIN_ENUM_PREFIX] => self.strip_enum_prefix = false,
                 [INCLUDE_FILE, v] => self.include_file = Some(v.into()),
+                [GEN_CRATE, v] => self.manifest_tpl = Some(v.into()),
                 _ if log_unknown => eprintln!("prost: Unknown option `{}`", full_opt),
                 _ => (),
             }
@@ -808,6 +814,38 @@ impl Config {
         self
     }
 
+    /// Generate a full crate based on a `Cargo.toml` template.
+    ///
+    /// The output directory will contain the crate and not the built files directly, which will be
+    /// in the `gen/` folder. Each `proto` package will get its own feature flag, with proper
+    /// dependency solving.
+    /// The `Cargo.toml` must contain `{{ features }}` string where all crate features will be
+    /// inserted.
+    ///
+    /// # Example `Cargo.toml.tpl`
+    ///
+    /// ```toml
+    /// [package]
+    /// name = "my-grpc"
+    /// version = "1.0.0"
+    /// edition = "2018"
+    ///
+    /// [dependencies]
+    /// prost = "0.7"
+    /// prost-types = "0.7"
+    /// tonic = "0.4"
+    ///
+    /// [features]
+    /// {{ features }}
+    /// ```
+    pub fn generate_crate<P>(&mut self, manifest_template: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.manifest_tpl = Some(manifest_template.into());
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -913,13 +951,7 @@ impl Config {
 
         let modules = self.generate(file_descriptor_set.file)?;
         for (module, content) in &modules {
-            let mut filename = if module.is_empty() {
-                self.default_package_filename.clone()
-            } else {
-                module.join(".")
-            };
-
-            filename.push_str(".rs");
+            let filename = self.filename(module);
 
             let output_path = target.join(&filename);
 
@@ -948,22 +980,17 @@ impl Config {
             out.push('\n');
         }
 
+        // This is needed to get a stable output
+        entries.sort();
+
         let mut written = 0;
         while !entries.is_empty() {
             let modident = &entries[0][depth];
-            let matching: Vec<&Module> = entries
-                .iter()
-                .filter(|&v| &v[depth] == modident)
-                .copied()
-                .collect();
-            {
-                // Will NLL sort this mess out?
-                let _temp = entries
-                    .drain(..)
-                    .filter(|&v| &v[depth] != modident)
-                    .collect();
-                entries = _temp;
-            }
+            let (matching, left) = entries
+                .into_iter()
+                .partition::<Vec<_>, _>(|&v| &v[depth] == modident);
+            entries = left;
+
             write_line(out, depth, &format!("pub mod {} {{", modident));
             let subwritten = self.write_includes(
                 matching
@@ -977,7 +1004,23 @@ impl Config {
             written += subwritten;
             if subwritten != matching.len() {
                 let modname = matching[0][..=depth].join(".");
-                write_line(out, depth + 1, &format!(r#"include!("./{}.rs");"#, modname));
+
+                if self.manifest_tpl.is_some() {
+                    // Raw idents are useless for feature names as there are no reserved keywords
+                    let featname = modname.replace("r#", "");
+                    write_line(
+                        out,
+                        depth + 1,
+                        &format!(r#"#[cfg(feature = "{}")]"#, featname),
+                    );
+                    write_line(
+                        out,
+                        depth + 1,
+                        &format!(r#"include!("../gen/{}.rs");"#, modname),
+                    );
+                } else {
+                    write_line(out, depth + 1, &format!(r#"include!("./{}.rs");"#, modname));
+                }
                 written += 1;
             }
 
@@ -986,13 +1029,24 @@ impl Config {
         written
     }
 
+    fn write_manifest(&self, template: PathBuf, deps: DepMap, out: &mut String) {
+        let template = std::fs::read_to_string(template).expect("Failed to open manifest template");
+
+        let deps = deps
+            .into_iter()
+            .map(|(f, deps)| (f, deps.iter().map(|dep| format!(r#""{}""#, dep)).join(", ")))
+            .map(|(feat, deps)| format!(r#""{}" = [{}]"#, feat, deps))
+            .join("\n");
+        out.push_str(&template.replace("{{ features }}", &deps));
+    }
+
     /// Compile `.proto` code into Rust code from a protoc build with additional code generator
     /// configuration options.
     pub fn compile_request(&mut self, req: CodeGeneratorRequest) -> CodeGeneratorResponse {
         match self.generate(req.proto_file) {
             Ok(modules) => {
                 let f = modules.into_iter().map(|(module, content)| File {
-                    name: Some(module.join(".") + ".rs"),
+                    name: Some(self.filename(&module)),
                     insertion_point: None,
                     content: Some(content),
                     generated_code_info: None,
@@ -1011,9 +1065,28 @@ impl Config {
         }
     }
 
+    fn filename(&self, module: &Module) -> String {
+        let (prefix, suffix) = match (self.manifest_tpl.is_some(), module.as_slice()) {
+            (true, [n]) if n == &self.lib_module() => ("src/", ".rs"),
+            (true, [n]) if n == "Cargo.toml" => ("", ""),
+            (true, _) => ("gen/", ".rs"),
+            (false, _) => ("", ".rs"),
+        };
+        let module = if module.is_empty() {
+            self.default_package_filename.clone()
+        } else {
+            module.join(".")
+        };
+        prefix.to_owned() + &module + suffix
+    }
+
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
+        let deps = match self.manifest_tpl {
+            Some(_) => self.build_deps(&files),
+            None => Default::default(),
+        };
 
         let message_graph = MessageGraph::new(&files)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
@@ -1039,15 +1112,18 @@ impl Config {
             }
         }
 
-        if let Some(mut include_file) = self.include_file.clone() {
+        if self.include_file.is_some() || self.manifest_tpl.is_some() {
+            let include_file = self.lib_module();
             trace!("Generate include file: {:?}", include_file);
-
-            // Caller will add the .rs extension, so remove it if specified.
-            include_file.set_extension("");
 
             let mut include = String::new();
             self.write_includes(modules.keys().collect(), &mut include, 0);
-            modules.insert(vec![include_file.to_str().unwrap().to_owned()], include);
+            modules.insert(vec![include_file], include);
+        }
+
+        if let Some(tpl) = self.manifest_tpl.clone() {
+            let mut buf = modules.entry(vec!["Cargo.toml".to_owned()]).or_default();
+            self.write_manifest(tpl, deps, &mut buf);
         }
 
         Ok(modules)
@@ -1059,6 +1135,32 @@ impl Config {
             .filter(|s| !s.is_empty())
             .map(to_snake)
             .collect()
+    }
+
+    fn build_deps(&self, files: &[FileDescriptorProto]) -> DepMap {
+        let names: HashMap<_, _> = files
+            .iter()
+            .map(|file| (file.name().to_owned(), file.package().to_owned()))
+            .collect();
+        let mut deps: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+        for file in files {
+            let names = file
+                .dependency
+                .iter()
+                .filter_map(|dep| names.get(dep))
+                .filter(|dep| *dep != file.package())
+                .cloned();
+            deps.entry(file.package().to_owned())
+                .or_default()
+                .extend(names);
+        }
+        deps
+    }
+
+    fn lib_module(&self) -> String {
+        let mut file = self.include_file.clone().unwrap_or_else(|| "lib.rs".into());
+        file.set_extension("");
+        file.to_str().unwrap().to_owned()
     }
 }
 
@@ -1080,6 +1182,7 @@ impl default::Default for Config {
             disable_comments: PathMap::default(),
             skip_protoc_run: false,
             include_file: None,
+            manifest_tpl: None,
         }
     }
 }
