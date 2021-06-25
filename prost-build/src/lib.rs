@@ -217,6 +217,27 @@ impl Default for BytesType {
     }
 }
 
+const BTREE_MAP: &str = "btree_map";
+const BYTES: &str = "bytes";
+const FIELD_ATTR: &str = "field_attr";
+const TYPE_ATTR: &str = "type_attr";
+const COMPILE_WELL_KNOWN_TYPES: &str = "compile_well_known_types";
+const DISABLE_COMMENTS: &str = "disable_comments";
+const EXTERN_PATH: &str = "extern_path";
+const RETAIN_ENUM_PREFIX: &str = "retain_enum_prefix";
+const INCLUDE_FILE: &str = "include_file";
+pub const PROTOC_OPTS: [&str; 9] = [
+    BTREE_MAP,
+    BYTES,
+    FIELD_ATTR,
+    TYPE_ATTR,
+    COMPILE_WELL_KNOWN_TYPES,
+    DISABLE_COMMENTS,
+    EXTERN_PATH,
+    RETAIN_ENUM_PREFIX,
+    INCLUDE_FILE,
+];
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
@@ -242,6 +263,48 @@ impl Config {
     /// Creates a new code generator configuration with default options.
     pub fn new() -> Config {
         Config::default()
+    }
+
+    /// Creates a new code generator configuration with default options, overriden from parameters
+    /// passed to the protoc command line.
+    ///
+    /// Format is opt1=value,opt2=value
+    pub fn new_from_opts(opts: &str, log_unknown: bool) -> Config {
+        let mut cfg = Config::new();
+        cfg.opts(opts, log_unknown);
+        cfg
+    }
+
+    /// Configure the code generator with the inlined options. To be used by protoc plugins.
+    ///
+    /// Format is opt1=value,opt2=value
+    pub fn opts(&mut self, opts: &str, log_unknown: bool) -> &mut Config {
+        let mut full_opt = String::new();
+        for opt in opts.split(',') {
+            full_opt.push_str(opt.strip_suffix('\\').unwrap_or(opt));
+            if opt.ends_with('\\') {
+                full_opt.push(',');
+                continue;
+            }
+
+            match full_opt.splitn(3, '=').collect::<Vec<_>>().as_slice() {
+                [""] => (),
+                [BTREE_MAP, v] => self.map_type.insert(v.to_string(), MapType::BTreeMap),
+                [BYTES, v] => self.bytes_type.insert(v.to_string(), BytesType::Bytes),
+                [FIELD_ATTR, k, v] => self.field_attributes.insert(k.to_string(), v.to_string()),
+                [TYPE_ATTR, k, v] => self.type_attributes.insert(k.to_string(), v.to_string()),
+                [COMPILE_WELL_KNOWN_TYPES] => self.prost_types = false,
+                [DISABLE_COMMENTS, v] => self.disable_comments.insert(v.to_string(), ()),
+                [EXTERN_PATH, k, v] => self.extern_paths.push((k.to_string(), v.to_string())),
+                [RETAIN_ENUM_PREFIX] => self.strip_enum_prefix = false,
+                [INCLUDE_FILE, v] => self.include_file = Some(v.into()),
+                _ if log_unknown => eprintln!("prost: Unknown option `{}`", full_opt),
+                _ => (),
+            }
+
+            full_opt = String::new();
+        }
+        self
     }
 
     /// Configure the code generator to generate Rust [`BTreeMap`][1] fields for Protobuf
