@@ -128,7 +128,8 @@ use std::process::Command;
 
 use log::trace;
 use prost::Message;
-use prost_types::{FileDescriptorProto, FileDescriptorSet};
+use prost_types::compiler::code_generator_response::File;
+use prost_types::{compiler::*, FileDescriptorProto, FileDescriptorSet};
 
 pub use crate::ast::{Comments, Method, Service};
 use crate::code_generator::CodeGenerator;
@@ -920,6 +921,31 @@ impl Config {
             write_line(out, depth, "}");
         }
         written
+    }
+
+    /// Compile `.proto` code into Rust code from a protoc build with additional code generator
+    /// configuration options.
+    pub fn compile_request(&mut self, req: CodeGeneratorRequest) -> CodeGeneratorResponse {
+        match self.generate(req.proto_file) {
+            Ok(modules) => {
+                let f = modules.into_iter().map(|(module, content)| File {
+                    name: Some(module.join(".") + ".rs"),
+                    insertion_point: None,
+                    content: Some(content),
+                    generated_code_info: None,
+                });
+                CodeGeneratorResponse {
+                    error: None,
+                    supported_features: None,
+                    file: f.collect(),
+                }
+            }
+            Err(e) => CodeGeneratorResponse {
+                error: Some(e.to_string()),
+                supported_features: None,
+                file: Vec::new(),
+            },
+        }
     }
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
