@@ -1,4 +1,5 @@
 use prost::Message;
+use std::collections::HashMap;
 
 #[derive(PartialEq, prost::Message)]
 struct WithMsgFns {
@@ -61,6 +62,13 @@ struct WithMsgFns {
         from_msg = "Option::Some"
     )]
     unwrap_repeated: Vec<Option<Msg>>,
+    #[prost(
+        map = "uint32, uint32",
+        tag = "9",
+        to_msg = "(|m: &Msg| m.field)",
+        from_msg = "(|field: u32| Msg { field })"
+    )]
+    map: HashMap<u32, Msg>,
 }
 
 #[derive(PartialEq, prost::Message)]
@@ -81,6 +89,8 @@ struct WithoutMsgFns {
     unwrap: Msg,
     #[prost(message, repeated, tag = "8")]
     unwrap_repated: Vec<Msg>,
+    #[prost(map = "uint32, uint32", tag = "9")]
+    map: HashMap<u32, u32>,
 }
 
 #[derive(Clone, PartialEq, prost::Message)]
@@ -121,9 +131,10 @@ fn msg_fns() {
             Some(Msg { field: 8 }),
             Some(Msg { field: 9 }),
         ],
+        map: HashMap::new(),
     };
 
-    let without_msg_fns = WithoutMsgFns {
+    let mut without_msg_fns = WithoutMsgFns {
         tuple_left: with_msg_fns.tuple.0,
         tuple_right: with_msg_fns.tuple.1.clone(),
         neg_to_pos: with_msg_fns.neg_to_pos.abs() as u32,
@@ -140,7 +151,13 @@ fn msg_fns() {
             .iter()
             .map(|msg| msg.clone().unwrap())
             .collect(),
+        map: HashMap::new(),
     };
+
+    for i in 0..3 {
+        with_msg_fns.map.insert(10 + i * 2, Msg { field: 11 + i * 2 });
+        without_msg_fns.map.insert(10 + i * 2, 11 + i * 2);
+    }
 
     let mut with_msg_fns_buf = Vec::with_capacity(with_msg_fns.encoded_len());
     let mut without_msg_fns_buf = Vec::with_capacity(without_msg_fns.encoded_len());
