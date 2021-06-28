@@ -1,5 +1,5 @@
 use prost::Message;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(PartialEq, prost::Message)]
 struct WithMsgFns {
@@ -42,14 +42,22 @@ struct WithMsgFns {
         message,
         repeated,
         tag = "6",
+        to_msgs = "(|m: &Msgs| m.msgs.iter().map(|m| m.field as u32).collect::<Vec<_>>())",
+        merge_msg = "(|m: &mut Msgs, field: u32| m.msgs.push(Msg { field }))"
+    )]
+    nested_repeated: Msgs,
+    #[prost(
+        message,
+        repeated,
+        tag = "7",
         to_msg = "(|m: &Msg| m.field)",
         from_msg = "(|field: u32| Msg { field })"
     )]
-    nested_repeated: Vec<Msg>,
+    nested_repeated_vec: Vec<Msg>,
     #[prost(
         message,
         required,
-        tag = "7",
+        tag = "8",
         as_msg = "as_ref_unwrap",
         from_msg = "Option::Some"
     )]
@@ -57,18 +65,18 @@ struct WithMsgFns {
     #[prost(
         message,
         repeated,
-        tag = "8",
+        tag = "9",
         as_msg = "as_ref_unwrap",
         from_msg = "Option::Some"
     )]
     unwrap_repeated: Vec<Option<Msg>>,
     #[prost(
-        map = "uint32, uint32",
-        tag = "9",
+        btree_map = "uint32, uint32",
+        tag = "10",
         to_msg = "(|m: &Msg| m.field)",
         from_msg = "(|field: u32| Msg { field })"
     )]
-    map: HashMap<u32, Msg>,
+    map: BTreeMap<u32, Msg>,
 }
 
 #[derive(PartialEq, prost::Message)]
@@ -85,18 +93,25 @@ struct WithoutMsgFns {
     nested: u32,
     #[prost(message, repeated, tag = "6")]
     nested_repeated: Vec<u32>,
-    #[prost(message, required, tag = "7")]
+    #[prost(message, repeated, tag = "7")]
+    nested_repeated_vec: Vec<u32>,
+    #[prost(message, required, tag = "8")]
     unwrap: Msg,
-    #[prost(message, repeated, tag = "8")]
+    #[prost(message, repeated, tag = "9")]
     unwrap_repated: Vec<Msg>,
-    #[prost(map = "uint32, uint32", tag = "9")]
-    map: HashMap<u32, u32>,
+    #[prost(btree_map = "uint32, uint32", tag = "10")]
+    map: BTreeMap<u32, u32>,
 }
 
 #[derive(Clone, PartialEq, prost::Message)]
 struct Msg {
     #[prost(uint32, tag = "1")]
     field: u32,
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+struct Msgs {
+    msgs: Vec<Msg>,
 }
 
 fn get_tuple_left(tuple: &(u32, String)) -> &u32 {
@@ -122,16 +137,22 @@ fn msg_fns() {
         neg_to_pos: -2,
         none: Some(3),
         nested: Msg { field: 4 },
-        nested_repeated: vec![
-            Msg { field: 5 },
-            Msg { field: 6 },
+        nested_repeated: Msgs {
+            msgs: vec! [
+                Msg { field: 5 },
+                Msg { field: 6 },
+            ],
+        },
+        nested_repeated_vec: vec![
+            Msg { field: 7 },
+            Msg { field: 8 },
         ],
-        unwrap: Some(Msg { field: 7 }),
+        unwrap: Some(Msg { field: 9 }),
         unwrap_repeated: vec![
-            Some(Msg { field: 8 }),
-            Some(Msg { field: 9 }),
+            Some(Msg { field: 10 }),
+            Some(Msg { field: 11 }),
         ],
-        map: HashMap::new(),
+        map: BTreeMap::new(),
     };
 
     let mut without_msg_fns = WithoutMsgFns {
@@ -142,6 +163,12 @@ fn msg_fns() {
         nested: with_msg_fns.nested.field,
         nested_repeated: with_msg_fns
             .nested_repeated
+            .msgs
+            .iter()
+            .map(|msg| msg.field)
+            .collect(),
+        nested_repeated_vec: with_msg_fns
+            .nested_repeated_vec
             .iter()
             .map(|msg| msg.field)
             .collect(),
@@ -151,12 +178,15 @@ fn msg_fns() {
             .iter()
             .map(|msg| msg.clone().unwrap())
             .collect(),
-        map: HashMap::new(),
+        map: BTreeMap::new(),
     };
 
     for i in 0..3 {
-        with_msg_fns.map.insert(10 + i * 2, Msg { field: 11 + i * 2 });
-        without_msg_fns.map.insert(10 + i * 2, 11 + i * 2);
+        let k = 12 + i * 2;
+        let v = k + 1;
+
+        with_msg_fns.map.insert(k, Msg { field: v });
+        without_msg_fns.map.insert(k, v);
     }
 
     let mut with_msg_fns_buf = Vec::with_capacity(with_msg_fns.encoded_len());

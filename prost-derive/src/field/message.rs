@@ -4,8 +4,8 @@ use quote::{quote, ToTokens};
 use syn::{Meta, Type};
 
 use crate::field::{
-    as_msg_attr, from_msg_attr, merge_msg_attr, set_bool, set_option, tag_attr, to_msg_attr,
-    word_attr, Label,
+    as_msg_attr, as_msgs_attr, from_msg_attr, merge_msg_attr, set_bool, set_option, tag_attr,
+    to_msg_attr, to_msgs_attr, word_attr, Label,
 };
 
 #[derive(Clone)]
@@ -14,7 +14,9 @@ pub struct Field {
     pub label: Label,
     pub tag: u32,
     pub as_msg: Option<TokenStream>,
+    pub as_msgs: Option<TokenStream>,
     pub to_msg: Option<TokenStream>,
+    pub to_msgs: Option<TokenStream>,
     pub from_msg: Option<TokenStream>,
     pub merge_msg: Option<TokenStream>,
 }
@@ -29,7 +31,9 @@ impl Field {
         let mut label = None;
         let mut tag = None;
         let mut as_msg = None;
+        let mut as_msgs = None;
         let mut to_msg = None;
+        let mut to_msgs = None;
         let mut from_msg = None;
         let mut merge_msg = None;
         let mut boxed = false;
@@ -47,8 +51,12 @@ impl Field {
                 set_option(&mut label, l, "duplicate label attributes")?;
             } else if let Some(a) = as_msg_attr(attr)? {
                 set_option(&mut as_msg, a, "duplicate as_msg attributes")?;
+            } else if let Some(a) = as_msgs_attr(attr)? {
+                set_option(&mut as_msgs, a, "duplicate as_msgs attributes")?;
             } else if let Some(t) = to_msg_attr(attr)? {
                 set_option(&mut to_msg, t, "duplicate to_msg attributes")?;
+            } else if let Some(t) = to_msgs_attr(attr)? {
+                set_option(&mut to_msgs, t, "duplicate to_msgs attributes")?;
             } else if let Some(f) = from_msg_attr(attr)? {
                 set_option(&mut from_msg, f, "duplicate from_msg attributes")?;
             } else if let Some(m) = merge_msg_attr(attr)? {
@@ -76,22 +84,55 @@ impl Field {
             None => bail!("message field is missing a tag attribute"),
         };
 
-        ensure!(
-            (as_msg.is_none() && to_msg.is_none()) || (from_msg.is_some() || merge_msg.is_some()),
-            "missing from_msg or merge_msg attribute",
-        );
+        if let Some(Label::Repeated) = label {
+            let converting = as_msg.is_some() || as_msgs.is_some()
+                || to_msg.is_some() || to_msgs.is_some()
+                || from_msg.is_some() || merge_msg.is_some();
 
-        ensure!(
-            (from_msg.is_none() && merge_msg.is_none()) || (as_msg.is_some() || to_msg.is_some()),
-            "missing as_msg or to_msg attribute",
-        );
+            ensure!(
+                !converting
+                    || as_msg.is_some() || as_msgs.is_some()
+                    || to_msg.is_some() || to_msgs.is_some(),
+                "missing as_msg, as_msgs, to_msg, or to_msgs attribute",
+            );
+
+            ensure!(
+                !converting || (as_msgs.is_none() && to_msgs.is_none()) || merge_msg.is_some(),
+                "missing merge_msg attribute",
+            );
+
+            ensure!(
+                !converting || from_msg.is_some() || merge_msg.is_some(),
+                "missing from_msg, or merge_msg attribute",
+            );
+        } else {
+            ensure!(
+                as_msgs.is_none() && to_msgs.is_none(),
+                "as_msgs and to_msgs attributes are only supported for repeated fields",
+            );
+
+            let converting = as_msg.is_some() || to_msg.is_some()
+                || from_msg.is_some() || merge_msg.is_some();
+
+            ensure!(
+                !converting || as_msg.is_some() || to_msg.is_some(),
+                "missing as_msg or to_msg attribute",
+            );
+
+            ensure!(
+                !converting || from_msg.is_some() || merge_msg.is_some(),
+                "missing from_msg or merge_msg attribute",
+            );
+        }
 
         Ok(Some(Field {
             field_ty: field_ty.clone(),
             label: label.unwrap_or(Label::Optional),
             tag,
             as_msg,
+            as_msgs,
             to_msg,
+            to_msgs,
             from_msg,
             merge_msg,
         }))
@@ -148,19 +189,26 @@ impl Field {
                     ::prost::encoding::message::encode(#tag, #msg, buf);
                 }
             }
-            Label::Repeated => {
-                let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
-                };
-
-                quote! {
-                    #ident.iter().for_each(|value| {
-                        ::prost::encoding::message::encode(#tag, #msg, buf);
+            Label::Repeated => match (&self.as_msgs, &self.to_msgs) {
+                (Some(msgs_fn), _) | (None, Some(msgs_fn)) => quote! {
+                    #msgs_fn(&#ident).iter().for_each(|value| {
+                        ::prost::encoding::message::encode(#tag, value, buf)
                     });
+                },
+                (None, None) => {
+                    let msg = match (&self.as_msg, &self.to_msg) {
+                        (Some(as_msg), _) => quote!(#as_msg(value)),
+                        (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                        (None, None) => quote!(value),
+                    };
+
+                    quote! {
+                        #ident.iter().for_each(|value| {
+                            ::prost::encoding::message::encode(#tag, #msg, buf);
+                        });
+                    }
                 }
-            }
+            },
         }
     }
 
@@ -202,10 +250,19 @@ impl Field {
                 },
             },
             Label::Repeated => match (&self.from_msg, &self.merge_msg) {
+                (_, Some(merge_msg)) if (
+                    self.as_msgs.is_some() || self.to_msgs.is_some()
+                ) => quote! {{
+                    let mut msg = Default::default();
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
+                        #merge_msg(#ident, msg);
+                    })
+                }},
                 (Some(from_msg), _) => quote! {{
                     let mut msg = Default::default();
-                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx)
-                        .map(|_| #ident.push(#from_msg(msg)))
+                    ::prost::encoding::message::merge(wire_type, &mut msg, buf, ctx).map(|_| {
+                        #ident.push(#from_msg(msg))
+                    })
                 }},
                 (None, Some(merge_msg)) => quote! {{
                     let mut msg = Default::default();
@@ -217,7 +274,7 @@ impl Field {
                 }},
                 (None, None) => quote! {{
                     ::prost::encoding::message::merge_repeated(wire_type, #ident, buf, ctx)
-                }},
+                }}
             },
         }
     }
@@ -248,19 +305,26 @@ impl Field {
                     ::prost::encoding::message::encoded_len(#tag, #msg)
                 }
             }
-            Label::Repeated => {
-                let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
-                };
-
-                quote! {
-                    #ident.iter().map(|value| {
-                        ::prost::encoding::message::encoded_len(#tag, #msg)
+            Label::Repeated => match (&self.as_msgs, &self.to_msgs) {
+                (Some(msgs_fn), _) | (None, Some(msgs_fn)) => quote! {
+                    #msgs_fn(&#ident).iter().map(|value| {
+                        ::prost::encoding::message::encoded_len(#tag, value)
                     }).sum::<usize>()
+                },
+                (None, None) => {
+                    let msg = match (&self.as_msg, &self.to_msg) {
+                        (Some(as_msg), _) => quote!(#as_msg(value)),
+                        (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                        (None, None) => quote!(value),
+                    };
+
+                    quote! {
+                        #ident.iter().map(|value| {
+                            ::prost::encoding::message::encoded_len(#tag, #msg)
+                        }).sum::<usize>()
+                    }
                 }
-            }
+            },
         }
     }
 
@@ -282,6 +346,9 @@ impl Field {
                 (Some(from_msg), None) => quote!(#ident = #from_msg(Default::default())),
                 (None, None) => quote!(#ident.clear()),
             },
+            Label::Repeated if self.as_msgs.is_some() || self.to_msgs.is_some() => quote! {
+                #ident = Default::default()
+            },
             Label::Repeated => quote!(#ident.clear()),
         }
     }
@@ -292,8 +359,9 @@ impl Field {
                 (Some(msg_fn), _) | (None, Some(msg_fn)) => quote!(&#msg_fn(&#ident)),
                 (None, None) => quote!(&#ident),
             }
-            Label::Repeated => match (&self.as_msg, &self.to_msg) {
-                (Some(msg_fn), _) | (None, Some(msg_fn)) => {
+            Label::Repeated => match (&self.as_msgs, &self.to_msgs, &self.as_msg, &self.to_msg) {
+                (Some(msgs_fn), _, _, _) | (None, Some(msgs_fn), _, _) => quote!(#msgs_fn(&#ident)),
+                (None, None, Some(msg_fn), _) | (None, None, None, Some(msg_fn)) => {
                     let field_ty = &self.field_ty;
                     quote! {{
                         struct RepeatedWrapper<'a>(&'a #field_ty);
@@ -309,7 +377,7 @@ impl Field {
                         RepeatedWrapper(&#ident)
                     }}
                 }
-                (None, None) => quote!(&#ident),
+                (None, None, None, None) => quote!(&#ident),
             }
         }
     }

@@ -449,3 +449,6 @@ path_attr!(as_msg_attr, "as_msg");
 path_attr!(to_msg_attr, "to_msg");
 path_attr!(from_msg_attr, "from_msg");
 path_attr!(merge_msg_attr, "merge_msg");
+
+path_attr!(as_msgs_attr, "as_msgs");
+path_attr!(to_msgs_attr, "to_msgs");

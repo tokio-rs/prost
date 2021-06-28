@@ -7,7 +7,8 @@ use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type};
 
 use crate::field::{
-    as_msg_attr, bool_attr, from_msg_attr, merge_msg_attr, set_option, tag_attr, to_msg_attr, Label,
+    as_msg_attr, as_msgs_attr, bool_attr, from_msg_attr, merge_msg_attr, set_option, tag_attr,
+    to_msg_attr, to_msgs_attr, Label,
 };
 
 /// A scalar protobuf field.
@@ -18,7 +19,9 @@ pub struct Field {
     pub kind: Kind,
     pub tag: u32,
     pub as_msg: Option<TokenStream>,
+    pub as_msgs: Option<TokenStream>,
     pub to_msg: Option<TokenStream>,
+    pub to_msgs: Option<TokenStream>,
     pub from_msg: Option<TokenStream>,
     pub merge_msg: Option<TokenStream>,
 }
@@ -35,7 +38,9 @@ impl Field {
         let mut default = None;
         let mut tag = None;
         let mut as_msg = None;
+        let mut as_msgs = None;
         let mut to_msg = None;
+        let mut to_msgs = None;
         let mut from_msg = None;
         let mut merge_msg = None;
 
@@ -54,8 +59,12 @@ impl Field {
                 set_option(&mut default, d, "duplicate default attributes")?;
             } else if let Some(a) = as_msg_attr(attr)? {
                 set_option(&mut as_msg, a, "duplicate as_msg attributes")?;
+            } else if let Some(a) = as_msgs_attr(attr)? {
+                set_option(&mut as_msgs, a, "duplicate as_msgs attributes")?;
             } else if let Some(t) = to_msg_attr(attr)? {
                 set_option(&mut to_msg, t, "duplicate to_msg attributes")?;
+            } else if let Some(t) = to_msgs_attr(attr)? {
+                set_option(&mut to_msgs, t, "duplicate to_msgs attributes")?;
             } else if let Some(f) = from_msg_attr(attr)? {
                 set_option(&mut from_msg, f, "duplicate from_msg attributes")?;
             } else if let Some(m) = merge_msg_attr(attr)? {
@@ -109,15 +118,49 @@ impl Field {
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        ensure!(
-            (as_msg.is_none() && to_msg.is_none()) || (from_msg.is_some() || merge_msg.is_some()),
-            "missing from_msg or merge_msg attribute",
-        );
+        match kind {
+            Kind::Repeated | Kind::Packed => {
+                let converting = as_msg.is_some() || as_msgs.is_some()
+                    || to_msg.is_some() || to_msgs.is_some()
+                    || from_msg.is_some() || merge_msg.is_some();
 
-        ensure!(
-            (from_msg.is_none() && merge_msg.is_none()) || (as_msg.is_some() || to_msg.is_some()),
-            "missing as_msg or to_msg attribute",
-        );
+                ensure!(
+                    !converting
+                        || as_msg.is_some() || as_msgs.is_some()
+                        || to_msg.is_some() || to_msgs.is_some(),
+                    "missing as_msg, as_msgs, to_msg, or to_msgs attribute",
+                );
+
+                ensure!(
+                    !converting || (as_msgs.is_none() && to_msgs.is_none()) || merge_msg.is_some(),
+                    "missing merge_msg attribute",
+                );
+
+                ensure!(
+                    !converting || from_msg.is_some() || merge_msg.is_some(),
+                    "missing from_msg, or merge_msg attribute",
+                );
+            }
+            _ => {
+                ensure!(
+                    as_msgs.is_none() && to_msgs.is_none(),
+                    "as_msgs and to_msgs attributes are only supported for repeated fields",
+                );
+
+                let converting = as_msg.is_some() || to_msg.is_some()
+                    || from_msg.is_some() || merge_msg.is_some();
+
+                ensure!(
+                    !converting || as_msg.is_some() || to_msg.is_some(),
+                    "missing as_msg or to_msg attribute",
+                );
+
+                ensure!(
+                    !converting || from_msg.is_some() || merge_msg.is_some(),
+                    "missing from_msg or merge_msg attribute",
+                );
+            }
+        }
 
         Ok(Some(Field {
             field_ty: field_ty.clone(),
@@ -125,7 +168,9 @@ impl Field {
             kind,
             tag,
             as_msg,
+            as_msgs,
             to_msg,
+            to_msgs,
             from_msg,
             merge_msg,
         }))
@@ -207,25 +252,40 @@ impl Field {
                     #encoding_mod::encode(#tag, &#ident, buf);
                 },
             },
-            Kind::Repeated => {
-                let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
-                };
+            Kind::Repeated => match (&self.as_msgs, &self.to_msgs) {
+                (Some(as_msgs), _) => quote! {
+                    for value in #as_msgs(&#ident) {
+                        #encoding_mod::encode(#tag, value, buf);
+                    }
+                },
+                (None, Some(to_msgs)) => quote! {
+                    for value in &#to_msgs(&#ident) {
+                        #encoding_mod::encode(#tag, value, buf);
+                    }
+                },
+                (None, None) => {
+                    let msg = match (&self.as_msg, &self.to_msg) {
+                        (Some(as_msg), _) => quote!(#as_msg(value)),
+                        (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                        (None, None) => quote!(value),
+                    };
 
-                quote! {
-                    for value in &#ident {
-                        #encoding_mod::encode(#tag, #msg, buf);
+                    quote! {
+                        for value in &#ident {
+                            #encoding_mod::encode(#tag, #msg, buf);
+                        }
                     }
                 }
             }
             Kind::Packed => {
-                let msg = match (&self.as_msg, &self.to_msg) {
-                    (_, Some(to_msg)) => quote! {
+                let msgs = match (&self.as_msgs, &self.to_msgs, &self.as_msg, &self.to_msg) {
+                    (Some(msgs_fn), _, _, _) | (None, Some(msgs_fn), _, _) => quote! {
+                        #msgs_fn(&#ident).as_ref()
+                    },
+                    (None, None, _, Some(to_msg)) => quote! {
                         #ident.iter().map(#to_msg).collect::<::prost::alloc::vec::Vec<_>>().as_ref()
                     },
-                    (Some(as_msg), None) => quote! {
+                    (None, None, Some(as_msg), None) => quote! {
                         #ident
                             .iter()
                             .map(#as_msg)
@@ -233,11 +293,11 @@ impl Field {
                             .collect::<::prost::alloc::vec::Vec<_>>()
                             .as_ref()
                     },
-                    (None, None) => quote!(&#ident),
+                    (None, None, None, None) => quote!(&#ident),
                 };
 
                 quote! {
-                    #encoding_mod::encode_packed(#tag, #msg, buf);
+                    #encoding_mod::encode_packed(#tag, #msgs, buf);
                 }
             }
         }
@@ -286,6 +346,14 @@ impl Field {
                 },
             },
             Kind::Repeated | Kind::Packed => match (&self.from_msg, &self.merge_msg) {
+                (_, Some(merge_msg)) if (
+                    self.as_msgs.is_some() || self.to_msgs.is_some()
+                ) => quote! {{
+                    let mut msg = Default::default();
+                    #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| {
+                        #merge_msg(#ident, msg);
+                    })
+                }},
                 (Some(from_msg), _) => quote! {{
                     let mut msg = Default::default();
                     #encoding_mod::merge(wire_type, &mut msg, buf, ctx).map(|_| {
@@ -364,23 +432,33 @@ impl Field {
                     #encoding_mod::encoded_len(#tag, #msg)
                 }
             }
-            Kind::Repeated => {
-                let msg = match (&self.as_msg, &self.to_msg) {
-                    (Some(as_msg), _) => quote!(#as_msg(value)),
-                    (None, Some(to_msg)) => quote!(&#to_msg(value)),
-                    (None, None) => quote!(value),
-                };
+            Kind::Repeated => match (&self.as_msgs, &self.to_msgs) {
+                (Some(msgs_fn), _) | (None, Some(msgs_fn)) => quote! {
+                    #msgs_fn(&#ident).iter().map(|value| {
+                        #encoding_mod::encoded_len(#tag, value)
+                    }).sum::<usize>()
+                },
+                (None, None) => {
+                    let msg = match (&self.as_msg, &self.to_msg) {
+                        (Some(as_msg), _) => quote!(#as_msg(value)),
+                        (None, Some(to_msg)) => quote!(&#to_msg(value)),
+                        (None, None) => quote!(value),
+                    };
 
-                quote! {
-                    #ident.iter().map(|value| #encoding_mod::encoded_len(#tag, #msg)).sum::<usize>()
+                    quote! {
+                        #ident.iter().map(|value| #encoding_mod::encoded_len(#tag, #msg)).sum::<usize>()
+                    }
                 }
-            }
+            },
             Kind::Packed => {
-                let msg = match (&self.as_msg, &self.to_msg) {
-                    (_, Some(to_msg)) => quote! {
+                let msgs = match (&self.as_msgs, &self.to_msgs, &self.as_msg, &self.to_msg) {
+                    (Some(msgs_fn), _, _, _) | (None, Some(msgs_fn), _, _) => quote! {
+                        #msgs_fn(&#ident).as_ref()
+                    },
+                    (None, None, _, Some(to_msg)) => quote! {
                         #ident.iter().map(#to_msg).collect::<::prost::alloc::vec::Vec<_>>().as_ref()
                     },
-                    (Some(as_msg), None) => quote! {
+                    (None, None, Some(as_msg), None) => quote! {
                         #ident
                             .iter()
                             .map(#as_msg)
@@ -388,11 +466,11 @@ impl Field {
                             .collect::<::prost::alloc::vec::Vec<_>>()
                             .as_ref()
                     },
-                    (None, None) => quote!(&#ident),
+                    (None, None, None, None) => quote!(&#ident),
                 };
 
                 quote! {
-                    #encoding_mod::encoded_len_packed(#tag, #msg)
+                    #encoding_mod::encoded_len_packed(#tag, #msgs)
                 }
             }
         }
@@ -422,6 +500,11 @@ impl Field {
                 (None, None) => quote! {
                     #ident = ::core::option::Option::None
                 },
+            },
+            Kind::Repeated | Kind::Packed if (
+                self.as_msgs.is_some() || self.to_msgs.is_some()
+            ) => quote! {
+                #ident = Default::default()
             },
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
@@ -456,6 +539,9 @@ impl Field {
                     ::core::option::Option::None
                 },
             },
+            Kind::Repeated | Kind::Packed if (
+                self.as_msgs.is_some() || self.to_msgs.is_some()
+            ) => quote!(Default::default()),
             Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
         }
     }
@@ -520,20 +606,38 @@ impl Field {
                     }
                 },
             },
-            Kind::Repeated | Kind::Packed => match (&self.as_msg, &self.to_msg) {
-                (Some(msg_fn), _) | (None, Some(msg_fn)) => quote! {
+            Kind::Repeated | Kind::Packed => match (
+                &self.as_msgs,
+                &self.to_msgs,
+                &self.as_msg,
+                &self.to_msg,
+            ) {
+                (Some(msgs_fn), _, _, _) | (None, Some(msgs_fn), _, _) => quote! {
+                    struct #wrapper_name<'a>(&'a #field_ty);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            let mut vec_builder = f.debug_list();
+                            for v in #msgs_fn(self.0).iter() {
+                                vec_builder.entry(&v);
+                            }
+                            vec_builder.finish()
+                        }
+                    }
+                },
+                (None, None, Some(msg_fn), _) | (None, None, None, Some(msg_fn)) => quote! {
                     struct #wrapper_name<'a>(&'a #field_ty);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
                             for v in self.0 {
+                                #wrapper
                                 vec_builder.entry(&#msg_fn(v));
                             }
                             vec_builder.finish()
                         }
                     }
                 },
-                (None, None) => quote! {
+                (None, None, None, None) => quote! {
                     struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#inner_ty>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
@@ -552,7 +656,7 @@ impl Field {
 
     /// Returns methods to embed in the message.
     pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
-        if self.as_msg.is_some() || self.to_msg.is_some() {
+        if self.from_msg.is_some() || self.merge_msg.is_some() {
             return None;
         }
 
