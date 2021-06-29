@@ -97,6 +97,11 @@ impl Field {
             );
 
             ensure!(
+                (as_msgs.is_none() && to_msgs.is_none()) || (as_msg.is_none() && to_msg.is_none()),
+                "cannot use as_msg/to_msg and as_msgs/to_msgs at the same time",
+            );
+
+            ensure!(
                 !converting || (as_msgs.is_none() && to_msgs.is_none()) || merge_msg.is_some(),
                 "missing merge_msg attribute",
             );
