@@ -77,6 +77,14 @@ struct WithMsgFns {
         from_msg = "(|field: u32| Msg { field })"
     )]
     map: BTreeMap<u32, Msg>,
+    #[prost(
+        message,
+        repeated,
+        tag = "11",
+        to_msgs = "iter_msgs",
+        merge_msg = "(|m: &mut Vec<Msg>, field: u32| m.push(Msg { field }))"
+    )]
+    iter: Vec<Msg>,
 }
 
 #[derive(PartialEq, prost::Message)]
@@ -101,6 +109,8 @@ struct WithoutMsgFns {
     unwrap_repated: Vec<Msg>,
     #[prost(btree_map = "uint32, uint32", tag = "10")]
     map: BTreeMap<u32, u32>,
+    #[prost(message, repeated, tag = "11")]
+    iter: Vec<u32>,
 }
 
 #[derive(Clone, PartialEq, prost::Message)]
@@ -130,6 +140,10 @@ fn as_ref_unwrap<T>(val: &Option<T>) -> &T {
     val.as_ref().unwrap()
 }
 
+fn iter_msgs(msgs: &Vec<Msg>) -> impl Iterator<Item = u32> + '_ {
+    msgs.iter().map(|m| m.field)
+}
+
 #[test]
 fn msg_fns() {
     let mut with_msg_fns = WithMsgFns {
@@ -153,6 +167,10 @@ fn msg_fns() {
             Some(Msg { field: 11 }),
         ],
         map: BTreeMap::new(),
+        iter: vec! [
+            Msg { field: 12 },
+            Msg { field: 13 },
+        ],
     };
 
     let mut without_msg_fns = WithoutMsgFns {
@@ -179,10 +197,15 @@ fn msg_fns() {
             .map(|msg| msg.clone().unwrap())
             .collect(),
         map: BTreeMap::new(),
+        iter: with_msg_fns
+            .iter
+            .iter()
+            .map(|msg| msg.field)
+            .collect(),
     };
 
     for i in 0..3 {
-        let k = 12 + i * 2;
+        let k = 14 + i * 2;
         let v = k + 1;
 
         with_msg_fns.map.insert(k, Msg { field: v });

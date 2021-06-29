@@ -259,13 +259,13 @@ impl Field {
             },
             Kind::Repeated => match (&self.as_msgs, &self.to_msgs) {
                 (Some(as_msgs), _) => quote! {
-                    for value in #as_msgs(&#ident) {
+                    for value in #as_msgs(&#ident).into_iter() {
                         #encoding_mod::encode(#tag, value, buf);
                     }
                 },
                 (None, Some(to_msgs)) => quote! {
-                    for value in &#to_msgs(&#ident) {
-                        #encoding_mod::encode(#tag, value, buf);
+                    for value in #to_msgs(&#ident).into_iter() {
+                        #encoding_mod::encode(#tag, &value, buf);
                     }
                 },
                 (None, None) => {
@@ -438,9 +438,14 @@ impl Field {
                 }
             }
             Kind::Repeated => match (&self.as_msgs, &self.to_msgs) {
-                (Some(msgs_fn), _) | (None, Some(msgs_fn)) => quote! {
-                    #msgs_fn(&#ident).iter().map(|value| {
+                (Some(as_msgs), _) => quote! {
+                    #as_msgs(&#ident).into_iter().map(|value| {
                         #encoding_mod::encoded_len(#tag, value)
+                    }).sum::<usize>()
+                },
+                (None, Some(to_msgs)) => quote! {
+                    #to_msgs(&#ident).into_iter().map(|value| {
+                        #encoding_mod::encoded_len(#tag, &value)
                     }).sum::<usize>()
                 },
                 (None, None) => {
@@ -622,7 +627,7 @@ impl Field {
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
-                            for v in #msgs_fn(self.0).iter() {
+                            for v in #msgs_fn(self.0).into_iter() {
                                 vec_builder.entry(&v);
                             }
                             vec_builder.finish()

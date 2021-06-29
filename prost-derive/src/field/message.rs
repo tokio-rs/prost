@@ -195,9 +195,14 @@ impl Field {
                 }
             }
             Label::Repeated => match (&self.as_msgs, &self.to_msgs) {
-                (Some(msgs_fn), _) | (None, Some(msgs_fn)) => quote! {
-                    #msgs_fn(&#ident).iter().for_each(|value| {
+                (Some(as_msgs), _) => quote! {
+                    #as_msgs(&#ident).into_iter().for_each(|value| {
                         ::prost::encoding::message::encode(#tag, value, buf)
+                    });
+                },
+                (None, Some(to_msgs)) => quote! {
+                    #to_msgs(&#ident).into_iter().for_each(|value| {
+                        ::prost::encoding::message::encode(#tag, &value, buf)
                     });
                 },
                 (None, None) => {
@@ -311,9 +316,14 @@ impl Field {
                 }
             }
             Label::Repeated => match (&self.as_msgs, &self.to_msgs) {
-                (Some(msgs_fn), _) | (None, Some(msgs_fn)) => quote! {
-                    #msgs_fn(&#ident).iter().map(|value| {
+                (Some(as_msgs), _) => quote! {
+                    #as_msgs(&#ident).into_iter().map(|value| {
                         ::prost::encoding::message::encoded_len(#tag, value)
+                    }).sum::<usize>()
+                },
+                (None, Some(to_msgs)) => quote! {
+                    #to_msgs(&#ident).into_iter().map(|value| {
+                        ::prost::encoding::message::encoded_len(#tag, &value)
                     }).sum::<usize>()
                 },
                 (None, None) => {
@@ -364,25 +374,36 @@ impl Field {
                 (Some(msg_fn), _) | (None, Some(msg_fn)) => quote!(&#msg_fn(&#ident)),
                 (None, None) => quote!(&#ident),
             }
-            Label::Repeated => match (&self.as_msgs, &self.to_msgs, &self.as_msg, &self.to_msg) {
-                (Some(msgs_fn), _, _, _) | (None, Some(msgs_fn), _, _) => quote!(#msgs_fn(&#ident)),
-                (None, None, Some(msg_fn), _) | (None, None, None, Some(msg_fn)) => {
-                    let field_ty = &self.field_ty;
-                    quote! {{
-                        struct RepeatedWrapper<'a>(&'a #field_ty);
-                        impl<'a> ::core::fmt::Debug for RepeatedWrapper<'a> {
-                            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                                let mut vec_builder = f.debug_list();
-                                for v in self.0 {
-                                    vec_builder.entry(&#msg_fn(v));
-                                }
-                                vec_builder.finish()
-                            }
+            Label::Repeated => {
+                let field_ty = &self.field_ty;
+                let debug = match (&self.as_msgs, &self.to_msgs, &self.as_msg, &self.to_msg) {
+                    (Some(msgs_fn), _, _, _) | (None, Some(msgs_fn), _, _) => quote! {
+                        for v in #msgs_fn(self.0).into_iter() {
+                            vec_builder.entry(&v);
                         }
-                        RepeatedWrapper(&#ident)
-                    }}
-                }
-                (None, None, None, None) => quote!(&#ident),
+                    },
+                    (None, None, Some(msg_fn), _) | (None, None, None, Some(msg_fn)) => quote! {
+                        for v in self.0 {
+                            vec_builder.entry(&#msg_fn(v));
+                        }
+                    },
+                    (None, None, None, None) => quote! {
+                        for v in self.0 {
+                            vec_builder.entry(&v);
+                        }
+                    }
+                };
+
+                quote! {{
+                    struct RepeatedWrapper<'a>(&'a #field_ty);
+                    impl<'a> ::core::fmt::Debug for RepeatedWrapper<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            let mut vec_builder = f.debug_list();
+                            #debug
+                            vec_builder.finish()
+                        }
+                    }
+                }}
             }
         }
     }
