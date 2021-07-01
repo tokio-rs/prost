@@ -7,51 +7,51 @@ struct WithMsgFns {
         uint32,
         tag = "1",
         as_msg = "get_tuple_left",
-        merge_msg = "(|t: &mut (u32, String), l: u32| t.0 = l)"
+        merge_msg = "|t: &mut (u32, String), l: u32| t.0 = l"
     )]
     #[prost(
         string,
         tag = "2",
         as_msg = "get_tuple_right",
-        merge_msg = "(|t: &mut (u32, String), r: String| t.1 = r)"
+        merge_msg = "|t: &mut (u32, String), r: String| t.1 = r"
     )]
     tuple: (u32, String),
     #[prost(
         uint32,
         tag = "3",
-        to_msg = "(|n: &i32| n.abs() as u32)",
-        from_msg = "(|p: u32| (p as i32) * -1)"
+        to_msg = "|n: &i32| n.abs() as u32",
+        from_msg = "|p: u32| (p as i32) * -1"
     )]
     neg_to_pos: i32,
     #[prost(
         uint32,
         optional,
         tag = "4",
-        to_msg = "(|_: &Option<u32>| Option::<u32>::None)",
-        from_msg = "(|a: Option<u32>| a)"
+        to_msg = "|_: &Option<u32>| Option::<u32>::None",
+        from_msg = "|a: Option<u32>| a"
     )]
     none: Option<u32>,
     #[prost(
         uint32,
         tag = "5",
         as_msg = "get_msg_field",
-        from_msg = "(|field: u32| Msg { field })"
+        from_msg = "|field: u32| Msg { field }"
     )]
     nested: Msg,
     #[prost(
         message,
         repeated,
         tag = "6",
-        to_msgs = "(|m: &Msgs| m.msgs.iter().map(|m| m.field as u32).collect::<Vec<_>>())",
-        merge_msg = "(|m: &mut Msgs, field: u32| m.msgs.push(Msg { field }))"
+        to_msgs = "|m: &Msgs| m.msgs.iter().map(|m| m.field as u32).collect::<Vec<_>>()",
+        merge_msg = "|m: &mut Msgs, field: u32| m.msgs.push(Msg { field })"
     )]
     nested_repeated: Msgs,
     #[prost(
         message,
         repeated,
         tag = "7",
-        to_msg = "(|m: &Msg| m.field)",
-        from_msg = "(|field: u32| Msg { field })"
+        to_msg = "|m: &Msg| m.field",
+        from_msg = "|field: u32| Msg { field }"
     )]
     nested_repeated_vec: Vec<Msg>,
     #[prost(
@@ -66,8 +66,8 @@ struct WithMsgFns {
         message,
         repeated,
         tag = "9",
-        as_msg = "as_ref_unwrap",
-        from_msg = "Option::Some"
+        as_msgs = "iter_as_ref_unwrap",
+        merge_msg = "|r: &mut Vec<Option<Msg>>, m: Msg| r.push(Some(m))",
     )]
     unwrap_repeated: Vec<Option<Msg>>,
     #[prost(
@@ -82,7 +82,7 @@ struct WithMsgFns {
         repeated,
         tag = "11",
         to_msgs = "iter_msgs",
-        merge_msg = "(|m: &mut Vec<Msg>, field: u32| m.push(Msg { field }))"
+        merge_msg = "|m: &mut Vec<Msg>, field: u32| m.push(Msg { field })"
     )]
     iter: Vec<Msg>,
 }
@@ -138,6 +138,10 @@ fn get_msg_field(msg: &Msg) -> &u32 {
 
 fn as_ref_unwrap<T>(val: &Option<T>) -> &T {
     val.as_ref().unwrap()
+}
+
+fn iter_as_ref_unwrap<T>(msgs: &Vec<Option<T>>) -> impl Iterator<Item = &T> {
+    msgs.iter().map(Option::as_ref).map(Option::unwrap)
 }
 
 fn iter_msgs(msgs: &Vec<Msg>) -> impl Iterator<Item = u32> + '_ {

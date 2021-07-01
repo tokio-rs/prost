@@ -1,4 +1,5 @@
 use crate::check_message;
+use prost::Message;
 use std::fmt::{self, Debug};
 
 #[derive(PartialEq, prost::Message)]
@@ -33,6 +34,29 @@ impl Default for NoDefault {
     }
 }
 
+#[derive(PartialEq, prost::Message)]
+#[prost(merge = false)]
+struct NoMerge {
+    #[prost(int32, tag = "1")]
+    foo: i32,
+    #[prost(message, required, tag = "2", to_msg = "|bar: &i32| *bar as u32")]
+    bar: i32,
+}
+
+#[derive(PartialEq, prost::Message)]
+#[prost(proto = "proto2")]
+struct Proto2 {
+    #[prost(message, tag = "1")]
+    foo: Option<i32>,
+}
+
+#[derive(PartialEq, prost::Message)]
+#[prost(proto = "proto3")]
+struct Proto3 {
+    #[prost(message, tag = "1")]
+    foo: i32,
+}
+
 #[test]
 fn no_debug() {
     let no_debug = NoDebug::default();
@@ -47,4 +71,14 @@ fn no_default() {
     check_message(&no_default);
 
     assert_eq!(format!("{:?}", no_default), "NoDefault { foo: 0 }");
+}
+
+#[test]
+fn no_merge() {
+    let no_merge = NoMerge::default();
+
+    let mut buf = Vec::with_capacity(no_merge.encoded_len());
+    no_merge.encode(&mut buf).expect("failed encoding");
+
+    assert!(NoMerge::decode(buf.as_ref()).is_err());
 }

@@ -1,6 +1,7 @@
 mod group;
 mod map;
 mod message;
+mod msg_fns;
 mod oneof;
 mod scalar;
 
@@ -11,6 +12,9 @@ use anyhow::{bail, ensure, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta, Type};
+
+use crate::field::msg_fns::MsgFns;
+use crate::options::Options;
 
 #[derive(Clone)]
 pub enum Field {
@@ -36,6 +40,7 @@ impl Field {
         field_ty: Type,
         attrs: Vec<Attribute>,
         mut inferred_tag: Option<u32>,
+        options: &Options,
     ) -> Result<Vec<Field>, Error> {
         let nested_attrs = prost_nested_attrs(attrs);
         let mut fields = Vec::with_capacity(nested_attrs.len());
@@ -56,11 +61,15 @@ impl Field {
                 continue;
             }
 
-            let field = if let Some(field) = scalar::Field::new(&field_ty, &attrs, inferred_tag)? {
+            let field = if let Some(field) =
+                scalar::Field::new(&field_ty, &attrs, inferred_tag, options)?
+            {
                 Field::Scalar(field)
-            } else if let Some(field) = message::Field::new(&field_ty, &attrs, inferred_tag)? {
+            } else if let Some(field) =
+                message::Field::new(&field_ty, &attrs, inferred_tag, options)?
+            {
                 Field::Message(field)
-            } else if let Some(field) = map::Field::new(&field_ty, &attrs, inferred_tag)? {
+            } else if let Some(field) = map::Field::new(&field_ty, &attrs, inferred_tag, options)? {
                 Field::Map(field)
             } else if let Some(field) = oneof::Field::new(&attrs)? {
                 Field::Oneof(field)
@@ -82,16 +91,16 @@ impl Field {
     ///
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
-    pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
+    pub fn new_oneof(attrs: Vec<Attribute>, options: &Options) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs);
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new_oneof(&attrs)? {
+        let field = if let Some(field) = scalar::Field::new_oneof(&attrs, options)? {
             Field::Scalar(field)
-        } else if let Some(field) = message::Field::new_oneof(&attrs)? {
+        } else if let Some(field) = message::Field::new_oneof(&attrs, options)? {
             Field::Message(field)
-        } else if let Some(field) = map::Field::new_oneof(&attrs)? {
+        } else if let Some(field) = map::Field::new_oneof(&attrs, options)? {
             Field::Map(field)
         } else if let Some(field) = group::Field::new_oneof(&attrs)? {
             Field::Group(field)
@@ -363,7 +372,7 @@ pub fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
 }
 
 /// Checks if an attribute matches a word.
-fn word_attr(key: &str, attr: &Meta) -> bool {
+pub fn word_attr(key: &str, attr: &Meta) -> bool {
     if let Meta::Path(ref path) = *attr {
         path.is_ident(key)
     } else {
@@ -426,29 +435,3 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
         _ => bail!("invalid tag attribute: {:?}", attr),
     }
 }
-
-macro_rules! path_attr {
-    ($fn:ident, $attr:literal) => {
-        fn $fn(attr: &Meta) -> Result<Option<TokenStream>, Error> {
-            if !attr.path().is_ident($attr) {
-                return Ok(None);
-            }
-
-            match *attr {
-                Meta::NameValue(MetaNameValue {
-                    lit: Lit::Str(ref lit),
-                    ..
-                }) => Ok(Some(lit.parse()?)),
-                _ => bail!("invalid {} attribute: {:?}", $attr, attr),
-            }
-        }
-    };
-}
-
-path_attr!(as_msg_attr, "as_msg");
-path_attr!(to_msg_attr, "to_msg");
-path_attr!(from_msg_attr, "from_msg");
-path_attr!(merge_msg_attr, "merge_msg");
-
-path_attr!(as_msgs_attr, "as_msgs");
-path_attr!(to_msgs_attr, "to_msgs");
