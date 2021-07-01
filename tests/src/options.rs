@@ -44,6 +44,14 @@ struct NoMerge {
 }
 
 #[derive(PartialEq, prost::Message)]
+struct NoClear {
+    #[prost(int32, tag = "1")]
+    foo: i32,
+    #[prost(int32, tag = "2", clear = false)]
+    bar: i32,
+}
+
+#[derive(PartialEq, prost::Message)]
 #[prost(proto = "proto2")]
 struct Proto2 {
     #[prost(message, tag = "1")]
@@ -81,4 +89,18 @@ fn no_merge() {
     no_merge.encode(&mut buf).expect("failed encoding");
 
     assert!(NoMerge::decode(buf.as_ref()).is_err());
+}
+
+#[test]
+fn no_clear() {
+    let mut no_clear = NoClear {
+        foo: 42,
+        bar: 42,
+    };
+
+    check_message(&no_clear);
+    no_clear.clear();
+
+    assert_eq!(no_clear.foo, 0);
+    assert_eq!(no_clear.bar, 42);
 }

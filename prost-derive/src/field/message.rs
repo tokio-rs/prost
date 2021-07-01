@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Meta, Type};
 
-use crate::field::{set_bool, set_option, tag_attr, word_attr, Label, MsgFns};
+use crate::field::{bool_attr, set_bool, set_option, tag_attr, word_attr, Label, MsgFns};
 use crate::options::Options;
 
 #[derive(Clone)]
@@ -11,6 +11,7 @@ pub struct Field {
     pub field_ty: Type,
     pub label: Label,
     pub tag: u32,
+    pub clear: bool,
     pub msg_fns: MsgFns,
 }
 
@@ -24,6 +25,7 @@ impl Field {
         let mut message = false;
         let mut label = None;
         let mut tag = None;
+        let mut clear = None;
         let mut msg_fns = MsgFns::new();
         let mut boxed = false;
 
@@ -38,6 +40,8 @@ impl Field {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {
                 set_option(&mut label, l, "duplicate label attributes")?;
+            } else if let Some(c) = bool_attr("clear", &attr)? {
+                set_option(&mut clear, c, "duplicate clear attributes")?;
             } else if msg_fns.attr(attr)?.is_some() {
                 continue;
             } else {
@@ -80,6 +84,7 @@ impl Field {
             field_ty,
             label,
             tag,
+            clear: clear.unwrap_or(true),
             msg_fns,
         }))
     }
@@ -215,6 +220,10 @@ impl Field {
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
+        if !self.clear {
+            return quote!();
+        }
+
         match self.label {
             Label::Optional => self
                 .msg_fns

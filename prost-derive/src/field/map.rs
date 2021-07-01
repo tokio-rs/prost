@@ -36,6 +36,7 @@ fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
         ty,
         kind,
         tag: 0, // Not used here
+        clear: true,
         msg_fns: MsgFns::default(),
     }
 }
