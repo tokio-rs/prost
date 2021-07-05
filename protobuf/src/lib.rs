@@ -1,3 +1,5 @@
+#![allow(clippy::large_enum_variant, clippy::unreadable_literal)]
+
 pub mod benchmarks {
     include!(concat!(env!("OUT_DIR"), "/benchmarks.rs"));
 
@@ -29,27 +31,6 @@ pub mod benchmarks {
             Path::new(concat!(
                 env!("PROTOBUF"),
                 "/share/dataset.google_message3_1.pb"
-            ))
-        }
-
-        pub fn google_message3_2() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_2.pb"
-            ))
-        }
-
-        pub fn google_message3_3() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_3.pb"
-            ))
-        }
-
-        pub fn google_message3_4() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_4.pb"
             ))
         }
 

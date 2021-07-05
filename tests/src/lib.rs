@@ -1,9 +1,20 @@
+#![allow(
+    clippy::cognitive_complexity,
+    clippy::module_inception,
+    clippy::unreadable_literal
+)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[macro_use]
 extern crate cfg_if;
 
+extern crate alloc;
+
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
+        extern crate anyhow;
         extern crate bytes;
+        extern crate core;
         extern crate prost;
         extern crate prost_types;
         extern crate protobuf;
@@ -24,6 +35,8 @@ mod bootstrap;
 mod debug;
 #[cfg(test)]
 mod deprecated_field;
+#[cfg(test)]
+mod generic_derive;
 #[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
@@ -64,7 +77,7 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
-/// Issue https://github.com/danburkert/prost/issues/118
+/// Issue https://github.com/tokio-rs/prost/issues/118
 ///
 /// When a message contains an enum field with a default value, we
 /// must ensure that the appropriate name conventions are used.
@@ -76,8 +89,22 @@ pub mod groups {
     include!(concat!(env!("OUT_DIR"), "/groups.rs"));
 }
 
-use std::error::Error;
+pub mod proto3 {
+    pub mod presence {
+        include!(concat!(env!("OUT_DIR"), "/proto3.presence.rs"));
+    }
+}
 
+pub mod invalid {
+    pub mod doctest {
+        include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));
+    }
+}
+
+use alloc::format;
+use alloc::vec::Vec;
+
+use anyhow::anyhow;
 use bytes::Buf;
 
 use prost::Message;
@@ -89,7 +116,7 @@ pub enum RoundtripResult {
     /// or it could indicate that the input was bogus.
     DecodeError(prost::DecodeError),
     /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
-    Error(Box<dyn Error + Send + Sync>),
+    Error(anyhow::Error),
 }
 
 impl RoundtripResult {
@@ -137,19 +164,16 @@ where
         return RoundtripResult::Error(error.into());
     }
     if encoded_len != buf1.len() {
-        return RoundtripResult::Error(
-            format!(
-                "expected encoded len ({}) did not match actual encoded len ({})",
-                encoded_len,
-                buf1.len()
-            )
-            .into(),
-        );
+        return RoundtripResult::Error(anyhow!(
+            "expected encoded len ({}) did not match actual encoded len ({})",
+            encoded_len,
+            buf1.len()
+        ));
     }
 
     let roundtrip = match M::decode(&*buf1) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(error.into()),
+        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
     };
 
     let mut buf2 = Vec::new();
@@ -165,7 +189,7 @@ where
     */
 
     if buf1 != buf2 {
-        return RoundtripResult::Error("roundtripped encoded buffers do not match".into());
+        return RoundtripResult::Error(anyhow!("roundtripped encoded buffers do not match"));
     }
 
     RoundtripResult::Ok(buf1)
@@ -185,10 +209,11 @@ where
     let mut buf = &*buf;
     let roundtrip = M::decode(&mut buf).unwrap();
 
-    if buf.has_remaining() {
-        panic!(format!("expected buffer to be empty: {}", buf.remaining()));
-    }
-
+    assert!(
+        !buf.has_remaining(),
+        "expected buffer to be empty: {}",
+        buf.remaining()
+    );
     assert_eq!(msg, &roundtrip);
 }
 
@@ -208,9 +233,14 @@ where
 #[cfg(test)]
 mod tests {
 
-    use std::collections::{BTreeMap, BTreeSet};
+    use alloc::borrow::ToOwned;
+    use alloc::boxed::Box;
+    use alloc::collections::{BTreeMap, BTreeSet};
+    use alloc::string::ToString;
+    use alloc::vec;
 
     use super::*;
+
     use protobuf::test_messages::proto3::TestAllTypesProto3;
 
     #[test]
@@ -467,9 +497,9 @@ mod tests {
     #[test]
     fn test_267_regression() {
         // Checks that skip_field will error appropriately when given a big stack of StartGroup
-        // tags.
+        // tags. When the no-recursion-limit feature is enabled this results in stack overflow.
         //
-        // https://github.com/danburkert/prost/issues/267
+        // https://github.com/tokio-rs/prost/issues/267
         let buf = vec![b'C'; 1 << 20];
         <() as Message>::decode(&buf[..]).err().unwrap();
     }
@@ -563,5 +593,22 @@ mod tests {
         check_message(&msg);
 
         check_message(&groups::OneofGroup::default());
+    }
+
+    #[test]
+    fn test_proto3_presence() {
+        let msg = proto3::presence::A {
+            b: Some(42),
+            foo: Some(proto3::presence::a::Foo::C(13)),
+        };
+
+        check_message(&msg);
+    }
+
+    #[test]
+    fn test_file_descriptor_set_path() {
+        let file_descriptor_set_bytes =
+            include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+        prost_types::FileDescriptorSet::decode(&file_descriptor_set_bytes[..]).unwrap();
     }
 }

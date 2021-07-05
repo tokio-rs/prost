@@ -16,3 +16,11 @@ message Test {
   optional PrivacyLevel privacy_level_3 = 2 [default = PRIVACY_LEVEL_PRIVACY_LEVEL_THREE];
   optional PrivacyLevel privacy_level_4 = 3 [default = PRIVACY_LEVELPRIVACY_LEVEL_FOUR];
 }
+
+// tokio-rs/prost#310
+enum ERemoteClientBroadcastMsg {
+    k_ERemoteClientBroadcastMsgDiscovery = 0;
+}
+message CMsgRemoteClientBroadcastHeader {
+    optional ERemoteClientBroadcastMsg msg_type = 2 [default = k_ERemoteClientBroadcastMsgDiscovery];
+}

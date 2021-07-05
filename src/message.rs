@@ -1,5 +1,6 @@
-use std::fmt::Debug;
-use std::usize;
+use alloc::boxed::Box;
+use core::fmt::Debug;
+use core::usize;
 
 use bytes::{Buf, BufMut};
 
@@ -163,4 +164,11 @@ where
     fn clear(&mut self) {
         (**self).clear()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const _MESSAGE_IS_OBJECT_SAFE: Option<&dyn Message> = None;
 }

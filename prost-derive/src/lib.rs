@@ -1,16 +1,15 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.6.1")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.7.0")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
+extern crate alloc;
 extern crate proc_macro;
 
-use anyhow::bail;
-use quote::quote;
-
-use anyhow::Error;
+use anyhow::{bail, Error};
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
     FieldsUnnamed, Ident, Variant,
@@ -30,9 +29,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         Data::Union(..) => bail!("Message can not be derived for a union"),
     };
 
-    if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
-        bail!("Message may not be derived for generic type");
-    }
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let fields = match variant_data {
         DataStruct {
@@ -88,7 +86,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .flat_map(|&(_, ref field)| field.tags())
         .collect::<Vec<_>>();
     let num_tags = tags.len();
-    tags.sort();
+    tags.sort_unstable();
     tags.dedup();
     if tags.len() != num_tags {
         bail!("message {} has fields with duplicate tags", ident);
@@ -149,7 +147,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     } else {
         quote! {
             #[allow(dead_code)]
-            impl #ident {
+            impl #impl_generics #ident #ty_generics #where_clause {
                 #(#methods)*
             }
         }
@@ -176,7 +174,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     let expanded = quote! {
-        impl ::prost::Message for #ident {
+        impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
             fn encode_raw<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 #(#encode)*
@@ -189,7 +187,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 wire_type: ::prost::encoding::WireType,
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
-            ) -> ::std::result::Result<(), ::prost::DecodeError>
+            ) -> ::core::result::Result<(), ::prost::DecodeError>
             where B: ::prost::bytes::Buf {
                 #struct_name
                 match tag {
@@ -208,16 +206,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl Default for #ident {
-            fn default() -> #ident {
+        impl #impl_generics Default for #ident #ty_generics #where_clause {
+            fn default() -> Self {
                 #ident {
                     #(#default)*
                 }
             }
         }
 
-        impl ::std::fmt::Debug for #ident {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 let mut builder = #debug_builder;
                 #(#debugs;)*
                 builder.finish()
@@ -239,9 +237,8 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
     let ident = input.ident;
 
-    if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
-        bail!("Message may not be derived for generic type");
-    }
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let punctuated_variants = match input.data {
         Data::Enum(DataEnum { variants, .. }) => variants,
@@ -281,7 +278,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|&(_, ref value)| quote!(#value => true));
     let from = variants.iter().map(
-        |&(ref variant, ref value)| quote!(#value => ::std::option::Option::Some(#ident::#variant)),
+        |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
     );
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
@@ -291,7 +288,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     );
 
     let expanded = quote! {
-        impl #ident {
+        impl #impl_generics #ident #ty_generics #where_clause {
             #[doc=#is_valid_doc]
             pub fn is_valid(value: i32) -> bool {
                 match value {
@@ -301,21 +298,21 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             #[doc=#from_i32_doc]
-            pub fn from_i32(value: i32) -> ::std::option::Option<#ident> {
+            pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
                 match value {
                     #(#from,)*
-                    _ => ::std::option::Option::None,
+                    _ => ::core::option::Option::None,
                 }
             }
         }
 
-        impl ::std::default::Default for #ident {
+        impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> #ident {
                 #ident::#default
             }
         }
 
-        impl ::std::convert::From<#ident> for i32 {
+        impl #impl_generics ::core::convert::From::<#ident> for i32 #ty_generics #where_clause {
             fn from(value: #ident) -> i32 {
                 value as i32
             }
@@ -341,9 +338,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         Data::Union(..) => bail!("Oneof can not be derived for a union"),
     };
 
-    if !input.generics.params.is_empty() || input.generics.where_clause.is_some() {
-        bail!("Message may not be derived for generic type");
-    }
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     // Map the variants into 'fields'.
     let mut fields: Vec<(Ident, Field)> = Vec::new();
@@ -383,7 +379,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             Ok(field.tags()[0])
         })
         .collect::<Vec<_>>();
-    tags.sort();
+    tags.sort_unstable();
     tags.dedup();
     if tags.len() != fields.len() {
         panic!("invalid oneof {}: variants have duplicate tags", ident);
@@ -400,13 +396,13 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote! {
             #tag => {
                 match field {
-                    ::std::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                    ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
                         #merge
                     },
                     _ => {
-                        let mut owned_value = ::std::default::Default::default();
+                        let mut owned_value = ::core::default::Default::default();
                         let value = &mut owned_value;
-                        #merge.map(|_| *field = ::std::option::Option::Some(#ident::#variant_ident(owned_value)))
+                        #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
                     },
                 }
             }
@@ -429,7 +425,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     });
 
     let expanded = quote! {
-        impl #ident {
+        impl #impl_generics #ident #ty_generics #where_clause {
             pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 match *self {
                     #(#encode,)*
@@ -437,12 +433,12 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             pub fn merge<B>(
-                field: &mut ::std::option::Option<#ident>,
+                field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
                 wire_type: ::prost::encoding::WireType,
                 buf: &mut B,
                 ctx: ::prost::encoding::DecodeContext,
-            ) -> ::std::result::Result<(), ::prost::DecodeError>
+            ) -> ::core::result::Result<(), ::prost::DecodeError>
             where B: ::prost::bytes::Buf {
                 match tag {
                     #(#merge,)*
@@ -458,8 +454,8 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl ::std::fmt::Debug for #ident {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 match *self {
                     #(#debug,)*
                 }

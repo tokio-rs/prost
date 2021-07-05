@@ -1,19 +1,18 @@
 [package]
 name = "prost"
-version = "0.6.1"
-authors = ["Dan Burkert <dan@danburkert.com>"]
+version = "0.7.0"
+authors = [
+    "Dan Burkert <dan@danburkert.com>",
+    "Tokio Contributors <team@tokio.rs>",
+]
 license = "Apache-2.0"
-repository = "https://github.com/danburkert/prost"
+repository = "https://github.com/tokio-rs/prost"
 documentation = "https://docs.rs/prost"
 readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
 edition = "2018"
-
-[badges]
-travis-ci = { repository = "danburkert/prost" }
-appveyor = { repository = "danburkert/prost" }
 
 [workspace]
 members = [
@@ -24,6 +23,7 @@ members = [
   "protobuf",
   "tests",
   "tests-2015",
+  "tests-no-std",
 ]
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,
@@ -38,19 +38,20 @@ exclude = [
 bench = false
 
 [features]
-default = ["prost-derive"]
+default = ["prost-derive", "std"]
 no-recursion-limit = []
+std = []
 
 [dependencies]
-bytes = "0.5"
-prost-derive = { version = "0.6.1", path = "prost-derive", optional = true }
+bytes = { version = "1", default-features = false }
+prost-derive = { version = "0.7.0", path = "prost-derive", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
-env_logger = { version = "0.7", default-features = false }
+env_logger = { version = "0.8", default-features = false }
 log = "0.4"
-quickcheck = "0.9"
-rand = "0.7"
+proptest = "1"
+rand = "0.8"
 
 [profile.bench]
 debug = true
