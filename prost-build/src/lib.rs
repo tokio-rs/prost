@@ -228,8 +228,9 @@ const DISABLE_COMMENTS: &str = "disable_comments";
 const EXTERN_PATH: &str = "extern_path";
 const RETAIN_ENUM_PREFIX: &str = "retain_enum_prefix";
 const INCLUDE_FILE: &str = "include_file";
+const FILE_DESCRIPTOR_SET: &str = "file_descriptor_set";
 const GEN_CRATE: &str = "gen_crate";
-pub const PROTOC_OPTS: [&str; 10] = [
+pub const PROTOC_OPTS: [&str; 11] = [
     BTREE_MAP,
     BYTES,
     FIELD_ATTR,
@@ -239,6 +240,7 @@ pub const PROTOC_OPTS: [&str; 10] = [
     EXTERN_PATH,
     RETAIN_ENUM_PREFIX,
     INCLUDE_FILE,
+    FILE_DESCRIPTOR_SET,
     GEN_CRATE,
 ];
 
@@ -303,6 +305,10 @@ impl Config {
                 [EXTERN_PATH, k, v] => self.extern_paths.push((k.to_string(), v.to_string())),
                 [RETAIN_ENUM_PREFIX] => self.strip_enum_prefix = false,
                 [INCLUDE_FILE, v] => self.include_file = Some(v.into()),
+                [FILE_DESCRIPTOR_SET] => {
+                    self.file_descriptor_set_path = Some("file_descriptor_set".into())
+                }
+                [FILE_DESCRIPTOR_SET, v] => self.file_descriptor_set_path = Some(v.into()),
                 [GEN_CRATE, v] => self.manifest_tpl = Some(v.into()),
                 _ if log_unknown => eprintln!("prost: Unknown option `{}`", full_opt),
                 _ => (),
@@ -1043,6 +1049,31 @@ impl Config {
     /// Compile `.proto` code into Rust code from a protoc build with additional code generator
     /// configuration options.
     pub fn compile_request(&mut self, req: CodeGeneratorRequest) -> CodeGeneratorResponse {
+        // Optionally output the file descriptor set
+        let set = self.file_descriptor_set_path.clone().map(|path| {
+            let name = self.filename(&vec![path.to_str().unwrap().to_owned()]);
+
+            let set = FileDescriptorSet {
+                file: req.proto_file.clone(),
+            };
+            let mut buf = Vec::new();
+            set.encode(&mut buf).unwrap();
+
+            let buf = buf.into_iter().chunks(16);
+            let lines = buf
+                .into_iter()
+                .map(|chunk| chunk.map(|byte| format!("0x{:02x}", byte)).join(", "))
+                .join(",\n    ");
+            let content =
+                "pub const FILE_DESCRIPTOR_SET: &[u8] = &[\n    ".to_owned() + &lines + ",\n];\n";
+
+            vec![File {
+                name: Some(name),
+                content: Some(content),
+                ..Default::default()
+            }]
+        });
+
         match self.generate(req.proto_file) {
             Ok(modules) => {
                 let f = modules.into_iter().map(|(module, content)| File {
@@ -1054,7 +1085,7 @@ impl Config {
                 CodeGeneratorResponse {
                     error: None,
                     supported_features: None,
-                    file: f.collect(),
+                    file: f.chain(set.unwrap_or_default()).collect(),
                 }
             }
             Err(e) => CodeGeneratorResponse {
@@ -1117,6 +1148,19 @@ impl Config {
             trace!("Generate include file: {:?}", include_file);
 
             let mut include = String::new();
+            if let Some(mut set) = self.file_descriptor_set_path.clone() {
+                let path = if self.manifest_tpl.is_some() {
+                    "../gen"
+                } else {
+                    "."
+                };
+                set.set_extension("rs");
+                include.push_str(&format!(
+                    "include!(\"{}/{}\");\n",
+                    path,
+                    set.to_str().unwrap()
+                ));
+            }
             self.write_includes(modules.keys().collect(), &mut include, 0);
             modules.insert(vec![include_file], include);
         }
