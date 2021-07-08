@@ -184,6 +184,7 @@ where
     if let Err(error) = roundtrip.encode(&mut buf2) {
         return RoundtripResult::Error(error.into());
     }
+    let buf3 = roundtrip.encode_to_vec();
 
     /*
     // Useful for debugging:
@@ -194,6 +195,12 @@ where
 
     if buf1 != buf2 {
         return RoundtripResult::Error(anyhow!("roundtripped encoded buffers do not match"));
+    }
+
+    if buf1 != buf3 {
+        return RoundtripResult::Error(anyhow!(
+            "roundtripped encoded buffers do not match with `encode_to_vec`"
+        ));
     }
 
     RoundtripResult::Ok(buf1)
