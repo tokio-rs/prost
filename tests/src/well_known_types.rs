@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 include!(concat!(env!("OUT_DIR"), "/well_known_types.rs"));
 
 #[test]
@@ -20,4 +22,35 @@ fn test_well_known_types() {
     };
 
     crate::check_message(&msg);
+}
+
+#[test]
+fn test_timestamp() {
+    let timestamp = ::prost_types::Timestamp {
+        seconds: 100,
+        nanos: 42,
+    };
+
+    let mut non_normalized_timestamp = ::prost_types::Timestamp {
+        seconds: 99,
+        nanos: 1_000_000_042,
+    };
+
+    let mut hashset = HashSet::new();
+    assert_eq!(hashset.insert(timestamp.clone()), true);
+    assert_eq!(
+        hashset.insert(non_normalized_timestamp.clone()),
+        true,
+        "hash for non-normalized different and should be inserted"
+    );
+
+    assert_ne!(
+        timestamp, non_normalized_timestamp,
+        "non-nomarlized timestamp considered different"
+    );
+    non_normalized_timestamp.normalize();
+    assert_eq!(
+        timestamp, non_normalized_timestamp,
+        "normalized timestamp matches"
+    );
 }
