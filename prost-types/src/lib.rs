@@ -165,18 +165,19 @@ impl Timestamp {
     }
 }
 
+/// Implements the unstable/naive version of `Eq`: a basic equality check on the internal fields of the `Timestamp`.
+/// This implies that `normalized_ts != non_normalized_ts` even if `normalized_ts == non_normalized_ts.normalized()`.
 #[cfg(feature = "std")]
+impl Eq for Timestamp {}
+
+#[cfg(feature = "std")]
+#[allow(clippy::derive_hash_xor_eq)] // Derived logic is correct: comparing the 2 feilds for equality
 impl std::hash::Hash for Timestamp {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.seconds.hash(state);
         self.nanos.hash(state);
     }
 }
-
-/// Implements the unstable/naive version of `Eq`: a basic equality check on the internal fields of the `Timestamp`.
-/// This implies that `normalized_ts != non_normalized_ts` even if `normalized_ts == non_normalized_ts.normalized()`.
-#[cfg(feature = "std")]
-impl Eq for Timestamp {}
 
 #[cfg(feature = "std")]
 impl From<std::time::SystemTime> for Timestamp {
