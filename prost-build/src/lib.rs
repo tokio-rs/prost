@@ -888,7 +888,7 @@ impl fmt::Debug for Config {
 ///
 /// **`includes`** - Paths to directories in which to search for imports. Directories are searched
 /// in order. The `.proto` files passed in **`protos`** must be found in one of the provided
-/// include directories.
+/// include directories. Directories are *not* searched recursively.
 ///
 /// # Errors
 ///
