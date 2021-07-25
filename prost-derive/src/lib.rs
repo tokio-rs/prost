@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.7.0")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.8.0")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -445,7 +445,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                     }
                 }
             }
-        }
+                }
         }
     });
 

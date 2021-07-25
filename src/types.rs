@@ -429,7 +429,7 @@ impl Message for ::uuid::Uuid {
         B: BufMut,
         Self: Sized,
     {
-        uuid::encode(1, &self, buf)
+        uuid::encode(1, self, buf)
     }
 
     fn merge_field<B>(
