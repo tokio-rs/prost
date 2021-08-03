@@ -86,6 +86,10 @@ fn main() {
         .compile_protos(&[src.join("deprecated_field.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("default_string_escape.proto")], includes)
+        .unwrap();
+
     prost_build::Config::new()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)
