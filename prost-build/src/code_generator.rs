@@ -371,10 +371,7 @@ impl<'a> CodeGenerator<'a> {
                 };
                 self.buf.push_str(stripped_prefix);
             } else {
-                // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
-                // safer, we should unescape the Protobuf string and re-escape it with the Rust
-                // escaping mechanisms.
-                self.buf.push_str(default);
+                self.buf.push_str(&default.escape_default().to_string());
             }
         }
 
