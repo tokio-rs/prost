@@ -30,7 +30,7 @@ where
     loop {
         if value < 0x80 {
             buf.put_u8(value as u8);
-            break
+            break;
         } else {
             buf.put_u8(((value & 0x7F) | 0x80) as u8);
             value >>= 7;
