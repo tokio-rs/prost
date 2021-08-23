@@ -115,10 +115,10 @@ fn main() {
         )
         .unwrap();
 
-    // Check that attempting to compile a .proto without a package declaration results in an error.
+    // Check that attempting to compile a .proto without a package declaration does not result in an error.
     config
         .compile_protos(&[src.join("no_package.proto")], includes)
-        .unwrap_err();
+        .unwrap();
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
 
@@ -135,6 +135,21 @@ fn main() {
             &[src.join("no_root_packages")],
         )
         .unwrap();
+
+    // Check that attempting to compile a .proto without a package declaration succeeds.
+    let no_root_packages_with_default = out_dir.as_path().join("no_root_packages_with_default");
+
+    fs::create_dir_all(&no_root_packages_with_default).expect("failed to create prefix directory");
+    let mut no_root_packages_config = prost_build::Config::new();
+    no_root_packages_config
+        .out_dir(&no_root_packages_with_default)
+        .compile_protos(
+            &[src.join("no_root_packages/widget_factory.proto")],
+            &[src.join("no_root_packages")],
+        )
+        .unwrap();
+
+    assert!(no_root_packages_with_default.join("_.rs").exists());
 
     let extern_paths = out_dir.as_path().join("extern_paths");
     fs::create_dir_all(&extern_paths).expect("failed to create prefix directory");

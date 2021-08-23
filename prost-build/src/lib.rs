@@ -230,7 +230,7 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
-    default_package_filename: Option<String>,
+    default_package_filename: String,
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
 }
@@ -666,7 +666,7 @@ impl Config {
     where
         S: Into<String>,
     {
-        self.default_package_filename = Some(filename.into());
+        self.default_package_filename = filename.into();
         self
     }
 
@@ -785,11 +785,7 @@ impl Config {
         let modules = self.generate(file_descriptor_set.file)?;
         for (module, content) in modules {
             let mut filename = if module.is_empty() {
-                self.default_package_filename.as_ref().ok_or_else(||Error::new(ErrorKind::InvalidInput,
-                    "prost requires a package specifier in all .proto files \
-                     (https://developers.google.com/protocol-buffers/docs/proto#packages); \
-                     unless Config::default_package_filename has been called to set the filename to use.",
-                ))?.clone()
+                self.default_package_filename.clone()
             } else {
                 module.join(".")
             };
@@ -867,7 +863,7 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
-            default_package_filename: None,
+            default_package_filename: "_".to_string(),
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
         }
@@ -878,10 +874,7 @@ impl fmt::Debug for Config {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("Config")
             .field("file_descriptor_set_path", &self.file_descriptor_set_path)
-            .field(
-                "service_generator",
-                &self.file_descriptor_set_path.is_some(),
-            )
+            .field("service_generator", &self.service_generator.is_some())
             .field("map_type", &self.map_type)
             .field("bytes_type", &self.bytes_type)
             .field("type_attributes", &self.type_attributes)
@@ -890,6 +883,7 @@ impl fmt::Debug for Config {
             .field("strip_enum_prefix", &self.strip_enum_prefix)
             .field("out_dir", &self.out_dir)
             .field("extern_paths", &self.extern_paths)
+            .field("default_package_filename", &self.default_package_filename)
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
             .finish()

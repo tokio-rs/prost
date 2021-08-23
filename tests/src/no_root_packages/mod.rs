@@ -1,4 +1,4 @@
-//! Tests nested packages.
+//! Tests nested packages without a root package.
 
 include!(concat!(env!("OUT_DIR"), "/no_root_packages/__.default.rs"));
 
