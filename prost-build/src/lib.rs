@@ -660,8 +660,6 @@ impl Config {
     }
 
     /// Configures what filename protobufs with no package definition are written to.
-    ///
-    /// If unset protobuf compilation will fail if there are any proto files without a package definition.
     pub fn default_package_filename<S>(&mut self, filename: S) -> &mut Self
     where
         S: Into<String>,
