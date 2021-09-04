@@ -1,14 +1,11 @@
 // protoc on Windows outputs \r\n line endings.
-#![cfg(not(target_os = "windows"))]
+#![cfg(not(windows))]
 #![cfg(feature = "std")]
 
 use std::fs;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
-
-use prost_build;
-use tempfile;
 
 /// Test which bootstraps protobuf.rs and compiler.rs from the .proto definitions in the Protobuf
 /// repo. Ensures that the checked-in compiled versions are up-to-date.
@@ -43,7 +40,7 @@ fn bootstrap() {
                 protobuf.join("timestamp.proto"),
                 protobuf.join("type.proto"),
             ],
-            &[],
+            &[""],
         )
         .unwrap();
 

@@ -40,40 +40,6 @@ pub fn to_upper_camel(s: &str) -> String {
     ident
 }
 
-/// Matches a 'matcher' against a fully qualified identifier.
-pub fn match_ident(matcher: &str, msg: &str, field: Option<&str>) -> bool {
-    assert_eq!(b'.', msg.as_bytes()[0]);
-
-    if matcher.is_empty() {
-        return false;
-    } else if matcher == "." {
-        return true;
-    }
-
-    let match_paths = matcher.split('.').collect::<Vec<_>>();
-    let field_paths = {
-        let mut paths = msg.split('.').collect::<Vec<_>>();
-        if let Some(field) = field {
-            paths.push(field);
-        }
-        paths
-    };
-
-    if &matcher[..1] == "." {
-        // Prefix match.
-        if match_paths.len() > field_paths.len() {
-            false
-        } else {
-            match_paths[..] == field_paths[..match_paths.len()]
-        }
-    // Suffix match.
-    } else if match_paths.len() > field_paths.len() {
-        false
-    } else {
-        match_paths[..] == field_paths[field_paths.len() - match_paths.len()..]
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -192,45 +158,5 @@ mod tests {
         assert_eq!("FuzzBuster", &to_upper_camel("fuzzBuster"));
         assert_eq!("FuzzBuster", &to_upper_camel("FuzzBuster"));
         assert_eq!("Self_", &to_upper_camel("self"));
-    }
-
-    #[test]
-    fn test_match_ident() {
-        // Prefix matches
-        assert!(match_ident(".", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident(".foo", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident(".foo.bar", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident(".foo.bar.Baz", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident(
-            ".foo.bar.Baz.buzz",
-            ".foo.bar.Baz",
-            Some("buzz")
-        ));
-
-        assert!(!match_ident(".fo", ".foo.bar.Baz", Some("buzz")));
-        assert!(!match_ident(".foo.", ".foo.bar.Baz", Some("buzz")));
-        assert!(!match_ident(".buzz", ".foo.bar.Baz", Some("buzz")));
-        assert!(!match_ident(".Baz.buzz", ".foo.bar.Baz", Some("buzz")));
-
-        // Suffix matches
-        assert!(match_ident("buzz", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident("Baz.buzz", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident("bar.Baz.buzz", ".foo.bar.Baz", Some("buzz")));
-        assert!(match_ident(
-            "foo.bar.Baz.buzz",
-            ".foo.bar.Baz",
-            Some("buzz")
-        ));
-
-        assert!(!match_ident("buz", ".foo.bar.Baz", Some("buzz")));
-        assert!(!match_ident("uz", ".foo.bar.Baz", Some("buzz")));
-
-        // Type names
-        assert!(match_ident("Baz", ".foo.bar.Baz", None));
-        assert!(match_ident(".", ".foo.bar.Baz", None));
-        assert!(match_ident(".foo.bar", ".foo.bar.Baz", None));
-        assert!(match_ident(".foo.bar.Baz", ".foo.bar.Baz", None));
-        assert!(!match_ident(".fo", ".foo.bar.Baz", None));
-        assert!(!match_ident(".buzz.Baz", ".foo.bar.Baz", None));
     }
 }

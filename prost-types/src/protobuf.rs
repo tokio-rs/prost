@@ -147,6 +147,29 @@ pub struct FieldDescriptorProto {
     pub json_name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, optional, tag="8")]
     pub options: ::core::option::Option<FieldOptions>,
+    /// If true, this is a proto3 "optional". When a proto3 field is optional, it
+    /// tracks presence regardless of field type.
+    ///
+    /// When proto3_optional is true, this field must be belong to a oneof to
+    /// signal to old proto3 clients that presence is tracked for this field. This
+    /// oneof is known as a "synthetic" oneof, and this field must be its sole
+    /// member (each proto3 optional field gets its own synthetic oneof). Synthetic
+    /// oneofs exist in the descriptor only, and do not generate any API. Synthetic
+    /// oneofs must be ordered after all "real" oneofs.
+    ///
+    /// For message fields, proto3_optional doesn't create any semantic change,
+    /// since non-repeated message fields always track presence. However it still
+    /// indicates the semantic detail of whether the user wrote "optional" or not.
+    /// This can be useful for round-tripping the .proto file. For consistency we
+    /// give message fields a synthetic oneof also, even though it is not required
+    /// to track presence. This is especially important because the parser can't
+    /// tell if a field is a message or an enum, so it must always create a
+    /// synthetic oneof.
+    ///
+    /// Proto2 optional fields do not set this flag, because they already indicate
+    /// optional with `LABEL_OPTIONAL`.
+    #[prost(bool, optional, tag="17")]
+    pub proto3_optional: ::core::option::Option<bool>,
 }
 /// Nested message and enum types in `FieldDescriptorProto`.
 pub mod field_descriptor_proto {
@@ -382,7 +405,7 @@ pub struct FileOptions {
     pub deprecated: ::core::option::Option<bool>,
     /// Enables the use of arenas for the proto messages in this file. This applies
     /// only to generated classes for C++.
-    #[prost(bool, optional, tag="31", default="false")]
+    #[prost(bool, optional, tag="31", default="true")]
     pub cc_enable_arenas: ::core::option::Option<bool>,
     /// Sets the objective c class prefix which is prepended to all objective c
     /// generated classes from this .proto. There is no default.
@@ -928,10 +951,13 @@ pub mod generated_code_info {
 ///  Example 4: Pack and unpack a message in Go
 ///
 ///      foo := &pb.Foo{...}
-///      any, err := ptypes.MarshalAny(foo)
+///      any, err := anypb.New(foo)
+///      if err != nil {
+///        ...
+///      }
 ///      ...
 ///      foo := &pb.Foo{}
-///      if err := ptypes.UnmarshalAny(any, foo); err != nil {
+///      if err := any.UnmarshalTo(foo); err != nil {
 ///        ...
 ///      }
 ///
@@ -1317,7 +1343,7 @@ pub struct Method {
 /// The mixin construct implies that all methods in `AccessControl` are
 /// also declared with same name and request/response types in
 /// `Storage`. A documentation generator or annotation processor will
-/// see the effective `Storage.GetAcl` method after inherting
+/// see the effective `Storage.GetAcl` method after inheriting
 /// documentation and annotations as follows:
 ///
 ///     service Storage {
@@ -1760,7 +1786,16 @@ pub enum NullValue {
 ///         .setNanos((int) ((millis % 1000) * 1000000)).build();
 ///
 ///
-/// Example 5: Compute Timestamp from current time in Python.
+/// Example 5: Compute Timestamp from Java `Instant.now()`.
+///
+///     Instant now = Instant.now();
+///
+///     Timestamp timestamp =
+///         Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+///             .setNanos(now.getNano()).build();
+///
+///
+/// Example 6: Compute Timestamp from current time in Python.
 ///
 ///     timestamp = Timestamp()
 ///     timestamp.GetCurrentTime()

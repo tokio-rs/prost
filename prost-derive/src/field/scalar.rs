@@ -556,10 +556,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        match self {
-            Ty::String | Ty::Bytes(..) => false,
-            _ => true,
-        }
+        !matches!(self, Ty::String | Ty::Bytes(..))
     }
 }
 
@@ -706,43 +703,35 @@ impl DefaultValue {
                 }
 
                 // Rust doesn't have a negative literals, so they have to be parsed specially.
-                if value.starts_with('-') {
-                    if let Ok(lit) = syn::parse_str::<Lit>(&value[1..]) {
-                        match lit {
-                            Lit::Int(ref lit) if is_i32 && empty_or_is("i32", lit.suffix()) => {
-                                // Initially parse into an i64, so that i32::MIN does not overflow.
-                                let value: i64 = -lit.base10_parse()?;
-                                return Ok(i32::try_from(value).map(DefaultValue::I32)?);
-                            }
-
-                            Lit::Int(ref lit) if is_i64 && empty_or_is("i64", lit.suffix()) => {
-                                // Initially parse into an i128, so that i64::MIN does not overflow.
-                                let value: i128 = -lit.base10_parse()?;
-                                return Ok(i64::try_from(value).map(DefaultValue::I64)?);
-                            }
-
-                            Lit::Float(ref lit)
-                                if *ty == Ty::Float && empty_or_is("f32", lit.suffix()) =>
-                            {
-                                return Ok(DefaultValue::F32(-lit.base10_parse()?));
-                            }
-
-                            Lit::Float(ref lit)
-                                if *ty == Ty::Double && empty_or_is("f64", lit.suffix()) =>
-                            {
-                                return Ok(DefaultValue::F64(-lit.base10_parse()?));
-                            }
-
-                            Lit::Int(ref lit) if *ty == Ty::Float && lit.suffix().is_empty() => {
-                                return Ok(DefaultValue::F32(-lit.base10_parse()?));
-                            }
-
-                            Lit::Int(ref lit) if *ty == Ty::Double && lit.suffix().is_empty() => {
-                                return Ok(DefaultValue::F64(-lit.base10_parse()?));
-                            }
-
-                            _ => (),
+                if let Some(Ok(lit)) = value.strip_prefix('-').map(syn::parse_str::<Lit>) {
+                    match lit {
+                        Lit::Int(ref lit) if is_i32 && empty_or_is("i32", lit.suffix()) => {
+                            // Initially parse into an i64, so that i32::MIN does not overflow.
+                            let value: i64 = -lit.base10_parse()?;
+                            return Ok(i32::try_from(value).map(DefaultValue::I32)?);
                         }
+                        Lit::Int(ref lit) if is_i64 && empty_or_is("i64", lit.suffix()) => {
+                            // Initially parse into an i128, so that i64::MIN does not overflow.
+                            let value: i128 = -lit.base10_parse()?;
+                            return Ok(i64::try_from(value).map(DefaultValue::I64)?);
+                        }
+                        Lit::Float(ref lit)
+                            if *ty == Ty::Float && empty_or_is("f32", lit.suffix()) =>
+                        {
+                            return Ok(DefaultValue::F32(-lit.base10_parse()?));
+                        }
+                        Lit::Float(ref lit)
+                            if *ty == Ty::Double && empty_or_is("f64", lit.suffix()) =>
+                        {
+                            return Ok(DefaultValue::F64(-lit.base10_parse()?));
+                        }
+                        Lit::Int(ref lit) if *ty == Ty::Float && lit.suffix().is_empty() => {
+                            return Ok(DefaultValue::F32(-lit.base10_parse()?));
+                        }
+                        Lit::Int(ref lit) if *ty == Ty::Double && lit.suffix().is_empty() => {
+                            return Ok(DefaultValue::F64(-lit.base10_parse()?));
+                        }
+                        _ => (),
                     }
                 }
                 match syn::parse_str::<Lit>(&value) {

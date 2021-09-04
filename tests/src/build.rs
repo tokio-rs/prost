@@ -45,6 +45,11 @@ fn main() {
     config.field_attribute("Foo.Custom.Attrs.Msg.field.a", "/// Oneof A docs");
     config.field_attribute("Foo.Custom.Attrs.Msg.field.b", "/// Oneof B docs");
 
+    config.file_descriptor_set_path(
+        PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
+            .join("file_descriptor_set.bin"),
+    );
+
     config
         .compile_protos(&[src.join("ident_conversion.proto")], includes)
         .unwrap();
@@ -80,6 +85,24 @@ fn main() {
     config
         .compile_protos(&[src.join("deprecated_field.proto")], includes)
         .unwrap();
+
+    config
+        .compile_protos(&[src.join("default_string_escape.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile_protos(&[src.join("proto3_presence.proto")], includes)
+        .unwrap();
+
+    {
+        let mut config = prost_build::Config::new();
+        config.disable_comments(&["."]);
+
+        config
+            .compile_protos(&[src.join("invalid_doctest.proto")], includes)
+            .unwrap();
+    }
 
     config
         .compile_protos(&[src.join("well_known_types.proto")], includes)

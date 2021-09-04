@@ -33,7 +33,7 @@ jobs:
             profile: minimal
             components: clippy
       - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v1
+        uses: seanmiddleditch/gha-setup-ninja@v3
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -46,7 +46,7 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - 1.39.0
+          - 1.46.0
         os:
           - ubuntu-latest
           - macos-latest
@@ -61,7 +61,7 @@ jobs:
             default: true
             profile: minimal
       - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v1
+        uses: seanmiddleditch/gha-setup-ninja@v3
       - name: test
         uses: actions-rs/cargo@v1
         with:

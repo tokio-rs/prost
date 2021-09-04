@@ -56,6 +56,10 @@ pub struct CodeGeneratorResponse {
     /// exiting with a non-zero status code.
     #[prost(string, optional, tag="1")]
     pub error: ::core::option::Option<::prost::alloc::string::String>,
+    /// A bitmask of supported features that the code generator supports.
+    /// This is a bitwise "or" of values from the Feature enum.
+    #[prost(uint64, optional, tag="2")]
+    pub supported_features: ::core::option::Option<u64>,
     #[prost(message, repeated, tag="15")]
     pub file: ::prost::alloc::vec::Vec<code_generator_response::File>,
 }
@@ -119,5 +123,17 @@ pub mod code_generator_response {
         /// The file contents.
         #[prost(string, optional, tag="15")]
         pub content: ::core::option::Option<::prost::alloc::string::String>,
+        /// Information describing the file content being inserted. If an insertion
+        /// point is used, this information will be appropriately offset and inserted
+        /// into the code generation metadata for the generated files.
+        #[prost(message, optional, tag="16")]
+        pub generated_code_info: ::core::option::Option<super::super::GeneratedCodeInfo>,
+    }
+    /// Sync with code_generator.h.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Feature {
+        None = 0,
+        Proto3Optional = 1,
     }
 }

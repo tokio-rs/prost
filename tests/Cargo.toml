@@ -1,14 +1,14 @@
 [package]
 name = "tests"
 version = "0.0.0"
-authors = ["Dan Burkert <dan@danburkert.com>"]
+authors = [
+    "Dan Burkert <dan@danburkert.com>",
+    "Tokio Contributors <team@tokio.rs>",
+]
 publish = false
 edition = "2018"
 
 build = "src/build.rs"
-
-[lib]
-doctest = false
 
 [features]
 default = ["std"]
@@ -16,8 +16,8 @@ std = []
 
 [dependencies]
 anyhow = "1"
-bytes = "0.5"
-cfg-if = "0.1"
+bytes = "1"
+cfg-if = "1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
@@ -26,12 +26,9 @@ protobuf = { path = "../protobuf" }
 diff = "0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
-# TODO: remove this when support for 1.39 is dropped. remove_dir_all 0.5.3 is not compatible with
-# rustc 1.39.
-remove_dir_all = "=0.5.2"
 
 [build-dependencies]
-cfg-if = "0.1"
-env_logger = { version = "0.7", default-features = false }
+cfg-if = "1"
+env_logger = { version = "0.8", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }

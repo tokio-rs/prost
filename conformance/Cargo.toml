@@ -1,13 +1,16 @@
 [package]
 name = "conformance"
 version = "0.0.0"
-authors = ["Dan Burkert <dan@danburkert.com>"]
+authors = [
+    "Dan Burkert <dan@danburkert.com>",
+    "Tokio Contributors <team@tokio.rs>",
+]
 publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "0.5"
-env_logger = { version = "0.7", default-features = false }
+bytes = "1"
+env_logger = { version = "0.8", default-features = false }
 log = "0.4"
 prost = { path = ".." }
 protobuf = { path = "../protobuf" }
