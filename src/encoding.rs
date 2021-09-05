@@ -146,7 +146,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part2 -= 0x80;
     b = unsafe { *bytes.get_unchecked(9) };
     part2 += u32::from(b) << 7;
-    if b < 0x80 {
+    // check for u64::MAX
+    if b < 2 {
         return Ok((value + (u64::from(part2) << 56), 10));
     };
 
@@ -167,7 +168,12 @@ where
         let byte = buf.get_u8();
         value |= u64::from(byte & 0x7F) << (count * 7);
         if byte <= 0x7F {
-            return Ok(value);
+            // u64::MAX check
+            if count == 9 && byte >= 2 {
+                return Err(DecodeError::new("invalid varint"));
+            } else {
+                return Ok(value);
+            }
         }
     }
 
@@ -1646,6 +1652,15 @@ mod test {
             u64::MAX,
             &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
         );
+    }
+
+    #[test]
+    fn varint_overflow() {
+        let mut u64_plus_one: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
+
+        decode_varint(&mut u64_plus_one).expect_err("decoding u64::MAX + 1 succeeded");
+
+        decode_varint_slow(&mut u64_plus_one).expect_err("slow decoding u64::MAX + 1 succeeded");
     }
 
     /// This big bowl o' macro soup generates an encoding property test for each combination of map
