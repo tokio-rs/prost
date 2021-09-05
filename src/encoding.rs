@@ -1657,11 +1657,12 @@ mod test {
 
     #[test]
     fn varint_overflow() {
-        let mut u64_plus_one: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
+        let mut u64_max_plus_one: &[u8] =
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
 
-        decode_varint(&mut u64_plus_one).expect_err("decoding u64::MAX + 1 succeeded");
-
-        decode_varint_slow(&mut u64_plus_one).expect_err("slow decoding u64::MAX + 1 succeeded");
+        decode_varint(&mut u64_max_plus_one).expect_err("decoding u64::MAX + 1 succeeded");
+        decode_varint_slow(&mut u64_max_plus_one)
+            .expect_err("slow decoding u64::MAX + 1 succeeded");
     }
 
     /// This big bowl o' macro soup generates an encoding property test for each combination of map
