@@ -146,12 +146,13 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part2 -= 0x80;
     b = unsafe { *bytes.get_unchecked(9) };
     part2 += u32::from(b) << 7;
-    // check for u64::MAX
+    // check for u64::MAX overflow
     if b < 2 {
         return Ok((value + (u64::from(part2) << 56), 10));
     };
 
-    // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
+    // We have overrun the maximum size of a varint (10 bytes) or the final byte caused an overflow.
+    // Assume the data is corrupt.
     Err(DecodeError::new("invalid varint"))
 }
 
@@ -168,7 +169,7 @@ where
         let byte = buf.get_u8();
         value |= u64::from(byte & 0x7F) << (count * 7);
         if byte <= 0x7F {
-            // u64::MAX check
+            // check for u64::MAX overflow
             if count == 9 && byte >= 2 {
                 return Err(DecodeError::new("invalid varint"));
             } else {
