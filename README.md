@@ -49,8 +49,8 @@ possible.
 
 ### Packages
 
-All `.proto` files used with `prost` must contain a
-[`package` specifier][package]. `prost` will translate the Protobuf package into
+Prost can now generate code for `.proto` files that don't have a package spec. 
+`prost` will translate the Protobuf package into
 a Rust module. For example, given the `package` specifier:
 
 [package]: https://developers.google.com/protocol-buffers/docs/proto#packages
