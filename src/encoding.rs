@@ -62,7 +62,7 @@ where
     }
     part0 -= 0x80;
 
-    if bytes.is_empty() {
+    if bytes.len() < 2 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(1) };
@@ -73,7 +73,7 @@ where
     }
     part0 -= 0x80 << 7;
 
-    if bytes.is_empty() {
+    if bytes.len() < 3 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(2) };
@@ -84,7 +84,7 @@ where
     }
     part0 -= 0x80 << 14;
 
-    if bytes.is_empty() {
+    if bytes.len() < 4 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(3) };
@@ -96,7 +96,7 @@ where
     part0 -= 0x80 << 21;
     let value = u64::from(part0);
 
-    if bytes.is_empty() {
+    if bytes.len() < 5 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(4) };
@@ -107,7 +107,7 @@ where
     }
     part1 -= 0x80;
 
-    if bytes.is_empty() {
+    if bytes.len() < 6 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(5) };
@@ -118,7 +118,7 @@ where
     }
     part1 -= 0x80 << 7;
 
-    if bytes.is_empty() {
+    if bytes.len() < 7 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(6) };
@@ -129,7 +129,7 @@ where
     }
     part1 -= 0x80 << 14;
 
-    if bytes.is_empty() {
+    if bytes.len() < 8 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(7) };
@@ -141,7 +141,7 @@ where
     part1 -= 0x80 << 21;
     let value = value + (u64::from(part1) << 28);
 
-    if bytes.is_empty() {
+    if bytes.len() < 9 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(8) };
@@ -152,7 +152,7 @@ where
     }
     part2 -= 0x80;
 
-    if bytes.is_empty() {
+    if bytes.len() < 10 {
         return Err(DecodeError::new("invalid varint"));
     }
     let b = unsafe { *bytes.get_unchecked(9) };
