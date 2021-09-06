@@ -8,7 +8,6 @@ use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cmp::min;
 use core::convert::TryFrom;
 use core::mem;
 use core::str;
@@ -39,138 +38,131 @@ where
 }
 
 /// Decodes a LEB128-encoded variable length integer from the buffer.
+///
+/// Based loosely on [`ReadVarint64FromArray`][1].
+///
+/// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.cc#L365-L406
 #[inline]
 pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError>
 where
     B: Buf,
 {
-    let bytes = buf.chunk();
-    let len = bytes.len();
-    if len == 0 {
-        return Err(DecodeError::new("invalid varint"));
-    }
-
-    let byte = bytes[0];
-    if byte < 0x80 {
-        buf.advance(1);
-        Ok(u64::from(byte))
-    } else if len > 10 || bytes[len - 1] < 0x80 {
-        let (value, advance) = decode_varint_slice(bytes)?;
-        buf.advance(advance);
-        Ok(value)
-    } else {
-        decode_varint_slow(buf)
-    }
-}
-
-/// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
-/// number of bytes read.
-///
-/// Based loosely on [`ReadVarint64FromArray`][1].
-///
-/// ## Safety
-///
-/// The caller must ensure that `bytes` is non-empty and either `bytes.len() >= 10` or the last
-/// element in bytes is < `0x80`.
-///
-/// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.cc#L365-L406
-#[inline]
-fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     // Fully unrolled varint decoding loop. Splitting into 32-bit pieces gives better performance.
 
-    // Use assertions to ensure memory safety, but it should always be optimized after inline.
-    assert!(!bytes.is_empty());
-    assert!(bytes.len() > 10 || bytes[bytes.len() - 1] < 0x80);
+    let bytes = buf.chunk();
 
-    let mut b: u8;
-    let mut part0: u32;
-    b = unsafe { *bytes.get_unchecked(0) };
-    part0 = u32::from(b);
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(0) };
+    let mut part0 = u32::from(b);
     if b < 0x80 {
-        return Ok((u64::from(part0), 1));
-    };
+        buf.advance(1);
+        return Ok(u64::from(part0));
+    }
     part0 -= 0x80;
-    b = unsafe { *bytes.get_unchecked(1) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(1) };
     part0 += u32::from(b) << 7;
     if b < 0x80 {
-        return Ok((u64::from(part0), 2));
-    };
+        buf.advance(2);
+        return Ok(u64::from(part0));
+    }
     part0 -= 0x80 << 7;
-    b = unsafe { *bytes.get_unchecked(2) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(2) };
     part0 += u32::from(b) << 14;
     if b < 0x80 {
-        return Ok((u64::from(part0), 3));
-    };
+        buf.advance(3);
+        return Ok(u64::from(part0));
+    }
     part0 -= 0x80 << 14;
-    b = unsafe { *bytes.get_unchecked(3) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(3) };
     part0 += u32::from(b) << 21;
     if b < 0x80 {
-        return Ok((u64::from(part0), 4));
-    };
+        buf.advance(4);
+        return Ok(u64::from(part0));
+    }
     part0 -= 0x80 << 21;
     let value = u64::from(part0);
 
-    let mut part1: u32;
-    b = unsafe { *bytes.get_unchecked(4) };
-    part1 = u32::from(b);
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(4) };
+    let mut part1 = u32::from(b);
     if b < 0x80 {
-        return Ok((value + (u64::from(part1) << 28), 5));
-    };
+        buf.advance(5);
+        return Ok(value + (u64::from(part1) << 28));
+    }
     part1 -= 0x80;
-    b = unsafe { *bytes.get_unchecked(5) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(5) };
     part1 += u32::from(b) << 7;
     if b < 0x80 {
-        return Ok((value + (u64::from(part1) << 28), 6));
-    };
+        buf.advance(6);
+        return Ok(value + (u64::from(part1) << 28));
+    }
     part1 -= 0x80 << 7;
-    b = unsafe { *bytes.get_unchecked(6) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(6) };
     part1 += u32::from(b) << 14;
     if b < 0x80 {
-        return Ok((value + (u64::from(part1) << 28), 7));
-    };
+        buf.advance(7);
+        return Ok(value + (u64::from(part1) << 28));
+    }
     part1 -= 0x80 << 14;
-    b = unsafe { *bytes.get_unchecked(7) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(7) };
     part1 += u32::from(b) << 21;
     if b < 0x80 {
-        return Ok((value + (u64::from(part1) << 28), 8));
-    };
+        buf.advance(8);
+        return Ok(value + (u64::from(part1) << 28));
+    }
     part1 -= 0x80 << 21;
-    let value = value + ((u64::from(part1)) << 28);
+    let value = value + (u64::from(part1) << 28);
 
-    let mut part2: u32;
-    b = unsafe { *bytes.get_unchecked(8) };
-    part2 = u32::from(b);
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(8) };
+    let mut part2 = u32::from(b);
     if b < 0x80 {
-        return Ok((value + (u64::from(part2) << 56), 9));
-    };
+        buf.advance(9);
+        return Ok(value + (u64::from(part2) << 56));
+    }
     part2 -= 0x80;
-    b = unsafe { *bytes.get_unchecked(9) };
+
+    if bytes.is_empty() {
+        return Err(DecodeError::new("invalid varint"));
+    }
+    let b = unsafe { *bytes.get_unchecked(9) };
     part2 += u32::from(b) << 7;
     if b < 0x80 {
-        return Ok((value + (u64::from(part2) << 56), 10));
-    };
-
-    // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
-    Err(DecodeError::new("invalid varint"))
-}
-
-/// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as
-/// necessary.
-#[inline(never)]
-#[cold]
-fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError>
-where
-    B: Buf,
-{
-    let mut value = 0;
-    for count in 0..min(10, buf.remaining()) {
-        let byte = buf.get_u8();
-        value |= u64::from(byte & 0x7F) << (count * 7);
-        if byte <= 0x7F {
-            return Ok(value);
-        }
+        buf.advance(10);
+        return Ok(value + (u64::from(part2) << 56));
     }
 
+    // We have overrun the maximum size of a varint (10 bytes). Assume the data is corrupt.
     Err(DecodeError::new("invalid varint"))
 }
 
@@ -1570,7 +1562,7 @@ mod test {
 
     #[test]
     fn varint() {
-        fn check(value: u64, mut encoded: &[u8]) {
+        fn check(value: u64, encoded: &[u8]) {
             // TODO(rust-lang/rust-clippy#5494)
             #![allow(clippy::clone_double_ref)]
 
@@ -1587,9 +1579,6 @@ mod test {
             assert_eq!(encoded_len_varint(value), encoded.len());
 
             let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
-            assert_eq!(value, roundtrip_value);
-
-            let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 
