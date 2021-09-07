@@ -22,9 +22,9 @@ members = [
   "prost-types",
   "protobuf",
   "tests",
-  "tests/single-include",
   "tests-2015",
   "tests-no-std",
+  "tests/single-include",
 ]
 
 exclude = [
