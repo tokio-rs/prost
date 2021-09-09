@@ -54,6 +54,12 @@ impl Message for bool {
     fn clear(&mut self) {
         *self = false;
     }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "BoolValue"
+    }
 }
 
 /// `google.protobuf.UInt32Value`
@@ -91,6 +97,12 @@ impl Message for u32 {
     }
     fn clear(&mut self) {
         *self = 0;
+    }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "UInt32Value"
     }
 }
 
@@ -130,6 +142,12 @@ impl Message for u64 {
     fn clear(&mut self) {
         *self = 0;
     }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "UInt64Value"
+    }
 }
 
 /// `google.protobuf.Int32Value`
@@ -167,6 +185,12 @@ impl Message for i32 {
     }
     fn clear(&mut self) {
         *self = 0;
+    }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "Int32Value"
     }
 }
 
@@ -206,6 +230,12 @@ impl Message for i64 {
     fn clear(&mut self) {
         *self = 0;
     }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "Int64Value"
+    }
 }
 
 /// `google.protobuf.FloatValue`
@@ -243,6 +273,12 @@ impl Message for f32 {
     }
     fn clear(&mut self) {
         *self = 0.0;
+    }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "FloatValue"
     }
 }
 
@@ -282,6 +318,12 @@ impl Message for f64 {
     fn clear(&mut self) {
         *self = 0.0;
     }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "DoubleValue"
+    }
 }
 
 /// `google.protobuf.StringValue`
@@ -319,6 +361,12 @@ impl Message for String {
     }
     fn clear(&mut self) {
         self.clear();
+    }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "StringValue"
     }
 }
 
@@ -358,6 +406,12 @@ impl Message for Vec<u8> {
     fn clear(&mut self) {
         self.clear();
     }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "BytesValue"
+    }
 }
 
 /// `google.protobuf.BytesValue`
@@ -396,6 +450,12 @@ impl Message for Bytes {
     fn clear(&mut self) {
         self.clear();
     }
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "BytesValue"
+    }
 }
 
 /// `google.protobuf.Empty`
@@ -421,4 +481,10 @@ impl Message for () {
         0
     }
     fn clear(&mut self) {}
+    fn package_name() -> &'static str {
+        "google.protobuf"
+    }
+    fn message_name() -> &'static str {
+        "Empty"
+    }
 }

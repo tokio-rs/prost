@@ -180,6 +180,9 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
+        self.buf.push_str("#[prost(package = \"");
+        self.buf.push_str(&self.package);
+        self.buf.push_str("\")]\n");
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));

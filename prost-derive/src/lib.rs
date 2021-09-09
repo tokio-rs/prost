@@ -22,6 +22,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
     let ident = input.ident;
+    let attrs = input.attrs;
+
+    let mut package = "".to_string();
+    for attr in attrs {
+        if attr.path.is_ident("prost") {
+            if let Ok(arg) = attr.parse_args::<syn::MetaNameValue>() {
+                if arg.path.is_ident("package") {
+                    if let syn::Lit::Str(lit) = arg.lit {
+                        package = lit.value();
+                    }
+                }
+            }
+        }
+    }
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -201,6 +215,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
             fn clear(&mut self) {
                 #(#clear;)*
+            }
+
+            fn package_name() -> &'static str {
+                #package
+            }
+
+            fn message_name() -> &'static str {
+                stringify!(#ident)
             }
         }
 
