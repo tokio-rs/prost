@@ -46,33 +46,23 @@ fn test() {
 
     assert_eq!(
         "widget.factory.WidgetFactory",
-        widget::factory::WidgetFactory::message_path());
+        widget::factory::WidgetFactory::message_path()
+    );
 
     assert_eq!(
         "widget.factory.WidgetFactory.Inner",
-        widget::factory::widget_factory::Inner::message_path());
+        widget::factory::widget_factory::Inner::message_path()
+    );
 
-    assert_eq!(
-        "Root",
-        Root::message_path());
+    assert_eq!("Root", Root::message_path());
 
-    assert_eq!(
-        "Root.Inner",
-        root::Inner::message_path());
+    assert_eq!("Root.Inner", root::Inner::message_path());
 
-    assert_eq!(
-        "widget.Widget",
-        widget::Widget::message_path());
+    assert_eq!("widget.Widget", widget::Widget::message_path());
 
-    assert_eq!(
-        "widget.Widget.Inner",
-        widget::widget::Inner::message_path());
+    assert_eq!("widget.Widget.Inner", widget::widget::Inner::message_path());
 
-    assert_eq!(
-        "gizmo.Gizmo",
-        gizmo::Gizmo::message_path());
+    assert_eq!("gizmo.Gizmo", gizmo::Gizmo::message_path());
 
-    assert_eq!(
-        "gizmo.Gizmo.Inner",
-        gizmo::gizmo::Inner::message_path());
+    assert_eq!("gizmo.Gizmo.Inner", gizmo::gizmo::Inner::message_path());
 }
