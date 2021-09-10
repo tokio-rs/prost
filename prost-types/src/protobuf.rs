@@ -263,7 +263,7 @@ pub mod enum_descriptor_proto {
     /// is inclusive such that it can appropriately represent the entire int32
     /// domain.
     #[derive(Clone, PartialEq, ::prost::Message)]
-    #[prost(package="google.protobufi.EnumDescriptorProto")]
+    #[prost(package="google.protobuf.EnumDescriptorProto")]
     pub struct EnumReservedRange {
         /// Inclusive.
         #[prost(int32, optional, tag="1")]
