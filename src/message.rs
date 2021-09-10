@@ -161,6 +161,7 @@ pub trait Message: Debug + Send + Sync {
     /// Clears the message, resetting all fields to their default.
     fn clear(&mut self);
 
+    /// Gets the full path of the message.
     fn message_path() -> &'static str where Self: Sized;
 }
 
