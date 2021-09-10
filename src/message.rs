@@ -161,9 +161,7 @@ pub trait Message: Debug + Send + Sync {
     /// Clears the message, resetting all fields to their default.
     fn clear(&mut self);
 
-    fn package_name() -> &'static str;
-
-    fn message_name() -> &'static str;
+    fn message_path() -> &'static str where Self: Sized;
 }
 
 impl<M> Message for Box<M>
@@ -194,11 +192,8 @@ where
     fn clear(&mut self) {
         (**self).clear()
     }
-    fn package_name() -> &'static str {
-        M::package_name()
-    }
-    fn message_name() -> &'static str {
-        M::message_name()
+    fn message_path() -> &'static str {
+        M::message_path()
     }
 }
 

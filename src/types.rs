@@ -54,11 +54,8 @@ impl Message for bool {
     fn clear(&mut self) {
         *self = false;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "BoolValue"
+    fn message_path() -> &'static str {
+        "google.protobuf.BoolValue"
     }
 }
 
@@ -98,11 +95,8 @@ impl Message for u32 {
     fn clear(&mut self) {
         *self = 0;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "UInt32Value"
+    fn message_path() -> &'static str {
+        "google.protobuf.UInt32Value"
     }
 }
 
@@ -142,11 +136,8 @@ impl Message for u64 {
     fn clear(&mut self) {
         *self = 0;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "UInt64Value"
+    fn message_path() -> &'static str {
+        "google.protobuf.UInt64Value"
     }
 }
 
@@ -186,11 +177,8 @@ impl Message for i32 {
     fn clear(&mut self) {
         *self = 0;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "Int32Value"
+    fn message_path() -> &'static str {
+        "google.protobuf.Int32Value"
     }
 }
 
@@ -230,11 +218,8 @@ impl Message for i64 {
     fn clear(&mut self) {
         *self = 0;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "Int64Value"
+    fn message_path() -> &'static str {
+        "google.protobuf.Int64Value"
     }
 }
 
@@ -274,11 +259,8 @@ impl Message for f32 {
     fn clear(&mut self) {
         *self = 0.0;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "FloatValue"
+    fn message_path() -> &'static str {
+        "google.protobuf.FloatValue"
     }
 }
 
@@ -318,11 +300,8 @@ impl Message for f64 {
     fn clear(&mut self) {
         *self = 0.0;
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "DoubleValue"
+    fn message_path() -> &'static str {
+        "google.protobuf.DoubleValue"
     }
 }
 
@@ -362,11 +341,8 @@ impl Message for String {
     fn clear(&mut self) {
         self.clear();
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "StringValue"
+    fn message_path() -> &'static str {
+        "google.protobuf.StringValue"
     }
 }
 
@@ -406,11 +382,8 @@ impl Message for Vec<u8> {
     fn clear(&mut self) {
         self.clear();
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "BytesValue"
+    fn message_path() -> &'static str {
+        "google.protobuf.BytesValue"
     }
 }
 
@@ -450,11 +423,8 @@ impl Message for Bytes {
     fn clear(&mut self) {
         self.clear();
     }
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "BytesValue"
+    fn message_path() -> &'static str {
+        "google.protobuf.BytesValue"
     }
 }
 
@@ -481,10 +451,7 @@ impl Message for () {
         0
     }
     fn clear(&mut self) {}
-    fn package_name() -> &'static str {
-        "google.protobuf"
-    }
-    fn message_name() -> &'static str {
-        "Empty"
+    fn message_path() -> &'static str {
+        "google.protobuf.Empty"
     }
 }
