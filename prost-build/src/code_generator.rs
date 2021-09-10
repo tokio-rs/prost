@@ -732,7 +732,9 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(module));
         self.buf.push_str(" {\n");
 
-        self.package.push('.');
+        if !self.package.is_empty() {
+            self.package.push('.');
+        }
         self.package.push_str(module);
 
         self.depth += 1;
@@ -741,7 +743,7 @@ impl<'a> CodeGenerator<'a> {
     fn pop_mod(&mut self) {
         self.depth -= 1;
 
-        let idx = self.package.rfind('.').unwrap();
+        let idx = self.package.rfind('.').unwrap_or(0);
         self.package.truncate(idx);
 
         self.push_indent();

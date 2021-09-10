@@ -49,4 +49,36 @@ fn test() {
 
     widget_factory.gizmo_inner = Some(gizmo::gizmo::Inner {});
     assert_eq!(14, widget_factory.encoded_len());
+
+    assert_eq!(
+        "packages.widget.factory.WidgetFactory",
+        widget::factory::WidgetFactory::message_path());
+
+    assert_eq!(
+        "packages.widget.factory.WidgetFactory.Inner",
+        widget::factory::widget_factory::Inner::message_path());
+
+    assert_eq!(
+        "packages.Root",
+        Root::message_path());
+
+    assert_eq!(
+        "packages.Root.Inner",
+        root::Inner::message_path());
+
+    assert_eq!(
+        "packages.widget.Widget",
+        widget::Widget::message_path());
+
+    assert_eq!(
+        "packages.widget.Widget.Inner",
+        widget::widget::Inner::message_path());
+
+    assert_eq!(
+        "packages.gizmo.Gizmo",
+        gizmo::Gizmo::message_path());
+
+    assert_eq!(
+        "packages.gizmo.Gizmo.Inner",
+        gizmo::gizmo::Inner::message_path());
 }

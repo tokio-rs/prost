@@ -30,7 +30,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             if let Ok(arg) = attr.parse_args::<syn::MetaNameValue>() {
                 if arg.path.is_ident("package") {
                     if let syn::Lit::Str(lit) = arg.lit {
-                        message_path = lit.value() + "." + &ident.to_string();
+                        let package = lit.value();
+                        if !package.is_empty() {
+                            message_path = package + "." + &ident.to_string();
+                        }
                         break;
                     }
                 }
