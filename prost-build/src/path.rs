@@ -1,61 +1,115 @@
 //! Utilities for working with Protobuf paths.
 
-use std::collections::HashMap;
 use std::iter;
 
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
 #[derive(Debug, Default)]
 pub(crate) struct PathMap<T> {
-    matchers: HashMap<String, T>,
+    // insertion order might actually matter (to avoid warning about legacy-derive-helpers)
+    // see: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#legacy-derive-helpers
+    pub(crate) matchers: Vec<(String, T)>,
 }
 
 impl<T> PathMap<T> {
     /// Inserts a new matcher and associated value to the path map.
     pub(crate) fn insert(&mut self, matcher: String, value: T) {
-        self.matchers.insert(matcher, value);
+        self.matchers.push((matcher, value));
     }
 
-    /// Returns the value which matches the provided fully-qualified Protobuf path.
-    pub(crate) fn get(&self, fq_path: &'_ str) -> Option<&T> {
-        // First, try matching the full path.
-        iter::once(fq_path)
-            // Then, try matching path suffixes.
-            .chain(suffixes(fq_path))
-            // Then, try matching path prefixes.
-            .chain(prefixes(fq_path))
-            // Then, match the global path. This matcher must never fail, since the constructor
-            // initializes it.
-            .chain(iter::once("."))
-            .flat_map(|path| self.matchers.get(path))
-            .next()
+    /// Returns a iterator over all the value matching the given fd_path and associated suffix/prefix path
+    pub(crate) fn get(&self, fq_path: &str) -> Iter<'_, T> {
+        Iter::new(self, fq_path.to_string())
     }
 
-    /// Returns the value which matches the provided fully-qualified Protobuf path and field name.
-    pub(crate) fn get_field(&self, fq_path: &'_ str, field: &'_ str) -> Option<&T> {
-        let full_path = format!("{}.{}", fq_path, field);
-        let full_path = full_path.as_str();
+    /// Returns a iterator over all the value matching the path `fq_path.field` and associated suffix/prefix path
+    pub(crate) fn get_field(&self, fq_path: &str, field: &str) -> Iter<'_, T> {
+        Iter::new(self, format!("{}.{}", fq_path, field))
+    }
 
-        // First, try matching the path.
-        let value = iter::once(full_path)
-            // Then, try matching path suffixes.
-            .chain(suffixes(full_path))
-            // Then, try matching path suffixes without the field name.
-            .chain(suffixes(fq_path))
-            // Then, try matching path prefixes.
-            .chain(prefixes(full_path))
-            // Then, match the global path. This matcher must never fail, since the constructor
-            // initializes it.
-            .chain(iter::once("."))
-            .flat_map(|path| self.matchers.get(path))
-            .next();
+    /// Returns the first value found matching the given path
+    /// If nothing matches the path, suffix paths will be tried, then prefix paths, then the global path
+    #[allow(unused)]
+    pub(crate) fn get_first<'a>(&'a self, fq_path: &'_ str) -> Option<&'a T> {
+        self.find_best_matching(fq_path)
+    }
 
-        value
+    /// Returns the first value found matching the path `fq_path.field`
+    /// If nothing matches the path, suffix paths will be tried, then prefix paths, then the global path
+    pub(crate) fn get_first_field<'a>(&'a self, fq_path: &'_ str, field: &'_ str) -> Option<&'a T> {
+        self.find_best_matching(&format!("{}.{}", fq_path, field))
     }
 
     /// Removes all matchers from the path map.
     pub(crate) fn clear(&mut self) {
         self.matchers.clear();
     }
+
+    /// Returns the first value found best matching the path
+    /// See [sub_path_iter()] for paths test order
+    fn find_best_matching(&self, full_path: &str) -> Option<&T> {
+        sub_path_iter(full_path).find_map(|path| {
+            self.matchers
+                .iter()
+                .find(|(p, _)| p == path)
+                .map(|(_, v)| v)
+        })
+    }
+}
+
+/// Iterator inside a PathMap that only returns values that matches a given path
+pub(crate) struct Iter<'a, T> {
+    iter: std::slice::Iter<'a, (String, T)>,
+    path: String,
+}
+
+impl<'a, T> Iter<'a, T> {
+    fn new(map: &'a PathMap<T>, path: String) -> Self {
+        Self {
+            iter: map.matchers.iter(),
+            path,
+        }
+    }
+
+    fn is_match(&self, path: &str) -> bool {
+        sub_path_iter(self.path.as_str()).any(|p| p == path)
+    }
+}
+
+impl<'a, T> std::iter::Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.iter.next() {
+                Some((p, v)) => {
+                    if self.is_match(p) {
+                        return Some(v);
+                    }
+                }
+                None => return None,
+            }
+        }
+    }
+}
+
+impl<'a, T> std::iter::FusedIterator for Iter<'a, T> {}
+
+/// Given a fully-qualified path, returns a sequence of paths:
+/// - the path itself
+/// - the sequence of suffix paths
+/// - the sequence of prefix paths
+/// - the global path
+///
+/// Example: sub_path_iter(".a.b.c") -> [".a.b.c", "a.b.c", "b.c", "c", ".a.b", ".a", "."]
+fn sub_path_iter(full_path: &str) -> impl Iterator<Item = &str> {
+    // First, try matching the path.
+    iter::once(full_path)
+        // Then, try matching path suffixes.
+        .chain(suffixes(full_path))
+        // Then, try matching path prefixes.
+        .chain(prefixes(full_path))
+        // Then, match the global path.
+        .chain(iter::once("."))
 }
 
 /// Given a fully-qualified path, returns a sequence of fully-qualified paths which match a prefix
@@ -106,60 +160,85 @@ mod tests {
     }
 
     #[test]
-    fn test_path_map_get() {
+    fn test_get_matches_sub_path() {
         let mut path_map = PathMap::default();
+
+        // full path
+        path_map.insert(".a.b.c.d".to_owned(), 1);
+        assert_eq!(Some(&1), path_map.get(".a.b.c.d").next());
+        assert_eq!(Some(&1), path_map.get_field(".a.b.c", "d").next());
+
+        // suffix
+        path_map.clear();
+        path_map.insert("c.d".to_owned(), 1);
+        assert_eq!(Some(&1), path_map.get(".a.b.c.d").next());
+        assert_eq!(Some(&1), path_map.get("b.c.d").next());
+        assert_eq!(Some(&1), path_map.get_field(".a.b.c", "d").next());
+
+        // prefix
+        path_map.clear();
+        path_map.insert(".a.b".to_owned(), 1);
+        assert_eq!(Some(&1), path_map.get(".a.b.c.d").next());
+        assert_eq!(Some(&1), path_map.get_field(".a.b.c", "d").next());
+
+        // global
+        path_map.clear();
+        path_map.insert(".".to_owned(), 1);
+        assert_eq!(Some(&1), path_map.get(".a.b.c.d").next());
+        assert_eq!(Some(&1), path_map.get("b.c.d").next());
+        assert_eq!(Some(&1), path_map.get_field(".a.b.c", "d").next());
+    }
+
+    #[test]
+    fn test_get_best() {
+        let mut path_map = PathMap::default();
+
+        // worst is global
+        path_map.insert(".".to_owned(), 1);
+        assert_eq!(Some(&1), path_map.get_first(".a.b.c.d"));
+        assert_eq!(Some(&1), path_map.get_first("b.c.d"));
+        assert_eq!(Some(&1), path_map.get_first_field(".a.b.c", "d"));
+
+        // then prefix
+        path_map.insert(".a.b".to_owned(), 2);
+        assert_eq!(Some(&2), path_map.get_first(".a.b.c.d"));
+        assert_eq!(Some(&2), path_map.get_first_field(".a.b.c", "d"));
+
+        // then suffix
+        path_map.insert("c.d".to_owned(), 3);
+        assert_eq!(Some(&3), path_map.get_first(".a.b.c.d"));
+        assert_eq!(Some(&3), path_map.get_first("b.c.d"));
+        assert_eq!(Some(&3), path_map.get_first_field(".a.b.c", "d"));
+
+        // best is full path
+        path_map.insert(".a.b.c.d".to_owned(), 4);
+        assert_eq!(Some(&4), path_map.get_first(".a.b.c.d"));
+        assert_eq!(Some(&4), path_map.get_first_field(".a.b.c", "d"));
+    }
+
+    #[test]
+    fn test_get_keep_order() {
+        let mut path_map = PathMap::default();
+        path_map.insert(".".to_owned(), 1);
+        path_map.insert(".a.b".to_owned(), 2);
+        path_map.insert(".a.b.c.d".to_owned(), 3);
+
+        let mut iter = path_map.get(".a.b.c.d");
+        assert_eq!(Some(&1), iter.next());
+        assert_eq!(Some(&2), iter.next());
+        assert_eq!(Some(&3), iter.next());
+        assert_eq!(None, iter.next());
+
+        path_map.clear();
+
         path_map.insert(".a.b.c.d".to_owned(), 1);
         path_map.insert(".a.b".to_owned(), 2);
-        path_map.insert("M1".to_owned(), 3);
-        path_map.insert("M1.M2".to_owned(), 4);
-        path_map.insert("M1.M2.f1".to_owned(), 5);
-        path_map.insert("M1.M2.f2".to_owned(), 6);
+        path_map.insert(".".to_owned(), 3);
 
-        assert_eq!(None, path_map.get(".a.other"));
-        assert_eq!(None, path_map.get(".a.bother"));
-        assert_eq!(None, path_map.get(".other"));
-        assert_eq!(None, path_map.get(".M1.other"));
-        assert_eq!(None, path_map.get(".M1.M2.other"));
-
-        assert_eq!(Some(&1), path_map.get(".a.b.c.d"));
-        assert_eq!(Some(&1), path_map.get(".a.b.c.d.other"));
-
-        assert_eq!(Some(&2), path_map.get(".a.b"));
-        assert_eq!(Some(&2), path_map.get(".a.b.c"));
-        assert_eq!(Some(&2), path_map.get(".a.b.other"));
-        assert_eq!(Some(&2), path_map.get(".a.b.other.Other"));
-        assert_eq!(Some(&2), path_map.get(".a.b.c.dother"));
-
-        assert_eq!(Some(&3), path_map.get(".M1"));
-        assert_eq!(Some(&3), path_map.get(".a.b.c.d.M1"));
-        assert_eq!(Some(&3), path_map.get(".a.b.M1"));
-
-        assert_eq!(Some(&4), path_map.get(".M1.M2"));
-        assert_eq!(Some(&4), path_map.get(".a.b.c.d.M1.M2"));
-        assert_eq!(Some(&4), path_map.get(".a.b.M1.M2"));
-
-        assert_eq!(Some(&5), path_map.get(".M1.M2.f1"));
-        assert_eq!(Some(&5), path_map.get(".a.M1.M2.f1"));
-        assert_eq!(Some(&5), path_map.get(".a.b.M1.M2.f1"));
-
-        assert_eq!(Some(&6), path_map.get(".M1.M2.f2"));
-        assert_eq!(Some(&6), path_map.get(".a.M1.M2.f2"));
-        assert_eq!(Some(&6), path_map.get(".a.b.M1.M2.f2"));
-
-        // get_field
-
-        assert_eq!(Some(&2), path_map.get_field(".a.b.Other", "other"));
-
-        assert_eq!(Some(&4), path_map.get_field(".M1.M2", "other"));
-        assert_eq!(Some(&4), path_map.get_field(".a.M1.M2", "other"));
-        assert_eq!(Some(&4), path_map.get_field(".a.b.M1.M2", "other"));
-
-        assert_eq!(Some(&5), path_map.get_field(".M1.M2", "f1"));
-        assert_eq!(Some(&5), path_map.get_field(".a.M1.M2", "f1"));
-        assert_eq!(Some(&5), path_map.get_field(".a.b.M1.M2", "f1"));
-
-        assert_eq!(Some(&6), path_map.get_field(".M1.M2", "f2"));
-        assert_eq!(Some(&6), path_map.get_field(".a.M1.M2", "f2"));
-        assert_eq!(Some(&6), path_map.get_field(".a.b.M1.M2", "f2"));
+        let mut iter = path_map.get(".a.b.c.d");
+        assert_eq!(Some(&1), iter.next());
+        assert_eq!(Some(&2), iter.next());
+        assert_eq!(Some(&3), iter.next());
+        assert_eq!(None, iter.next());
     }
 }

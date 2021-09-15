@@ -38,6 +38,12 @@ pub struct CodeGenerator<'a> {
     buf: &'a mut String,
 }
 
+fn push_indent(buf: &mut String, depth: u8) {
+    for _ in 0..depth {
+        buf.push_str("    ");
+    }
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -256,25 +262,22 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_type_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        // TODO: this clone is dirty, but expedious.
-        if let Some(attributes) = self.config.type_attributes.get(fq_message_name).cloned() {
-            self.push_indent();
-            self.buf.push_str(&attributes);
+        for attribute in self.config.type_attributes.get(fq_message_name) {
+            push_indent(&mut self.buf, self.depth);
+            self.buf.push_str(&attribute);
             self.buf.push('\n');
         }
     }
 
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        // TODO: this clone is dirty, but expedious.
-        if let Some(attributes) = self
+        for attribute in self
             .config
             .field_attributes
             .get_field(fq_message_name, field_name)
-            .cloned()
         {
-            self.push_indent();
-            self.buf.push_str(&attributes);
+            push_indent(&mut self.buf, self.depth);
+            self.buf.push_str(&attribute);
             self.buf.push('\n');
         }
     }
@@ -315,7 +318,7 @@ impl<'a> CodeGenerator<'a> {
             let bytes_type = self
                 .config
                 .bytes_type
-                .get_field(fq_message_name, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .copied()
                 .unwrap_or_default();
             self.buf
@@ -427,7 +430,7 @@ impl<'a> CodeGenerator<'a> {
         let map_type = self
             .config
             .map_type
-            .get_field(fq_message_name, field.name())
+            .get_first_field(fq_message_name, field.name())
             .copied()
             .unwrap_or_default();
         let key_tag = self.field_type_tag(key);
@@ -570,10 +573,10 @@ impl<'a> CodeGenerator<'a> {
         let append_doc = if let Some(field_name) = field_name {
             self.config
                 .disable_comments
-                .get_field(fq_name, field_name)
+                .get_first_field(fq_name, field_name)
                 .is_none()
         } else {
-            self.config.disable_comments.get(fq_name).is_none()
+            self.config.disable_comments.get(fq_name).next().is_none()
         };
         if append_doc {
             Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf)
@@ -712,9 +715,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn push_indent(&mut self) {
-        for _ in 0..self.depth {
-            self.buf.push_str("    ");
-        }
+        push_indent(&mut self.buf, self.depth);
     }
 
     fn push_mod(&mut self, module: &str) {
@@ -757,7 +758,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Bytes => self
                 .config
                 .bytes_type
-                .get_field(fq_message_name, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .copied()
                 .unwrap_or_default()
                 .rust_type()
