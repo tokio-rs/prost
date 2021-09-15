@@ -24,7 +24,9 @@ members = [
   "tests",
   "tests-2015",
   "tests-no-std",
+  "tests/single-include",
 ]
+
 exclude = [
   # The fuzz crate can't be compiled or tested without the 'cargo fuzz' command,
   # so exclude it from normal builds.
