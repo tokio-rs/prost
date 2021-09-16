@@ -204,7 +204,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics Default for #ident #ty_generics #where_clause {
+        impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> Self {
                 #ident {
                     #(#default)*
