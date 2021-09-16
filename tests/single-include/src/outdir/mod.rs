@@ -1,3 +1,3 @@
 pub mod outdir {
-    include!("outdir.rs");
+    include!("./outdir.rs");
 }

@@ -122,7 +122,7 @@ use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
-use std::io::{Error, ErrorKind, Result, Write};
+use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -872,28 +872,18 @@ impl Config {
             }
         }
 
-        if let Some(ref include_file) = self.include_file {
-            trace!("Writing include file: {:?}", target.join(include_file));
-            let mut file = fs::File::create(target.join(include_file))?;
-            self.write_includes(
-                modules.keys().collect(),
-                &mut file,
-                0,
-                if target_is_env { None } else { Some(&target) },
-            )?;
-            file.flush()?;
-        }
-
         Ok(())
     }
 
-    fn write_includes(
-        &self,
-        mut entries: Vec<&Module>,
-        outfile: &mut fs::File,
-        depth: usize,
-        basepath: Option<&PathBuf>,
-    ) -> Result<usize> {
+    fn write_includes(&self, mut entries: Vec<&Module>, out: &mut String, depth: usize) -> usize {
+        fn write_line(out: &mut String, depth: usize, line: &str) {
+            for _ in 0..depth {
+                out.push_str("    ");
+            }
+            out.push_str(line);
+            out.push('\n');
+        }
+
         let mut written = 0;
         while !entries.is_empty() {
             let modident = &entries[0][depth];
@@ -910,43 +900,26 @@ impl Config {
                     .collect();
                 entries = _temp;
             }
-            self.write_line(outfile, depth, &format!("pub mod {} {{", modident))?;
+            write_line(out, depth, &format!("pub mod {} {{", modident));
             let subwritten = self.write_includes(
                 matching
                     .iter()
                     .filter(|v| v.len() > depth + 1)
                     .copied()
                     .collect(),
-                outfile,
+                out,
                 depth + 1,
-                basepath,
-            )?;
+            );
             written += subwritten;
             if subwritten != matching.len() {
                 let modname = matching[0][..=depth].join(".");
-                if let Some(_) = basepath {
-                    self.write_line(
-                        outfile,
-                        depth + 1,
-                        &format!("include!(\"{}.rs\");", modname),
-                    )?;
-                } else {
-                    self.write_line(
-                        outfile,
-                        depth + 1,
-                        &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));", modname),
-                    )?;
-                }
+                write_line(out, depth + 1, &format!(r#"include!("./{}.rs");"#, modname));
                 written += 1;
             }
 
-            self.write_line(outfile, depth, "}")?;
+            write_line(out, depth, "}");
         }
-        Ok(written)
-    }
-
-    fn write_line(&self, outfile: &mut fs::File, depth: usize, line: &str) -> Result<()> {
-        outfile.write_all(format!("{}{}\n", ("    ").to_owned().repeat(depth), line).as_bytes())
+        written
     }
 
     fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
@@ -975,6 +948,17 @@ impl Config {
                 let buf = modules.get_mut(&module).unwrap();
                 service_generator.finalize_package(&package, buf);
             }
+        }
+
+        if let Some(mut include_file) = self.include_file.clone() {
+            trace!("Generate include file: {:?}", include_file);
+
+            // Caller will add the .rs extension, so remove it if specified.
+            include_file.set_extension("");
+
+            let mut include = String::new();
+            self.write_includes(modules.keys().collect(), &mut include, 0);
+            modules.insert(vec![include_file.to_str().unwrap().to_owned()], include);
         }
 
         Ok(modules)
