@@ -151,7 +151,7 @@ impl Field {
             },
             Kind::Optional(..) => quote! {
                 #merge_fn(wire_type,
-                          #ident.get_or_insert_with(Default::default),
+                          #ident.get_or_insert_with(::core::default::Default::default),
                           buf,
                           ctx)
             },
@@ -769,7 +769,9 @@ impl DefaultValue {
                 quote!(::prost::alloc::string::String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.into()),
-            DefaultValue::Bytes(ref value) if value.is_empty() => quote!(Default::default()),
+            DefaultValue::Bytes(ref value) if value.is_empty() => {
+                quote!(::core::default::Default::default())
+            }
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
                 quote!(#lit.as_ref().into())
