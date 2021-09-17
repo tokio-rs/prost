@@ -66,7 +66,8 @@ where
 /// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
 /// number of bytes read.
 ///
-/// Based loosely on [`ReadVarint64FromArray`][1].
+/// Based loosely on [`ReadVarint64FromArray`][1] with a varint overflow check from 
+/// [`ConsumeVarint`][2].
 ///
 /// ## Safety
 ///
@@ -74,6 +75,7 @@ where
 /// element in bytes is < `0x80`.
 ///
 /// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/io/coded_stream.cc#L365-L406
+/// [2]: https://github.com/protocolbuffers/protobuf-go/blob/v1.27.1/encoding/protowire/wire.go#L358
 #[inline]
 fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     // Fully unrolled varint decoding loop. Splitting into 32-bit pieces gives better performance.
@@ -146,8 +148,9 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part2 -= 0x80;
     b = unsafe { *bytes.get_unchecked(9) };
     part2 += u32::from(b) << 7;
-    // check for u64::MAX overflow
-    if b < 2 {
+    // Check for u64::MAX overflow. See [`ConsumeVarint`][1] for details.
+    // [1]: https://github.com/protocolbuffers/protobuf-go/blob/v1.27.1/encoding/protowire/wire.go#L358
+    if b < 0x02 {
         return Ok((value + (u64::from(part2) << 56), 10));
     };
 
@@ -158,6 +161,10 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
 
 /// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as
 /// necessary.
+///
+/// Contains a varint overflow check from [`ConsumeVarint`][1].
+///
+/// [1]: https://github.com/protocolbuffers/protobuf-go/blob/v1.27.1/encoding/protowire/wire.go#L358
 #[inline(never)]
 #[cold]
 fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError>
@@ -169,8 +176,9 @@ where
         let byte = buf.get_u8();
         value |= u64::from(byte & 0x7F) << (count * 7);
         if byte <= 0x7F {
-            // check for u64::MAX overflow
-            if count == 9 && byte >= 2 {
+            // Check for u64::MAX overflow. See [`ConsumeVarint`][1] for details.
+            // [1]: https://github.com/protocolbuffers/protobuf-go/blob/v1.27.1/encoding/protowire/wire.go#L358
+            if count == 9 && byte >= 0x02 {
                 return Err(DecodeError::new("invalid varint"));
             } else {
                 return Ok(value);
