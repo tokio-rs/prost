@@ -38,6 +38,12 @@ pub struct CodeGenerator<'a> {
     buf: &'a mut String,
 }
 
+fn push_indent(buf: &mut String, depth: u8) {
+    for _ in 0..depth {
+        buf.push_str("    ");
+    }
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -65,7 +71,7 @@ impl<'a> CodeGenerator<'a> {
 
         let mut code_gen = CodeGenerator {
             config,
-            package: file.package.unwrap(),
+            package: file.package.unwrap_or_else(String::new),
             source_info,
             syntax,
             message_graph,
@@ -117,7 +123,12 @@ impl<'a> CodeGenerator<'a> {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
-        let fq_message_name = format!(".{}.{}", self.package, message.name());
+        let fq_message_name = format!(
+            "{}{}.{}",
+            if self.package.is_empty() { "" } else { "." },
+            self.package,
+            message.name()
+        );
 
         // Skip external types.
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
@@ -251,25 +262,22 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_type_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        // TODO: this clone is dirty, but expedious.
-        if let Some(attributes) = self.config.type_attributes.get(fq_message_name).cloned() {
-            self.push_indent();
-            self.buf.push_str(&attributes);
+        for attribute in self.config.type_attributes.get(fq_message_name) {
+            push_indent(&mut self.buf, self.depth);
+            self.buf.push_str(&attribute);
             self.buf.push('\n');
         }
     }
 
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        // TODO: this clone is dirty, but expedious.
-        if let Some(attributes) = self
+        for attribute in self
             .config
             .field_attributes
             .get_field(fq_message_name, field_name)
-            .cloned()
         {
-            self.push_indent();
-            self.buf.push_str(&attributes);
+            push_indent(&mut self.buf, self.depth);
+            self.buf.push_str(&attribute);
             self.buf.push('\n');
         }
     }
@@ -310,7 +318,7 @@ impl<'a> CodeGenerator<'a> {
             let bytes_type = self
                 .config
                 .bytes_type
-                .get_field(fq_message_name, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .copied()
                 .unwrap_or_default();
             self.buf
@@ -371,10 +379,7 @@ impl<'a> CodeGenerator<'a> {
                 };
                 self.buf.push_str(stripped_prefix);
             } else {
-                // TODO: this is only correct if the Protobuf escaping matches Rust escaping. To be
-                // safer, we should unescape the Protobuf string and re-escape it with the Rust
-                // escaping mechanisms.
-                self.buf.push_str(default);
+                self.buf.push_str(&default.escape_default().to_string());
             }
         }
 
@@ -425,7 +430,7 @@ impl<'a> CodeGenerator<'a> {
         let map_type = self
             .config
             .map_type
-            .get_field(fq_message_name, field.name())
+            .get_first_field(fq_message_name, field.name())
             .copied()
             .unwrap_or_default();
         let key_tag = self.field_type_tag(key);
@@ -568,10 +573,10 @@ impl<'a> CodeGenerator<'a> {
         let append_doc = if let Some(field_name) = field_name {
             self.config
                 .disable_comments
-                .get_field(fq_name, field_name)
+                .get_first_field(fq_name, field_name)
                 .is_none()
         } else {
-            self.config.disable_comments.get(fq_name).is_none()
+            self.config.disable_comments.get(fq_name).next().is_none()
         };
         if append_doc {
             Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf)
@@ -584,7 +589,12 @@ impl<'a> CodeGenerator<'a> {
         // Skip external types.
         let enum_name = &desc.name();
         let enum_values = &desc.value;
-        let fq_enum_name = format!(".{}.{}", self.package, enum_name);
+        let fq_enum_name = format!(
+            "{}{}.{}",
+            if self.package.is_empty() { "" } else { "." },
+            self.package,
+            enum_name
+        );
         if self.extern_paths.resolve_ident(&fq_enum_name).is_some() {
             return;
         }
@@ -705,9 +715,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn push_indent(&mut self) {
-        for _ in 0..self.depth {
-            self.buf.push_str("    ");
-        }
+        push_indent(&mut self.buf, self.depth);
     }
 
     fn push_mod(&mut self, module: &str) {
@@ -750,7 +758,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Bytes => self
                 .config
                 .bytes_type
-                .get_field(fq_message_name, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .copied()
                 .unwrap_or_default()
                 .rust_type()
@@ -768,6 +776,13 @@ impl<'a> CodeGenerator<'a> {
         }
 
         let mut local_path = self.package.split('.').peekable();
+
+        // If no package is specified the start of the package name will be '.'
+        // and split will return an empty string ("") which breaks resolution
+        // The fix to this is to ignore the first item if it is empty.
+        if local_path.peek().map_or(false, |s| s.is_empty()) {
+            local_path.next();
+        }
 
         let mut ident_path = pb_ident[1..].split('.');
         let ident_type = ident_path.next_back().unwrap();

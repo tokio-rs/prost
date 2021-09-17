@@ -38,6 +38,9 @@ The recommended way to add `.proto` compilation to a Cargo project is to use the
 `prost-build` library. See the [`prost-build` documentation](prost-build) for
 more details and examples.
 
+See the [snazzy repository](https://github.com/danburkert/snazzy) for a simple
+start-to-finish example.
+
 ## Generated Code
 
 `prost` generates Rust code from source `.proto` files using the `proto2` or
@@ -46,8 +49,8 @@ possible.
 
 ### Packages
 
-All `.proto` files used with `prost` must contain a
-[`package` specifier][package]. `prost` will translate the Protobuf package into
+Prost can now generate code for `.proto` files that don't have a package spec. 
+`prost` will translate the Protobuf package into
 a Rust module. For example, given the `package` specifier:
 
 [package]: https://developers.google.com/protocol-buffers/docs/proto#packages
