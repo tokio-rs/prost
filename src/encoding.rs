@@ -66,7 +66,7 @@ where
 /// Decodes a LEB128-encoded variable length integer from the slice, returning the value and the
 /// number of bytes read.
 ///
-/// Based loosely on [`ReadVarint64FromArray`][1] with a varint overflow check from 
+/// Based loosely on [`ReadVarint64FromArray`][1] with a varint overflow check from
 /// [`ConsumeVarint`][2].
 ///
 /// ## Safety
