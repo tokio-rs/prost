@@ -95,8 +95,8 @@ impl Comments {
     ///     - escape `[` & `]`
     fn sanitize_line(line: &str) -> String {
         lazy_static! {
-            static ref RULE_URL: Regex = Regex::new(r"https?://\S+").unwrap();
-            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)([^\]]+)(])").unwrap();
+            static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
+            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\w+)(])").unwrap();
         }
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
@@ -171,6 +171,11 @@ mod tests {
                 expected: "///See <https://www.rust-lang.org/>\n".to_string(),
             },
             TestCases {
+                name: "valid_https_parenthesis",
+                input: "See (https://www.rust-lang.org/)".to_string(),
+                expected: "///See (<https://www.rust-lang.org/>)\n".to_string(),
+            },
+            TestCases {
                 name: "invalid",
                 input: "See note://abc".to_string(),
                 expected: "///See note://abc\n".to_string(),
@@ -213,6 +218,11 @@ mod tests {
                 name: "invalid_end_bracket",
                 input: "foo =] baz".to_string(),
                 expected: "///foo =] baz\n".to_string(),
+            },
+            TestCases {
+                name: "invalid_bracket_combination",
+                input: "[0, 9)".to_string(),
+                expected: "///[0, 9)\n".to_string(),
             },
         ];
         for t in tests {
