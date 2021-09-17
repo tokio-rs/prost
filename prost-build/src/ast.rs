@@ -96,7 +96,7 @@ impl Comments {
     fn sanitize_line(line: &str) -> String {
         lazy_static! {
             static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
-            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\w+)(])").unwrap();
+            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\S+)(])").unwrap();
         }
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
