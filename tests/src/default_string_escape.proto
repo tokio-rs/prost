@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+package default_string_escape;
+
+message Person {
+    required string name = 1 [default = "[\"unknown\"]"];
+    required string age = 2;
+}

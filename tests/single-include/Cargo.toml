@@ -1,0 +1,13 @@
+[package]
+name = "single_include"
+version = "0.1.0"
+authors = ["Cameron Dart <cdart2@illinois.edu>"]
+edition = "2018"
+publish = false
+license = "MIT"
+
+[dependencies]
+prost = { path = "../../../prost" }
+
+[build-dependencies]
+prost-build = { path = "../../prost-build" }
