@@ -369,7 +369,7 @@ impl Config {
     ///
     /// # Arguments
     ///
-    /// **`path`** - a patch matching any number of fields. These fields get the attribute.
+    /// **`path`** - a path matching any number of fields. These fields get the attribute.
     /// For details about matching fields see [`btree_map`](#method.btree_map).
     ///
     /// **`attribute`** - an arbitrary string that'll be placed before each matched field. The
