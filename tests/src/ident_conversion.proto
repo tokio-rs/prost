@@ -77,5 +77,6 @@ message Foo_barBaz {
     foo_bar = 2;
     fuzzBUSTER = 3;
     NormalRustEnumCase = 4;
+    StrawberryRhubarbPIE4ever = 5;
   }
 }

@@ -27,7 +27,15 @@ pub fn to_snake(s: &str) -> String {
         _ => (),
     }
 
-    if !ident.chars().nth(0).unwrap_or('x').is_alphabetic() {
+    // Add an underscore ('_') prefix to identifiers which are valid by the
+    // [Protobuf rules][1], but which are not valid
+    // Rust identifiers. In particular, Protobuf allows identifiers to begin
+    // with numerals, whereas Rust does not. The
+    // reverse -- identifiers which are valid in Rust (such as non-ASCII 
+    // `XID_Start` characters) are never produced by `protoc`, and thus do not
+    // need to be handled.
+    // [1]: https://developers.google.com/protocol-buffers/docs/reference/proto3-spec
+    if !ident.chars().nth(0).map(char::is_alphabetic).unwrap_or(true) {
         return format!("_{}", ident);
     }
 
@@ -43,7 +51,8 @@ pub fn to_upper_camel(s: &str) -> String {
         return format!("{}_", ident);
     }
 
-    if !ident.chars().nth(0).unwrap_or('x').is_alphabetic() {
+    // Prefix an underscore for idents that don't start with an alphanumeric character.
+    if !ident.chars().nth(0).map(char::is_alphabetic).unwrap_or(true) {
         return format!("_{}", ident);
     }
 
