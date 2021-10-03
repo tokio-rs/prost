@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package outdir;
+
+message OutdirRequest {
+  string query = 1;
+  int32 page_number = 2;
+  int32 result_per_page = 3;
+}
