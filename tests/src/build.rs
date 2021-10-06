@@ -105,6 +105,7 @@ fn main() {
     }
 
     config
+        .bytes(&["."])
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 

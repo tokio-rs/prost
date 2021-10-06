@@ -30,3 +30,8 @@ message Foo {
 
     google.protobuf.BytesValue bytes = 11;
 }
+
+message Test {
+  bytes bytes = 1;
+  map<string, bytes> bytes_dict = 2;
+}
