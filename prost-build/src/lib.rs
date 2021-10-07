@@ -924,11 +924,11 @@ impl Config {
             written += subwritten;
             if subwritten != matching.len() {
                 let modname = matching[0][..=depth].join(".");
-                if let Some(buf) = basepath {
+                if let Some(_) = basepath {
                     self.write_line(
                         outfile,
                         depth + 1,
-                        &format!("include!(\"{}/{}.rs\");", buf.display(), modname),
+                        &format!("include!(\"{}.rs\");", modname),
                     )?;
                 } else {
                     self.write_line(
