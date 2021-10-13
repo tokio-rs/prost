@@ -29,9 +29,9 @@ First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
-prost = "0.8"
+prost = "0.9"
 # Only necessary if using Protobuf well-known types:
-prost-types = "0.8"
+prost-types = "0.9"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
