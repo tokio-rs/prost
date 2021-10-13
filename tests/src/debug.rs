@@ -27,13 +27,17 @@ fn basic() {
          string_map: {}, \
          enumeration_btree_map: {}, \
          string_btree_map: {}, \
-         oneof: None \
+         oneof: None, \
+         bytes_map: {} \
          }"
     );
     basic
         .enumeration_map
         .insert(0, BasicEnumeration::TWO as i32);
     basic.enumeration = 42;
+    basic
+        .bytes_map
+        .insert("hello".to_string(), "world".as_bytes().into());
     assert_eq!(
         format!("{:?}", basic),
         "Basic { \
@@ -46,7 +50,8 @@ fn basic() {
          string_map: {}, \
          enumeration_btree_map: {}, \
          string_btree_map: {}, \
-         oneof: None \
+         oneof: None, \
+         bytes_map: {\"hello\": [119, 111, 114, 108, 100]} \
          }"
     );
 }

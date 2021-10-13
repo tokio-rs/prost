@@ -359,6 +359,10 @@ pub struct Basic {
 
     #[prost(oneof = "BasicOneof", tags = "8, 9")]
     pub oneof: Option<BasicOneof>,
+
+    #[prost(map = "string, bytes", tag = "12")]
+    #[cfg(feature = "std")]
+    pub bytes_map: ::std::collections::HashMap<String, Vec<u8>>,
 }
 
 #[derive(Clone, PartialEq, Message)]
