@@ -26,6 +26,7 @@ cfg_if! {
 }
 
 pub mod extern_paths;
+pub mod no_root_packages;
 pub mod packages;
 pub mod unittest;
 
@@ -77,7 +78,7 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
-/// Issue https://github.com/danburkert/prost/issues/118
+/// Issue https://github.com/tokio-rs/prost/issues/118
 ///
 /// When a message contains an enum field with a default value, we
 /// must ensure that the appropriate name conventions are used.
@@ -99,6 +100,10 @@ pub mod invalid {
     pub mod doctest {
         include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));
     }
+}
+
+pub mod default_string_escape {
+    include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
 use alloc::format;
@@ -183,6 +188,7 @@ where
     if let Err(error) = roundtrip.encode(&mut buf2) {
         return RoundtripResult::Error(error.to_string());
     }
+    let buf3 = roundtrip.encode_to_vec();
 
     /*
     // Useful for debugging:
@@ -193,6 +199,12 @@ where
 
     if buf1 != buf2 {
         return RoundtripResult::Error("roundtripped encoded buffers do not match".to_string());
+    }
+
+    if buf1 != buf3 {
+        return RoundtripResult::Error(anyhow!(
+            "roundtripped encoded buffers do not match with `encode_to_vec`"
+        ));
     }
 
     RoundtripResult::Ok(buf1)
@@ -546,7 +558,7 @@ mod tests {
         // Checks that skip_field will error appropriately when given a big stack of StartGroup
         // tags. When the no-recursion-limit feature is enabled this results in stack overflow.
         //
-        // https://github.com/danburkert/prost/issues/267
+        // https://github.com/tokio-rs/prost/issues/267
         let buf = vec![b'C'; 1 << 20];
         <() as Message>::decode(&buf[..]).err().unwrap();
     }
@@ -563,6 +575,12 @@ mod tests {
             msg.privacy_level_4(),
             default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour
         );
+    }
+
+    #[test]
+    fn test_default_string_escape() {
+        let msg = default_string_escape::Person::default();
+        assert_eq!(msg.name, r#"["unknown"]"#);
     }
 
     #[test]
@@ -644,7 +662,10 @@ mod tests {
 
     #[test]
     fn test_proto3_presence() {
-        let msg = proto3::presence::A { b: Some(42) };
+        let msg = proto3::presence::A {
+            b: Some(42),
+            foo: Some(proto3::presence::a::Foo::C(13)),
+        };
 
         check_message(&msg);
     }

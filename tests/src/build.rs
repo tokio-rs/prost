@@ -86,6 +86,10 @@ fn main() {
         .compile_protos(&[src.join("deprecated_field.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("default_string_escape.proto")], includes)
+        .unwrap();
+
     prost_build::Config::new()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)
@@ -101,6 +105,7 @@ fn main() {
     }
 
     config
+        .bytes(&["."])
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
@@ -111,17 +116,46 @@ fn main() {
         )
         .unwrap();
 
-    // Check that attempting to compile a .proto without a package declaration results in an error.
+    // Check that attempting to compile a .proto without a package declaration does not result in an error.
     config
         .compile_protos(&[src.join("no_package.proto")], includes)
-        .err()
         .unwrap();
 
-    let out_dir =
-        &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
-            .join("extern_paths");
-    fs::create_dir_all(out_dir).expect("failed to create prefix directory");
-    config.out_dir(out_dir);
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
+
+    // Check that attempting to compile a .proto without a package declaration succeeds.
+    let no_root_packages = out_dir.as_path().join("no_root_packages");
+
+    fs::create_dir_all(&no_root_packages).expect("failed to create prefix directory");
+    let mut no_root_packages_config = prost_build::Config::new();
+    no_root_packages_config
+        .out_dir(&no_root_packages)
+        .default_package_filename("__.default")
+        .compile_protos(
+            &[src.join("no_root_packages/widget_factory.proto")],
+            &[src.join("no_root_packages")],
+        )
+        .unwrap();
+
+    // Check that attempting to compile a .proto without a package declaration succeeds.
+    let no_root_packages_with_default = out_dir.as_path().join("no_root_packages_with_default");
+
+    fs::create_dir_all(&no_root_packages_with_default).expect("failed to create prefix directory");
+    let mut no_root_packages_config = prost_build::Config::new();
+    no_root_packages_config
+        .out_dir(&no_root_packages_with_default)
+        .compile_protos(
+            &[src.join("no_root_packages/widget_factory.proto")],
+            &[src.join("no_root_packages")],
+        )
+        .unwrap();
+
+    assert!(no_root_packages_with_default.join("_.rs").exists());
+
+    let extern_paths = out_dir.as_path().join("extern_paths");
+    fs::create_dir_all(&extern_paths).expect("failed to create prefix directory");
+
+    config.out_dir(&extern_paths);
 
     // Compile some of the module examples as an extern path. The extern path syntax is edition
     // specific, since the way crate-internal fully qualified paths has changed.
@@ -139,5 +173,13 @@ fn main() {
             &[src.join("packages").join("widget_factory.proto")],
             &[src.join("packages")],
         )
+        .unwrap();
+
+    // Run the last command again, while skipping the protoc run.  Since file_descriptor_set_path
+    // has been set, it will already exist, and should produce the same result.  The inputs are also
+    // ignored, so provide fake input.
+    config
+        .skip_protoc_run()
+        .compile_protos(&[] as &[&str], &[] as &[&str])
         .unwrap();
 }
