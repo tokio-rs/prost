@@ -69,37 +69,43 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     };
 
     if let WireFormat::Json = request.requested_output_format() {
-	if let Some(conformance_request::Payload::JsonPayload(json_str)) = request.payload {
-	    let roundtrip = match &*request.message_type {
-		"protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip_json::<TestAllTypesProto2>(&json_str),
-		"protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip_json::<TestAllTypesProto3>(&json_str),
-		_ => {
-		    return conformance_response::Result::ParseError(format!(
-			"unknown message type: {}",
-			request.message_type
-		    ));
-		}
-	    };
-	    
-	    return match roundtrip {
-		RoundtripResult::Ok(buf) => conformance_response::Result::JsonPayload(match std::str::from_utf8(&buf) {
-		    Ok(str) => str.to_string(),
-		    Err(error) => return conformance_response::Result::ParseError(error.to_string())
-		}),
-		RoundtripResult::DecodeError(error) => {
-		    conformance_response::Result::ParseError(error.to_string())
-		}
-		RoundtripResult::Error(error) => {
-		    conformance_response::Result::RuntimeError(error.to_string())
-		}
-	    }
-	}
-	// TODO(konradjniemiec) support proto -> json and json -> proto conformance
-	return conformance_response::Result::Skipped(
-                "only json <-> json is supported".to_string(),
+        if let Some(conformance_request::Payload::JsonPayload(json_str)) = request.payload {
+            let roundtrip = match &*request.message_type {
+                "protobuf_test_messages.proto2.TestAllTypesProto2" => {
+                    roundtrip_json::<TestAllTypesProto2>(&json_str)
+                }
+                "protobuf_test_messages.proto3.TestAllTypesProto3" => {
+                    roundtrip_json::<TestAllTypesProto3>(&json_str)
+                }
+                _ => {
+                    return conformance_response::Result::ParseError(format!(
+                        "unknown message type: {}",
+                        request.message_type
+                    ));
+                }
+            };
+
+            return match roundtrip {
+                RoundtripResult::Ok(buf) => {
+                    conformance_response::Result::JsonPayload(match std::str::from_utf8(&buf) {
+                        Ok(str) => str.to_string(),
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(error.to_string())
+                        }
+                    })
+                }
+                RoundtripResult::DecodeError(error) => {
+                    conformance_response::Result::ParseError(error)
+                }
+                RoundtripResult::Error(error) => conformance_response::Result::RuntimeError(error),
+            };
+        }
+        // TODO(konradjniemiec) support proto -> json and json -> proto conformance
+        return conformance_response::Result::Skipped(
+            "only json <-> json is supported".to_string(),
         );
     }
-    
+
     let buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
         Some(conformance_request::Payload::JsonPayload(_)) => {
@@ -133,11 +139,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
 
     match roundtrip {
         RoundtripResult::Ok(buf) => conformance_response::Result::ProtobufPayload(buf),
-        RoundtripResult::DecodeError(error) => {
-            conformance_response::Result::ParseError(error.to_string())
-        }
-        RoundtripResult::Error(error) => {
-            conformance_response::Result::RuntimeError(error.to_string())
-        }
+        RoundtripResult::DecodeError(error) => conformance_response::Result::ParseError(error),
+        RoundtripResult::Error(error) => conformance_response::Result::RuntimeError(error),
     }
 }

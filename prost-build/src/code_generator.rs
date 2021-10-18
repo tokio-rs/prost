@@ -172,6 +172,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
+        self.append_json_message_attributes(&fq_message_name);
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
@@ -257,32 +258,44 @@ impl<'a> CodeGenerator<'a> {
             self.buf.push_str(&attributes);
             self.buf.push('\n');
         }
-	if let Some(_) = self
-	    .config
-	    .json_mapping
-	    .get(fq_message_name) {
-		self.push_indent();
-		self.buf.push_str("#[derive(serde::Deserialize, serde::Serialize)]");
-		self.buf.push('\n');
-		self.push_indent();
-		self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
-		self.buf.push('\n');
-	    }
+    }
 
+    fn append_json_message_attributes(&mut self, fq_message_name: &str) {
+        if let Some(_) = self.config.json_mapping.get(fq_message_name) {
+            self.push_indent();
+            self.buf
+                .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
+            self.buf.push('\n');
+            self.push_indent();
+            self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
+            self.buf.push('\n');
+            self.push_indent();
+            self.buf.push_str("#[serde(default)]");
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_json_oneof_enum_attributes(&mut self, fq_message_name: &str) {
+        if let Some(_) = self.config.json_mapping.get(fq_message_name) {
+            self.push_indent();
+            self.buf
+                .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
+            self.buf.push('\n');
+            self.push_indent();
+            self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
+            self.buf.push('\n');
+        }
     }
 
     fn append_json_oneof_field_attributes(&mut self, fq_message_name: &str) {
-	        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-	if let Some(_) = self
-	    .config
-	    .json_mapping
-	    .get(fq_message_name) {
-		self.push_indent();
-		self.buf.push_str("#[serde(flatten)]");
-		self.buf.push('\n');
-	    }
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        if let Some(_) = self.config.json_mapping.get(fq_message_name) {
+            self.push_indent();
+            self.buf.push_str("#[serde(flatten)]");
+            self.buf.push('\n');
+        }
     }
-    
+
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         // TODO: this clone is dirty, but expedious.
@@ -496,7 +509,7 @@ impl<'a> CodeGenerator<'a> {
                 .join(", ")
         ));
         self.append_field_attributes(fq_message_name, oneof.name());
-	self.append_json_oneof_field_attributes(fq_message_name);
+        self.append_json_oneof_field_attributes(fq_message_name);
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: ::core::option::Option<{}>,\n",
@@ -520,6 +533,7 @@ impl<'a> CodeGenerator<'a> {
 
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
+        self.append_json_oneof_enum_attributes(&oneof_name);
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
@@ -616,6 +630,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_enum_name, None);
         self.append_type_attributes(&fq_enum_name);
+        self.append_json_oneof_enum_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str(
             "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",

@@ -449,14 +449,13 @@ impl Config {
     // TODO MORE COMMENTS
     pub fn json_mapping<I, S>(&mut self, paths: I) -> &mut Self
     where
-	I: IntoIterator<Item = S>,
+        I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-	self.map_type.clear();
+        self.map_type.clear();
         for matcher in paths {
-        self.json_mapping
-		.insert(matcher.as_ref().to_string(), ());
-	}
+            self.json_mapping.insert(matcher.as_ref().to_string(), ());
+        }
         self
     }
 
@@ -857,7 +856,7 @@ impl default::Default for Config {
             bytes_type: PathMap::default(),
             type_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
-	    json_mapping: PathMap::default(),
+            json_mapping: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,

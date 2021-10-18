@@ -109,16 +109,16 @@ use bytes::Buf;
 
 use prost::Message;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub enum RoundtripResult {
     /// The roundtrip succeeded.
     Ok(Vec<u8>),
     /// The data could not be decoded. This could indicate a bug in prost,
     /// or it could indicate that the input was bogus.
-    DecodeError(prost::DecodeError),
+    DecodeError(String),
     /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
-    Error(anyhow::Error),
+    Error(String),
 }
 
 impl RoundtripResult {
@@ -132,15 +132,16 @@ impl RoundtripResult {
             RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
         }
     }
-
-    /// Unwrap the roundtrip result. Panics if the result was a validation or re-encoding error.
-    pub fn unwrap_error(self) -> Result<Vec<u8>, prost::DecodeError> {
-        match self {
-            RoundtripResult::Ok(buf) => Ok(buf),
-            RoundtripResult::DecodeError(error) => Err(error),
-            RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
+    /*
+        /// Unwrap the roundtrip result. Panics if the result was a validation or re-encoding error.
+        pub fn unwrap_error(self) -> Result<Vec<u8>, prost::DecodeError> {
+            match self {
+                RoundtripResult::Ok(buf) => Ok(buf),
+                RoundtripResult::DecodeError(error) => Err(DecodeError(error.to_string())),
+                RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
+            }
         }
-    }
+    */
 }
 
 /// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
@@ -152,7 +153,7 @@ where
     // Try to decode a message from the data. If decoding fails, continue.
     let all_types = match M::decode(data) {
         Ok(all_types) => all_types,
-        Err(error) => return RoundtripResult::DecodeError(error),
+        Err(error) => return RoundtripResult::DecodeError(error.to_string()),
     };
 
     let encoded_len = all_types.encoded_len();
@@ -163,10 +164,10 @@ where
 
     let mut buf1 = Vec::new();
     if let Err(error) = all_types.encode(&mut buf1) {
-        return RoundtripResult::Error(error.into());
+        return RoundtripResult::Error(error.to_string());
     }
     if encoded_len != buf1.len() {
-        return RoundtripResult::Error(anyhow!(
+        return RoundtripResult::Error(format!(
             "expected encoded len ({}) did not match actual encoded len ({})",
             encoded_len,
             buf1.len()
@@ -175,12 +176,12 @@ where
 
     let roundtrip = match M::decode(&*buf1) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+        Err(error) => return RoundtripResult::Error(error.to_string()),
     };
 
     let mut buf2 = Vec::new();
     if let Err(error) = roundtrip.encode(&mut buf2) {
-        return RoundtripResult::Error(error.into());
+        return RoundtripResult::Error(error.to_string());
     }
 
     /*
@@ -191,7 +192,7 @@ where
     */
 
     if buf1 != buf2 {
-        return RoundtripResult::Error(anyhow!("roundtripped encoded buffers do not match"));
+        return RoundtripResult::Error("roundtripped encoded buffers do not match".to_string());
     }
 
     RoundtripResult::Ok(buf1)
@@ -206,31 +207,40 @@ where
     // Try to decode a message from the data. If decoding fails, continue.
     let all_types: M = match serde_json::from_str(data) {
         Ok(all_types) => all_types,
-        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+        Err(error) => return RoundtripResult::DecodeError(format!("step 1 {}", error.to_string())),
     };
 
     let str1 = match serde_json::to_string(&all_types) {
-	Ok(str) => str,
-	Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+        Ok(str) => str,
+        Err(error) => return RoundtripResult::Error(format!("step 2 {}", error.to_string())),
     };
+
+    if str1 != data {
+        return RoundtripResult::Error(format!(
+            "halftripped JSON encoded strings do not match {} {}",
+            str1, data
+        ));
+    }
 
     let roundtrip = match serde_json::from_str(&str1) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+        Err(error) => return RoundtripResult::Error(format!("step 3 {}", error.to_string())),
     };
 
     let str2 = match serde_json::to_string(&roundtrip) {
-	Ok(str) => str,
-	Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+        Ok(str) => str,
+        Err(error) => return RoundtripResult::Error(format!("step 4 {}", error.to_string())),
     };
 
     if str1 != str2 {
-        return RoundtripResult::Error(anyhow!("roundtripped JSON encoded strings do not match"));
+        return RoundtripResult::Error(format!(
+            "roundtripped JSON encoded strings do not match {} {}",
+            str1, str2
+        ));
     }
 
     RoundtripResult::Ok(str1.into_bytes())
 }
-
 
 /// Generic rountrip serialization check for messages.
 pub fn check_message<M>(msg: &M)

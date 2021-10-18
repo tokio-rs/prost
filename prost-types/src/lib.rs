@@ -157,6 +157,46 @@ impl From<Timestamp> for std::time::SystemTime {
     }
 }
 
+impl serde::Serialize for Timestamp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(
+            &humantime::format_rfc3339(std::time::SystemTime::from(self.clone())).to_string(),
+        )
+    }
+}
+
+struct TimestampVisitor;
+
+#[cfg(feature = "std")]
+impl<'de> serde::de::Visitor<'de> for TimestampVisitor {
+    type Value = Timestamp;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a valid RFC 3339 timestamp string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Timestamp::from(
+            humantime::parse_rfc3339(value).map_err(serde::de::Error::custom)?,
+        ))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Timestamp {
+    fn deserialize<D>(deserializer: D) -> Result<Timestamp, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(TimestampVisitor)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};

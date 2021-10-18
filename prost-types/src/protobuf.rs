@@ -1831,7 +1831,7 @@ pub enum NullValue {
 /// ) to obtain a formatter capable of generating timestamps in this format.
 ///
 ///
-#[derive(Clone, PartialEq, ::prost::Message, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 // TODO(konradjniemiec) proper serialization
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch
