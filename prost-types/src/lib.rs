@@ -255,13 +255,14 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
     }
 }
 
+#[cfg(feature = "std")]
 impl serde::Serialize for Timestamp {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         serializer.serialize_str(
-            &humantime::format_rfc3339(std::time::SystemTime::from(self.clone())).to_string(),
+            &humantime::format_rfc3339(std::time::SystemTime::try_from(self.clone()).unwrap()).to_string(),
         )
     }
 }

@@ -109,7 +109,6 @@ pub mod default_string_escape {
 use alloc::format;
 use alloc::vec::Vec;
 
-use anyhow::anyhow;
 use bytes::Buf;
 
 use prost::Message;
@@ -202,9 +201,7 @@ where
     }
 
     if buf1 != buf3 {
-        return RoundtripResult::Error(anyhow!(
-            "roundtripped encoded buffers do not match with `encode_to_vec`"
-        ));
+        return RoundtripResult::Error("roundtripped encoded buffers do not match with `encode_to_vec`".to_string());
     }
 
     RoundtripResult::Ok(buf1)

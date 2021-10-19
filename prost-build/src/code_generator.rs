@@ -271,7 +271,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_json_message_attributes(&mut self, fq_message_name: &str) {
-        if let Some(_) = self.config.json_mapping.get(fq_message_name) {
+        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
             self.push_indent();
             self.buf
                 .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
@@ -286,7 +286,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_json_oneof_enum_attributes(&mut self, fq_message_name: &str) {
-        if let Some(_) = self.config.json_mapping.get(fq_message_name) {
+        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
             self.push_indent();
             self.buf
                 .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
@@ -299,7 +299,7 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_json_oneof_field_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        if let Some(_) = self.config.json_mapping.get(fq_message_name) {
+        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
             self.push_indent();
             self.buf.push_str("#[serde(flatten)]");
             self.buf.push('\n');
