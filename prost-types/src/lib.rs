@@ -262,7 +262,8 @@ impl serde::Serialize for Timestamp {
         S: serde::Serializer,
     {
         serializer.serialize_str(
-            &humantime::format_rfc3339(std::time::SystemTime::try_from(self.clone()).unwrap()).to_string(),
+            &humantime::format_rfc3339(std::time::SystemTime::try_from(self.clone()).unwrap())
+                .to_string(),
         )
     }
 }
@@ -294,6 +295,10 @@ impl<'de> serde::Deserialize<'de> for Timestamp {
     {
         deserializer.deserialize_any(TimestampVisitor)
     }
+}
+
+pub fn is_default<T: Default + PartialEq>(t: &T) -> bool {
+    t == &T::default()
 }
 
 #[cfg(test)]

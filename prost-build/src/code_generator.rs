@@ -280,7 +280,7 @@ impl<'a> CodeGenerator<'a> {
             self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
             self.buf.push('\n');
             self.push_indent();
-            self.buf.push_str("#[serde(default)]");
+            self.buf.push_str(r#"#[serde(default)]"#);
             self.buf.push('\n');
         }
     }
@@ -315,6 +315,22 @@ impl<'a> CodeGenerator<'a> {
         {
             push_indent(&mut self.buf, self.depth);
             self.buf.push_str(&attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_json_field_attributes(&mut self, fq_message_name: &str, map_type: Option<&str>) {
+        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
+            push_indent(&mut self.buf, self.depth);
+            if let Some(map_type) = map_type {
+                self.buf.push_str(&format!(
+                    r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
+                    map_type
+                ));
+            } else {
+                self.buf
+                    .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
+            }
             self.buf.push('\n');
         }
     }
@@ -422,6 +438,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
+        self.append_json_field_attributes(fq_message_name, None);
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -481,6 +498,7 @@ impl<'a> CodeGenerator<'a> {
             field.number()
         ));
         self.append_field_attributes(fq_message_name, field.name());
+        self.append_json_field_attributes(fq_message_name, Some(map_type.rust_type()));
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",
