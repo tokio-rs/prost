@@ -224,7 +224,7 @@ impl fmt::Display for Label {
 }
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
-fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
+pub(crate) fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
     attrs
         .iter()
         .flat_map(Attribute::parse_meta)
