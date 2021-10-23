@@ -30,3 +30,9 @@ message Foo {
 
     google.protobuf.BytesValue bytes = 11;
 }
+
+// https://github.com/tokio-rs/prost/issues/531
+message Test {
+  bytes bytes = 1;
+  map<string, bytes> bytes_dict = 2;
+}

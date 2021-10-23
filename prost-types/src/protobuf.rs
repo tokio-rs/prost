@@ -344,7 +344,7 @@ pub struct MethodDescriptorProto {
 //   extension number. You can declare multiple options with only one extension
 //   number by putting them in a sub-message. See the Custom Options section of
 //   the docs for examples:
-//   https://developers.google.com/protocol-buffers/docs/proto#options
+//   <https://developers.google.com/protocol-buffers/docs/proto#options>
 //   If this turns out to be popular, a web service will be set up
 //   to automatically assign option numbers.
 
@@ -1016,7 +1016,7 @@ pub mod generated_code_info {
 /// If the embedded message type is well-known and has a custom JSON
 /// representation, that representation will be embedded adding a field
 /// `value` which holds the custom JSON in addition to the `@type`
-/// field. Example (for message [google.protobuf.Duration][]):
+/// field. Example (for message \[google.protobuf.Duration][\]):
 ///
 ///     {
 ///       "@type": "type.googleapis.com/google.protobuf.Duration",
@@ -1039,7 +1039,7 @@ pub struct Any {
     /// server that maps type URLs to message definitions as follows:
     ///
     /// * If no scheme is provided, `https` is assumed.
-    /// * An HTTP GET on the URL must yield a [google.protobuf.Type][]
+    /// * An HTTP GET on the URL must yield a \[google.protobuf.Type][\]
     ///   value in binary format, or produce an error.
     /// * Applications are allowed to cache lookup results based on the
     ///   URL, or have them precompiled into a binary to avoid any
@@ -1257,7 +1257,7 @@ pub enum Syntax {
 /// from API Services, which represent a concrete implementation of an interface
 /// as opposed to simply a description of methods and bindings. They are also
 /// sometimes simply referred to as "APIs" in other contexts, such as the name of
-/// this message itself. See https://cloud.google.com/apis/design/glossary for
+/// this message itself. See <https://cloud.google.com/apis/design/glossary> for
 /// detailed terminology.
 #[derive(Clone, PartialEq, ::prost::Message)]
 #[prost(package="google.protobuf")]
@@ -1280,7 +1280,7 @@ pub struct Api {
     /// consistent with what is provided here.
     ///
     /// The versioning schema uses [semantic
-    /// versioning](http://semver.org) where the major version number
+    /// versioning](<http://semver.org>) where the major version number
     /// indicates a breaking change and the minor version an additive,
     /// non-breaking change. Both version numbers are signals to users
     /// what to expect from different versions, and should be carefully
@@ -1299,7 +1299,7 @@ pub struct Api {
     /// message.
     #[prost(message, optional, tag="5")]
     pub source_context: ::core::option::Option<SourceContext>,
-    /// Included interfaces. See [Mixin][].
+    /// Included interfaces. See \[Mixin][\].
     #[prost(message, repeated, tag="6")]
     pub mixins: ::prost::alloc::vec::Vec<Mixin>,
     /// The source syntax of the service.
@@ -1346,7 +1346,7 @@ pub struct Method {
 ///
 /// - If an http annotation is inherited, the path pattern will be
 ///   modified as follows. Any version prefix will be replaced by the
-///   version of the including interface plus the [root][] path if
+///   version of the including interface plus the \[root][\] path if
 ///   specified.
 ///
 /// Example of a simple mixin:
@@ -1581,7 +1581,7 @@ pub struct Duration {
 ///         d: 1
 ///         x: 2
 ///       }
-///       c: [1]
+///       c: \[1\]
 ///     }
 ///
 /// And an update message:
@@ -1590,7 +1590,7 @@ pub struct Duration {
 ///       b {
 ///         d: 10
 ///       }
-///       c: [2]
+///       c: \[2\]
 ///     }
 ///
 /// then if the field mask is:
@@ -1785,11 +1785,11 @@ pub enum NullValue {
 ///
 /// All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
 /// second table is needed for interpretation, using a [24-hour linear
-/// smear](https://developers.google.com/time/smear).
+/// smear](<https://developers.google.com/time/smear>).
 ///
 /// The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
 /// restricting to that range, we ensure that we can convert to and from [RFC
-/// 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+/// 3339](<https://www.ietf.org/rfc/rfc3339.txt>) date strings.
 ///
 /// # Examples
 ///
@@ -1845,8 +1845,8 @@ pub enum NullValue {
 /// # JSON Mapping
 ///
 /// In JSON format, the Timestamp type is encoded as a string in the
-/// [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
-/// format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+/// [RFC 3339](<https://www.ietf.org/rfc/rfc3339.txt>) format. That is, the
+/// format is "{year}-{month}-{day}T{hour}:{min}:{sec}\[.{frac_sec}\]Z"
 /// where {year} is always expressed using four digits while {month}, {day},
 /// {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
 /// seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
@@ -1860,13 +1860,13 @@ pub enum NullValue {
 ///
 /// In JavaScript, one can convert a Date object to this format using the
 /// standard
-/// [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+/// \[toISOString()\](<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString>)
 /// method. In Python, a standard `datetime.datetime` object can be converted
 /// to this format using
-/// [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+/// \[`strftime`\](<https://docs.python.org/2/library/time.html#time.strftime>) with
 /// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
-/// the Joda Time's [`ISODateTimeFormat.dateTime()`](
-/// http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D
+/// the Joda Time's \[`ISODateTimeFormat.dateTime()`\](
+/// <http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D>
 /// ) to obtain a formatter capable of generating timestamps in this format.
 ///
 ///
