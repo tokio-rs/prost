@@ -226,14 +226,14 @@ where
         Err(error) => return RoundtripResult::Error(format!("step 2 {}", error.to_string())),
     };
 
-    if str1 != data {
+    /*    if str1 != data {
         return RoundtripResult::Error(format!(
             "halftripped JSON encoded strings do not match\nstring: {}\noriginal provided data: {}",
             str1, data
         ));
-    }
+    }*/
 
-    let roundtrip = match serde_json::from_str::<'de, M>(&str1) {
+    let roundtrip: M = match serde_json::from_str::<M>(data) {
         Ok(roundtrip) => roundtrip,
         Err(error) => return RoundtripResult::Error(format!("step 3 {}", error.to_string())),
     };
@@ -242,7 +242,7 @@ where
         Ok(str) => str,
         Err(error) => return RoundtripResult::Error(format!("step 4 {}", error.to_string())),
     };
-    
+
     if str1 != str2 {
         return RoundtripResult::Error(format!(
             "roundtripped JSON encoded strings do not match {} {}",

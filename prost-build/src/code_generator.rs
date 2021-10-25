@@ -319,8 +319,28 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_json_field_attributes(&mut self, fq_message_name: &str, map_type: Option<&str>) {
+    fn append_json_field_attributes(
+        &mut self,
+        fq_message_name: &str,
+        ty: &str,
+        field_name: &str,
+        optional: bool,
+        repeated: bool,
+        map_type: Option<&str>,
+    ) {
         if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
+            push_indent(&mut self.buf, self.depth);
+            self.buf
+                .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
+            self.buf.push('\n');
+            /*            if field_name.starts_with('_') {
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(&format!(
+                    r#"#[serde(alias = "{}")]"#,
+                    field_name,
+                ));
+            self.buf.push('\n');
+            }*/
             push_indent(&mut self.buf, self.depth);
             if let Some(map_type) = map_type {
                 self.buf.push_str(&format!(
@@ -332,6 +352,86 @@ impl<'a> CodeGenerator<'a> {
                     .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
             }
             self.buf.push('\n');
+
+            match (ty, optional, repeated) {
+                ("i32", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::i32_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("i32", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::i32_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("i64", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::i64_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("i64", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::i64_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("u32", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::u32_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("u32", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::u32_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("u64", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::u64_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("u64", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::u64_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("f64", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(with = "::prost_types::f64_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                ("f64", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(with = "::prost_types::f64_opt_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                ("f32", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(with = "::prost_types::f32_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                ("f32", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(with = "::prost_types::f32_opt_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                _ => {}
+            }
         }
     }
 
@@ -438,7 +538,14 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
-        self.append_json_field_attributes(fq_message_name, None);
+        self.append_json_field_attributes(
+            fq_message_name,
+            &ty,
+            field.name(),
+            optional,
+            repeated,
+            None,
+        );
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -498,7 +605,14 @@ impl<'a> CodeGenerator<'a> {
             field.number()
         ));
         self.append_field_attributes(fq_message_name, field.name());
-        self.append_json_field_attributes(fq_message_name, Some(map_type.rust_type()));
+        self.append_json_field_attributes(
+            fq_message_name,
+            map_type.rust_type(),
+            field.name(),
+            false,
+            false,
+            Some(map_type.rust_type()),
+        );
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",

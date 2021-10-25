@@ -301,6 +301,860 @@ pub fn is_default<T: Default + PartialEq>(t: &T) -> bool {
     t == &T::default()
 }
 
+pub mod i32_visitor {
+    struct I32Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for I32Visitor {
+        type Value = i32;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid I32 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            i32::try_from(value).map_err(E::custom)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(value as i32)
+            }
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            i32::try_from(value).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value.parse::<f64>().map(|x| x as i32).map_err(E::custom)
+            } else {
+                value.parse::<i32>().map_err(E::custom)
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<i32, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(I32Visitor)
+    }
+}
+
+pub mod i32_opt_visitor {
+    struct I32Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for I32Visitor {
+        type Value = std::option::Option<i32>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid I32 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            i32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(Some(value as i32))
+            }
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            i32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value
+                    .parse::<f64>()
+                    .map(|x| Some(x as i32))
+                    .map_err(E::custom)
+            } else {
+                value.parse::<i32>().map(|x| Some(x)).map_err(E::custom)
+            }
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<i32>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(I32Visitor)
+    }
+}
+
+pub mod i64_visitor {
+    struct I64Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for I64Visitor {
+        type Value = i64;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid I64 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as i64)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(value as i64)
+            }
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            i64::try_from(value).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value.parse::<f64>().map(|x| x as i64).map_err(E::custom)
+            } else {
+                value.parse::<i64>().map_err(E::custom)
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<i64, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(I64Visitor)
+    }
+}
+
+pub mod i64_opt_visitor {
+    struct I64Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for I64Visitor {
+        type Value = std::option::Option<i64>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid I64 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as i64))
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(Some(value as i64))
+            }
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            i64::try_from(value).map(|x| Some(x)).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value
+                    .parse::<f64>()
+                    .map(|x| Some(x as i64))
+                    .map_err(E::custom)
+            } else {
+                value.parse::<i64>().map(|x| Some(x)).map_err(E::custom)
+            }
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<i64>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(I64Visitor)
+    }
+}
+
+pub mod u32_visitor {
+    struct U32Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for U32Visitor {
+        type Value = u32;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid U32 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            u32::try_from(value).map_err(E::custom)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(value as u32)
+            }
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            u32::try_from(value).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value.parse::<f64>().map(|x| x as u32).map_err(E::custom)
+            } else {
+                value.parse::<u32>().map_err(E::custom)
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<u32, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(U32Visitor)
+    }
+}
+
+pub mod u32_opt_visitor {
+    struct U32Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for U32Visitor {
+        type Value = std::option::Option<u32>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid U32 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            u32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(Some(value as u32))
+            }
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            use std::convert::TryFrom;
+            u32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value
+                    .parse::<f64>()
+                    .map(|x| Some(x as u32))
+                    .map_err(E::custom)
+            } else {
+                value.parse::<u32>().map(|x| Some(x)).map_err(E::custom)
+            }
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<u32>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(U32Visitor)
+    }
+}
+
+pub mod u64_visitor {
+    struct U64Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for U64Visitor {
+        type Value = u64;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid U64 string or integer")
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as u64)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(value as u64)
+            }
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value.parse::<f64>().map(|x| x as u64).map_err(E::custom)
+            } else {
+                value.parse::<u64>().map_err(E::custom)
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(U64Visitor)
+    }
+}
+
+pub mod u64_opt_visitor {
+    struct U64Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for U64Visitor {
+        type Value = std::option::Option<u64>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid U64 string or integer")
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as u64))
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if (value.trunc() - value).abs() > f64::EPSILON {
+                return Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ));
+            } else {
+                // This is a round number, we can cast just fine.
+                Ok(Some(value as u64))
+            }
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // If we have scientific notation or a decimal, parse float first.
+            if value.contains('e') || value.contains('E') || value.ends_with(".0") {
+                value
+                    .parse::<f64>()
+                    .map(|x| Some(x as u64))
+                    .map_err(E::custom)
+            } else {
+                value.parse::<u64>().map(|x| Some(x)).map_err(E::custom)
+            }
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<u64>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(U64Visitor)
+    }
+}
+
+pub mod f64_visitor {
+    struct F64Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for F64Visitor {
+        type Value = f64;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid F64 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f64)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f64)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f64)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                "NaN" => Ok(f64::NAN),
+                "Infinity" => Ok(f64::INFINITY),
+                "-Infinity" => Ok(f64::NEG_INFINITY),
+                _ => value.parse::<f64>().map_err(E::custom),
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<f64, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(F64Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &f64, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if value.is_nan() {
+            serializer.serialize_str("NaN")
+        } else if value.is_infinite() && value.is_sign_negative() {
+            serializer.serialize_str("-Infinity")
+        } else if value.is_infinite() {
+            serializer.serialize_str("Infinity")
+        } else {
+            serializer.serialize_f64(*value)
+        }
+    }
+}
+
+pub mod f64_opt_visitor {
+    struct F64Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for F64Visitor {
+        type Value = std::option::Option<f64>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid F64 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as f64))
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as f64))
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as f64))
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                "NaN" => Ok(Some(f64::NAN)),
+                "Infinity" => Ok(Some(f64::INFINITY)),
+                "-Infinity" => Ok(Some(f64::NEG_INFINITY)),
+                _ => value.parse::<f64>().map(|x| Some(x)).map_err(E::custom),
+            }
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<f64>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(F64Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &std::option::Option<f64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match value {
+            None => serializer.serialize_none(),
+            Some(double) => crate::f64_visitor::serialize(double, serializer),
+        }
+    }
+}
+
+pub mod f32_visitor {
+    struct F32Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for F32Visitor {
+        type Value = f32;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid F32 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f32)
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // TODO figure out min/max bug.
+            Ok(value as f32)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value as f32)
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                "NaN" => Ok(f32::NAN),
+                "Infinity" => Ok(f32::INFINITY),
+                "-Infinity" => Ok(f32::NEG_INFINITY),
+                _ => value.parse::<f32>().map_err(E::custom),
+            }
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<f32, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(F32Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &f32, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if value.is_nan() {
+            serializer.serialize_str("NaN")
+        } else if value.is_infinite() && value.is_sign_negative() {
+            serializer.serialize_str("-Infinity")
+        } else if value.is_infinite() {
+            serializer.serialize_str("Infinity")
+        } else {
+            serializer.serialize_f32(*value)
+        }
+    }
+}
+
+pub mod f32_opt_visitor {
+    struct F32Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for F32Visitor {
+        type Value = std::option::Option<f32>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid F32 string or integer")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as f32))
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            // TODO figure out min/max bug.
+            Ok(Some(value as f32))
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(value as f32))
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match value {
+                "NaN" => Ok(Some(f32::NAN)),
+                "Infinity" => Ok(Some(f32::INFINITY)),
+                "-Infinity" => Ok(Some(f32::NEG_INFINITY)),
+                _ => value.parse::<f32>().map(|x| Some(x)).map_err(E::custom),
+            }
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<f32>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(F32Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &std::option::Option<f32>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match value {
+            None => serializer.serialize_none(),
+            Some(float) => crate::f32_visitor::serialize(float, serializer),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
