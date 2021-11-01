@@ -16,6 +16,7 @@ use core::i32;
 use core::i64;
 use core::time;
 
+
 include!("protobuf.rs");
 pub mod compiler {
     include!("compiler.rs");
@@ -297,13 +298,407 @@ impl<'de> serde::Deserialize<'de> for Timestamp {
     }
 }
 
+pub trait HasConstructor {
+    fn new() -> Self;
+}
+
+pub struct MyType<'de, T: serde::de::Visitor<'de> + HasConstructor>(<T as serde::de::Visitor<'de>>::Value);
+
+impl<'de, T> serde::Deserialize<'de> for MyType<'de, T> where T: serde::de::Visitor<'de> + HasConstructor {
+    fn deserialize<D>(deserializer: D) -> Result<MyType<'de, T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(T::new()).map(|x| MyType{0: x})
+    }
+}
+
 pub fn is_default<T: Default + PartialEq>(t: &T) -> bool {
     t == &T::default()
 }
 
-pub mod i32_visitor {
-    struct I32Visitor;
+pub mod vec_visitor {
+    struct VecVisitor<'de, T> where T: serde::Deserialize<'de> {
+        _vec_type: &'de std::marker::PhantomData<T>,
+    }
 
+    #[cfg(feature = "std")]
+    impl<'de, T: serde::Deserialize<'de>> serde::de::Visitor<'de> for VecVisitor<'de, T> {
+        type Value = Vec<T>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::SeqAccess<'de> {
+            let mut res = Self::Value::with_capacity(seq.size_hint().unwrap_or(0));
+            loop {
+                match seq.next_element()? {
+                    Some(el) => res.push(el),
+                    None => return Ok(res),
+                }
+            }
+        }
+        
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T: 'de + serde::Deserialize<'de>>(deserializer: D) -> Result<Vec<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(VecVisitor::<'de, T>{_vec_type: &std::marker::PhantomData})
+    }
+}
+
+pub mod repeated_visitor {
+    struct VecVisitor<'de, T> where T: serde::de::Visitor<'de> + crate::HasConstructor {
+        _vec_type: &'de std::marker::PhantomData<T>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T> serde::de::Visitor<'de> for VecVisitor<'de, T> where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+    {
+        type Value = Vec<<T as serde::de::Visitor<'de>>::Value>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::SeqAccess<'de> {
+            let mut res = Self::Value::with_capacity(seq.size_hint().unwrap_or(0));
+            loop {
+                let response: std::option::Option<crate::MyType<'de, T>> = seq.next_element()?;
+                match response {
+                    Some(el) => res.push(el.0),
+                    None => return Ok(res),
+                }
+            }
+        }
+        
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T: 'de + serde::de::Visitor<'de> + crate::HasConstructor>(deserializer: D) -> Result<Vec<<T as serde::de::Visitor<'de>>::Value>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(VecVisitor::<'de, T>{_vec_type: &std::marker::PhantomData})
+    }
+
+    pub fn serialize<S, F>(value: Vec<<F as crate::SerializeMethod>::Value>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        F: crate::SerializeMethod,
+    {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(Some(value.len()))?;
+        for e in value {
+            seq.serialize_element(&crate::MySeType::<F>{val: e})?;
+        }
+        seq.end()
+    }
+}
+
+pub trait SerializeMethod {
+    type Value;
+    fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer;
+}
+
+pub struct MySeType<T> where T: SerializeMethod {
+    val: T::Value,
+}
+
+impl<T: SerializeMethod> serde::Serialize for MySeType<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        T::serialize(&self.val, serializer)
+    }
+}
+
+pub mod map_visitor {
+    struct MapVisitor<'de, K, V>
+    where K: serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash,
+          V: serde::Deserialize<'de>
+    {
+        _key_type: &'de std::marker::PhantomData<K>,
+        _value_type: &'de std::marker::PhantomData<V>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, K: serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash, V: serde::Deserialize<'de>> serde::de::Visitor<'de> for MapVisitor<'de, K, V> {
+        type Value = std::collections::HashMap<K, V>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de> {
+            let mut res = Self::Value::with_capacity(map.size_hint().unwrap_or(0));
+            loop {
+                match map.next_entry()? {
+                    Some((k, v)) => {res.insert(k,v);},
+                    None => return Ok(res),
+                }
+            }
+
+        }
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, K: 'de + serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash, V: 'de + serde::Deserialize<'de>>(deserializer: D) -> Result<std::collections::HashMap<K, V>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(MapVisitor::<'de, K, V>{
+            _key_type: &std::marker::PhantomData,
+            _value_type: &std::marker::PhantomData,
+        })
+    }
+}
+
+pub mod btree_map_visitor {
+    struct MapVisitor<'de, K, V>
+    where K: serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord,
+          V: serde::Deserialize<'de>
+    {
+        _key_type: &'de std::marker::PhantomData<K>,
+        _value_type: &'de std::marker::PhantomData<V>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, K: serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord, V: serde::Deserialize<'de>> serde::de::Visitor<'de> for MapVisitor<'de, K, V> {
+        type Value = std::collections::BTreeMap<K, V>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de> {
+            let mut res = Self::Value::new();
+            loop {
+                match map.next_entry()? {
+                    Some((k, v)) => {res.insert(k,v);},
+                    None => return Ok(res),
+                }
+            }
+
+        }
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, K: 'de + serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord, V: 'de + serde::Deserialize<'de>>(deserializer: D) -> Result<std::collections::BTreeMap<K, V>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(MapVisitor::<'de, K, V>{
+            _key_type: &std::marker::PhantomData,
+            _value_type: &std::marker::PhantomData,
+        })
+    }
+}
+
+pub mod string_visitor {
+    struct StringVisitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for StringVisitor {
+        type Value = std::string::String;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid string")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            return Ok(value.to_string())
+        }
+
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::string::String, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(StringVisitor)
+    }
+}
+
+pub mod string_opt_visitor {
+    struct StringVisitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for StringVisitor {
+        type Value = std::option::Option<std::string::String>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            return Ok(Some(value.to_string()))
+        }
+
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<std::string::String>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(StringVisitor)
+    }
+}
+
+
+pub mod bool_visitor {
+    struct BoolVisitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for BoolVisitor {
+        type Value = bool;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid Bool string or integer")
+        }
+
+        fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            return Ok(value)
+        }
+
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(bool::default())
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<bool, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(BoolVisitor)
+    }
+}
+
+pub mod bool_opt_visitor {
+    struct BoolVisitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for BoolVisitor {
+        type Value = std::option::Option<bool>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid Bool string or integer")
+        }
+
+        fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            return Ok(Some(value))
+        }
+
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<bool>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(BoolVisitor)
+    }
+}
+
+pub mod i32_visitor {
+    pub struct I32Visitor;
+
+    impl crate::HasConstructor for I32Visitor {
+        fn new() -> I32Visitor {
+            return I32Visitor{};
+        }
+    }
+    
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for I32Visitor {
         type Value = i32;
@@ -324,13 +719,14 @@ pub mod i32_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value > i32::MAX as f64 || value < i32::MIN as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(value as i32)
             }
         }
@@ -349,10 +745,17 @@ pub mod i32_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map(|x| x as i32).map_err(E::custom)
+                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i32>().map_err(E::custom)
             }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(i32::default())
         }
     }
 
@@ -387,13 +790,14 @@ pub mod i32_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value > i32::MAX as f64 || value < i32::MIN as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(Some(value as i32))
             }
         }
@@ -412,10 +816,7 @@ pub mod i32_opt_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value
-                    .parse::<f64>()
-                    .map(|x| Some(x as i32))
-                    .map_err(E::custom)
+                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i32>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -467,13 +868,14 @@ pub mod i64_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value > i64::MAX as f64 || value < i64::MIN as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(value as i64)
             }
         }
@@ -492,11 +894,19 @@ pub mod i64_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map(|x| x as i64).map_err(E::custom)
+                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i64>().map_err(E::custom)
             }
         }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(i64::default())
+        }
+
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<i64, D::Error>
@@ -529,13 +939,14 @@ pub mod i64_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value > i64::MAX as f64 || value < i64::MIN as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(Some(value as i64))
             }
         }
@@ -554,10 +965,7 @@ pub mod i64_opt_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value
-                    .parse::<f64>()
-                    .map(|x| Some(x as i64))
-                    .map_err(E::custom)
+                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i64>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -610,13 +1018,14 @@ pub mod u32_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value < 0.0 || value > u32::MAX as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(value as u32)
             }
         }
@@ -635,10 +1044,17 @@ pub mod u32_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map(|x| x as u32).map_err(E::custom)
+                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u32>().map_err(E::custom)
             }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(u32::default())
         }
     }
 
@@ -673,13 +1089,14 @@ pub mod u32_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value < 0.0 || value > u32::MAX as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(Some(value as u32))
             }
         }
@@ -700,8 +1117,8 @@ pub mod u32_opt_visitor {
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
                 value
                     .parse::<f64>()
-                    .map(|x| Some(x as u32))
                     .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u32>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -720,6 +1137,7 @@ pub mod u32_opt_visitor {
         {
             Ok(None)
         }
+
     }
 
     #[cfg(feature = "std")]
@@ -753,13 +1171,14 @@ pub mod u64_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value < 0.0 || value > u64::MAX as f64 {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
-                // This is a round number, we can cast just fine.
+                // This is a round number in the proper range, we can cast just fine.
                 Ok(value as u64)
             }
         }
@@ -770,10 +1189,17 @@ pub mod u64_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map(|x| x as u64).map_err(E::custom)
+                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u64>().map_err(E::custom)
             }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(u64::default())
         }
     }
 
@@ -807,11 +1233,12 @@ pub mod u64_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON {
-                return Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON ||
+                value < 0.0 || value > u64::MAX as f64 {
+                    Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
-                ));
+                ))
             } else {
                 // This is a round number, we can cast just fine.
                 Ok(Some(value as u64))
@@ -826,8 +1253,7 @@ pub mod u64_opt_visitor {
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
                 value
                     .parse::<f64>()
-                    .map(|x| Some(x as u64))
-                    .map_err(E::custom)
+                    .map_err(E::custom).and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u64>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -899,6 +1325,13 @@ pub mod f64_visitor {
                 "-Infinity" => Ok(f64::NEG_INFINITY),
                 _ => value.parse::<f64>().map_err(E::custom),
             }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(f64::default())
         }
     }
 
@@ -1027,8 +1460,14 @@ pub mod f32_visitor {
         where
             E: serde::de::Error,
         {
-            // TODO figure out min/max bug.
-            Ok(value as f32)
+            if value < f32::MIN as f64 || value > f32::MAX as f64 {
+                Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ))
+            } else {
+                Ok(value as f32)
+            }
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
@@ -1048,6 +1487,12 @@ pub mod f32_visitor {
                 "-Infinity" => Ok(f32::NEG_INFINITY),
                 _ => value.parse::<f32>().map_err(E::custom),
             }
+        }
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(f32::default())
         }
     }
 
@@ -1097,8 +1542,14 @@ pub mod f32_opt_visitor {
         where
             E: serde::de::Error,
         {
-            // TODO figure out min/max bug.
-            Ok(Some(value as f32))
+            if value < f32::MIN as f64 || value > f32::MAX as f64 {
+                Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Float(value),
+                    &self,
+                ))
+            } else {
+                Ok(Some(value as f32))
+            }
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
@@ -1151,6 +1602,102 @@ pub mod f32_opt_visitor {
         match value {
             None => serializer.serialize_none(),
             Some(float) => crate::f32_visitor::serialize(float, serializer),
+        }
+    }
+}
+
+pub mod vec_u8_visitor {
+    struct VecU8Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for VecU8Visitor {
+        type Value = ::prost::alloc::vec::Vec<u8>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid Base64 encoded string")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            base64::decode(value).map_err(E::custom)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<::prost::alloc::vec::Vec<u8>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(VecU8Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &::prost::alloc::vec::Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&base64::encode(value))
+    }
+}
+
+pub mod vec_u8_opt_visitor {
+    struct VecU8Visitor;
+
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for VecU8Visitor {
+        type Value = std::option::Option<::prost::alloc::vec::Vec<u8>>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid Base64 encoded string")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            base64::decode(value).map(|str| Some(str)).map_err(E::custom)
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<::prost::alloc::vec::Vec<u8>>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(VecU8Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &std::option::Option<::prost::alloc::vec::Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match value {
+            None => serializer.serialize_none(),
+            Some(value) => crate::vec_u8_visitor::serialize(value, serializer),
         }
     }
 }

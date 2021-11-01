@@ -20,6 +20,7 @@ default = ["std"]
 std = ["prost/std"]
 
 [dependencies]
+base64 = "0.13"
 bytes = { version = "1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 humantime = { version = "2.1" }

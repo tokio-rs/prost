@@ -216,9 +216,10 @@ where
     M: Message + Default + Serialize + Deserialize<'de>,
 {
     // Try to decode a message from the data. If decoding fails, continue.
-    let all_types: M = match serde_json::from_str(data) {
+    let jd = &mut serde_json::Deserializer::from_str(data);
+    let all_types: M = match serde_path_to_error::deserialize(jd) {
         Ok(all_types) => all_types,
-        Err(error) => return RoundtripResult::DecodeError(format!("step 1 {}", error.to_string())),
+        Err(error) => return RoundtripResult::DecodeError(format!("step 1 {} at {}", error.to_string(), error.path().to_string())),
     };
 
     let str1 = match serde_json::to_string(&all_types) {

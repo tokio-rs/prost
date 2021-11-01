@@ -326,27 +326,42 @@ impl<'a> CodeGenerator<'a> {
         field_name: &str,
         optional: bool,
         repeated: bool,
+        json_name: &str,
         map_type: Option<&str>,
     ) {
         if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
+            if json_name.len() > 0 {
+                push_indent(&mut self.buf, self.depth);
+                self.buf
+                    .push_str(&format!(r#"#[serde(rename = "{}")]"#, json_name,));
+                self.buf.push('\n');
+            }
             push_indent(&mut self.buf, self.depth);
             self.buf
                 .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
             self.buf.push('\n');
-            /*            if field_name.starts_with('_') {
-                push_indent(&mut self.buf, self.depth);
-                self.buf.push_str(&format!(
-                    r#"#[serde(alias = "{}")]"#,
-                    field_name,
-                ));
-            self.buf.push('\n');
-            }*/
             push_indent(&mut self.buf, self.depth);
             if let Some(map_type) = map_type {
                 self.buf.push_str(&format!(
                     r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
                     map_type
                 ));
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                match map_type {
+                    "::std::collections::HashMap" => 
+                        self.buf.push_str(
+                            r#"#[serde(deserialize_with = "::prost_types::map_visitor::deserialize")]"#,
+                        ),
+                    "::prost::alloc::collections::BTreeMap" =>
+                        self.buf.push_str(
+                            r#"#[serde(deserialize_with = "::prost_types::btree_map_visitor::deserialize")]"#,
+                        ),
+
+                    _ => (),
+                }
+                self.buf.push('\n');
+                return;
             } else {
                 self.buf
                     .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
@@ -361,10 +376,30 @@ impl<'a> CodeGenerator<'a> {
                     );
                     self.buf.push('\n');
                 }
+                ("i32", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::i32_visitor::I32Visitor>")]"#,
+                    );
+                    self.buf.push('\n');
+                }
                 ("i32", true, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
                         .push_str(r#"#[serde(deserialize_with = "::prost_types::i32_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("bool", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::bool_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("bool", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::bool_opt_visitor::deserialize")]"#);
                     self.buf.push('\n');
                 }
                 ("i64", false, false) => {
@@ -428,6 +463,36 @@ impl<'a> CodeGenerator<'a> {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
                         .push_str(r#"#[serde(with = "::prost_types::f32_opt_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                ("::prost::alloc::string::String", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::string_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("::prost::alloc::string::String", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::string_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("::prost::alloc::vec::Vec<u8>", false, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(with = "::prost_types::vec_u8_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                ("::prost::alloc::vec::Vec<u8>", true, false) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(with = "::prost_types::vec_u8_opt_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                (_, _, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::vec_visitor::deserialize")]"#);
                     self.buf.push('\n');
                 }
                 _ => {}
@@ -544,6 +609,7 @@ impl<'a> CodeGenerator<'a> {
             field.name(),
             optional,
             repeated,
+            field.json_name(),
             None,
         );
         self.push_indent();
@@ -611,6 +677,7 @@ impl<'a> CodeGenerator<'a> {
             field.name(),
             false,
             false,
+            field.json_name(),
             Some(map_type.rust_type()),
         );
         self.push_indent();
