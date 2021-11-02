@@ -444,7 +444,25 @@ impl<'a> CodeGenerator<'a> {
                 ("f64", false, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
-                        .push_str(r#"#[serde(with = "::prost_types::f64_visitor")]"#);
+                        .push_str(r#"#[serde(serialize_with = "<::prost_types::f64_visitor::F64Serializer as ::prost_types::SerializeMethod>::serialize")]"#);
+                    self.buf.push('\n');
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::f64_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("f64", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(
+                            r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::f64_visitor::F64Visitor>")]"#,
+                        );
+                    self.buf.push('\n');
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(serialize_with = "::prost_types::repeated_visitor::serialize::<_, ::prost_types::f64_visitor::F64Serializer>")]"#
+                        );
                     self.buf.push('\n');
                 }
                 ("f64", true, false) => {
@@ -456,7 +474,25 @@ impl<'a> CodeGenerator<'a> {
                 ("f32", false, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
-                        .push_str(r#"#[serde(with = "::prost_types::f32_visitor")]"#);
+                        .push_str(r#"#[serde(serialize_with = "<::prost_types::f32_visitor::F32Serializer as ::prost_types::SerializeMethod>::serialize")]"#);
+                    self.buf.push('\n');
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::f32_visitor::deserialize")]"#,
+                    );
+                    self.buf.push('\n');
+                }
+                ("f32", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(
+                            r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::f32_visitor::F32Visitor>")]"#,
+                        );
+                    self.buf.push('\n');
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(serialize_with = "::prost_types::repeated_visitor::serialize::<_, ::prost_types::f32_visitor::F32Serializer>")]"#
+                        );
                     self.buf.push('\n');
                 }
                 ("f32", true, false) => {
@@ -491,8 +527,9 @@ impl<'a> CodeGenerator<'a> {
                 }
                 (_, _, true) => {
                     push_indent(&mut self.buf, self.depth);
-                    self.buf
-                        .push_str(r#"#[serde(deserialize_with = "::prost_types::vec_visitor::deserialize")]"#);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::vec_visitor::deserialize")]"#,
+                    );
                     self.buf.push('\n');
                 }
                 _ => {}

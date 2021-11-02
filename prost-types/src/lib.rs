@@ -16,7 +16,6 @@ use core::i32;
 use core::i64;
 use core::time;
 
-
 include!("protobuf.rs");
 pub mod compiler {
     include!("compiler.rs");
@@ -302,14 +301,21 @@ pub trait HasConstructor {
     fn new() -> Self;
 }
 
-pub struct MyType<'de, T: serde::de::Visitor<'de> + HasConstructor>(<T as serde::de::Visitor<'de>>::Value);
+pub struct MyType<'de, T: serde::de::Visitor<'de> + HasConstructor>(
+    <T as serde::de::Visitor<'de>>::Value,
+);
 
-impl<'de, T> serde::Deserialize<'de> for MyType<'de, T> where T: serde::de::Visitor<'de> + HasConstructor {
+impl<'de, T> serde::Deserialize<'de> for MyType<'de, T>
+where
+    T: serde::de::Visitor<'de> + HasConstructor,
+{
     fn deserialize<D>(deserializer: D) -> Result<MyType<'de, T>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(T::new()).map(|x| MyType{0: x})
+        deserializer
+            .deserialize_any(T::new())
+            .map(|x| MyType { 0: x })
     }
 }
 
@@ -318,7 +324,10 @@ pub fn is_default<T: Default + PartialEq>(t: &T) -> bool {
 }
 
 pub mod vec_visitor {
-    struct VecVisitor<'de, T> where T: serde::Deserialize<'de> {
+    struct VecVisitor<'de, T>
+    where
+        T: serde::Deserialize<'de>,
+    {
         _vec_type: &'de std::marker::PhantomData<T>,
     }
 
@@ -332,7 +341,8 @@ pub mod vec_visitor {
 
         fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
         where
-            A: serde::de::SeqAccess<'de> {
+            A: serde::de::SeqAccess<'de>,
+        {
             let mut res = Self::Value::with_capacity(seq.size_hint().unwrap_or(0));
             loop {
                 match seq.next_element()? {
@@ -341,7 +351,7 @@ pub mod vec_visitor {
                 }
             }
         }
-        
+
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
@@ -351,21 +361,29 @@ pub mod vec_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D, T: 'de + serde::Deserialize<'de>>(deserializer: D) -> Result<Vec<T>, D::Error>
+    pub fn deserialize<'de, D, T: 'de + serde::Deserialize<'de>>(
+        deserializer: D,
+    ) -> Result<Vec<T>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(VecVisitor::<'de, T>{_vec_type: &std::marker::PhantomData})
+        deserializer.deserialize_any(VecVisitor::<'de, T> {
+            _vec_type: &std::marker::PhantomData,
+        })
     }
 }
 
 pub mod repeated_visitor {
-    struct VecVisitor<'de, T> where T: serde::de::Visitor<'de> + crate::HasConstructor {
+    struct VecVisitor<'de, T>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+    {
         _vec_type: &'de std::marker::PhantomData<T>,
     }
 
     #[cfg(feature = "std")]
-    impl<'de, T> serde::de::Visitor<'de> for VecVisitor<'de, T> where
+    impl<'de, T> serde::de::Visitor<'de> for VecVisitor<'de, T>
+    where
         T: serde::de::Visitor<'de> + crate::HasConstructor,
     {
         type Value = Vec<<T as serde::de::Visitor<'de>>::Value>;
@@ -376,7 +394,8 @@ pub mod repeated_visitor {
 
         fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
         where
-            A: serde::de::SeqAccess<'de> {
+            A: serde::de::SeqAccess<'de>,
+        {
             let mut res = Self::Value::with_capacity(seq.size_hint().unwrap_or(0));
             loop {
                 let response: std::option::Option<crate::MyType<'de, T>> = seq.next_element()?;
@@ -386,7 +405,7 @@ pub mod repeated_visitor {
                 }
             }
         }
-        
+
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
@@ -396,22 +415,30 @@ pub mod repeated_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D, T: 'de + serde::de::Visitor<'de> + crate::HasConstructor>(deserializer: D) -> Result<Vec<<T as serde::de::Visitor<'de>>::Value>, D::Error>
+    pub fn deserialize<'de, D, T: 'de + serde::de::Visitor<'de> + crate::HasConstructor>(
+        deserializer: D,
+    ) -> Result<Vec<<T as serde::de::Visitor<'de>>::Value>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(VecVisitor::<'de, T>{_vec_type: &std::marker::PhantomData})
+        deserializer.deserialize_any(VecVisitor::<'de, T> {
+            _vec_type: &std::marker::PhantomData,
+        })
     }
 
-    pub fn serialize<S, F>(value: Vec<<F as crate::SerializeMethod>::Value>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, F>(
+        value: &Vec<<F as crate::SerializeMethod>::Value>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
         F: crate::SerializeMethod,
+//        <F as crate::SerializeMethod>::Value: Copy,
     {
         use serde::ser::SerializeSeq;
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
         for e in value {
-            seq.serialize_element(&crate::MySeType::<F>{val: e})?;
+            seq.serialize_element(&crate::MySeType::<F> { val: e })?;
         }
         seq.end()
     }
@@ -419,30 +446,44 @@ pub mod repeated_visitor {
 
 pub trait SerializeMethod {
     type Value;
-    fn serialize<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer;
+    fn serialize<S>(value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer;
 }
 
-pub struct MySeType<T> where T: SerializeMethod {
-    val: T::Value,
+pub struct MySeType<'a, T>
+where
+    T: SerializeMethod,
+{
+    val: &'a <T as SerializeMethod>::Value,
 }
 
-impl<T: SerializeMethod> serde::Serialize for MySeType<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
-        T::serialize(&self.val, serializer)
+impl<'a, T: SerializeMethod> serde::Serialize for MySeType<'a, T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        T::serialize(self.val, serializer)
     }
 }
 
 pub mod map_visitor {
     struct MapVisitor<'de, K, V>
-    where K: serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash,
-          V: serde::Deserialize<'de>
+    where
+        K: serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash,
+        V: serde::Deserialize<'de>,
     {
         _key_type: &'de std::marker::PhantomData<K>,
         _value_type: &'de std::marker::PhantomData<V>,
     }
 
     #[cfg(feature = "std")]
-    impl<'de, K: serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash, V: serde::Deserialize<'de>> serde::de::Visitor<'de> for MapVisitor<'de, K, V> {
+    impl<
+            'de,
+            K: serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash,
+            V: serde::Deserialize<'de>,
+        > serde::de::Visitor<'de> for MapVisitor<'de, K, V>
+    {
         type Value = std::collections::HashMap<K, V>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -451,15 +492,17 @@ pub mod map_visitor {
 
         fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
-            A: serde::de::MapAccess<'de> {
+            A: serde::de::MapAccess<'de>,
+        {
             let mut res = Self::Value::with_capacity(map.size_hint().unwrap_or(0));
             loop {
                 match map.next_entry()? {
-                    Some((k, v)) => {res.insert(k,v);},
+                    Some((k, v)) => {
+                        res.insert(k, v);
+                    }
                     None => return Ok(res),
                 }
             }
-
         }
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
@@ -470,11 +513,18 @@ pub mod map_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D, K: 'de + serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash, V: 'de + serde::Deserialize<'de>>(deserializer: D) -> Result<std::collections::HashMap<K, V>, D::Error>
+    pub fn deserialize<
+        'de,
+        D,
+        K: 'de + serde::Deserialize<'de> + std::cmp::Eq + std::hash::Hash,
+        V: 'de + serde::Deserialize<'de>,
+    >(
+        deserializer: D,
+    ) -> Result<std::collections::HashMap<K, V>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(MapVisitor::<'de, K, V>{
+        deserializer.deserialize_any(MapVisitor::<'de, K, V> {
             _key_type: &std::marker::PhantomData,
             _value_type: &std::marker::PhantomData,
         })
@@ -483,15 +533,21 @@ pub mod map_visitor {
 
 pub mod btree_map_visitor {
     struct MapVisitor<'de, K, V>
-    where K: serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord,
-          V: serde::Deserialize<'de>
+    where
+        K: serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord,
+        V: serde::Deserialize<'de>,
     {
         _key_type: &'de std::marker::PhantomData<K>,
         _value_type: &'de std::marker::PhantomData<V>,
     }
 
     #[cfg(feature = "std")]
-    impl<'de, K: serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord, V: serde::Deserialize<'de>> serde::de::Visitor<'de> for MapVisitor<'de, K, V> {
+    impl<
+            'de,
+            K: serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord,
+            V: serde::Deserialize<'de>,
+        > serde::de::Visitor<'de> for MapVisitor<'de, K, V>
+    {
         type Value = std::collections::BTreeMap<K, V>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -500,15 +556,17 @@ pub mod btree_map_visitor {
 
         fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
-            A: serde::de::MapAccess<'de> {
+            A: serde::de::MapAccess<'de>,
+        {
             let mut res = Self::Value::new();
             loop {
                 match map.next_entry()? {
-                    Some((k, v)) => {res.insert(k,v);},
+                    Some((k, v)) => {
+                        res.insert(k, v);
+                    }
                     None => return Ok(res),
                 }
             }
-
         }
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
@@ -519,11 +577,18 @@ pub mod btree_map_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D, K: 'de + serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord, V: 'de + serde::Deserialize<'de>>(deserializer: D) -> Result<std::collections::BTreeMap<K, V>, D::Error>
+    pub fn deserialize<
+        'de,
+        D,
+        K: 'de + serde::Deserialize<'de> + std::cmp::Eq + std::cmp::Ord,
+        V: 'de + serde::Deserialize<'de>,
+    >(
+        deserializer: D,
+    ) -> Result<std::collections::BTreeMap<K, V>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(MapVisitor::<'de, K, V>{
+        deserializer.deserialize_any(MapVisitor::<'de, K, V> {
             _key_type: &std::marker::PhantomData,
             _value_type: &std::marker::PhantomData,
         })
@@ -545,9 +610,8 @@ pub mod string_visitor {
         where
             E: serde::de::Error,
         {
-            return Ok(value.to_string())
+            return Ok(value.to_string());
         }
-
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
@@ -581,9 +645,8 @@ pub mod string_opt_visitor {
         where
             E: serde::de::Error,
         {
-            return Ok(Some(value.to_string()))
+            return Ok(Some(value.to_string()));
         }
-
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
@@ -598,18 +661,18 @@ pub mod string_opt_visitor {
         {
             Ok(None)
         }
-
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<std::string::String>, D::Error>
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<std::option::Option<std::string::String>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_any(StringVisitor)
     }
 }
-
 
 pub mod bool_visitor {
     struct BoolVisitor;
@@ -626,9 +689,8 @@ pub mod bool_visitor {
         where
             E: serde::de::Error,
         {
-            return Ok(value)
+            return Ok(value);
         }
-
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
@@ -661,9 +723,8 @@ pub mod bool_opt_visitor {
         where
             E: serde::de::Error,
         {
-            return Ok(Some(value))
+            return Ok(Some(value));
         }
-
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
@@ -678,7 +739,6 @@ pub mod bool_opt_visitor {
         {
             Ok(None)
         }
-
     }
 
     #[cfg(feature = "std")]
@@ -695,10 +755,10 @@ pub mod i32_visitor {
 
     impl crate::HasConstructor for I32Visitor {
         fn new() -> I32Visitor {
-            return I32Visitor{};
+            return I32Visitor {};
         }
     }
-    
+
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for I32Visitor {
         type Value = i32;
@@ -719,8 +779,10 @@ pub mod i32_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value > i32::MAX as f64 || value < i32::MIN as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value > i32::MAX as f64
+                || value < i32::MIN as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -745,7 +807,10 @@ pub mod i32_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
+                value
+                    .parse::<f64>()
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i32>().map_err(E::custom)
             }
@@ -790,8 +855,10 @@ pub mod i32_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value > i32::MAX as f64 || value < i32::MIN as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value > i32::MAX as f64
+                || value < i32::MIN as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -816,7 +883,10 @@ pub mod i32_opt_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
+                value
+                    .parse::<f64>()
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i32>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -868,8 +938,10 @@ pub mod i64_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value > i64::MAX as f64 || value < i64::MIN as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value > i64::MAX as f64
+                || value < i64::MIN as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -894,7 +966,10 @@ pub mod i64_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
+                value
+                    .parse::<f64>()
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i64>().map_err(E::custom)
             }
@@ -906,7 +981,6 @@ pub mod i64_visitor {
         {
             Ok(i64::default())
         }
-
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<i64, D::Error>
@@ -939,8 +1013,10 @@ pub mod i64_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value > i64::MAX as f64 || value < i64::MIN as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value > i64::MAX as f64
+                || value < i64::MIN as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -965,7 +1041,10 @@ pub mod i64_opt_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
+                value
+                    .parse::<f64>()
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<i64>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -1018,8 +1097,10 @@ pub mod u32_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value < 0.0 || value > u32::MAX as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value < 0.0
+                || value > u32::MAX as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -1044,7 +1125,10 @@ pub mod u32_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
+                value
+                    .parse::<f64>()
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u32>().map_err(E::custom)
             }
@@ -1089,8 +1173,10 @@ pub mod u32_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value < 0.0 || value > u32::MAX as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value < 0.0
+                || value > u32::MAX as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -1137,7 +1223,6 @@ pub mod u32_opt_visitor {
         {
             Ok(None)
         }
-
     }
 
     #[cfg(feature = "std")]
@@ -1171,8 +1256,10 @@ pub mod u64_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value < 0.0 || value > u64::MAX as f64 {
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value < 0.0
+                || value > u64::MAX as f64
+            {
                 Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
@@ -1189,7 +1276,10 @@ pub mod u64_visitor {
         {
             // If we have scientific notation or a decimal, parse float first.
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
-                value.parse::<f64>().map_err(E::custom).and_then(|x| self.visit_f64(x))
+                value
+                    .parse::<f64>()
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u64>().map_err(E::custom)
             }
@@ -1233,9 +1323,11 @@ pub mod u64_opt_visitor {
         where
             E: serde::de::Error,
         {
-            if (value.trunc() - value).abs() > f64::EPSILON ||
-                value < 0.0 || value > u64::MAX as f64 {
-                    Err(serde::de::Error::invalid_type(
+            if (value.trunc() - value).abs() > f64::EPSILON
+                || value < 0.0
+                || value > u64::MAX as f64
+            {
+                Err(serde::de::Error::invalid_type(
                     serde::de::Unexpected::Float(value),
                     &self,
                 ))
@@ -1253,7 +1345,8 @@ pub mod u64_opt_visitor {
             if value.contains('e') || value.contains('E') || value.ends_with(".0") {
                 value
                     .parse::<f64>()
-                    .map_err(E::custom).and_then(|x| self.visit_f64(x))
+                    .map_err(E::custom)
+                    .and_then(|x| self.visit_f64(x))
             } else {
                 value.parse::<u64>().map(|x| Some(x)).map_err(E::custom)
             }
@@ -1284,8 +1377,14 @@ pub mod u64_opt_visitor {
 }
 
 pub mod f64_visitor {
-    struct F64Visitor;
+    pub struct F64Visitor;
 
+    impl crate::HasConstructor for F64Visitor {
+        fn new() -> F64Visitor {
+            return F64Visitor {};
+        }
+    }
+,
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for F64Visitor {
         type Value = f64;
@@ -1342,19 +1441,24 @@ pub mod f64_visitor {
         deserializer.deserialize_any(F64Visitor)
     }
 
-    #[cfg(feature = "std")]
-    pub fn serialize<S>(value: &f64, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        if value.is_nan() {
-            serializer.serialize_str("NaN")
-        } else if value.is_infinite() && value.is_sign_negative() {
-            serializer.serialize_str("-Infinity")
-        } else if value.is_infinite() {
-            serializer.serialize_str("Infinity")
-        } else {
-            serializer.serialize_f64(*value)
+    pub struct F64Serializer;
+
+    impl crate::SerializeMethod for F64Serializer {
+        type Value = f64;
+        #[cfg(feature = "std")]
+        fn serialize<S>(value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            if value.is_nan() {
+                serializer.serialize_str("NaN")
+            } else if value.is_infinite() && value.is_sign_negative() {
+                serializer.serialize_str("-Infinity")
+            } else if value.is_infinite() {
+                serializer.serialize_str("Infinity")
+            } else {
+                serializer.serialize_f64(*value)
+            }
         }
     }
 }
@@ -1431,15 +1535,22 @@ pub mod f64_opt_visitor {
     where
         S: serde::Serializer,
     {
+        use crate::SerializeMethod;
         match value {
             None => serializer.serialize_none(),
-            Some(double) => crate::f64_visitor::serialize(double, serializer),
+            Some(double) => crate::f64_visitor::F64Serializer::serialize(double, serializer),
         }
     }
 }
 
 pub mod f32_visitor {
-    struct F32Visitor;
+    pub struct F32Visitor;
+
+    impl crate::HasConstructor for F32Visitor {
+        fn new() -> F32Visitor {
+            return F32Visitor {};
+        }
+    }
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for F32Visitor {
@@ -1503,19 +1614,25 @@ pub mod f32_visitor {
         deserializer.deserialize_any(F32Visitor)
     }
 
-    #[cfg(feature = "std")]
-    pub fn serialize<S>(value: &f32, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        if value.is_nan() {
-            serializer.serialize_str("NaN")
-        } else if value.is_infinite() && value.is_sign_negative() {
-            serializer.serialize_str("-Infinity")
-        } else if value.is_infinite() {
-            serializer.serialize_str("Infinity")
-        } else {
-            serializer.serialize_f32(*value)
+    pub struct F32Serializer;
+
+    impl crate::SerializeMethod for F32Serializer {
+        type Value = f32;
+
+        #[cfg(feature = "std")]
+        fn serialize<S>(value: &f32, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            if value.is_nan() {
+                serializer.serialize_str("NaN")
+            } else if value.is_infinite() && value.is_sign_negative() {
+                serializer.serialize_str("-Infinity")
+            } else if value.is_infinite() {
+                serializer.serialize_str("Infinity")
+            } else {
+                serializer.serialize_f32(*value)
+            }
         }
     }
 }
@@ -1599,9 +1716,10 @@ pub mod f32_opt_visitor {
     where
         S: serde::Serializer,
     {
+        use crate::SerializeMethod;
         match value {
             None => serializer.serialize_none(),
-            Some(float) => crate::f32_visitor::serialize(float, serializer),
+            Some(float) => crate::f32_visitor::F32Serializer::serialize(float, serializer),
         }
     }
 }
@@ -1641,7 +1759,10 @@ pub mod vec_u8_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn serialize<S>(value: &::prost::alloc::vec::Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(
+        value: &::prost::alloc::vec::Vec<u8>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -1664,7 +1785,9 @@ pub mod vec_u8_opt_visitor {
         where
             E: serde::de::Error,
         {
-            base64::decode(value).map(|str| Some(str)).map_err(E::custom)
+            base64::decode(value)
+                .map(|str| Some(str))
+                .map_err(E::custom)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -1683,7 +1806,9 @@ pub mod vec_u8_opt_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<::prost::alloc::vec::Vec<u8>>, D::Error>
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<std::option::Option<::prost::alloc::vec::Vec<u8>>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -1691,7 +1816,10 @@ pub mod vec_u8_opt_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn serialize<S>(value: &std::option::Option<::prost::alloc::vec::Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(
+        value: &std::option::Option<::prost::alloc::vec::Vec<u8>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
