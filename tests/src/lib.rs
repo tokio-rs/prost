@@ -136,16 +136,6 @@ impl RoundtripResult {
             RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
         }
     }
-    /*
-        /// Unwrap the roundtrip result. Panics if the result was a validation or re-encoding error.
-        pub fn unwrap_error(self) -> Result<Vec<u8>, prost::DecodeError> {
-            match self {
-                RoundtripResult::Ok(buf) => Ok(buf),
-                RoundtripResult::DecodeError(error) => Err(DecodeError(error.to_string())),
-                RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
-            }
-        }
-    */
 }
 
 /// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
