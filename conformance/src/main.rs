@@ -100,7 +100,45 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 RoundtripResult::Error(error) => conformance_response::Result::RuntimeError(error),
             };
         }
-        // TODO(konradjniemiec) support proto -> json and json -> proto conformance
+        if let Some(conformance_request::Payload::ProtobufPayload(buf)) = request.payload {
+            // proto -> json
+            return match &*request.message_type {
+                "protobuf_test_messages.proto2.TestAllTypesProto2" => {
+                    let m = match TestAllTypesProto2::decode(&*buf) {
+                        Ok(m) => m,
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(error.to_string())
+                        },
+                    };
+                    match serde_json::to_string(&m) {
+                        Ok(str) => conformance_response::Result::JsonPayload(str),
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(error.to_string())
+                        }
+                    }
+                }
+                "protobuf_test_messages.proto3.TestAllTypesProto3" => {
+                    let m = match TestAllTypesProto3::decode(&*buf) {
+                        Ok(m) => m,
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(error.to_string())
+                        },
+                    };
+                    match serde_json::to_string(&m) {
+                        Ok(str) => conformance_response::Result::JsonPayload(str),
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(error.to_string())
+                        }
+                    }
+                }
+                _ => {
+                    return conformance_response::Result::ParseError(format!(
+                        "unknown message type: {}",
+                        request.message_type
+                    ));
+                }
+            }
+        }
         return conformance_response::Result::Skipped(
             "only json <-> json is supported".to_string(),
         );
@@ -108,10 +146,44 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
 
     let buf = match request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
-        Some(conformance_request::Payload::JsonPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
+        Some(conformance_request::Payload::JsonPayload(str)) => {
+            // json -> proto
+            match &*request.message_type {
+                "protobuf_test_messages.proto2.TestAllTypesProto2" => {
+                    let jd = &mut serde_json::Deserializer::from_str(&str);
+                    let all_types: TestAllTypesProto2 = match serde_path_to_error::deserialize(jd) {
+                        Ok(all_types) => all_types,
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(format!(
+                                "error deserializing json: {} at {}",
+                                error.to_string(),
+                                error.path().to_string()
+                            ))
+                        }
+                    };
+                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec())
+                }
+                "protobuf_test_messages.proto3.TestAllTypesProto3" => {
+                    let jd = &mut serde_json::Deserializer::from_str(&str);
+                    let all_types: TestAllTypesProto3 = match serde_path_to_error::deserialize(jd) {
+                        Ok(all_types) => all_types,
+                        Err(error) => {
+                            return conformance_response::Result::ParseError(format!(
+                                "error deserializing json: {} at {}",
+                                error.to_string(),
+                                error.path().to_string()
+                            ))
+                        }
+                    };
+                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec())
+                }
+                _ => {
+                    return conformance_response::Result::ParseError(format!(
+                        "unknown message type: {}",
+                        request.message_type
+                    ));
+                }
+            }
         }
         Some(conformance_request::Payload::JspbPayload(_)) => {
             return conformance_response::Result::Skipped(

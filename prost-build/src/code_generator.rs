@@ -402,6 +402,13 @@ impl<'a> CodeGenerator<'a> {
                         .push_str(r#"#[serde(deserialize_with = "::prost_types::bool_opt_visitor::deserialize")]"#);
                     self.buf.push('\n');
                 }
+                ("bool", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::bool_visitor::BoolVisitor>")]"#,
+                    );
+                    self.buf.push('\n');
+                }
                 ("i64", false, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf.push_str(
@@ -413,6 +420,13 @@ impl<'a> CodeGenerator<'a> {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
                         .push_str(r#"#[serde(deserialize_with = "::prost_types::i64_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("i64", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::i64_visitor::I64Visitor>")]"#,
+                    );
                     self.buf.push('\n');
                 }
                 ("u32", false, false) => {
@@ -428,6 +442,13 @@ impl<'a> CodeGenerator<'a> {
                         .push_str(r#"#[serde(deserialize_with = "::prost_types::u32_opt_visitor::deserialize")]"#);
                     self.buf.push('\n');
                 }
+                ("u32", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::u32_visitor::U32Visitor>")]"#,
+                    );
+                    self.buf.push('\n');
+                }
                 ("u64", false, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf.push_str(
@@ -439,6 +460,13 @@ impl<'a> CodeGenerator<'a> {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
                         .push_str(r#"#[serde(deserialize_with = "::prost_types::u64_opt_visitor::deserialize")]"#);
+                    self.buf.push('\n');
+                }
+                ("u64", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf.push_str(
+                        r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::u64_visitor::U64Visitor>")]"#,
+                    );
                     self.buf.push('\n');
                 }
                 ("f64", false, false) => {
@@ -516,13 +544,31 @@ impl<'a> CodeGenerator<'a> {
                 ("::prost::alloc::vec::Vec<u8>", false, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
-                        .push_str(r#"#[serde(with = "::prost_types::vec_u8_visitor")]"#);
+                        .push_str(r#"#[serde(serialize_with = "<::prost_types::vec_u8_visitor::VecU8Serializer as ::prost_types::SerializeMethod>::serialize")]"#);
+                    self.buf.push('\n');
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(deserialize_with = "::prost_types::vec_u8_visitor::deserialize")]"#
+                        );
                     self.buf.push('\n');
                 }
                 ("::prost::alloc::vec::Vec<u8>", true, false) => {
                     push_indent(&mut self.buf, self.depth);
                     self.buf
                         .push_str(r#"#[serde(with = "::prost_types::vec_u8_opt_visitor")]"#);
+                    self.buf.push('\n');
+                }
+                ("::prost::alloc::vec::Vec<u8>", false, true) => {
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(
+                            r#"#[serde(deserialize_with = "::prost_types::repeated_visitor::deserialize::<_, ::prost_types::vec_u8_visitor::VecU8Visitor>")]"#,
+                        );
+                    self.buf.push('\n');
+                    push_indent(&mut self.buf, self.depth);
+                    self.buf
+                        .push_str(r#"#[serde(serialize_with = "::prost_types::repeated_visitor::serialize::<_, ::prost_types::vec_u8_visitor::VecU8Serializer>")]"#
+                        );
                     self.buf.push('\n');
                 }
                 (_, _, true) => {

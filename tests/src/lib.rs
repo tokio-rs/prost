@@ -215,13 +215,13 @@ pub fn roundtrip_json<'de, M>(data: &'de str) -> RoundtripResult
 where
     M: Message + Default + Serialize + Deserialize<'de>,
 {
-    // Try to decode a message from the data. If decoding fails, continue.
+
     let jd = &mut serde_json::Deserializer::from_str(data);
     let all_types: M = match serde_path_to_error::deserialize(jd) {
         Ok(all_types) => all_types,
         Err(error) => {
             return RoundtripResult::DecodeError(format!(
-                "step 1 {} at {}",
+                "error deserializing json: {} at {}",
                 error.to_string(),
                 error.path().to_string()
             ))
@@ -230,32 +230,9 @@ where
 
     let str1 = match serde_json::to_string(&all_types) {
         Ok(str) => str,
-        Err(error) => return RoundtripResult::Error(format!("step 2 {}", error.to_string())),
+        Err(error) => return RoundtripResult::Error(format!("error encoding json {}", error.to_string())),
     };
 
-    /*    if str1 != data {
-        return RoundtripResult::Error(format!(
-            "halftripped JSON encoded strings do not match\nstring: {}\noriginal provided data: {}",
-            str1, data
-        ));
-    }*/
-
-    let roundtrip: M = match serde_json::from_str::<M>(data) {
-        Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(format!("step 3 {}", error.to_string())),
-    };
-
-    let str2 = match serde_json::to_string(&roundtrip) {
-        Ok(str) => str,
-        Err(error) => return RoundtripResult::Error(format!("step 4 {}", error.to_string())),
-    };
-
-    if str1 != str2 {
-        return RoundtripResult::Error(format!(
-            "roundtripped JSON encoded strings do not match {} {}",
-            str1, str2
-        ));
-    }
     RoundtripResult::Ok(str1.into_bytes())
 }
 

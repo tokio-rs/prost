@@ -675,7 +675,13 @@ pub mod string_opt_visitor {
 }
 
 pub mod bool_visitor {
-    struct BoolVisitor;
+    pub struct BoolVisitor;
+
+    impl crate::HasConstructor for BoolVisitor {
+        fn new() -> Self {
+            return Self{};
+        }
+    }
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for BoolVisitor {
@@ -917,7 +923,13 @@ pub mod i32_opt_visitor {
 }
 
 pub mod i64_visitor {
-    struct I64Visitor;
+    pub struct I64Visitor;
+
+    impl crate::HasConstructor for I64Visitor {
+        fn new() -> Self {
+            return Self {};
+        }
+    }
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for I64Visitor {
@@ -1075,7 +1087,14 @@ pub mod i64_opt_visitor {
 }
 
 pub mod u32_visitor {
-    struct U32Visitor;
+    pub struct U32Visitor;
+
+    impl crate::HasConstructor for U32Visitor {
+        fn new() -> Self {
+            return Self {};
+        }
+    }
+
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for U32Visitor {
@@ -1235,7 +1254,13 @@ pub mod u32_opt_visitor {
 }
 
 pub mod u64_visitor {
-    struct U64Visitor;
+    pub struct U64Visitor;
+
+    impl crate::HasConstructor for U64Visitor {
+        fn new() -> Self {
+            return Self {};
+        }
+    }
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for U64Visitor {
@@ -1384,7 +1409,7 @@ pub mod f64_visitor {
             return F64Visitor {};
         }
     }
-,
+
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for F64Visitor {
         type Value = f64;
@@ -1725,7 +1750,13 @@ pub mod f32_opt_visitor {
 }
 
 pub mod vec_u8_visitor {
-    struct VecU8Visitor;
+    pub struct VecU8Visitor;
+
+    impl crate::HasConstructor for VecU8Visitor {
+        fn new() -> Self {
+            return Self {};
+        }
+    }
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for VecU8Visitor {
@@ -1758,15 +1789,19 @@ pub mod vec_u8_visitor {
         deserializer.deserialize_any(VecU8Visitor)
     }
 
-    #[cfg(feature = "std")]
-    pub fn serialize<S>(
-        value: &::prost::alloc::vec::Vec<u8>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&base64::encode(value))
+
+    pub struct VecU8Serializer;
+
+    impl crate::SerializeMethod for VecU8Serializer {
+        type Value = ::prost::alloc::vec::Vec<u8>;
+
+        #[cfg(feature = "std")]
+        fn serialize<S>(value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(&base64::encode(value))
+        }
     }
 }
 
@@ -1823,9 +1858,10 @@ pub mod vec_u8_opt_visitor {
     where
         S: serde::Serializer,
     {
+        use crate::SerializeMethod;
         match value {
             None => serializer.serialize_none(),
-            Some(value) => crate::vec_u8_visitor::serialize(value, serializer),
+            Some(value) => crate::vec_u8_visitor::VecU8Serializer::serialize(value, serializer),
         }
     }
 }
