@@ -215,7 +215,6 @@ pub fn roundtrip_json<'de, M>(data: &'de str) -> RoundtripResult
 where
     M: Message + Default + Serialize + Deserialize<'de>,
 {
-
     let jd = &mut serde_json::Deserializer::from_str(data);
     let all_types: M = match serde_path_to_error::deserialize(jd) {
         Ok(all_types) => all_types,
@@ -230,7 +229,9 @@ where
 
     let str1 = match serde_json::to_string(&all_types) {
         Ok(str) => str,
-        Err(error) => return RoundtripResult::Error(format!("error encoding json {}", error.to_string())),
+        Err(error) => {
+            return RoundtripResult::Error(format!("error encoding json {}", error.to_string()))
+        }
     };
 
     RoundtripResult::Ok(str1.into_bytes())

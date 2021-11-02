@@ -433,7 +433,7 @@ pub mod repeated_visitor {
     where
         S: serde::Serializer,
         F: crate::SerializeMethod,
-//        <F as crate::SerializeMethod>::Value: Copy,
+        //        <F as crate::SerializeMethod>::Value: Copy,
     {
         use serde::ser::SerializeSeq;
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
@@ -679,7 +679,7 @@ pub mod bool_visitor {
 
     impl crate::HasConstructor for BoolVisitor {
         fn new() -> Self {
-            return Self{};
+            return Self {};
         }
     }
 
@@ -1094,7 +1094,6 @@ pub mod u32_visitor {
             return Self {};
         }
     }
-
 
     #[cfg(feature = "std")]
     impl<'de> serde::de::Visitor<'de> for U32Visitor {
@@ -1788,7 +1787,6 @@ pub mod vec_u8_visitor {
     {
         deserializer.deserialize_any(VecU8Visitor)
     }
-
 
     pub struct VecU8Serializer;
 

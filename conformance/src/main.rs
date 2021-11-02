@@ -108,7 +108,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                         Ok(m) => m,
                         Err(error) => {
                             return conformance_response::Result::ParseError(error.to_string())
-                        },
+                        }
                     };
                     match serde_json::to_string(&m) {
                         Ok(str) => conformance_response::Result::JsonPayload(str),
@@ -122,7 +122,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                         Ok(m) => m,
                         Err(error) => {
                             return conformance_response::Result::ParseError(error.to_string())
-                        },
+                        }
                     };
                     match serde_json::to_string(&m) {
                         Ok(str) => conformance_response::Result::JsonPayload(str),
@@ -137,7 +137,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                         request.message_type
                     ));
                 }
-            }
+            };
         }
         return conformance_response::Result::Skipped(
             "only json <-> json is supported".to_string(),
@@ -161,7 +161,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                             ))
                         }
                     };
-                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec())
+                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec());
                 }
                 "protobuf_test_messages.proto3.TestAllTypesProto3" => {
                     let jd = &mut serde_json::Deserializer::from_str(&str);
@@ -175,7 +175,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                             ))
                         }
                     };
-                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec())
+                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec());
                 }
                 _ => {
                     return conformance_response::Result::ParseError(format!(
