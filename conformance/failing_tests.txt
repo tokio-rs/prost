@@ -1,5 +1,3 @@
-Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
-Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
 Recommended.FieldMaskNumbersDontRoundTrip.JsonOutput
 Recommended.FieldMaskPathsDontRoundTrip.JsonOutput
 Recommended.FieldMaskTooManyUnderscore.JsonOutput
@@ -25,6 +23,7 @@ Recommended.Proto3.JsonInput.Uint64FieldBeString.Validator
 Recommended.Proto3.ProtobufInput.OneofZeroBytes.JsonOutput
 Required.DurationProtoInputTooLarge.JsonOutput
 Required.DurationProtoInputTooSmall.JsonOutput
+Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
 Required.Proto3.JsonInput.Any.JsonOutput
 Required.Proto3.JsonInput.Any.ProtobufOutput
 Required.Proto3.JsonInput.AnyNested.JsonOutput
@@ -106,6 +105,7 @@ Required.Proto3.JsonInput.ValueAcceptObject.JsonOutput
 Required.Proto3.JsonInput.ValueAcceptObject.ProtobufOutput
 Required.Proto3.JsonInput.ValueAcceptString.JsonOutput
 Required.Proto3.JsonInput.ValueAcceptString.ProtobufOutput
+Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
 Required.Proto3.ProtobufInput.ValidDataMap.BOOL.BOOL.Default.JsonOutput
 Required.Proto3.ProtobufInput.ValidDataMap.BOOL.BOOL.DuplicateKey.JsonOutput
 Required.Proto3.ProtobufInput.ValidDataMap.BOOL.BOOL.DuplicateKeyInMapEntry.JsonOutput
