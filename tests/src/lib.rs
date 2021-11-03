@@ -181,22 +181,21 @@ where
     }
 }
 
-fn proto_to_proto_checks<M>()
+/// Does additional checks on the binary output of the protobuf messages.
+fn proto_checks<M>(message: &M) -> Result<(), String>
 where
     M: Message + Default,
 {
-    /*
-        // TODO: Reenable this once sign-extension in negative int32s is figured out.
+    // TODO: Reenable this once sign-extension in negative int32s is figured out.
     // assert!(encoded_len <= data.len(), "encoded_len: {}, len: {}, all_types: {:?}",
     //         encoded_len, data.len(), all_types);
-
-
-        let mut buf1 = Vec::new();
-    if let Err(error) = all_types.encode(&mut buf1) {
-        return RoundtripResult::Error(error.to_string());
+    let mut buf1 = Vec::new();
+    if let Err(error) = message.encode(&mut buf1) {
+        return Err(error.to_string());
     }
+    let encoded_len = message.encoded_len();
     if encoded_len != buf1.len() {
-        return RoundtripResult::Error(format!(
+        return Err(format!(
             "expected encoded len ({}) did not match actual encoded len ({})",
             encoded_len,
             buf1.len()
@@ -205,12 +204,12 @@ where
 
     let roundtrip = match M::decode(&*buf1) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(error.to_string()),
+        Err(error) => return Err(error.to_string()),
     };
 
     let mut buf2 = Vec::new();
     if let Err(error) = roundtrip.encode(&mut buf2) {
-        return RoundtripResult::Error(error.to_string());
+        return Err(error.to_string());
     }
     let buf3 = roundtrip.encode_to_vec();
 
@@ -222,15 +221,13 @@ where
     */
 
     if buf1 != buf2 {
-        return RoundtripResult::Error("roundtripped encoded buffers do not match".to_string());
+        return Err("roundtripped encoded buffers do not match".to_string());
     }
 
     if buf1 != buf3 {
-        return RoundtripResult::Error(
-            "roundtripped encoded buffers do not match with `encode_to_vec`".to_string(),
-        );
+        return Err("roundtripped encoded buffers do not match with `encode_to_vec`".to_string());
     }
-    */
+    Ok(())
 }
 
 /// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
@@ -247,9 +244,9 @@ where
         Err(error) => return RoundtripResult::DecodeError(error),
     };
 
-    if let conformance_request::Payload::ProtobufPayload(_) = payload {
-        if requested_output_format == WireFormat::Protobuf {
-            proto_to_proto_checks::<M>();
+    if requested_output_format == WireFormat::Protobuf {
+        if let Err(error) = proto_checks::<M>(&all_types) {
+            return RoundtripResult::Error(error);
         }
     }
 

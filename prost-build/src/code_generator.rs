@@ -332,18 +332,23 @@ impl<'a> CodeGenerator<'a> {
         if let None = self.config.json_mapping.get_first(fq_message_name) {
             return;
         }
+        // If there is a json name specified, add it.
         if json_name.len() > 0 {
             push_indent(&mut self.buf, self.depth);
             self.buf
                 .push_str(&format!(r#"#[serde(rename = "{}")]"#, json_name,));
             self.buf.push('\n');
         }
+        // Always alias to the field name for deserializing.
         push_indent(&mut self.buf, self.depth);
         self.buf
             .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
         self.buf.push('\n');
         push_indent(&mut self.buf, self.depth);
+
+        // Special case maps.
         if let Some(map_type) = map_type {
+            // Use is_empty instead of is_default to avoid allocations.
             self.buf.push_str(&format!(
                 r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
                 map_type
@@ -370,6 +375,8 @@ impl<'a> CodeGenerator<'a> {
         }
         self.buf.push('\n');
 
+        // Add custom deserializers and optionally serializers for most primitive types
+        // and their optional and repeated counterparts.
         match (ty, optional, repeated) {
             ("i32", false, false) => {
                 push_indent(&mut self.buf, self.depth);

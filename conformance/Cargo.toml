@@ -15,5 +15,3 @@ log = "0.4"
 prost = { path = ".." }
 protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }
-serde_json = { version="1.0" }
-serde_path_to_error = "0.1"
