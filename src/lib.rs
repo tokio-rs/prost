@@ -67,11 +67,11 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///    input is required to decode the full delimiter.
 ///  * If the supplied buffer contains more than 10 bytes, then the buffer contains an invalid
 ///    delimiter, and typically the buffer should be considered corrupt.
-pub fn decode_length_delimiter<B>(mut buf: B) -> Result<usize, DecodeError>
+pub fn decode_length_delimiter<B>(buf: &mut B) -> Result<usize, DecodeError>
 where
     B: Buf,
 {
-    let length = decode_varint(&mut buf)?;
+    let length = decode_varint(buf)?;
     if length > usize::max_value() as u64 {
         return Err(DecodeError::new(
             "length delimiter exceeds maximum usize value",
