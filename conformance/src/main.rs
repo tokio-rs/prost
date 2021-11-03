@@ -8,7 +8,7 @@ use protobuf::conformance::{
 };
 use protobuf::test_messages::proto2::TestAllTypesProto2;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
-use tests::{roundtrip, roundtrip_json, RoundtripResult};
+use tests::{roundtrip, RoundtripResult};
 
 fn main() -> io::Result<()> {
     env_logger::init();
@@ -49,158 +49,33 @@ fn main() -> io::Result<()> {
 }
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
-    match request.requested_output_format() {
-        WireFormat::Unspecified => {
+    let rof = request.requested_output_format();
+    match (rof, request.payload.as_ref()) {
+        (WireFormat::Unspecified, _) | (_, None) => {
             return conformance_response::Result::ParseError(
-                "output format unspecified".to_string(),
+                "input/output format unspecified".to_string(),
             );
         }
-        WireFormat::Jspb => {
+        (WireFormat::Jspb, _) | (_, Some(conformance_request::Payload::JspbPayload(_))) => {
             return conformance_response::Result::Skipped(
-                "JSPB output is not supported".to_string(),
+                "JSPB input/output is not supported".to_string(),
             );
         }
-        WireFormat::TextFormat => {
+        (WireFormat::TextFormat, _) | (_, Some(conformance_request::Payload::TextPayload(_))) => {
             return conformance_response::Result::Skipped(
-                "TEXT_FORMAT output is not supported".to_string(),
+                "TEXT_FORMAT input/output is not supported".to_string(),
             );
         }
-        WireFormat::Protobuf | WireFormat::Json => (),
+        (WireFormat::Protobuf, _) | (WireFormat::Json, _) => (),
     };
 
-    if let WireFormat::Json = request.requested_output_format() {
-        if let Some(conformance_request::Payload::JsonPayload(json_str)) = request.payload {
-            let roundtrip = match &*request.message_type {
-                "protobuf_test_messages.proto2.TestAllTypesProto2" => {
-                    roundtrip_json::<TestAllTypesProto2>(&json_str)
-                }
-                "protobuf_test_messages.proto3.TestAllTypesProto3" => {
-                    roundtrip_json::<TestAllTypesProto3>(&json_str)
-                }
-                _ => {
-                    return conformance_response::Result::ParseError(format!(
-                        "unknown message type: {}",
-                        request.message_type
-                    ));
-                }
-            };
-
-            return match roundtrip {
-                RoundtripResult::Ok(buf) => {
-                    conformance_response::Result::JsonPayload(match std::str::from_utf8(&buf) {
-                        Ok(str) => str.to_string(),
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(error.to_string())
-                        }
-                    })
-                }
-                RoundtripResult::DecodeError(error) => {
-                    conformance_response::Result::ParseError(error)
-                }
-                RoundtripResult::Error(error) => conformance_response::Result::RuntimeError(error),
-            };
+    let result = match (&*request.message_type, request.payload) {
+        ("protobuf_test_messages.proto2.TestAllTypesProto2", Some(payload)) => {
+            roundtrip::<TestAllTypesProto2>(payload, rof)
         }
-        if let Some(conformance_request::Payload::ProtobufPayload(buf)) = request.payload {
-            // proto -> json
-            return match &*request.message_type {
-                "protobuf_test_messages.proto2.TestAllTypesProto2" => {
-                    let m = match TestAllTypesProto2::decode(&*buf) {
-                        Ok(m) => m,
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(error.to_string())
-                        }
-                    };
-                    match serde_json::to_string(&m) {
-                        Ok(str) => conformance_response::Result::JsonPayload(str),
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(error.to_string())
-                        }
-                    }
-                }
-                "protobuf_test_messages.proto3.TestAllTypesProto3" => {
-                    let m = match TestAllTypesProto3::decode(&*buf) {
-                        Ok(m) => m,
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(error.to_string())
-                        }
-                    };
-                    match serde_json::to_string(&m) {
-                        Ok(str) => conformance_response::Result::JsonPayload(str),
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(error.to_string())
-                        }
-                    }
-                }
-                _ => {
-                    return conformance_response::Result::ParseError(format!(
-                        "unknown message type: {}",
-                        request.message_type
-                    ));
-                }
-            };
+        ("protobuf_test_messages.proto3.TestAllTypesProto3", Some(payload)) => {
+            roundtrip::<TestAllTypesProto3>(payload, rof)
         }
-        return conformance_response::Result::Skipped(
-            "only json <-> json is supported".to_string(),
-        );
-    }
-
-    let buf = match request.payload {
-        None => return conformance_response::Result::ParseError("no payload".to_string()),
-        Some(conformance_request::Payload::JsonPayload(str)) => {
-            // json -> proto
-            match &*request.message_type {
-                "protobuf_test_messages.proto2.TestAllTypesProto2" => {
-                    let jd = &mut serde_json::Deserializer::from_str(&str);
-                    let all_types: TestAllTypesProto2 = match serde_path_to_error::deserialize(jd) {
-                        Ok(all_types) => all_types,
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(format!(
-                                "error deserializing json: {} at {}",
-                                error.to_string(),
-                                error.path().to_string()
-                            ))
-                        }
-                    };
-                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec());
-                }
-                "protobuf_test_messages.proto3.TestAllTypesProto3" => {
-                    let jd = &mut serde_json::Deserializer::from_str(&str);
-                    let all_types: TestAllTypesProto3 = match serde_path_to_error::deserialize(jd) {
-                        Ok(all_types) => all_types,
-                        Err(error) => {
-                            return conformance_response::Result::ParseError(format!(
-                                "error deserializing json: {} at {}",
-                                error.to_string(),
-                                error.path().to_string()
-                            ))
-                        }
-                    };
-                    return conformance_response::Result::ProtobufPayload(all_types.encode_to_vec());
-                }
-                _ => {
-                    return conformance_response::Result::ParseError(format!(
-                        "unknown message type: {}",
-                        request.message_type
-                    ));
-                }
-            }
-        }
-        Some(conformance_request::Payload::JspbPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
-        }
-        Some(conformance_request::Payload::TextPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
-        }
-        Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
-    };
-
-    let roundtrip = match &*request.message_type {
-        "protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip::<TestAllTypesProto2>(&buf),
-        "protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip::<TestAllTypesProto3>(&buf),
         _ => {
             return conformance_response::Result::ParseError(format!(
                 "unknown message type: {}",
@@ -209,8 +84,8 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         }
     };
 
-    match roundtrip {
-        RoundtripResult::Ok(buf) => conformance_response::Result::ProtobufPayload(buf),
+    match result {
+        RoundtripResult::Ok(result) => result,
         RoundtripResult::DecodeError(error) => conformance_response::Result::ParseError(error),
         RoundtripResult::Error(error) => conformance_response::Result::RuntimeError(error),
     }

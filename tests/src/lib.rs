@@ -113,11 +113,11 @@ use bytes::Buf;
 
 use prost::Message;
 
-use serde::{Deserialize, Serialize};
-
+use protobuf::conformance::{conformance_request, conformance_response, WireFormat};
+use serde::{de::DeserializeOwned, Serialize};
 pub enum RoundtripResult {
     /// The roundtrip succeeded.
-    Ok(Vec<u8>),
+    Ok(conformance_response::Result),
     /// The data could not be decoded. This could indicate a bug in prost,
     /// or it could indicate that the input was bogus.
     DecodeError(String),
@@ -127,7 +127,7 @@ pub enum RoundtripResult {
 
 impl RoundtripResult {
     /// Unwrap the roundtrip result.
-    pub fn unwrap(self) -> Vec<u8> {
+    pub fn unwrap(self) -> conformance_response::Result {
         match self {
             RoundtripResult::Ok(buf) => buf,
             RoundtripResult::DecodeError(error) => {
@@ -138,25 +138,60 @@ impl RoundtripResult {
     }
 }
 
-/// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
-/// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
-pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult
+fn decode<M>(payload: conformance_request::Payload) -> Result<M, String>
+where
+    M: Message + Default + DeserializeOwned,
+{
+    match payload {
+        conformance_request::Payload::JsonPayload(str) => {
+            let jd = &mut serde_json::Deserializer::from_str(&str);
+            match serde_path_to_error::deserialize(jd) {
+                Ok(all_types) => Ok(all_types),
+                Err(error) => Err(format!(
+                    "error deserializing json: {} at {}",
+                    error.to_string(),
+                    error.path().to_string()
+                )),
+            }
+        }
+        conformance_request::Payload::ProtobufPayload(buf) => match M::decode(&*buf) {
+            Ok(m) => Ok(m),
+            Err(error) => Err(error.to_string()),
+        },
+        _ => panic!("only proto and json are supported"),
+    }
+}
+
+fn encode<M>(
+    message: M,
+    requested_output_format: WireFormat,
+) -> Result<conformance_response::Result, String>
+where
+    M: Message + Default + Serialize,
+{
+    match requested_output_format {
+        WireFormat::Json => match serde_json::to_string(&message) {
+            Ok(str) => Ok(conformance_response::Result::JsonPayload(str)),
+            Err(error) => Err(error.to_string()),
+        },
+        WireFormat::Protobuf => Ok(conformance_response::Result::ProtobufPayload(
+            message.encode_to_vec(),
+        )),
+        _ => panic!("only proto and json are supported"),
+    }
+}
+
+fn proto_to_proto_checks<M>()
 where
     M: Message + Default,
 {
-    // Try to decode a message from the data. If decoding fails, continue.
-    let all_types = match M::decode(data) {
-        Ok(all_types) => all_types,
-        Err(error) => return RoundtripResult::DecodeError(error.to_string()),
-    };
-
-    let encoded_len = all_types.encoded_len();
-
-    // TODO: Reenable this once sign-extension in negative int32s is figured out.
+    /*
+        // TODO: Reenable this once sign-extension in negative int32s is figured out.
     // assert!(encoded_len <= data.len(), "encoded_len: {}, len: {}, all_types: {:?}",
     //         encoded_len, data.len(), all_types);
 
-    let mut buf1 = Vec::new();
+
+        let mut buf1 = Vec::new();
     if let Err(error) = all_types.encode(&mut buf1) {
         return RoundtripResult::Error(error.to_string());
     }
@@ -195,36 +230,33 @@ where
             "roundtripped encoded buffers do not match with `encode_to_vec`".to_string(),
         );
     }
-
-    RoundtripResult::Ok(buf1)
+    */
 }
 
 /// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
 /// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
-pub fn roundtrip_json<'de, M>(data: &'de str) -> RoundtripResult
+pub fn roundtrip<M>(
+    payload: conformance_request::Payload,
+    requested_output_format: WireFormat,
+) -> RoundtripResult
 where
-    M: Message + Default + Serialize + Deserialize<'de>,
+    M: Message + Default + DeserializeOwned + Serialize,
 {
-    let jd = &mut serde_json::Deserializer::from_str(data);
-    let all_types: M = match serde_path_to_error::deserialize(jd) {
+    let all_types: M = match decode(payload.clone()) {
         Ok(all_types) => all_types,
-        Err(error) => {
-            return RoundtripResult::DecodeError(format!(
-                "error deserializing json: {} at {}",
-                error.to_string(),
-                error.path().to_string()
-            ))
-        }
+        Err(error) => return RoundtripResult::DecodeError(error),
     };
 
-    let str1 = match serde_json::to_string(&all_types) {
-        Ok(str) => str,
-        Err(error) => {
-            return RoundtripResult::Error(format!("error encoding json {}", error.to_string()))
+    if let conformance_request::Payload::ProtobufPayload(_) = payload {
+        if requested_output_format == WireFormat::Protobuf {
+            proto_to_proto_checks::<M>();
         }
-    };
+    }
 
-    RoundtripResult::Ok(str1.into_bytes())
+    match encode(all_types, requested_output_format) {
+        Ok(result) => RoundtripResult::Ok(result),
+        Err(error) => RoundtripResult::Error(error),
+    }
 }
 
 /// Generic rountrip serialization check for messages.

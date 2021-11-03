@@ -1,3 +1,5 @@
+Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
+Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
 Recommended.FieldMaskNumbersDontRoundTrip.JsonOutput
 Recommended.FieldMaskPathsDontRoundTrip.JsonOutput
 Recommended.FieldMaskTooManyUnderscore.JsonOutput

@@ -449,13 +449,21 @@ impl Config {
     }
 
     /// Generates serde attributes in order to conform to the proto to json spec.
-    // TODO MORE COMMENTS
+    /// Once applied, all messages will implement Serialize and Deserialize, and
+    /// serde_json can be used to go to/from json.
+    ///
+    /// Verification of the implementation is done in the `conformance` crate. See
+    /// the failed list for any limitations in the current implementation.
+    ///
+    /// More on the proto/json spec can be found [here](https://developers.google.com/protocol-buffers/docs/proto3#json).
+    ///
+    /// There are additional options that Google suggests, however none are currently
+    /// implemented.
     pub fn json_mapping<I, S>(&mut self, paths: I) -> &mut Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.map_type.clear();
         for matcher in paths {
             self.json_mapping.insert(matcher.as_ref().to_string(), ());
         }
