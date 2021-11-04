@@ -51,10 +51,10 @@ where
     }
 
     let byte = bytes[0];
-    if byte < 0x80 {
+    if (byte & 0x80) == 0 {
         buf.advance(1);
         Ok(u64::from(byte))
-    } else if len > 10 || bytes[len - 1] < 0x80 {
+    } else if len > 10 || ((bytes[len - 1] & 0x80) == 0) {
         let (value, advance) = decode_varint_slice(bytes)?;
         buf.advance(advance);
         Ok(value)
