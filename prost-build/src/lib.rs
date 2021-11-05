@@ -235,6 +235,7 @@ pub struct Config {
     disable_comments: PathMap<()>,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
+    package_file_delimiter: String,
 }
 
 impl Config {
@@ -689,6 +690,15 @@ impl Config {
         self
     }
 
+    /// Configures the delimiter for generated package files
+    pub fn package_file_delimiter<S>(&mut self, delimiter: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.package_file_delimiter = delimiter.into();
+        self
+    }
+
     /// Add an argument to the `protoc` protobuf compilation invocation.
     ///
     /// # Example `build.rs`
@@ -852,7 +862,7 @@ impl Config {
             let mut filename = if module.is_empty() {
                 self.default_package_filename.clone()
             } else {
-                module.join(".")
+                module.join(&self.package_file_delimiter)
             };
 
             filename.push_str(".rs");
@@ -1007,6 +1017,7 @@ impl default::Default for Config {
             disable_comments: PathMap::default(),
             skip_protoc_run: false,
             include_file: None,
+            package_file_delimiter: ".".to_string(),
         }
     }
 }
@@ -1027,6 +1038,7 @@ impl fmt::Debug for Config {
             .field("default_package_filename", &self.default_package_filename)
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
+            .field("package_file_delimiter", &self.package_file_delimiter)
             .finish()
     }
 }
