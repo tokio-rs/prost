@@ -433,7 +433,6 @@ pub mod repeated_visitor {
     where
         S: serde::Serializer,
         F: crate::SerializeMethod,
-        //        <F as crate::SerializeMethod>::Value: Copy,
     {
         use serde::ser::SerializeSeq;
         let mut seq = serializer.serialize_seq(Some(value.len()))?;
@@ -441,6 +440,408 @@ pub mod repeated_visitor {
             seq.serialize_element(&crate::MySeType::<F> { val: e })?;
         }
         seq.end()
+    }
+}
+
+pub mod map_custom_serializer {
+    pub fn serialize<S, K, G>(
+        value: &std::collections::HashMap<K, <G as crate::SerializeMethod>::Value>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        K: serde::Serialize + std::cmp::Eq + std::hash::Hash,
+        G: crate::SerializeMethod,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (key, value) in value {
+            map.serialize_entry(&key, &crate::MySeType::<G> { val: value })?;
+        }
+        map.end()
+    }
+}
+
+pub mod btree_map_custom_serializer {
+    pub fn serialize<S, K, G>(
+        value: &std::collections::BTreeMap<K, <G as crate::SerializeMethod>::Value>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        K: serde::Serialize + std::cmp::Eq + std::cmp::Ord,
+        G: crate::SerializeMethod,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (key, value) in value {
+            map.serialize_entry(&key, &crate::MySeType::<G> { val: value })?;
+        }
+        map.end()
+    }
+}
+
+pub mod map_custom_visitor {
+    struct MapVisitor<'de, T, V>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        V: serde::Deserialize<'de>,
+    {
+        _map_type: fn() -> (
+            std::marker::PhantomData<&'de T>,
+            std::marker::PhantomData<&'de V>,
+        ),
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T, V> serde::de::Visitor<'de> for MapVisitor<'de, T, V>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        V: serde::Deserialize<'de>,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::hash::Hash,
+    {
+        type Value = std::collections::HashMap<<T as serde::de::Visitor<'de>>::Value, V>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut res = Self::Value::with_capacity(map.size_hint().unwrap_or(0));
+            loop {
+                let response: std::option::Option<(crate::MyType<'de, T>, V)> = map.next_entry()?;
+                match response {
+                    Some((key, val)) => {
+                        res.insert(key.0, val);
+                    }
+                    _ => return Ok(res),
+                }
+            }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T, V>(
+        deserializer: D,
+    ) -> Result<std::collections::HashMap<<T as serde::de::Visitor<'de>>::Value, V>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: 'de + serde::de::Visitor<'de> + crate::HasConstructor,
+        V: 'de + serde::Deserialize<'de>,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::hash::Hash,
+    {
+        deserializer.deserialize_any(MapVisitor::<'de, T, V> {
+            _map_type: || (std::marker::PhantomData, std::marker::PhantomData),
+        })
+    }
+
+    pub fn serialize<S, F, V>(
+        value: &std::collections::HashMap<<F as crate::SerializeMethod>::Value, V>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        F: crate::SerializeMethod,
+        V: serde::Serialize,
+        <F as crate::SerializeMethod>::Value: std::cmp::Eq + std::hash::Hash,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (key, value) in value {
+            map.serialize_entry(&crate::MySeType::<F> { val: key }, &value)?;
+        }
+        map.end()
+    }
+}
+
+pub mod map_custom_to_custom_visitor {
+    struct MapVisitor<'de, T, S>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        S: serde::de::Visitor<'de> + crate::HasConstructor,
+    {
+        _map_type: fn() -> (
+            std::marker::PhantomData<&'de T>,
+            std::marker::PhantomData<&'de S>,
+        ),
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T, S> serde::de::Visitor<'de> for MapVisitor<'de, T, S>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        S: serde::de::Visitor<'de> + crate::HasConstructor,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::hash::Hash,
+    {
+        type Value = std::collections::HashMap<
+            <T as serde::de::Visitor<'de>>::Value,
+            <S as serde::de::Visitor<'de>>::Value,
+        >;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut res = Self::Value::with_capacity(map.size_hint().unwrap_or(0));
+            loop {
+                let response: std::option::Option<(crate::MyType<'de, T>, crate::MyType<'de, S>)> =
+                    map.next_entry()?;
+                match response {
+                    Some((key, val)) => {
+                        res.insert(key.0, val.0);
+                    }
+                    _ => return Ok(res),
+                }
+            }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T, S>(
+        deserializer: D,
+    ) -> Result<
+        std::collections::HashMap<
+            <T as serde::de::Visitor<'de>>::Value,
+            <S as serde::de::Visitor<'de>>::Value,
+        >,
+        D::Error,
+    >
+    where
+        D: serde::Deserializer<'de>,
+        T: 'de + serde::de::Visitor<'de> + crate::HasConstructor,
+        S: 'de + serde::de::Visitor<'de> + crate::HasConstructor,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::hash::Hash,
+    {
+        deserializer.deserialize_any(MapVisitor::<'de, T, S> {
+            _map_type: || (std::marker::PhantomData, std::marker::PhantomData),
+        })
+    }
+
+    pub fn serialize<S, F, G>(
+        value: &std::collections::HashMap<
+            <F as crate::SerializeMethod>::Value,
+            <G as crate::SerializeMethod>::Value,
+        >,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        F: crate::SerializeMethod,
+        G: crate::SerializeMethod,
+        <F as crate::SerializeMethod>::Value: std::cmp::Eq + std::hash::Hash,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (key, value) in value {
+            map.serialize_entry(
+                &crate::MySeType::<F> { val: key },
+                &crate::MySeType::<G> { val: value },
+            )?;
+        }
+        map.end()
+    }
+}
+
+pub mod btree_map_custom_visitor {
+    struct MapVisitor<'de, T, V>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        V: serde::Deserialize<'de>,
+    {
+        _map_type: fn() -> (
+            std::marker::PhantomData<&'de T>,
+            std::marker::PhantomData<&'de V>,
+        ),
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T, V> serde::de::Visitor<'de> for MapVisitor<'de, T, V>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        V: serde::Deserialize<'de>,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::cmp::Ord,
+    {
+        type Value = std::collections::BTreeMap<<T as serde::de::Visitor<'de>>::Value, V>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut res = Self::Value::new();
+            loop {
+                let response: std::option::Option<(crate::MyType<'de, T>, V)> = map.next_entry()?;
+                match response {
+                    Some((key, val)) => {
+                        res.insert(key.0, val);
+                    }
+                    _ => return Ok(res),
+                }
+            }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T, V>(
+        deserializer: D,
+    ) -> Result<std::collections::BTreeMap<<T as serde::de::Visitor<'de>>::Value, V>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: 'de + serde::de::Visitor<'de> + crate::HasConstructor,
+        V: 'de + serde::Deserialize<'de>,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::cmp::Ord,
+    {
+        deserializer.deserialize_any(MapVisitor::<'de, T, V> {
+            _map_type: || (std::marker::PhantomData, std::marker::PhantomData),
+        })
+    }
+
+    pub fn serialize<S, F, V>(
+        value: &std::collections::BTreeMap<<F as crate::SerializeMethod>::Value, V>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        F: crate::SerializeMethod,
+        V: serde::Serialize,
+        <F as crate::SerializeMethod>::Value: std::cmp::Eq + std::cmp::Ord,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (key, value) in value {
+            map.serialize_entry(&crate::MySeType::<F> { val: key }, &value)?;
+        }
+        map.end()
+    }
+}
+
+pub mod btree_map_custom_to_custom_visitor {
+    struct MapVisitor<'de, T, S>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        S: serde::de::Visitor<'de> + crate::HasConstructor,
+    {
+        _map_type: fn() -> (
+            std::marker::PhantomData<&'de T>,
+            std::marker::PhantomData<&'de S>,
+        ),
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T, S> serde::de::Visitor<'de> for MapVisitor<'de, T, S>
+    where
+        T: serde::de::Visitor<'de> + crate::HasConstructor,
+        S: serde::de::Visitor<'de> + crate::HasConstructor,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::cmp::Ord,
+    {
+        type Value = std::collections::BTreeMap<
+            <T as serde::de::Visitor<'de>>::Value,
+            <S as serde::de::Visitor<'de>>::Value,
+        >;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut res = Self::Value::new();
+            loop {
+                let response: std::option::Option<(crate::MyType<'de, T>, crate::MyType<'de, S>)> =
+                    map.next_entry()?;
+                match response {
+                    Some((key, val)) => {
+                        res.insert(key.0, val.0);
+                    }
+                    _ => return Ok(res),
+                }
+            }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T, S>(
+        deserializer: D,
+    ) -> Result<
+        std::collections::BTreeMap<
+            <T as serde::de::Visitor<'de>>::Value,
+            <S as serde::de::Visitor<'de>>::Value,
+        >,
+        D::Error,
+    >
+    where
+        D: serde::Deserializer<'de>,
+        T: 'de + serde::de::Visitor<'de> + crate::HasConstructor,
+        S: 'de + serde::de::Visitor<'de> + crate::HasConstructor,
+        <T as serde::de::Visitor<'de>>::Value: std::cmp::Eq + std::cmp::Ord,
+    {
+        deserializer.deserialize_any(MapVisitor::<'de, T, S> {
+            _map_type: || (std::marker::PhantomData, std::marker::PhantomData),
+        })
+    }
+
+    pub fn serialize<S, F, G>(
+        value: &std::collections::BTreeMap<
+            <F as crate::SerializeMethod>::Value,
+            <G as crate::SerializeMethod>::Value,
+        >,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        F: crate::SerializeMethod,
+        G: crate::SerializeMethod,
+        <F as crate::SerializeMethod>::Value: std::cmp::Eq + std::cmp::Ord,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(value.len()))?;
+        for (key, value) in value {
+            map.serialize_entry(
+                &crate::MySeType::<F> { val: key },
+                &crate::MySeType::<G> { val: value },
+            )?;
+        }
+        map.end()
     }
 }
 

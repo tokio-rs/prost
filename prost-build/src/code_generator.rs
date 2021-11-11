@@ -44,6 +44,48 @@ fn push_indent(buf: &mut String, depth: u8) {
     }
 }
 
+/// Returns (serializer, deserializer) function names to use in serde
+/// serialize_with and deserialize_with macros respectively. If none are
+/// specified, the default works fine.
+/// If collection is true, the return is no longer the function, but instead,
+/// the Visitor type that will be used for either the repeated helper or
+/// custom map helper.
+fn get_custom_json_type_mappers(
+    ty: &str,
+    optional: bool,
+    collection: bool,
+) -> (Option<&str>, Option<&str>) {
+    match (ty, optional, collection) {
+            ("bool", false, false) =>  (None, Some("::prost_types::bool_visitor::deserialize")),
+            ("bool", true, false) =>  (None, Some("::prost_types::bool_opt_visitor::deserialize")),
+            ("bool", false, true) =>  (None, Some("::prost_types::bool_visitor::BoolVisitor")),
+            ("i32", false, false) =>  (None, Some("::prost_types::i32_visitor::deserialize")),
+            ("i32", true, false) =>  (None, Some("::prost_types::i32_opt_visitor::deserialize")),
+            ("i32", false, true) =>  (None, Some("::prost_types::i32_visitor::I32Visitor")),
+            ("i64", false, false) =>  (None, Some("::prost_types::i64_visitor::deserialize")),
+            ("i64", true, false) =>  (None, Some("::prost_types::i64_opt_visitor::deserialize")),
+            ("i64", false, true) =>  (None, Some("::prost_types::i64_visitor::I64Visitor")),
+            ("u32", false, false) =>  (None, Some("::prost_types::u32_visitor::deserialize")),
+            ("u32", true, false) =>  (None, Some("::prost_types::u32_opt_visitor::deserialize")),
+            ("u32", false, true) =>  (None, Some("::prost_types::u32_visitor::U32Visitor")),
+            ("u64", false, false) =>  (None, Some("::prost_types::u64_visitor::deserialize")),
+            ("u64", true, false) =>  (None, Some("::prost_types::u64_opt_visitor::deserialize")),
+            ("u64", false, true) =>  (None, Some("::prost_types::u64_visitor::U64Visitor")),
+            ("f64", false, false) =>  (Some("<::prost_types::f64_visitor::F64Serializer as ::prost_types::SerializeMethod>::serialize"), Some("::prost_types::f64_visitor::deserialize")),
+            ("f64", true, false) =>  (Some("::prost_types::f64_opt_visitor::serialize"), Some("::prost_types::f64_opt_visitor::deserialize")),
+            ("f64", false, true) =>  (Some("::prost_types::f64_visitor::F64Serializer"), Some("::prost_types::f64_visitor::F64Visitor")),
+            ("f32", false, false) =>  (Some("<::prost_types::f32_visitor::F32Serializer as ::prost_types::SerializeMethod>::serialize"), Some("::prost_types::f32_visitor::deserialize")),
+            ("f32", true, false) =>  (Some("::prost_types::f32_opt_visitor::serialize"), Some("::prost_types::f32_opt_visitor::deserialize")),
+            ("f32", false, true) =>  (Some("::prost_types::f32_visitor::F32Serializer"), Some("::prost_types::f32_visitor::F32Visitor")),
+            ("::prost::alloc::string::String", false, false) =>  (None, Some("::prost_types::string_visitor::deserialize")),
+            ("::prost::alloc::string::String", true, false) =>  (None, Some("::prost_types::string_opt_visitor::deserialize")),
+            ("::prost::alloc::vec::Vec<u8>", false, false) =>  (Some("<::prost_types::vec_u8_visitor::VecU8Serializer as ::prost_types::SerializeMethod>::serialize"), Some("::prost_types::vec_u8_visitor::deserialize")),
+            ("::prost::alloc::vec::Vec<u8>", true, false) =>  (Some("::prost_types::vec_u8_opt_visitor::serialize"), Some("::prost_types::vec_u8_opt_visitor::deserialize")),
+            ("::prost::alloc::vec::Vec<u8>", false, true) =>  (Some("::prost_types::vec_u8_visitor::VecU8Serializer"), Some("::prost_types::vec_u8_visitor::VecU8Visitor")),
+            (_,_, _) =>  (None, None)
+        }
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -319,19 +361,8 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_json_field_attributes(
-        &mut self,
-        fq_message_name: &str,
-        ty: &str,
-        field_name: &str,
-        optional: bool,
-        repeated: bool,
-        json_name: &str,
-        map_type: Option<&str>,
-    ) {
-        if let None = self.config.json_mapping.get_first(fq_message_name) {
-            return;
-        }
+    // Shared fields between field and map fields.
+    fn append_shared_json_field_attributes(&mut self, field_name: &str, json_name: &str) {
         // If there is a json name specified, add it.
         if json_name.len() > 0 {
             push_indent(&mut self.buf, self.depth);
@@ -345,34 +376,162 @@ impl<'a> CodeGenerator<'a> {
             .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
         self.buf.push('\n');
         push_indent(&mut self.buf, self.depth);
+    }
 
-        // Special case maps.
-        if let Some(map_type) = map_type {
-            // Use is_empty instead of is_default to avoid allocations.
-            self.buf.push_str(&format!(
-                r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
-                map_type
-            ));
-            self.buf.push('\n');
-            push_indent(&mut self.buf, self.depth);
-            match map_type {
-                    "::std::collections::HashMap" => 
-                        self.buf.push_str(
-                            r#"#[serde(deserialize_with = "::prost_types::map_visitor::deserialize")]"#,
-                        ),
-                    "::prost::alloc::collections::BTreeMap" =>
+    fn append_json_map_field_attributes(
+        &mut self,
+        fq_message_name: &str,
+        field_name: &str,
+        key_ty: &str,
+        value_ty: &str,
+        map_type: &str,
+        json_name: &str,
+    ) {
+        if let None = self.config.json_mapping.get_first(fq_message_name) {
+            return;
+        }
+        self.append_shared_json_field_attributes(field_name, json_name);
+
+        // Use is_empty instead of is_default to avoid allocations.
+        push_indent(&mut self.buf, self.depth);
+        self.buf.push_str(&format!(
+            r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
+            map_type
+        ));
+        self.buf.push('\n');
+
+        let (key_se_opt, key_de_opt) = get_custom_json_type_mappers(key_ty, false, true);
+        let (value_se_opt, value_de_opt) = get_custom_json_type_mappers(value_ty, false, true);
+
+        push_indent(&mut self.buf, self.depth);
+        match (key_se_opt, key_de_opt, value_se_opt, value_de_opt, map_type) {
+            (Some(key_se), Some(key_de), Some(value_se), Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::map_custom_to_custom_visitor::serialize::<_, {}, {}>")]"#, key_se, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            }
+            (None, Some(key_de), None, Some(value_de), "::std::collections::HashMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                ),
+            (Some(key_se), Some(key_de), None, Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::map_custom_visitor::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            },
+            (Some(key_se), Some(key_de), None, None, "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::map_custom_visitor::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::map_custom_visitor::deserialize::<_, {}, _>")]"#, key_de)
+                );
+            },
+            (None, Some(key_de), None, None, "::std::collections::HashMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::map_custom_visitor::deserialize::<_, {}, _>")]"#, key_de)
+                ),
+            (None, Some(key_de), Some(value_se), Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::map_custom_serializer::serialize::<_, _, {}>")]"#, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            },
+            (Some(key_se), Some(key_de), Some(value_se), Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::btree_map_custom_to_custom_visitor::serialize::<_, {}, {}>")]"#, key_se, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::btree_map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            }
+            (None, Some(key_de), None, Some(value_de), "::prost::alloc::collections::BTreeMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::btree_map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                ),
+            (Some(key_se), Some(key_de), None, Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::btree_map_custom_visitor::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::btree_map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            },
+            (Some(key_se), Some(key_de), None, None, "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::btree_map_custom_visitor::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::btree_map_custom_visitor::deserialize::<_, {}, _>")]"#, key_de)
+                );
+            },
+            (None, Some(key_de), None, None, "::prost::alloc::collections::BTreeMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::btree_map_custom_visitor::deserialize::<_, {}, _>")]"#, key_de)
+                ),
+            (None, Some(key_de), Some(value_se), Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::btree_map_custom_serializer::serialize::<_, _, {}>")]"#, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(&mut self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::btree_map_custom_to_custom_visitor::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+
+            },
+            (_, _, _, _, "::std::collections::HashMap") =>
+                self.buf.push_str(
+                    r#"#[serde(deserialize_with = "::prost_types::map_visitor::deserialize")]"#,
+                ),
+            (_, _, _, _, "::prost::alloc::collections::BTreeMap") =>
                         self.buf.push_str(
                             r#"#[serde(deserialize_with = "::prost_types::btree_map_visitor::deserialize")]"#,
                         ),
-
-                    _ => (),
-                }
-            self.buf.push('\n');
-            return;
-        } else {
-            self.buf
-                .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
+            _ => (),
         }
+        self.buf.push('\n');
+    }
+
+    fn append_json_field_attributes(
+        &mut self,
+        fq_message_name: &str,
+        ty: &str,
+        field_name: &str,
+        optional: bool,
+        repeated: bool,
+        json_name: &str,
+    ) {
+        if let None = self.config.json_mapping.get_first(fq_message_name) {
+            return;
+        }
+        self.append_shared_json_field_attributes(field_name, json_name);
+
+        push_indent(&mut self.buf, self.depth);
+        self.buf
+            .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
         self.buf.push('\n');
 
         // Add custom deserializers and optionally serializers for most primitive types
@@ -706,7 +865,6 @@ impl<'a> CodeGenerator<'a> {
             optional,
             repeated,
             field.json_name(),
-            None,
         );
         self.push_indent();
         self.buf.push_str("pub ");
@@ -767,14 +925,13 @@ impl<'a> CodeGenerator<'a> {
             field.number()
         ));
         self.append_field_attributes(fq_message_name, field.name());
-        self.append_json_field_attributes(
+        self.append_json_map_field_attributes(
             fq_message_name,
-            map_type.rust_type(),
             field.name(),
-            false,
-            false,
+            &key_ty,
+            &value_ty,
+            map_type.rust_type(),
             field.json_name(),
-            Some(map_type.rust_type()),
         );
         self.push_indent();
         self.buf.push_str(&format!(
