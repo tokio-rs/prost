@@ -325,6 +325,100 @@ pub fn enumeration(input: TokenStream) -> TokenStream {
     try_enumeration(input).unwrap()
 }
 
+fn try_json_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
+    let input: DeriveInput = syn::parse(input)?;
+    let ident = input.ident;
+
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let punctuated_variants = match input.data {
+        Data::Enum(DataEnum { variants, .. }) => variants,
+        Data::Struct(_) => bail!("Enumeration can not be derived for a struct"),
+        Data::Union(..) => bail!("Enumeration can not be derived for a union"),
+    };
+
+    // Map the variants into 'fields'.
+    let mut variants: Vec<(Ident, Expr)> = Vec::new();
+    for Variant {
+        ident,
+        fields,
+        discriminant,
+        ..
+    } in punctuated_variants
+    {
+        match fields {
+            Fields::Unit => (),
+            Fields::Named(_) | Fields::Unnamed(_) => {
+                bail!("Enumeration variants may not have fields")
+            }
+        }
+
+        match discriminant {
+            Some((_, expr)) => variants.push((ident, expr)),
+            None => bail!("Enumeration variants must have a disriminant"),
+        }
+    }
+
+    if variants.is_empty() {
+        panic!("Enumeration must have at least one variant");
+    }
+
+    let default = variants[0].0.clone();
+
+    let is_valid = variants
+        .iter()
+        .map(|&(_, ref value)| quote!(#value => true));
+    let from = variants.iter().map(
+        |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
+    );
+
+    let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
+    let from_i32_doc = format!(
+        "Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.",
+        ident
+    );
+
+    let expanded = quote! {
+        impl #impl_generics #ident #ty_generics #where_clause {
+            #[doc=#is_valid_doc]
+            pub fn is_valid(value: i32) -> bool {
+                match value {
+                    #(#is_valid,)*
+                    _ => false,
+                }
+            }
+
+            #[doc=#from_i32_doc]
+            pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
+                match value {
+                    #(#from,)*
+                    _ => ::core::option::Option::None,
+                }
+            }
+        }
+
+        impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
+            fn default() -> #ident {
+                #ident::#default
+            }
+        }
+
+        impl #impl_generics ::core::convert::From::<#ident> for i32 #ty_generics #where_clause {
+            fn from(value: #ident) -> i32 {
+                value as i32
+            }
+        }
+    };
+
+    Ok(expanded.into())
+}
+
+#[proc_macro_derive(JsonEnumeration, attributes(prost))]
+pub fn json_enumeration(input: TokenStream) -> TokenStream {
+    try_json_enumeration(input).unwrap()
+}
+
 fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
