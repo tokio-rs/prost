@@ -353,6 +353,7 @@ mod tests {
         let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FooBar;
         let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FuzzBuster;
         let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::NormalRustEnumCase;
+        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::_4ever;
 
         let mut buf = Vec::new();
         msg.encode(&mut buf).expect("encode");

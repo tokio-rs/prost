@@ -26,17 +26,46 @@ pub fn to_snake(s: &str) -> String {
         "self" | "super" | "extern" | "crate" => ident += "_",
         _ => (),
     }
+
+    // Add an underscore ('_') prefix to identifiers which are valid by the
+    // [Protobuf rules][1], but which are not valid
+    // Rust identifiers. In particular, Protobuf allows identifiers to begin
+    // with numerals, whereas Rust does not. The
+    // reverse -- identifiers which are valid in Rust (such as non-ASCII
+    // `XID_Start` characters) are never produced by `protoc`, and thus do not
+    // need to be handled.
+    // [1]: https://developers.google.com/protocol-buffers/docs/reference/proto3-spec
+    if !ident
+        .chars()
+        .nth(0)
+        .map(char::is_alphabetic)
+        .unwrap_or(true)
+    {
+        return format!("_{}", ident);
+    }
+
     ident
 }
 
 /// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
 pub fn to_upper_camel(s: &str) -> String {
-    let mut ident = s.to_camel_case();
+    let ident = s.to_camel_case();
 
     // Suffix an underscore for the `Self` Rust keyword as it is not allowed as raw identifier.
     if ident == "Self" {
-        ident += "_";
+        return format!("{}_", ident);
     }
+
+    // Prefix an underscore for idents that don't start with an alphanumeric character.
+    if !ident
+        .chars()
+        .nth(0)
+        .map(char::is_alphabetic)
+        .unwrap_or(true)
+    {
+        return format!("_{}", ident);
+    }
+
     ident
 }
 
@@ -158,5 +187,13 @@ mod tests {
         assert_eq!("FuzzBuster", &to_upper_camel("fuzzBuster"));
         assert_eq!("FuzzBuster", &to_upper_camel("FuzzBuster"));
         assert_eq!("Self_", &to_upper_camel("self"));
+    }
+
+    #[test]
+    fn test_alphabetic() {
+        assert_eq!("_1234", &to_upper_camel("1234"));
+        assert_eq!("_9fooBar", &to_upper_camel("9foo_bar"));
+        assert_eq!("_1234", &to_snake("1234"));
+        assert_eq!("_42whatever_man", &to_snake("42WhateverMan"));
     }
 }
