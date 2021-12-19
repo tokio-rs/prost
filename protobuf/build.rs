@@ -84,6 +84,7 @@ fn main() -> Result<()> {
     // values.
     prost_build::Config::new()
         .btree_map(&["."])
+        .include_unknown_fields(".", "unknown_fields")
         .compile_protos(
             &[
                 test_includes.join("test_messages_proto2.proto"),
