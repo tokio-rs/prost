@@ -31,7 +31,10 @@ impl Field {
                 "unknown attribute for unknown field set: {:?}",
                 unknown_attrs[0]
             ),
-            _ => bail!("unknown attributes for unknown field set: {:?}", unknown_attrs),
+            _ => bail!(
+                "unknown attributes for unknown field set: {:?}",
+                unknown_attrs
+            ),
         }
 
         Ok(Some(Field {}))

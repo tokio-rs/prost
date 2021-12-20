@@ -107,15 +107,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .map(|&(ref field_ident, ref field)| field.encode(quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
+        if field.is_unknown() {
+            return quote!();
+        }
+
         let merge = field.merge(quote!(value));
-        let tags = if field.is_unknown() {
-            quote!(_)
-        } else {
-            let tags = field.tags().into_iter().map(|tag| quote!(#tag));
-            Itertools::intersperse(tags, quote!(|)).collect()
-        };
+        let tags = field.tags().into_iter().map(|tag| quote!(#tag));
+        let tags = Itertools::intersperse(tags, quote!(|));
+
         quote! {
-            #tags => {
+            #(#tags)* => {
                 let mut value = &mut self.#field_ident;
                 #merge.map_err(|mut error| {
                     error.push(STRUCT_NAME, stringify!(#field_ident));
@@ -124,6 +125,23 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             },
         }
     });
+    let merge_fallback = match fields.iter().find(|&(_, f)| f.is_unknown()) {
+        Some((field_ident, field)) => {
+            let merge = field.merge(quote!(value));
+            quote! {
+                _ => {
+                    let mut value = &mut self.#field_ident;
+                    #merge.map_err(|mut error| {
+                        error.push(STRUCT_NAME, stringify!(#field_ident));
+                        error
+                    })
+                },
+            }
+        },
+        None => quote! {
+            _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+        }
+    };
 
     let struct_name = if fields.is_empty() {
         quote!()
@@ -199,7 +217,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+                    #merge_fallback
                 }
             }
 
