@@ -28,10 +28,10 @@ impl Field {
         match unknown_attrs.len() {
             0 => (),
             1 => bail!(
-                "unknown attribute for message field: {:?}",
+                "unknown attribute for unknown field set: {:?}",
                 unknown_attrs[0]
             ),
-            _ => bail!("unknown attributes for message field: {:?}", unknown_attrs),
+            _ => bail!("unknown attributes for unknown field set: {:?}", unknown_attrs),
         }
 
         Ok(Some(Field {}))
