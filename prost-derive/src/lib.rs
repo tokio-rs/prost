@@ -400,7 +400,10 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                     _ => {
                         let mut owned_value = ::core::default::Default::default();
                         let value = &mut owned_value;
-                        #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
+                        #merge
+                        // We have a tag so if we don't get any value from the merge,
+                        // the contents are all defaults
+                        *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value))
                     },
                 }
             }
