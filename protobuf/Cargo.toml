@@ -17,7 +17,9 @@ prost-types = { path = "../prost-types" }
 anyhow = "1"
 curl = "0.4"
 flate2 = "1.0"
-prost-build = { path = "../prost-build" }
+# Whatever crate depends on this one is responsible for enabling either
+# `prost-build/protoc-vendored-bin` or `prost-build/protoc-vendored`.
+prost-build = { path = "../prost-build", default-features = false }
 tar = "0.4"
 tempfile = "3"
 

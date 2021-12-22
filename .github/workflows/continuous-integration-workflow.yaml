@@ -38,7 +38,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --workspace --all-features --all-targets
+          args: --workspace --all-targets
 
   test:
     runs-on: ${{ matrix.os }}
@@ -72,6 +72,11 @@ jobs:
         with:
           command: test
           args: --no-default-features
+      - name: test protoc-vendored (non bin)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path tests/Cargo.toml --no-default-features --features prost-build/protoc-vendored
 
   no-std:
     runs-on: ubuntu-latest

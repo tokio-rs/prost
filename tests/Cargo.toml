@@ -11,7 +11,7 @@ edition = "2018"
 build = "src/build.rs"
 
 [features]
-default = ["std"]
+default = ["std", "prost-build/protoc-vendored-bin"]
 std = []
 
 [dependencies]
@@ -24,11 +24,11 @@ protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
 diff = "0.1"
-prost-build = { path = "../prost-build" }
+prost-build = { path = "../prost-build", default-features = false }
 tempfile = "3"
 
 [build-dependencies]
 cfg-if = "1"
 env_logger = { version = "0.8", default-features = false }
-prost-build = { path = "../prost-build" }
+prost-build = { path = "../prost-build", default-features = false }
 protobuf = { path = "../protobuf" }

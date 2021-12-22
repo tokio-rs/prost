@@ -97,17 +97,24 @@
 //! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
-//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in the
-//! prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux (non-musl), macOS,
-//! and Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
-//! `protoc` or `protoc.exe` binary on the `PATH` is used. If `protoc` is not available in any of
-//! these fallback locations, then the build fails.
+//! If `PROTOC` is not found in the environment, then a vendored copy of `protoc` is used
+//! if either the `protoc-vendored-bin` feature or `protoc-vendored` feature is enabled.
+//! If a vendored `protoc` is not available then  the `protoc` or `protoc.exe` binary on
+//! the `PATH` is used. If `protoc` is not available in any of these fallback locations,
+//! then the build fails.
 //!
-//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
-//! bundled in the prost-build crate is be used.
+//! If `PROTOC_INCLUDE` is not found in the environment, then the vendored Protobuf include
+//! directory is used if either of the `protoc-vendored-bin` or `protoc-vendored-src`
+//! features are enabled; otherwise the build fails.
+//!
+//! When the `protoc-vendored-bin` feature is enabled, the vendored protoc is a pre-compiled
+//! binary provided by the [`protoc-bin`](https://docs.rs/protoc_bin) crate. When the
+//! `protoc-vendored-src` feature is enabled, the vendored protoc is provided by compiling a
+//! bundled copy of protobuf from source via the [`protobuf-src`](https://docs.rs/protobuf_src)
+//! crate. Both features cannot be enabled simultaneously.
 //!
 //! To force `prost-build` to use the `protoc` on the `PATH`, add `PROTOC=protoc` to the
-//! environment.
+//! environment or disable the default `protoc-vendored-bin` feature.
 
 mod ast;
 mod code_generator;

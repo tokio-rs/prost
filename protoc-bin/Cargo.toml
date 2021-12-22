@@ -1,0 +1,10 @@
+[package]
+name = "protoc-bin"
+version = "1.0.0+3.15.18"
+authors = ["Tokio Contributors <team@tokio.rs>"]
+license = "Apache-2.0"
+repository = "https://github.com/tokio-rs/prost"
+documentation = "https://docs.rs/protoc-bin"
+readme = "README.md"
+description = "Vendored protoc binaries for common architectures."
+edition = "2018"
