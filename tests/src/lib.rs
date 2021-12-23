@@ -78,6 +78,10 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
+pub mod oneof_defaults {
+    include!(concat!(env!("OUT_DIR"), "/oneof_defaults.rs"));
+}
+
 /// Issue https://github.com/tokio-rs/prost/issues/118
 ///
 /// When a message contains an enum field with a default value, we
@@ -106,7 +110,6 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
-use alloc::format;
 use alloc::vec::Vec;
 
 use anyhow::anyhow;
@@ -404,6 +407,42 @@ mod tests {
 
         assert!(build_and_roundtrip(100).is_ok());
         assert!(build_and_roundtrip(101).is_err());
+    }
+
+    #[test]
+    fn test_oneof_defaults() {
+        use crate::oneof_defaults::{Msg, msg};
+
+        let msg = Msg { 
+            field: Some(msg::Field::Priority(msg::PriorityLevel::default()))
+        };
+
+        let mut buf = Vec::new();
+        msg.encode(&mut buf).unwrap();
+        let decoded = Msg::decode(&*buf).unwrap();
+        match decoded.field {
+            Some(msg::Field::Priority(priority)) => {
+                assert_eq!(priority.priority_level, 0);
+                assert_eq!(priority.test_level, 0);
+            },
+            _ => panic!("Defaults should still generate a oneof match"),
+        }
+    }
+
+    #[test]
+    fn test_oneof_defaults_manual() {
+        use crate::oneof_defaults::{MsgRequest, Msg, msg};
+
+        // Example using raw data
+        let decoded = MsgRequest::decode("\n\x02\x12\x00".as_bytes()).unwrap();
+        let decoded = decoded.msgs[0].clone();
+        match decoded.field {
+            Some(msg::Field::Priority(priority)) => {
+                assert_eq!(priority.priority_level, 0);
+                assert_eq!(priority.test_level, 0);
+            },
+            _ => panic!("Defaults should still generate a oneof match"),
+        }
     }
 
     #[test]

@@ -71,6 +71,14 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("oneof_defaults.proto")], includes)
+        .unwrap();
+
+    config
+        .compile_protos(&[src.join("oneof_defaults.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("no_unused_results.proto")], includes)
         .unwrap();
 

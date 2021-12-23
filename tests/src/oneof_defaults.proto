@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// Testing oneof default values.
+
+package oneof_defaults;
+
+message MsgRequest {
+    repeated Msg msgs = 1;
+}
+
+message Msg {
+    oneof field {
+        string a = 1;
+        PriorityLevel priority = 2;
+    }
+
+    message PriorityLevel {
+        uint32 priority_level = 1;
+        uint32 test_level = 2;
+    }
+}
