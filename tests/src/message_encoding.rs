@@ -318,6 +318,7 @@ fn check_default_values() {
 }
 
 /// A protobuf enum.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
 pub enum BasicEnumeration {
     ZERO = 0,

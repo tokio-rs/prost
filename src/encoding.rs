@@ -84,10 +84,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     assert!(!bytes.is_empty());
     assert!(bytes.len() > 10 || bytes[bytes.len() - 1] < 0x80);
 
-    let mut b: u8;
-    let mut part0: u32;
-    b = unsafe { *bytes.get_unchecked(0) };
-    part0 = u32::from(b);
+    let mut b: u8 = unsafe { *bytes.get_unchecked(0) };
+    let mut part0: u32 = u32::from(b);
     if b < 0x80 {
         return Ok((u64::from(part0), 1));
     };
@@ -112,9 +110,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part0 -= 0x80 << 21;
     let value = u64::from(part0);
 
-    let mut part1: u32;
     b = unsafe { *bytes.get_unchecked(4) };
-    part1 = u32::from(b);
+    let mut part1: u32 = u32::from(b);
     if b < 0x80 {
         return Ok((value + (u64::from(part1) << 28), 5));
     };
@@ -139,9 +136,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part1 -= 0x80 << 21;
     let value = value + ((u64::from(part1)) << 28);
 
-    let mut part2: u32;
     b = unsafe { *bytes.get_unchecked(8) };
-    part2 = u32::from(b);
+    let mut part2: u32 = u32::from(b);
     if b < 0x80 {
         return Ok((value + (u64::from(part2) << 56), 9));
     };
@@ -194,6 +190,7 @@ where
 /// The context should be passed by value and can be freely cloned. When passing
 /// to a function which is decoding a nested object, then use `enter_recursion`.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "no-recursion-limit", derive(Default))]
 pub struct DecodeContext {
     /// How many times we can recurse in the current decode stack before we hit
     /// the recursion limit.
@@ -205,19 +202,13 @@ pub struct DecodeContext {
     recurse_count: u32,
 }
 
+#[cfg(not(feature = "no-recursion-limit"))]
 impl Default for DecodeContext {
-    #[cfg(not(feature = "no-recursion-limit"))]
     #[inline]
     fn default() -> DecodeContext {
         DecodeContext {
             recurse_count: crate::RECURSION_LIMIT,
         }
-    }
-
-    #[cfg(feature = "no-recursion-limit")]
-    #[inline]
-    fn default() -> DecodeContext {
-        DecodeContext {}
     }
 }
 
