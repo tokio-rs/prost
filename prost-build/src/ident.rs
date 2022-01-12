@@ -1,6 +1,6 @@
 //! Utility functions for working with identifiers.
 
-use heck::{CamelCase, SnakeCase};
+use heck::{ToUpperCamelCase, ToSnakeCase};
 
 /// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
 /// identifier.
@@ -31,7 +31,7 @@ pub fn to_snake(s: &str) -> String {
 
 /// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
 pub fn to_upper_camel(s: &str) -> String {
-    let mut ident = s.to_camel_case();
+    let mut ident = s.to_upper_camel_case();
 
     // Suffix an underscore for the `Self` Rust keyword as it is not allowed as raw identifier.
     if ident == "Self" {

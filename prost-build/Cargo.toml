@@ -14,7 +14,7 @@ edition = "2018"
 
 [dependencies]
 bytes = { version = "1", default-features = false }
-heck = "0.3"
+heck = "0.4"
 itertools = "0.10"
 log = "0.4"
 multimap = { version = "0.8", default-features = false }
