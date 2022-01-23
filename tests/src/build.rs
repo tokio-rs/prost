@@ -90,6 +90,26 @@ fn main() {
         .compile_protos(&[src.join("default_string_escape.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("extensions.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
+        .btree_map(&["."])
+        // Custom options tests manually load the file descriptor path.
+        .file_descriptor_set_path(
+            PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
+                .join("custom_options_descriptor_set.bin"),
+        )
+        .compile_protos(
+            &[
+                src.join("custom_options.proto"),
+                src.join("custom_options_ext.proto"),
+            ],
+            includes,
+        )
+        .unwrap();
+
     prost_build::Config::new()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)

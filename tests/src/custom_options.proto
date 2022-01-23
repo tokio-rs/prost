@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+import "custom_options_ext.proto";
+
+package custom_options;
+
+message CustomOptionType {
+    string s = 1;
+    int32 i = 2;
+}
+
+extend google.protobuf.FileOptions {
+    double file_opt_double = 50000;
+    float file_opt_float = 50001;
+    int32 file_opt_int32 = 50002;
+    int64 file_opt_int64 = 50003;
+    uint32 file_opt_uint32 = 50004;
+    uint64 file_opt_uint64 = 50005;
+    sint32 file_opt_sint32 = 50006;
+    sint64 file_opt_sint64 = 50007;
+    fixed32 file_opt_fixed32 = 50008;
+    fixed64 file_opt_fixed64 = 50009;
+    sfixed32 file_opt_sfixed32 = 50010;
+    sfixed64 file_opt_sfixed64 = 50011;
+    bool file_opt_bool = 50012;
+    string file_opt_string = 50013;
+    bytes file_opt_bytes = 50014;
+    CustomOptionType file_opt_message = 50015;
+
+    repeated double file_opt_double_repeated = 50016;
+    repeated float file_opt_float_repeated = 50017;
+    repeated int32 file_opt_int32_repeated = 50018;
+    repeated int64 file_opt_int64_repeated = 50019;
+    repeated uint32 file_opt_uint32_repeated = 50020;
+    repeated uint64 file_opt_uint64_repeated = 50021;
+    repeated sint32 file_opt_sint32_repeated = 50022;
+    repeated sint64 file_opt_sint64_repeated = 50023;
+    repeated fixed32 file_opt_fixed32_repeated = 50024;
+    repeated fixed64 file_opt_fixed64_repeated = 50025;
+    repeated sfixed32 file_opt_sfixed32_repeated = 50026;
+    repeated sfixed64 file_opt_sfixed64_repeated = 50027;
+    repeated bool file_opt_bool_repeated = 50028;
+    repeated string file_opt_string_repeated = 50029;
+    repeated bytes file_opt_bytes_repeated = 50030;
+    repeated CustomOptionType file_opt_message_repeated = 50031;
+}
+
+// Basic.
+option (file_opt_double) = 12345.6;
+option (file_opt_float) = 12345.6;
+option (file_opt_int32) = -12345;
+option (file_opt_int64) = -12345;
+option (file_opt_uint32) = 12345;
+option (file_opt_uint64) = 12345;
+option (file_opt_sint32) = -12345;
+option (file_opt_sint64) = -12345;
+option (file_opt_fixed32) = 12345;
+option (file_opt_fixed64) = 12345;
+option (file_opt_sfixed32) = -12345;
+option (file_opt_sfixed64) = -12345;
+option (file_opt_bool) = true;
+option (file_opt_string) = "hello";
+option (file_opt_bytes) = "hello";
+option (file_opt_message) = { s: "hello", i: -12345 };
+
+// Repeated (specified multiple times)
+option (file_opt_double_repeated) = 11111.1;
+option (file_opt_double_repeated) = 55555.5;
+option (file_opt_float_repeated) = 11111.1;
+option (file_opt_float_repeated) = 55555.5;
+option (file_opt_int32_repeated) = -11111;
+option (file_opt_int32_repeated) = 55555;
+option (file_opt_int64_repeated) = -11111;
+option (file_opt_int64_repeated) = 55555;
+option (file_opt_uint32_repeated) = 11111;
+option (file_opt_uint32_repeated) = 55555;
+option (file_opt_uint64_repeated) = 11111;
+option (file_opt_uint64_repeated) = 55555;
+option (file_opt_sint32_repeated) = -11111;
+option (file_opt_sint32_repeated) = 55555;
+option (file_opt_sint64_repeated) = -11111;
+option (file_opt_sint64_repeated) = 55555;
+option (file_opt_fixed32_repeated) = 11111;
+option (file_opt_fixed32_repeated) = 55555;
+option (file_opt_fixed64_repeated) = 11111;
+option (file_opt_fixed64_repeated) = 55555;
+option (file_opt_sfixed32_repeated) = -11111;
+option (file_opt_sfixed32_repeated) = 55555;
+option (file_opt_sfixed64_repeated) = -11111;
+option (file_opt_sfixed64_repeated) = 55555;
+option (file_opt_bool_repeated) = true;
+option (file_opt_bool_repeated) = false;
+option (file_opt_string_repeated) = "hello";
+option (file_opt_string_repeated) = "goodbye";
+option (file_opt_bytes_repeated) = "hello";
+option (file_opt_bytes_repeated) = "goodbye";
+option (file_opt_message_repeated) = { s: "hello", i: -11111 };
+option (file_opt_message_repeated) = { s: "goodbye", i: 55555 };
+
+extend google.protobuf.MessageOptions {
+    string message_opt = 50000;
+}
+
+extend google.protobuf.FieldOptions {
+    string field_opt = 50000;
+}
+
+extend google.protobuf.OneofOptions {
+    string oneof_opt = 50000;
+}
+
+extend google.protobuf.EnumOptions {
+    string enum_opt = 50000;
+}
+
+extend google.protobuf.EnumValueOptions {
+    string enum_value_opt = 50000;
+}
+
+message NestedOptions {
+    extend google.protobuf.MessageOptions {
+        string nested_opt = 50001;
+    }
+}
+
+message MessageWithCustomOptions {
+    option (message_opt) = "hello";
+    option (NestedOptions.nested_opt) = "hello";
+    option (ext.message_opt_from_ext) = "hello";
+    option (ext.NestedOptions.nested_opt_from_ext) = "hello";
+
+    string field_with_opt = 1 [(field_opt) = "hello"];
+
+    oneof variant {
+        option (oneof_opt) = "hello";
+        string s = 2;
+    }
+}
+
+enum EnumWithCustomOptions {
+    option (enum_opt) = "hello";
+    Default = 0 [(enum_value_opt) = "hello"];
+}

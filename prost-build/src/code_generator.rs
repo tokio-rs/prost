@@ -81,11 +81,19 @@ impl<'a> CodeGenerator<'a> {
             buf,
         };
 
-        debug!(
-            "file: {:?}, package: {:?}",
-            file.name.as_ref().unwrap(),
-            code_gen.package
-        );
+        let file_name = file.name.as_ref().unwrap();
+        debug!("file: {:?}, package: {:?}", file_name, code_gen.package);
+
+        if !file.extension.is_empty() {
+            code_gen
+                .buf
+                .push_str("// Extension types defined inside the file `");
+            code_gen.buf.push_str(&file_name);
+            code_gen.buf.push_str("`\n");
+            for extension in file.extension.into_iter() {
+                code_gen.append_file_extension(extension);
+            }
+        }
 
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
@@ -134,6 +142,9 @@ impl<'a> CodeGenerator<'a> {
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
             return;
         }
+
+        let is_extendable = is_extendable(&message);
+        let defines_extensions = defines_extensions(&message);
 
         // Split the nested message types into a vector of normal nested message types, and a map
         // of the map field entry types. The path index of the nested message types is preserved so
@@ -185,10 +196,16 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
+            .push_str("#[derive(Clone, PartialEq, ::prost::Message");
+        if is_extendable {
+            self.buf.push_str(", ::prost::Extendable")
+        }
+        self.buf.push_str(")]\n");
+
+        let message_name_upper_camel = to_upper_camel(&message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
-        self.buf.push_str(&to_upper_camel(&message_name));
+        self.buf.push_str(&message_name_upper_camel);
         self.buf.push_str(" {\n");
 
         self.depth += 1;
@@ -224,6 +241,10 @@ impl<'a> CodeGenerator<'a> {
         }
         self.path.pop();
 
+        if is_extendable {
+            self.append_extension_set();
+        }
+
         self.depth -= 1;
         self.push_indent();
         self.buf.push_str("}\n");
@@ -258,6 +279,103 @@ impl<'a> CodeGenerator<'a> {
 
             self.pop_mod();
         }
+
+        let has_impl_block = is_extendable || defines_extensions;
+        if has_impl_block {
+            self.append_impl_open(&message_name_upper_camel, None);
+        }
+        if is_extendable {
+            self.append_extendable_type_id(&fq_message_name);
+        }
+        if defines_extensions {
+            self.buf
+                .push_str("// Extension types defined inside the message `");
+            self.buf.push_str(&fq_message_name);
+            self.buf.push_str("`\n");
+            for extension in message.extension.into_iter() {
+                self.append_extension(extension, &fq_message_name);
+            }
+        }
+        if has_impl_block {
+            self.append_impl_close();
+        }
+    }
+
+    fn append_extension_set(&mut self) {
+        self.push_indent();
+        self.buf.push_str("#[prost(extension_set)]\n");
+        self.push_indent();
+        // Leaving this pub so we don't break struct literal instantiation.
+        self.buf
+            .push_str("pub extension_set: ::prost::ExtensionSet<Self>,\n");
+    }
+
+    fn append_impl_open(&mut self, message_name: &str, trait_name: Option<&str>) {
+        self.push_indent();
+        self.depth += 1;
+        self.buf.push_str("impl ");
+        if let Some(trait_name) = trait_name {
+            self.buf.push_str(trait_name);
+            self.buf.push_str(" for ");
+        }
+        self.buf.push_str(message_name);
+        self.buf.push_str(" {\n");
+    }
+
+    fn append_impl_close(&mut self) {
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+    }
+
+    fn append_extendable_type_id(&mut self, extendable_type_id: &String) {
+        self.push_indent();
+        self.buf
+            .push_str("const EXTENDABLE_TYPE_ID: &'static str = \"");
+        self.buf.push_str(&extendable_type_id);
+        self.buf.push_str("\";\n");
+    }
+
+    fn append_file_extension(&mut self, extension: FieldDescriptorProto) {
+        self.append_extension(extension, "");
+    }
+
+    fn append_extension(&mut self, extension: FieldDescriptorProto, fq_message_name: &str) {
+        let extendee = extension.extendee.as_ref().unwrap();
+        debug!(
+            "    extension: {:?}, target msg type: {:?}, field tag: {:?}",
+            extension.name(),
+            extendee,
+            extension.number,
+        );
+
+        let field_type = self.resolve_type(&extension, fq_message_name);
+        let is_repeated = extension.label == Some(Label::Repeated as i32);
+        let append_field_type = |buf: &mut String| {
+            if is_repeated {
+                buf.push_str("::prost::alloc::vec::Vec<");
+            }
+            buf.push_str(&field_type);
+            if is_repeated {
+                buf.push('>');
+            }
+        };
+
+        self.push_indent();
+        self.buf.push_str("pub const ");
+        self.buf.push_str(&extension.name().to_ascii_uppercase());
+        self.buf.push_str(" : ::prost::ExtensionImpl<");
+        append_field_type(self.buf);
+        self.buf.push_str("> = ::prost::ExtensionImpl::<");
+        append_field_type(self.buf);
+        self.buf.push_str("> { extendable_type_id: \"");
+        self.buf.push_str(&extendee);
+        self.buf.push_str("\", field_tag: ");
+        self.buf.push_str(&format!("{}", extension.number()));
+        self.buf.push_str(", proto_int_type: ");
+        self.buf.push_str(proto_int_type_str(extension.r#type()));
+        self.buf
+            .push_str(", _phantom: ::core::marker::PhantomData{}};\n");
     }
 
     fn append_type_attributes(&mut self, fq_message_name: &str) {
@@ -858,6 +976,24 @@ impl<'a> CodeGenerator<'a> {
             .options
             .as_ref()
             .map_or(false, FieldOptions::deprecated)
+    }
+}
+
+fn is_extendable(message: &DescriptorProto) -> bool {
+    !message.extension_range.is_empty()
+}
+
+fn defines_extensions(message: &DescriptorProto) -> bool {
+    !message.extension.is_empty()
+}
+
+fn proto_int_type_str(field_type: Type) -> &'static str {
+    match field_type {
+        Type::Sint32 | Type::Sint64 => "::prost::ProtoIntType::Sint",
+        Type::Fixed32 | Type::Fixed64 | Type::Sfixed32 | Type::Sfixed64 => {
+            "::prost::ProtoIntType::Fixed"
+        }
+        _ => "::prost::ProtoIntType::Default",
     }
 }
 

@@ -78,7 +78,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
     // See: https://developers.google.com/protocol-buffers/docs/encoding#order
-    fields.sort_by_key(|&(_, ref field)| field.tags().into_iter().min().unwrap());
+    fields.sort_by_key(|&(_, ref field)| field.tags().into_iter().min().unwrap_or(u32::MAX));
     let fields = fields;
 
     let mut tags = fields
@@ -100,21 +100,35 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|&(ref field_ident, ref field)| field.encode(quote!(self.#field_ident)));
 
-    let merge = fields.iter().map(|&(ref field_ident, ref field)| {
-        let merge = field.merge(quote!(value));
-        let tags = field.tags().into_iter().map(|tag| quote!(#tag));
-        let tags = Itertools::intersperse(tags, quote!(|));
+    let merge = fields
+        .iter()
+        .filter(|&(_, ref field)| !field.tags().is_empty())
+        .map(|&(ref field_ident, ref field)| {
+            let merge = field.merge(quote!(value));
+            let tags = field.tags().into_iter().map(|tag| quote!(#tag));
+            let tags = Itertools::intersperse(tags, quote!(|));
 
-        quote! {
-            #(#tags)* => {
-                let mut value = &mut self.#field_ident;
-                #merge.map_err(|mut error| {
-                    error.push(STRUCT_NAME, stringify!(#field_ident));
-                    error
-                })
-            },
-        }
-    });
+            quote! {
+                #(#tags)* => {
+                    let mut value = &mut self.#field_ident;
+                    #merge.map_err(|mut error| {
+                        error.push(STRUCT_NAME, stringify!(#field_ident));
+                        error
+                    })
+                },
+            }
+        });
+
+    let extension_set_merge = fields
+        .iter()
+        .find(|&(_, ref field)| matches!(field, Field::ExtensionSet(_)))
+        .map(
+            |&(ref field_ident, _)| quote!(self.#field_ident.merge_field(tag, wire_type, buf, ctx)),
+        );
+    let merge_into_extension_set_or_skip = match extension_set_merge {
+        None => quote!(::prost::encoding::skip_field(wire_type, tag, buf, ctx)),
+        Some(merge) => merge,
+    };
 
     let struct_name = if fields.is_empty() {
         quote!()
@@ -190,7 +204,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+                    _ => #merge_into_extension_set_or_skip,
                 }
             }
 
@@ -220,15 +234,96 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
+        impl #impl_generics ::prost::Merge for #ident #ty_generics #where_clause {
+            fn merge(
+                &mut self,
+                _: ::prost::ProtoIntType,
+                wire_type: ::prost::encoding::WireType,
+                buf: &mut ::prost::MergeBuffer,
+                ctx: ::prost::encoding::DecodeContext,
+            ) -> Result<(), ::prost::DecodeError>
+            {
+                ::prost::encoding::message::merge(wire_type, self, buf, ctx)
+            }
+        }
+
+        impl #impl_generics ::prost::MergeRepeated for #ident #ty_generics #where_clause {
+           fn merge_repeated(
+                vec: &mut ::prost::alloc::vec::Vec<Self>,
+                wire_type: ::prost::encoding::WireType,
+                buf: &mut ::prost::MergeBuffer,
+                ctx: ::prost::encoding::DecodeContext,
+            ) -> Result<(), ::prost::DecodeError>
+            where
+                Self: Sized {
+                ::prost::encoding::message::merge_repeated(wire_type, vec, buf, ctx)
+            }
+        }
+
+        impl #impl_generics ::prost::Encode for #ident #ty_generics #where_clause {
+            fn encode(&self, _: ::prost::ProtoIntType, tag: u32, buf: &mut ::prost::EncodeBuffer) {
+                ::prost::encoding::message::encode(tag, self, buf)
+            }
+            fn encoded_len(&self, _: ::prost::ProtoIntType, tag: u32) -> usize {
+                ::prost::encoding::message::encoded_len(tag, self)
+            }
+        }
+
+        impl #impl_generics ::prost::EncodeRepeated for #ident #ty_generics #where_clause {
+            fn encode_repeated(
+                vec: &::prost::alloc::vec::Vec<Self>,
+                _: ::prost::ProtoIntType,
+                tag: u32,
+                buf: &mut ::prost::EncodeBuffer,
+            ) where
+                Self: Sized {
+                ::prost::encoding::message::encode_repeated(tag, vec, buf)
+            }
+
+            fn encoded_len_repeated(vec: &::prost::alloc::vec::Vec<Self>, _: ::prost::ProtoIntType, tag: u32) -> usize {
+                ::prost::encoding::message::encoded_len_repeated(tag, vec)
+            }
+        }
+
         #methods
     };
 
     Ok(expanded.into())
 }
 
+fn try_extendable(input: TokenStream) -> Result<TokenStream, Error> {
+    let input: DeriveInput = syn::parse(input)?;
+    let ident = input.ident;
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let extendable_impl = quote! {
+        impl #impl_generics ::prost::Extendable for #ident #ty_generics #where_clause {
+            fn extendable_type_id() -> &'static str {
+                Self::EXTENDABLE_TYPE_ID
+            }
+
+            fn extension_set(&self) -> &::prost::ExtensionSet<Self> {
+                &self.extension_set
+            }
+
+            fn extension_set_mut(&mut self) -> &mut ::prost::ExtensionSet<Self> {
+                &mut self.extension_set
+            }
+        }
+    };
+
+    Ok(extendable_impl.into())
+}
+
 #[proc_macro_derive(Message, attributes(prost))]
 pub fn message(input: TokenStream) -> TokenStream {
     try_message(input).unwrap()
+}
+
+#[proc_macro_derive(Extendable)]
+pub fn extendable(input: TokenStream) -> TokenStream {
+    try_extendable(input).unwrap()
 }
 
 fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {

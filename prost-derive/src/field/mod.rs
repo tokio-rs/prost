@@ -1,3 +1,4 @@
+mod extension_set;
 mod group;
 mod map;
 mod message;
@@ -24,6 +25,8 @@ pub enum Field {
     Oneof(oneof::Field),
     /// A group field.
     Group(group::Field),
+    /// An ExtensionSet field.
+    ExtensionSet(extension_set::Field),
 }
 
 impl Field {
@@ -46,6 +49,8 @@ impl Field {
             Field::Oneof(field)
         } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
             Field::Group(field)
+        } else if let Some(field) = extension_set::Field::new(&attrs)? {
+            Field::ExtensionSet(field)
         } else {
             bail!("no type attribute");
         };
@@ -84,6 +89,7 @@ impl Field {
             Field::Map(ref map) => vec![map.tag],
             Field::Oneof(ref oneof) => oneof.tags.clone(),
             Field::Group(ref group) => vec![group.tag],
+            Field::ExtensionSet(_) => vec![], // ExtensionSet attempts to merge all unknown tags.
         }
     }
 
@@ -95,6 +101,7 @@ impl Field {
             Field::Map(ref map) => map.encode(ident),
             Field::Oneof(ref oneof) => oneof.encode(ident),
             Field::Group(ref group) => group.encode(ident),
+            Field::ExtensionSet(ref ext_set) => ext_set.encode(ident),
         }
     }
 
@@ -107,6 +114,7 @@ impl Field {
             Field::Map(ref map) => map.merge(ident),
             Field::Oneof(ref oneof) => oneof.merge(ident),
             Field::Group(ref group) => group.merge(ident),
+            Field::ExtensionSet(_) => quote!(),
         }
     }
 
@@ -118,6 +126,7 @@ impl Field {
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
             Field::Group(ref group) => group.encoded_len(ident),
+            Field::ExtensionSet(ref ext_set) => ext_set.encoded_len(ident),
         }
     }
 
@@ -129,6 +138,7 @@ impl Field {
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),
             Field::Group(ref group) => group.clear(ident),
+            Field::ExtensionSet(ref ext_set) => ext_set.clear(ident),
         }
     }
 

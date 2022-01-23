@@ -8,6 +8,9 @@
 #[macro_use]
 extern crate cfg_if;
 
+// Macro use for vec!
+#[allow(unused_imports)]
+#[macro_use]
 extern crate alloc;
 
 cfg_if! {
@@ -33,9 +36,13 @@ pub mod unittest;
 #[cfg(test)]
 mod bootstrap;
 #[cfg(test)]
+mod custom_options;
+#[cfg(test)]
 mod debug;
 #[cfg(test)]
 mod deprecated_field;
+#[cfg(test)]
+mod extensions;
 #[cfg(test)]
 mod generic_derive;
 #[cfg(test)]
@@ -106,7 +113,6 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
-use alloc::format;
 use alloc::vec::Vec;
 
 use anyhow::anyhow;

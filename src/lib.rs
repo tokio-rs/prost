@@ -10,13 +10,21 @@ pub extern crate alloc;
 pub use bytes;
 
 mod error;
+mod generic;
 mod message;
 mod types;
 
 #[doc(hidden)]
 pub mod encoding;
+pub mod extension;
 
 pub use crate::error::{DecodeError, EncodeError};
+pub use crate::extension::{
+    Extendable, Extension, ExtensionImpl, ExtensionRegistry, ExtensionSet, ExtensionValue,
+};
+pub use crate::generic::{
+    Encode, EncodeBuffer, EncodeRepeated, Merge, MergeBuffer, MergeRepeated, ProtoIntType,
+};
 pub use crate::message::Message;
 
 use bytes::{Buf, BufMut};

@@ -6,6 +6,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::format;
+use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::min;
@@ -17,8 +18,8 @@ use core::usize;
 
 use ::bytes::{Buf, BufMut, Bytes};
 
-use crate::DecodeError;
 use crate::Message;
+use crate::{DecodeError, ExtensionRegistry};
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -203,6 +204,10 @@ pub struct DecodeContext {
     /// crate with the `no-recursion-limit` feature.
     #[cfg(not(feature = "no-recursion-limit"))]
     recurse_count: u32,
+
+    /// When provided, holds user-registered Extensions which provide runtime access to extension
+    /// fields not specified within the original message.
+    extension_registry: Option<Rc<ExtensionRegistry>>,
 }
 
 impl Default for DecodeContext {
@@ -211,17 +216,26 @@ impl Default for DecodeContext {
     fn default() -> DecodeContext {
         DecodeContext {
             recurse_count: crate::RECURSION_LIMIT,
+            extension_registry: None,
         }
     }
 
     #[cfg(feature = "no-recursion-limit")]
     #[inline]
     fn default() -> DecodeContext {
-        DecodeContext {}
+        DecodeContext {
+            extension_registry: None,
+        }
     }
 }
 
 impl DecodeContext {
+    pub(crate) fn with_extensions(extension_registry: ExtensionRegistry) -> DecodeContext {
+        let mut ctx = DecodeContext::default();
+        ctx.extension_registry = Some(Rc::new(extension_registry));
+        ctx
+    }
+
     /// Call this function before recursively decoding.
     ///
     /// There is no `exit` function since this function creates a new `DecodeContext`
@@ -232,13 +246,14 @@ impl DecodeContext {
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
         DecodeContext {
             recurse_count: self.recurse_count - 1,
+            extension_registry: self.extension_registry.clone(),
         }
     }
 
     #[cfg(feature = "no-recursion-limit")]
     #[inline]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
-        DecodeContext {}
+        self.clone()
     }
 
     /// Checks whether the recursion limit has been reached in the stack of
@@ -261,6 +276,13 @@ impl DecodeContext {
     #[allow(clippy::unnecessary_wraps)] // needed in other features
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         Ok(())
+    }
+
+    pub(crate) fn extension_registry(&self) -> Option<&ExtensionRegistry> {
+        match self.extension_registry.as_ref() {
+            None => None,
+            Some(registry) => Some(&registry),
+        }
     }
 }
 

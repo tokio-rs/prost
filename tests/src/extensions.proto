@@ -1,0 +1,48 @@
+syntax = "proto2";
+
+package extensions;
+
+message CustomMessageType {
+  optional string some_value = 1;
+}
+
+message ExtendableMessage {
+  optional string not_an_ext = 1;
+  extensions 100 to 1000;
+}
+
+extend ExtendableMessage {
+  optional double ext_double = 100;
+  optional float ext_float = 101;
+  optional int32 ext_int32 = 102;
+  optional int64 ext_int64 = 103;
+  optional uint32 ext_uint32 = 104;
+  optional uint64 ext_uint64 = 105;
+  optional sint32 ext_sint32 = 106;
+  optional sint64 ext_sint64 = 107;
+  optional fixed32 ext_fixed32 = 108;
+  optional fixed64 ext_fixed64 = 109;
+  optional sfixed32 ext_sfixed32 = 110;
+  optional sfixed64 ext_sfixed64 = 111;
+  optional bool ext_bool = 112;
+  optional string ext_string = 113;
+  optional bytes ext_bytes = 114;
+  optional CustomMessageType ext_message = 115;
+
+  repeated double ext_double_repeated = 116;
+  repeated float ext_float_repeated = 117;
+  repeated int32 ext_int32_repeated = 118;
+  repeated int64 ext_int64_repeated = 119;
+  repeated uint32 ext_uint32_repeated = 120;
+  repeated uint64 ext_uint64_repeated = 121;
+  repeated sint32 ext_sint32_repeated = 122;
+  repeated sint64 ext_sint64_repeated = 123;
+  repeated fixed32 ext_fixed32_repeated = 124;
+  repeated fixed64 ext_fixed64_repeated = 125;
+  repeated sfixed32 ext_sfixed32_repeated = 126;
+  repeated sfixed64 ext_sfixed64_repeated = 127;
+  repeated bool ext_bool_repeated = 128;
+  repeated string ext_string_repeated = 129;
+  repeated bytes ext_bytes_repeated = 130;
+  repeated CustomMessageType ext_message_repeated = 131;
+}

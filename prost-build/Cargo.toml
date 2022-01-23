@@ -23,7 +23,7 @@ prost = { version = "0.9.0", path = "..", default-features = false }
 prost-types = { version = "0.9.0", path = "../prost-types", default-features = false }
 tempfile = "3"
 lazy_static = "1.4.0"
-regex = { version = "1.5.4", default-features = false, features = ["std"] }
+regex = { version = "1.5.4", default-features = false, features = ["std", "unicode-perl"] }
 
 [build-dependencies]
 which = { version = "4", default-features = false }
