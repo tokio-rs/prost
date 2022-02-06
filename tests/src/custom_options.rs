@@ -1,6 +1,5 @@
 //! Tests custom proto options.
 
-use prost::alloc::string::String;
 use prost::{Extendable, Extension, ExtensionRegistry, Message};
 use prost_types::{
     DescriptorProto, EnumDescriptorProto, FileDescriptorSet, FileOptions, MessageOptions,

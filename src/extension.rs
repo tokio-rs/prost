@@ -1,6 +1,6 @@
 use crate::alloc::collections::btree_map::Entry;
 use crate::alloc::collections::BTreeMap;
-use crate::alloc::fmt::Formatter;
+use crate::alloc::fmt::{Display, Formatter};
 use crate::encoding::{DecodeContext, WireType};
 use crate::generic::{EncodeBuffer, Merge, MergeBuffer, ProtoIntType};
 use crate::{DecodeError, Encode};
@@ -379,6 +379,12 @@ pub enum ExtensionSetError {
     CastFailed,
 }
 
+impl Display for ExtensionSetError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> alloc::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl Debug for ExtensionSetError {
     fn fmt(&self, f: &mut Formatter<'_>) -> alloc::fmt::Result {
         match self {
@@ -392,6 +398,9 @@ impl Debug for ExtensionSetError {
         }
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for ExtensionSetError {}
 
 /// A generic container for an ExtensionValue that can delegate to the implementation for type-specific work.
 pub trait ExtensionValue: Merge + Encode + Any + Debug {
