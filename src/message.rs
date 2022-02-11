@@ -1,4 +1,4 @@
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 use core::fmt::Debug;
 use core::usize;
 
@@ -59,7 +59,6 @@ pub trait Message: Debug + Send + Sync {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     /// Encodes the message to a newly allocated buffer.
     fn encode_to_vec(&self) -> Vec<u8>
     where
@@ -90,7 +89,6 @@ pub trait Message: Debug + Send + Sync {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     /// Encodes the message with a length-delimiter to a newly allocated buffer.
     fn encode_length_delimited_to_vec(&self) -> Vec<u8>
     where
