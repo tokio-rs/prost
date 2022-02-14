@@ -963,7 +963,7 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     dst.push(octal);
                 }
                 b'x' | b'X' => {
-                    if p + 2 > len {
+                    if p + 3 > len {
                         panic!(
                             "invalid c-escaped default binary value ({}): incomplete hex value",
                             s
@@ -1072,6 +1072,12 @@ mod tests {
             &b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"[..],
             &unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe"#)[..]
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "incomplete hex value")]
+    fn test_unescape_c_escape_string_incomplete_hex_value() {
+        unescape_c_escape_string(r#"\x1"#);
     }
 
     #[test]
