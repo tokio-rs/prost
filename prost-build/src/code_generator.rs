@@ -534,26 +534,26 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push('\n');
         // Add custom deserializers and optionally serializers for most primitive types
         // and their optional and repeated counterparts.
-        match (get_custom_json_type_mappers(ty, optional, repeated), repeated) {
+        match (
+            get_custom_json_type_mappers(ty, optional, repeated),
+            repeated,
+        ) {
             ((Some(se), Some(de)), false) => {
                 push_indent(&mut self.buf, self.depth);
-                self.buf.push_str(
-                    &format!(r#"#[serde(serialize_with = "{}")]"#, se),
-                );
+                self.buf
+                    .push_str(&format!(r#"#[serde(serialize_with = "{}")]"#, se));
                 self.buf.push('\n');
                 push_indent(&mut self.buf, self.depth);
-                self.buf.push_str(
-                    &format!(r#"#[serde(deserialize_with = "{}")]"#, de),
-                );
+                self.buf
+                    .push_str(&format!(r#"#[serde(deserialize_with = "{}")]"#, de));
                 self.buf.push('\n');
-            },
+            }
             ((None, Some(de)), false) => {
                 push_indent(&mut self.buf, self.depth);
-                self.buf.push_str(
-                    &format!(r#"#[serde(deserialize_with = "{}")]"#, de),
-                );
+                self.buf
+                    .push_str(&format!(r#"#[serde(deserialize_with = "{}")]"#, de));
                 self.buf.push('\n');
-            },
+            }
             ((Some(se), Some(de)), true) => {
                 push_indent(&mut self.buf, self.depth);
                 self.buf.push_str(
@@ -969,7 +969,8 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(fq_enum_name, Some(value.name()));
         self.append_field_attributes(fq_enum_name, &value.name());
         self.push_indent();
-        self.buf.push_str(&format!(r#"#[prost(enum_field_name="{}")]"#, value.name()));
+        self.buf
+            .push_str(&format!(r#"#[prost(enum_field_name="{}")]"#, value.name()));
         self.buf.push_str("\n");
         self.push_indent();
         let name = to_upper_camel(value.name());

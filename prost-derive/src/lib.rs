@@ -266,10 +266,10 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             Some((_, expr)) => variants.push((ident, expr)),
             None => bail!("Enumeration variants must have a discriminant"),
         }
-        
+
         let metas = crate::field::prost_attrs(attrs);
         for meta in metas {
-            if let syn::Meta::NameValue(syn::MetaNameValue { path, lit, .. } ) = meta {
+            if let syn::Meta::NameValue(syn::MetaNameValue { path, lit, .. }) = meta {
                 if path.is_ident("enum_field_name") {
                     if let syn::Lit::Str(lit_str) = lit {
                         proto_names.push(lit_str.value());
@@ -295,11 +295,17 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
     );
 
-    let to_string = variants.iter().zip(proto_names.iter()).map(|(&(ref variant, _), proto_name)| quote!(#ident::#variant => #proto_name));
+    let to_string = variants
+        .iter()
+        .zip(proto_names.iter())
+        .map(|(&(ref variant, _), proto_name)| quote!(#ident::#variant => #proto_name));
     assert!(to_string.len() > 0);
-    let from_string = variants.iter().zip(proto_names.iter()).map(|(&(ref variant, _), proto_name)| quote!(#proto_name => #ident::#variant));
+    let from_string = variants
+        .iter()
+        .zip(proto_names.iter())
+        .map(|(&(ref variant, _), proto_name)| quote!(#proto_name => #ident::#variant));
     assert!(from_string.len() > 0);
-    
+
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!(
         "Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.",

@@ -446,7 +446,11 @@ pub mod repeated_visitor {
 pub mod enum_visitor {
     struct EnumVisitor<'de, T>
     where
-        T: ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+        T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
     {
         _type: &'de std::marker::PhantomData<T>,
     }
@@ -454,7 +458,11 @@ pub mod enum_visitor {
     #[cfg(feature = "std")]
     impl<'de, T> serde::de::Visitor<'de> for EnumVisitor<'de, T>
     where
-        T: ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+        T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
     {
         type Value = i32;
 
@@ -468,7 +476,10 @@ pub mod enum_visitor {
         {
             match T::from_str(value) {
                 Ok(en) => Ok(en.into()),
-                Err(_) => Err(serde::de::Error::invalid_value(serde::de::Unexpected::Str(value), &self)),
+                Err(_) => Err(serde::de::Error::invalid_value(
+                    serde::de::Unexpected::Str(value),
+                    &self,
+                )),
             }
         }
 
@@ -481,29 +492,33 @@ pub mod enum_visitor {
     }
 
     #[cfg(feature = "std")]
-    pub fn deserialize<'de, D, T>(
-        deserializer: D,
-    ) -> Result<i32, D::Error>
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<i32, D::Error>
     where
         D: serde::Deserializer<'de>,
-        T: 'de + ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+        T: 'de
+            + ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
     {
         deserializer.deserialize_any(EnumVisitor::<'de, T> {
             _type: &std::marker::PhantomData,
         })
     }
 
-    pub fn serialize<S, T>(
-        value: &i32,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, T>(value: &i32, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
-        T: ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+        T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
     {
         match T::try_from(*value) {
             Err(_) => Err(serde::ser::Error::custom("invalid enum value")),
-            Ok(t) => serializer.serialize_str(&t.to_string())
+            Ok(t) => serializer.serialize_str(&t.to_string()),
         }
     }
 }
