@@ -375,7 +375,6 @@ impl<'a> CodeGenerator<'a> {
         self.buf
             .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
         self.buf.push('\n');
-        push_indent(&mut self.buf, self.depth);
     }
 
     fn append_json_map_field_attributes(
@@ -969,6 +968,9 @@ impl<'a> CodeGenerator<'a> {
     ) {
         self.append_doc(fq_enum_name, Some(value.name()));
         self.append_field_attributes(fq_enum_name, &value.name());
+        self.push_indent();
+        self.buf.push_str(&format!(r#"#[prost(enum_field_name="{}")]"#, value.name()));
+        self.buf.push_str("\n");
         self.push_indent();
         let name = to_upper_camel(value.name());
         let name_unprefixed = match prefix_to_strip {

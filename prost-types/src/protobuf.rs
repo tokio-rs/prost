@@ -178,43 +178,64 @@ pub mod field_descriptor_proto {
     pub enum Type {
         /// 0 is reserved for errors.
         /// Order is weird for historical reasons.
+        #[prost(enum_field_name="TYPE_DOUBLE")]
         Double = 1,
+        #[prost(enum_field_name="TYPE_FLOAT")]
         Float = 2,
         /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT64 if
         /// negative values are likely.
+        #[prost(enum_field_name="TYPE_INT64")]
         Int64 = 3,
+        #[prost(enum_field_name="TYPE_UINT64")]
         Uint64 = 4,
         /// Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT32 if
         /// negative values are likely.
+        #[prost(enum_field_name="TYPE_INT32")]
         Int32 = 5,
+        #[prost(enum_field_name="TYPE_FIXED64")]
         Fixed64 = 6,
+        #[prost(enum_field_name="TYPE_FIXED32")]
         Fixed32 = 7,
+        #[prost(enum_field_name="TYPE_BOOL")]
         Bool = 8,
+        #[prost(enum_field_name="TYPE_STRING")]
         String = 9,
         /// Tag-delimited aggregate.
         /// Group type is deprecated and not supported in proto3. However, Proto3
         /// implementations should still be able to parse the group wire format and
         /// treat group fields as unknown fields.
+        #[prost(enum_field_name="TYPE_GROUP")]
         Group = 10,
         /// Length-delimited aggregate.
+        #[prost(enum_field_name="TYPE_MESSAGE")]
         Message = 11,
         /// New in version 2.
+        #[prost(enum_field_name="TYPE_BYTES")]
         Bytes = 12,
+        #[prost(enum_field_name="TYPE_UINT32")]
         Uint32 = 13,
+        #[prost(enum_field_name="TYPE_ENUM")]
         Enum = 14,
+        #[prost(enum_field_name="TYPE_SFIXED32")]
         Sfixed32 = 15,
+        #[prost(enum_field_name="TYPE_SFIXED64")]
         Sfixed64 = 16,
         /// Uses ZigZag encoding.
+        #[prost(enum_field_name="TYPE_SINT32")]
         Sint32 = 17,
         /// Uses ZigZag encoding.
+        #[prost(enum_field_name="TYPE_SINT64")]
         Sint64 = 18,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Label {
         /// 0 is reserved for errors
+        #[prost(enum_field_name="LABEL_OPTIONAL")]
         Optional = 1,
+        #[prost(enum_field_name="LABEL_REQUIRED")]
         Required = 2,
+        #[prost(enum_field_name="LABEL_REPEATED")]
         Repeated = 3,
     }
 }
@@ -451,12 +472,15 @@ pub mod file_options {
     #[repr(i32)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
+        #[prost(enum_field_name="SPEED")]
         Speed = 1,
         /// etc.
         ///
         /// Use ReflectionOps to implement these methods.
+        #[prost(enum_field_name="CODE_SIZE")]
         CodeSize = 2,
         /// Generate code using MessageLite and the lite runtime.
+        #[prost(enum_field_name="LITE_RUNTIME")]
         LiteRuntime = 3,
     }
 }
@@ -597,18 +621,24 @@ pub mod field_options {
     #[repr(i32)]
     pub enum CType {
         /// Default mode.
+        #[prost(enum_field_name="STRING")]
         String = 0,
+        #[prost(enum_field_name="CORD")]
         Cord = 1,
+        #[prost(enum_field_name="STRING_PIECE")]
         StringPiece = 2,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum JsType {
         /// Use the default type.
+        #[prost(enum_field_name="JS_NORMAL")]
         JsNormal = 0,
         /// Use JavaScript strings.
+        #[prost(enum_field_name="JS_STRING")]
         JsString = 1,
         /// Use JavaScript numbers.
+        #[prost(enum_field_name="JS_NUMBER")]
         JsNumber = 2,
     }
 }
@@ -690,10 +720,13 @@ pub mod method_options {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum IdempotencyLevel {
+        #[prost(enum_field_name="IDEMPOTENCY_UNKNOWN")]
         IdempotencyUnknown = 0,
         /// implies idempotent
+        #[prost(enum_field_name="NO_SIDE_EFFECTS")]
         NoSideEffects = 1,
         /// idempotent, but may have side effects
+        #[prost(enum_field_name="IDEMPOTENT")]
         Idempotent = 2,
     }
 }
@@ -1107,42 +1140,61 @@ pub mod field {
     #[repr(i32)]
     pub enum Kind {
         /// Field type unknown.
+        #[prost(enum_field_name="TYPE_UNKNOWN")]
         TypeUnknown = 0,
         /// Field type double.
+        #[prost(enum_field_name="TYPE_DOUBLE")]
         TypeDouble = 1,
         /// Field type float.
+        #[prost(enum_field_name="TYPE_FLOAT")]
         TypeFloat = 2,
         /// Field type int64.
+        #[prost(enum_field_name="TYPE_INT64")]
         TypeInt64 = 3,
         /// Field type uint64.
+        #[prost(enum_field_name="TYPE_UINT64")]
         TypeUint64 = 4,
         /// Field type int32.
+        #[prost(enum_field_name="TYPE_INT32")]
         TypeInt32 = 5,
         /// Field type fixed64.
+        #[prost(enum_field_name="TYPE_FIXED64")]
         TypeFixed64 = 6,
         /// Field type fixed32.
+        #[prost(enum_field_name="TYPE_FIXED32")]
         TypeFixed32 = 7,
         /// Field type bool.
+        #[prost(enum_field_name="TYPE_BOOL")]
         TypeBool = 8,
         /// Field type string.
+        #[prost(enum_field_name="TYPE_STRING")]
         TypeString = 9,
         /// Field type group. Proto2 syntax only, and deprecated.
+        #[prost(enum_field_name="TYPE_GROUP")]
         TypeGroup = 10,
         /// Field type message.
+        #[prost(enum_field_name="TYPE_MESSAGE")]
         TypeMessage = 11,
         /// Field type bytes.
+        #[prost(enum_field_name="TYPE_BYTES")]
         TypeBytes = 12,
         /// Field type uint32.
+        #[prost(enum_field_name="TYPE_UINT32")]
         TypeUint32 = 13,
         /// Field type enum.
+        #[prost(enum_field_name="TYPE_ENUM")]
         TypeEnum = 14,
         /// Field type sfixed32.
+        #[prost(enum_field_name="TYPE_SFIXED32")]
         TypeSfixed32 = 15,
         /// Field type sfixed64.
+        #[prost(enum_field_name="TYPE_SFIXED64")]
         TypeSfixed64 = 16,
         /// Field type sint32.
+        #[prost(enum_field_name="TYPE_SINT32")]
         TypeSint32 = 17,
         /// Field type sint64.
+        #[prost(enum_field_name="TYPE_SINT64")]
         TypeSint64 = 18,
     }
     /// Whether a field is optional, required, or repeated.
@@ -1150,12 +1202,16 @@ pub mod field {
     #[repr(i32)]
     pub enum Cardinality {
         /// For fields with unknown cardinality.
+        #[prost(enum_field_name="CARDINALITY_UNKNOWN")]
         Unknown = 0,
         /// For optional fields.
+        #[prost(enum_field_name="CARDINALITY_OPTIONAL")]
         Optional = 1,
         /// For required fields. Proto2 syntax only.
+        #[prost(enum_field_name="CARDINALITY_REQUIRED")]
         Required = 2,
         /// For repeated fields.
+        #[prost(enum_field_name="CARDINALITY_REPEATED")]
         Repeated = 3,
     }
 }
@@ -1213,8 +1269,10 @@ pub struct Option {
 #[repr(i32)]
 pub enum Syntax {
     /// Syntax `proto2`.
+    #[prost(enum_field_name="SYNTAX_PROTO2")]
     Proto2 = 0,
     /// Syntax `proto3`.
+    #[prost(enum_field_name="SYNTAX_PROTO3")]
     Proto3 = 1,
 }
 /// Api is a light-weight descriptor for an API Interface.
@@ -1736,6 +1794,7 @@ pub struct ListValue {
 #[repr(i32)]
 pub enum NullValue {
     /// Null value.
+    #[prost(enum_field_name="NULL_VALUE")]
     NullValue = 0,
 }
 /// A Timestamp represents a point in time independent of any time zone or local

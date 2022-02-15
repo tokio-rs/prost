@@ -443,6 +443,71 @@ pub mod repeated_visitor {
     }
 }
 
+pub mod enum_visitor {
+    struct EnumVisitor<'de, T>
+    where
+        T: ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+    {
+        _type: &'de std::marker::PhantomData<T>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T> serde::de::Visitor<'de> for EnumVisitor<'de, T>
+    where
+        T: ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+    {
+        type Value = i32;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match T::from_str(value) {
+                Ok(en) => Ok(en.into()),
+                Err(_) => Err(serde::de::Error::invalid_value(serde::de::Unexpected::Str(value), &self)),
+            }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Self::Value::default())
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T>(
+        deserializer: D,
+    ) -> Result<i32, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: 'de + ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+    {
+        deserializer.deserialize_any(EnumVisitor::<'de, T> {
+            _type: &std::marker::PhantomData,
+        })
+    }
+
+    pub fn serialize<S, T>(
+        value: &i32,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        T: ToString + std::str::FromStr + std::convert::Into<i32> + std::convert::TryFrom<i32> + Default,
+    {
+        match T::try_from(*value) {
+            Err(_) => Err(serde::ser::Error::custom("invalid enum value")),
+            Ok(t) => serializer.serialize_str(&t.to_string())
+        }
+    }
+}
+
 pub mod map_custom_serializer {
     pub fn serialize<S, K, G>(
         value: &std::collections::HashMap<K, <G as crate::SerializeMethod>::Value>,

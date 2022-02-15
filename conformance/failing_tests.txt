@@ -9,6 +9,7 @@ Recommended.Proto3.JsonInput.DurationHas6FractionalDigits.Validator
 Recommended.Proto3.JsonInput.DurationHas9FractionalDigits.Validator
 Recommended.Proto3.JsonInput.DurationHasZeroFractionalDigit.Validator
 Recommended.Proto3.JsonInput.Int64FieldBeString.Validator
+Recommended.Proto3.JsonInput.MapFieldValueIsNull
 Recommended.Proto3.JsonInput.NullValueInOtherOneofNewFormat.Validator
 Recommended.Proto3.JsonInput.NullValueInOtherOneofOldFormat.Validator
 Recommended.Proto3.JsonInput.OneofZeroBytes.JsonOutput

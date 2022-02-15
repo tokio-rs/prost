@@ -133,7 +133,9 @@ pub mod code_generator_response {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Feature {
+        #[prost(enum_field_name="FEATURE_NONE")]
         None = 0,
+        #[prost(enum_field_name="FEATURE_PROTO3_OPTIONAL")]
         Proto3Optional = 1,
     }
 }
