@@ -44,49 +44,54 @@ fn push_indent(buf: &mut String, depth: u8) {
     }
 }
 
-/// Returns (serializer, deserializer) function names to use in serde
-/// serialize_with and deserialize_with macros respectively. If none are
-/// specified, the default works fine.
-/// If collection is true, the return is no longer the function, but instead,
-/// the Visitor type that will be used for either the repeated helper or
-/// custom map helper.
-fn get_custom_json_type_mappers(
-    ty: &str,
-    optional: bool,
-    collection: bool,
-) -> (Option<&str>, Option<&str>) {
-    match (ty, optional, collection) {
-            ("bool", false, false) =>  (None, Some("::prost_types::bool_visitor::deserialize")),
-            ("bool", true, false) =>  (None, Some("::prost_types::bool_opt_visitor::deserialize")),
-            ("bool", false, true) =>  (None, Some("::prost_types::bool_visitor::BoolVisitor")),
-            ("i32", false, false) =>  (None, Some("::prost_types::i32_visitor::deserialize")),
-            ("i32", true, false) =>  (None, Some("::prost_types::i32_opt_visitor::deserialize")),
-            ("i32", false, true) =>  (None, Some("::prost_types::i32_visitor::I32Visitor")),
-            ("i64", false, false) =>  (None, Some("::prost_types::i64_visitor::deserialize")),
-            ("i64", true, false) =>  (None, Some("::prost_types::i64_opt_visitor::deserialize")),
-            ("i64", false, true) =>  (None, Some("::prost_types::i64_visitor::I64Visitor")),
-            ("u32", false, false) =>  (None, Some("::prost_types::u32_visitor::deserialize")),
-            ("u32", true, false) =>  (None, Some("::prost_types::u32_opt_visitor::deserialize")),
-            ("u32", false, true) =>  (None, Some("::prost_types::u32_visitor::U32Visitor")),
-            ("u64", false, false) =>  (None, Some("::prost_types::u64_visitor::deserialize")),
-            ("u64", true, false) =>  (None, Some("::prost_types::u64_opt_visitor::deserialize")),
-            ("u64", false, true) =>  (None, Some("::prost_types::u64_visitor::U64Visitor")),
-            ("f64", false, false) =>  (Some("<::prost_types::f64_visitor::F64Serializer as ::prost_types::SerializeMethod>::serialize"), Some("::prost_types::f64_visitor::deserialize")),
-            ("f64", true, false) =>  (Some("::prost_types::f64_opt_visitor::serialize"), Some("::prost_types::f64_opt_visitor::deserialize")),
-            ("f64", false, true) =>  (Some("::prost_types::f64_visitor::F64Serializer"), Some("::prost_types::f64_visitor::F64Visitor")),
-            ("f32", false, false) =>  (Some("<::prost_types::f32_visitor::F32Serializer as ::prost_types::SerializeMethod>::serialize"), Some("::prost_types::f32_visitor::deserialize")),
-            ("f32", true, false) =>  (Some("::prost_types::f32_opt_visitor::serialize"), Some("::prost_types::f32_opt_visitor::deserialize")),
-            ("f32", false, true) =>  (Some("::prost_types::f32_visitor::F32Serializer"), Some("::prost_types::f32_visitor::F32Visitor")),
-            ("::prost::alloc::string::String", false, false) =>  (None, Some("::prost_types::string_visitor::deserialize")),
-            ("::prost::alloc::string::String", true, false) =>  (None, Some("::prost_types::string_opt_visitor::deserialize")),
-            ("::prost::alloc::vec::Vec<u8>", false, false) =>  (Some("<::prost_types::vec_u8_visitor::VecU8Serializer as ::prost_types::SerializeMethod>::serialize"), Some("::prost_types::vec_u8_visitor::deserialize")),
-            ("::prost::alloc::vec::Vec<u8>", true, false) =>  (Some("::prost_types::vec_u8_opt_visitor::serialize"), Some("::prost_types::vec_u8_opt_visitor::deserialize")),
-            ("::prost::alloc::vec::Vec<u8>", false, true) =>  (Some("::prost_types::vec_u8_visitor::VecU8Serializer"), Some("::prost_types::vec_u8_visitor::VecU8Visitor")),
+impl<'a> CodeGenerator<'a> {
+    /// Returns (serializer, deserializer) function names to use in serde
+    /// serialize_with and deserialize_with macros respectively. If none are
+    /// specified, the default works fine.
+    /// If collection is true, the return is no longer the function, but instead,
+    /// the Visitor type that will be used for either the repeated helper or
+    /// custom map helper.
+    fn get_custom_json_type_mappers(
+        &self,
+        ty: &str,
+        type_name: String,
+        optional: bool,
+        collection: bool,
+    ) -> (Option<String>, Option<String>) {
+        match (ty, optional, collection) {
+            ("bool", false, false) =>  (None, Some("::prost_types::bool_visitor::deserialize".to_string())),
+            ("bool", true, false) =>  (None, Some("::prost_types::bool_opt_visitor::deserialize".to_string())),
+            ("bool", false, true) =>  (None, Some("::prost_types::bool_visitor::BoolVisitor".to_string())),
+            ("i32", false, false) =>  (None, Some("::prost_types::i32_visitor::deserialize".to_string())),
+            ("i32", true, false) =>  (None, Some("::prost_types::i32_opt_visitor::deserialize".to_string())),
+            ("i32", false, true) =>  (None, Some("::prost_types::i32_visitor::I32Visitor".to_string())),
+            ("enum", false, false) =>  (Some(format!("::prost_types::enum_visitor::serialize::<_, {}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::enum_visitor::deserialize::<_, {}>", self.resolve_ident(&type_name)))),
+            ("enum", true, false) =>  (Some(format!("::prost_types::enum_opt_visitor::serialize::<_, {}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::enum_opt_visitor::deserialize::<_, {}>", self.resolve_ident(&type_name)))),
+            ("enum", false, true) =>  (None, Some("::prost_types::i32_visitor::I32Visitor".to_string())),
+            ("i64", false, false) =>  (None, Some("::prost_types::i64_visitor::deserialize".to_string())),
+            ("i64", true, false) =>  (None, Some("::prost_types::i64_opt_visitor::deserialize".to_string())),
+            ("i64", false, true) =>  (None, Some("::prost_types::i64_visitor::I64Visitor".to_string())),
+            ("u32", false, false) =>  (None, Some("::prost_types::u32_visitor::deserialize".to_string())),
+            ("u32", true, false) =>  (None, Some("::prost_types::u32_opt_visitor::deserialize".to_string())),
+            ("u32", false, true) =>  (None, Some("::prost_types::u32_visitor::U32Visitor".to_string())),
+            ("u64", false, false) =>  (None, Some("::prost_types::u64_visitor::deserialize".to_string())),
+            ("u64", true, false) =>  (None, Some("::prost_types::u64_opt_visitor::deserialize".to_string())),
+            ("u64", false, true) =>  (None, Some("::prost_types::u64_visitor::U64Visitor".to_string())),
+            ("f64", false, false) =>  (Some("<::prost_types::f64_visitor::F64Serializer as ::prost_types::SerializeMethod>::serialize".to_string()), Some("::prost_types::f64_visitor::deserialize".to_string())),
+            ("f64", true, false) =>  (Some("::prost_types::f64_opt_visitor::serialize".to_string()), Some("::prost_types::f64_opt_visitor::deserialize".to_string())),
+            ("f64", false, true) =>  (Some("::prost_types::f64_visitor::F64Serializer".to_string()), Some("::prost_types::f64_visitor::F64Visitor".to_string())),
+            ("f32", false, false) =>  (Some("<::prost_types::f32_visitor::F32Serializer as ::prost_types::SerializeMethod>::serialize".to_string()), Some("::prost_types::f32_visitor::deserialize".to_string())),
+            ("f32", true, false) =>  (Some("::prost_types::f32_opt_visitor::serialize".to_string()), Some("::prost_types::f32_opt_visitor::deserialize".to_string())),
+            ("f32", false, true) =>  (Some("::prost_types::f32_visitor::F32Serializer".to_string()), Some("::prost_types::f32_visitor::F32Visitor".to_string())),
+            ("::prost::alloc::string::String", false, false) =>  (None, Some("::prost_types::string_visitor::deserialize".to_string())),
+            ("::prost::alloc::string::String", true, false) =>  (None, Some("::prost_types::string_opt_visitor::deserialize".to_string())),
+            ("::prost::alloc::vec::Vec<u8>", false, false) =>  (Some("<::prost_types::vec_u8_visitor::VecU8Serializer as ::prost_types::SerializeMethod>::serialize".to_string()), Some("::prost_types::vec_u8_visitor::deserialize".to_string())),
+            ("::prost::alloc::vec::Vec<u8>", true, false) =>  (Some("::prost_types::vec_u8_opt_visitor::serialize".to_string()), Some("::prost_types::vec_u8_opt_visitor::deserialize".to_string())),
+            ("::prost::alloc::vec::Vec<u8>", false, true) =>  (Some("::prost_types::vec_u8_visitor::VecU8Serializer".to_string()), Some("::prost_types::vec_u8_visitor::VecU8Visitor".to_string())),
             (_,_, _) =>  (None, None)
         }
-}
+    }
 
-impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
         message_graph: &MessageGraph,
@@ -383,6 +388,8 @@ impl<'a> CodeGenerator<'a> {
         field_name: &str,
         key_ty: &str,
         value_ty: &str,
+        key_type_name: String,
+        value_type_name: String,
         map_type: &str,
         json_name: &str,
     ) {
@@ -399,8 +406,10 @@ impl<'a> CodeGenerator<'a> {
         ));
         self.buf.push('\n');
 
-        let (key_se_opt, key_de_opt) = get_custom_json_type_mappers(key_ty, false, true);
-        let (value_se_opt, value_de_opt) = get_custom_json_type_mappers(value_ty, false, true);
+        let (key_se_opt, key_de_opt) =
+            self.get_custom_json_type_mappers(key_ty, key_type_name, false, true);
+        let (value_se_opt, value_de_opt) =
+            self.get_custom_json_type_mappers(value_ty, value_type_name, false, true);
 
         push_indent(&mut self.buf, self.depth);
         match (key_se_opt, key_de_opt, value_se_opt, value_de_opt, map_type) {
@@ -518,6 +527,7 @@ impl<'a> CodeGenerator<'a> {
         &mut self,
         fq_message_name: &str,
         ty: &str,
+        type_name: String,
         field_name: &str,
         optional: bool,
         repeated: bool,
@@ -535,7 +545,7 @@ impl<'a> CodeGenerator<'a> {
         // Add custom deserializers and optionally serializers for most primitive types
         // and their optional and repeated counterparts.
         match (
-            get_custom_json_type_mappers(ty, optional, repeated),
+            self.get_custom_json_type_mappers(ty, type_name, optional, repeated),
             repeated,
         ) {
             ((Some(se), Some(de)), false) => {
@@ -687,9 +697,15 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
+        let ty_or_enum = match type_ {
+            Type::Enum => "enum".to_string(),
+            _ => ty.clone(),
+        };
+
         self.append_json_field_attributes(
             fq_message_name,
-            &ty,
+            &ty_or_enum,
+            field.type_name().to_string(),
             field.name(),
             optional,
             repeated,
@@ -754,11 +770,21 @@ impl<'a> CodeGenerator<'a> {
             field.number()
         ));
         self.append_field_attributes(fq_message_name, field.name());
+        let key_ty_or_enum = match key.r#type() {
+            Type::Enum => "enum".to_string(),
+            _ => key_ty.clone(),
+        };
+        let value_ty_or_enum = match value.r#type() {
+            Type::Enum => "enum".to_string(),
+            _ => value_ty.clone(),
+        };
         self.append_json_map_field_attributes(
             fq_message_name,
             field.name(),
-            &key_ty,
-            &value_ty,
+            &key_ty_or_enum,
+            &value_ty_or_enum,
+            key.type_name().to_string(),
+            value.type_name().to_string(),
             map_type.rust_type(),
             field.json_name(),
         );

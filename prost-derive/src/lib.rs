@@ -286,6 +286,10 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         panic!("Enumeration must have at least one variant");
     }
 
+    if  variants.len() != proto_names.len() {
+        panic!("Number of annotated protonames was unexpected. You probably want to upgrade prost-build.");
+    }
+
     let default = variants[0].0.clone();
 
     let is_valid = variants
@@ -357,6 +361,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
                 }.to_string()
             }
         }
+
         impl #impl_generics ::core::str::FromStr for #ident #ty_generics #where_clause {
             type Err = &'static str;
             fn from_str(value: &str) -> Result<Self, Self::Err> {

@@ -483,6 +483,19 @@ pub mod enum_visitor {
             }
         }
 
+        fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match T::try_from(value) {
+                Ok(en) => Ok(en.into()),
+                Err(_) => Err(serde::de::Error::invalid_value(
+                    serde::de::Unexpected::Signed(value as i64),
+                    &self,
+                )),
+            }
+        }
+
         fn visit_unit<E>(self) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
@@ -519,6 +532,131 @@ pub mod enum_visitor {
         match T::try_from(*value) {
             Err(_) => Err(serde::ser::Error::custom("invalid enum value")),
             Ok(t) => serializer.serialize_str(&t.to_string()),
+        }
+    }
+
+    pub struct EnumSerializer<T>
+    where
+        T: std::convert::TryFrom<i32> + ToString,
+    {
+        _type: std::marker::PhantomData<T>,
+    }
+
+    impl<T> crate::SerializeMethod for EnumSerializer<T>
+    where
+        T: std::convert::TryFrom<i32> + ToString,
+    {
+        type Value = i32;
+
+        fn serialize<S>(value: &i32, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            match T::try_from(*value) {
+                Err(_) => Err(serde::ser::Error::custom("invalid enum value")),
+                Ok(t) => serializer.serialize_str(&t.to_string()),
+            }
+        }
+    }
+}
+
+pub mod enum_opt_visitor {
+    struct EnumVisitor<'de, T>
+    where
+        T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
+    {
+        _type: &'de std::marker::PhantomData<T>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<'de, T> serde::de::Visitor<'de> for EnumVisitor<'de, T>
+    where
+        T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
+    {
+        type Value = std::option::Option<i32>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid String string or integer")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match T::from_str(value) {
+                Ok(en) => Ok(Some(en.into())),
+                Err(_) => Err(serde::de::Error::invalid_value(
+                    serde::de::Unexpected::Str(value),
+                    &self,
+                )),
+            }
+        }
+
+        fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match T::try_from(value) {
+                Ok(en) => Ok(Some(en.into())),
+                Err(_) => Err(serde::de::Error::invalid_value(
+                    serde::de::Unexpected::Signed(value as i64),
+                    &self,
+                )),
+            }
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<std::option::Option<i32>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: 'de
+            + ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
+    {
+        deserializer.deserialize_any(EnumVisitor::<'de, T> {
+            _type: &std::marker::PhantomData,
+        })
+    }
+
+    pub fn serialize<S, T>(value: &std::option::Option<i32>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
+    {
+        use crate::SerializeMethod;
+        match value {
+            None => serializer.serialize_none(),
+            Some(enum_int) => crate::enum_visitor::EnumSerializer::<T>::serialize(enum_int, serializer),
         }
     }
 }

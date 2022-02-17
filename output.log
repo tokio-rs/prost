@@ -1,0 +1,55 @@
+    Finished test [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests (target/debug/deps/conformance-96effac175dc0f5f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-9fdcb6d434b04b3a)
+
+running 1 test
+thread 'main' panicked at 'all times should be after the epoch: SystemTimeError(62135596801s)', /Users/myassin/.cargo/registry/src/github.com-1ecc6299db9ec823/humantime-2.1.0/src/date.rs:255:14
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[libprotobuf ERROR /Users/myassin/Documents/prost/target/debug/build/protobuf-f93ae7e45fc7e3e4/out/protobufxBxnmy/protobuf-3.14.0/conformance/conformance_test_runner.cc:322] Required.TimestampProtoInputTooSmall.JsonOutput: unexpected EOF from test program
+[libprotobuf INFO /Users/myassin/Documents/prost/target/debug/build/protobuf-f93ae7e45fc7e3e4/out/protobufxBxnmy/protobuf-3.14.0/conformance/conformance_test_runner.cc:163] Trying to reap child, pid=72362
+[libprotobuf INFO /Users/myassin/Documents/prost/target/debug/build/protobuf-f93ae7e45fc7e3e4/out/protobufxBxnmy/protobuf-3.14.0/conformance/conformance_test_runner.cc:176] child killed by signal 1
+thread 'main' panicked at 'a Display implementation returned an error unexpectedly: Error', /rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/library/alloc/src/string.rs:2401:14
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[libprotobuf ERROR /Users/myassin/Documents/prost/target/debug/build/protobuf-f93ae7e45fc7e3e4/out/protobufxBxnmy/protobuf-3.14.0/conformance/conformance_test_runner.cc:322] Required.TimestampProtoInputTooLarge.JsonOutput: unexpected EOF from test program
+[libprotobuf INFO /Users/myassin/Documents/prost/target/debug/build/protobuf-f93ae7e45fc7e3e4/out/protobufxBxnmy/protobuf-3.14.0/conformance/conformance_test_runner.cc:163] Trying to reap child, pid=72365
+[libprotobuf INFO /Users/myassin/Documents/prost/target/debug/build/protobuf-f93ae7e45fc7e3e4/out/protobufxBxnmy/protobuf-3.14.0/conformance/conformance_test_runner.cc:176] child killed by signal 1
+
+CONFORMANCE TEST BEGIN ====================================
+
+ERROR, test=Required.Proto3.JsonInput.EnumFieldNumericValueZero.ProtobufOutput: Failed to parse input or produce output. request=json_payload: "{\"optionalNestedEnum\": 0}" requested_output_format: PROTOBUF message_type: "protobuf_test_messages.proto3.TestAllTypesProto3" test_category: JSON_TEST, response=parse_error: "error deserializing json: optionalNestedEnum: invalid type: integer `0`, expected a valid String string or integer at line 1 column 24 at optionalNestedEnum"
+ERROR, test=Required.Proto3.JsonInput.EnumFieldNumericValueZero.JsonOutput: Failed to parse input or produce output. request=json_payload: "{\"optionalNestedEnum\": 0}" requested_output_format: JSON message_type: "protobuf_test_messages.proto3.TestAllTypesProto3" test_category: JSON_TEST, response=parse_error: "error deserializing json: optionalNestedEnum: invalid type: integer `0`, expected a valid String string or integer at line 1 column 24 at optionalNestedEnum"
+ERROR, test=Required.Proto3.JsonInput.EnumFieldNumericValueNonZero.ProtobufOutput: Failed to parse input or produce output. request=json_payload: "{\"optionalNestedEnum\": 1}" requested_output_format: PROTOBUF message_type: "protobuf_test_messages.proto3.TestAllTypesProto3" test_category: JSON_TEST, response=parse_error: "error deserializing json: optionalNestedEnum: invalid type: integer `1`, expected a valid String string or integer at line 1 column 24 at optionalNestedEnum"
+ERROR, test=Required.Proto3.JsonInput.EnumFieldNumericValueNonZero.JsonOutput: Failed to parse input or produce output. request=json_payload: "{\"optionalNestedEnum\": 1}" requested_output_format: JSON message_type: "protobuf_test_messages.proto3.TestAllTypesProto3" test_category: JSON_TEST, response=parse_error: "error deserializing json: optionalNestedEnum: invalid type: integer `1`, expected a valid String string or integer at line 1 column 24 at optionalNestedEnum"
+ERROR, test=Required.Proto3.JsonInput.EnumFieldUnknownValue.Validator: Expected JSON payload but got type 1. request=json_payload: "{\"optionalNestedEnum\": 123}" requested_output_format: JSON message_type: "protobuf_test_messages.proto3.TestAllTypesProto3" test_category: JSON_TEST, response=parse_error: "error deserializing json: optionalNestedEnum: invalid type: integer `123`, expected a valid String string or integer at line 1 column 26 at optionalNestedEnum"
+
+These tests failed.  If they can't be fixed right now, you can add them to the failure list so the overall suite can succeed.  Add them to the failure list by running:
+  ./update_failure_list.py failing_tests.txt --add failing_tests.txt
+
+  Required.Proto3.JsonInput.EnumFieldNumericValueNonZero.JsonOutput
+  Required.Proto3.JsonInput.EnumFieldNumericValueNonZero.ProtobufOutput
+  Required.Proto3.JsonInput.EnumFieldNumericValueZero.JsonOutput
+  Required.Proto3.JsonInput.EnumFieldNumericValueZero.ProtobufOutput
+  Required.Proto3.JsonInput.EnumFieldUnknownValue.Validator
+
+CONFORMANCE SUITE FAILED: 1883 successes, 0 skipped, 125 expected failures, 5 unexpected failures.
+
+test test_conformance ... FAILED
+
+failures:
+
+---- test_conformance stdout ----
+thread 'test_conformance' panicked at 'proto conformance test failed', conformance/tests/conformance.rs:32:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_conformance
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+error: test failed, to rerun pass '-p conformance --test conformance'
