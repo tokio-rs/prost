@@ -444,7 +444,7 @@ pub mod repeated_visitor {
 }
 
 pub mod enum_visitor {
-    struct EnumVisitor<'de, T>
+    pub struct EnumVisitor<'de, T>
     where
         T: ToString
             + std::str::FromStr
@@ -454,6 +454,19 @@ pub mod enum_visitor {
     {
         _type: &'de std::marker::PhantomData<T>,
     }
+
+    impl<T> crate::HasConstructor for EnumVisitor<'_, T>
+    where T: ToString
+            + std::str::FromStr
+            + std::convert::Into<i32>
+            + std::convert::TryFrom<i32>
+            + Default,
+{
+        fn new() -> Self {
+            return Self {_type: &std::marker::PhantomData};
+        }
+    }
+
 
     #[cfg(feature = "std")]
     impl<'de, T> serde::de::Visitor<'de> for EnumVisitor<'de, T>
@@ -482,18 +495,31 @@ pub mod enum_visitor {
                 )),
             }
         }
-
-        fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
-            match T::try_from(value) {
+            match T::try_from(value as i32) {
                 Ok(en) => Ok(en.into()),
                 Err(_) => Err(serde::de::Error::invalid_value(
                     serde::de::Unexpected::Signed(value as i64),
                     &self,
                 )),
             }
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_i64(value as i64)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_i64(value as i64)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -584,7 +610,7 @@ pub mod enum_opt_visitor {
         type Value = std::option::Option<i32>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a valid String string or integer")
+            formatter.write_str("a valid string or integer representation of an enum")
         }
 
         fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -600,17 +626,31 @@ pub mod enum_opt_visitor {
             }
         }
 
-        fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
-            match T::try_from(value) {
+            match T::try_from(value as i32) {
                 Ok(en) => Ok(Some(en.into())),
                 Err(_) => Err(serde::de::Error::invalid_value(
                     serde::de::Unexpected::Signed(value as i64),
                     &self,
                 )),
             }
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_i64(value as i64)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_i64(value as i64)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -644,7 +684,10 @@ pub mod enum_opt_visitor {
         })
     }
 
-    pub fn serialize<S, T>(value: &std::option::Option<i32>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, T>(
+        value: &std::option::Option<i32>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
         T: ToString
@@ -656,7 +699,9 @@ pub mod enum_opt_visitor {
         use crate::SerializeMethod;
         match value {
             None => serializer.serialize_none(),
-            Some(enum_int) => crate::enum_visitor::EnumSerializer::<T>::serialize(enum_int, serializer),
+            Some(enum_int) => {
+                crate::enum_visitor::EnumSerializer::<T>::serialize(enum_int, serializer)
+            }
         }
     }
 }

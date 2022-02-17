@@ -286,7 +286,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         panic!("Enumeration must have at least one variant");
     }
 
-    if  variants.len() != proto_names.len() {
+    if variants.len() != proto_names.len() {
         panic!("Number of annotated protonames was unexpected. You probably want to upgrade prost-build.");
     }
 

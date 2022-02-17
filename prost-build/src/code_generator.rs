@@ -67,7 +67,7 @@ impl<'a> CodeGenerator<'a> {
             ("i32", false, true) =>  (None, Some("::prost_types::i32_visitor::I32Visitor".to_string())),
             ("enum", false, false) =>  (Some(format!("::prost_types::enum_visitor::serialize::<_, {}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::enum_visitor::deserialize::<_, {}>", self.resolve_ident(&type_name)))),
             ("enum", true, false) =>  (Some(format!("::prost_types::enum_opt_visitor::serialize::<_, {}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::enum_opt_visitor::deserialize::<_, {}>", self.resolve_ident(&type_name)))),
-            ("enum", false, true) =>  (None, Some("::prost_types::i32_visitor::I32Visitor".to_string())),
+            ("enum", false, true) =>  (Some(format!("::prost_types::enum_visitor::EnumSerializer<{}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::enum_visitor::EnumVisitor::<{}>", self.resolve_ident(&type_name)))),
             ("i64", false, false) =>  (None, Some("::prost_types::i64_visitor::deserialize".to_string())),
             ("i64", true, false) =>  (None, Some("::prost_types::i64_opt_visitor::deserialize".to_string())),
             ("i64", false, true) =>  (None, Some("::prost_types::i64_visitor::I64Visitor".to_string())),

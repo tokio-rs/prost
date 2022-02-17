@@ -1,3 +1,0 @@
-Required.Proto3.JsonInput.EnumField.ProtobufOutput
-Required.Proto3.JsonInput.EnumFieldWithAlias.JsonOutput
-Required.Proto3.JsonInput.EnumFieldWithAlias.ProtobufOutput
