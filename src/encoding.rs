@@ -834,7 +834,7 @@ pub mod string {
             }
 
             let drop_guard = DropGuard(value.as_mut_vec());
-            bytes::merge(wire_type, drop_guard.0, buf, ctx)?;
+            bytes::merge_one_copy(wire_type, drop_guard.0, buf, ctx)?;
             match str::from_utf8(drop_guard.0) {
                 Ok(_) => {
                     // Success; do not clear the bytes.
@@ -981,7 +981,33 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
+        //
+        // This is intended for A and B both being Bytes so it is zero-copy.
+        // Some combinations of A and B types may cause a double-copy,
+        // in which case merge_one_copy() should be used instead.
         value.replace_with(buf.copy_to_bytes(len));
+        Ok(())
+    }
+
+    pub(super) fn merge_one_copy<A, B>(
+        wire_type: WireType,
+        value: &mut A,
+        buf: &mut B,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        A: BytesAdapter,
+        B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(DecodeError::new("buffer underflow"));
+        }
+        let len = len as usize;
+
+        // If we must copy, make sure to copy only once.
+        value.replace_with(buf.take(len));
         Ok(())
     }
 
