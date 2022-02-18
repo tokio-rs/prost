@@ -532,16 +532,19 @@ impl<'a> CodeGenerator<'a> {
         optional: bool,
         repeated: bool,
         json_name: &str,
+        oneof: bool,
     ) {
         if let None = self.config.json_mapping.get_first(fq_message_name) {
             return;
         }
         self.append_shared_json_field_attributes(field_name, json_name);
 
-        push_indent(&mut self.buf, self.depth);
-        self.buf
-            .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
-        self.buf.push('\n');
+        if !oneof {
+            push_indent(&mut self.buf, self.depth);
+            self.buf
+                .push_str(r#"#[serde(skip_serializing_if = "::prost_types::is_default")]"#);
+            self.buf.push('\n');
+        }
         // Add custom deserializers and optionally serializers for most primitive types
         // and their optional and repeated counterparts.
         match (
@@ -710,6 +713,7 @@ impl<'a> CodeGenerator<'a> {
             optional,
             repeated,
             field.json_name(),
+            false,
         );
         self.push_indent();
         self.buf.push_str("pub ");
@@ -871,9 +875,18 @@ impl<'a> CodeGenerator<'a> {
                 field.number()
             ));
             self.append_field_attributes(&oneof_name, field.name());
-
-            self.push_indent();
             let ty = self.resolve_type(&field, fq_message_name);
+            self.append_json_field_attributes(
+                &oneof_name,
+                &ty,
+                field.type_name().to_string(),
+                field.name(),
+                false,
+                false,
+                field.json_name(),
+                true,
+            );
+            self.push_indent();
 
             let boxed = (type_ == Type::Message || type_ == Type::Group)
                 && self

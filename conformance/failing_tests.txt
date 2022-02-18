@@ -12,8 +12,6 @@ Recommended.Proto3.JsonInput.Int64FieldBeString.Validator
 Recommended.Proto3.JsonInput.MapFieldValueIsNull
 Recommended.Proto3.JsonInput.NullValueInOtherOneofNewFormat.Validator
 Recommended.Proto3.JsonInput.NullValueInOtherOneofOldFormat.Validator
-Recommended.Proto3.JsonInput.OneofZeroBytes.JsonOutput
-Recommended.Proto3.JsonInput.OneofZeroBytes.ProtobufOutput
 Recommended.Proto3.JsonInput.OneofZeroEnum.JsonOutput
 Recommended.Proto3.JsonInput.OneofZeroEnum.ProtobufOutput
 Recommended.Proto3.JsonInput.RepeatedFieldPrimitiveElementIsNull
@@ -21,7 +19,6 @@ Recommended.Proto3.JsonInput.TimestampHas3FractionalDigits.Validator
 Recommended.Proto3.JsonInput.TimestampHas6FractionalDigits.Validator
 Recommended.Proto3.JsonInput.TimestampZeroNormalized.Validator
 Recommended.Proto3.JsonInput.Uint64FieldBeString.Validator
-Recommended.Proto3.ProtobufInput.OneofZeroBytes.JsonOutput
 Required.DurationProtoInputTooLarge.JsonOutput
 Required.DurationProtoInputTooSmall.JsonOutput
 Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
@@ -116,9 +113,5 @@ Required.Proto3.ProtobufInput.ValidDataMap.STRING.BYTES.DuplicateValueInMapEntry
 Required.Proto3.ProtobufInput.ValidDataMap.STRING.BYTES.MissingDefault.JsonOutput
 Required.Proto3.ProtobufInput.ValidDataMap.STRING.BYTES.NonDefault.JsonOutput
 Required.Proto3.ProtobufInput.ValidDataMap.STRING.BYTES.Unordered.JsonOutput
-Required.Proto3.ProtobufInput.ValidDataOneof.BYTES.DefaultValue.JsonOutput
-Required.Proto3.ProtobufInput.ValidDataOneof.BYTES.MultipleValuesForDifferentField.JsonOutput
-Required.Proto3.ProtobufInput.ValidDataOneof.BYTES.MultipleValuesForSameField.JsonOutput
-Required.Proto3.ProtobufInput.ValidDataOneof.BYTES.NonDefaultValue.JsonOutput
 Required.TimestampProtoInputTooLarge.JsonOutput
 Required.TimestampProtoInputTooSmall.JsonOutput

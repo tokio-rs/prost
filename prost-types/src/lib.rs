@@ -489,10 +489,7 @@ pub mod enum_visitor {
         {
             match T::from_str(value) {
                 Ok(en) => Ok(en.into()),
-                Err(_) => Err(serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Str(value),
-                    &self,
-                )),
+                Err(_) => Ok(T::default().into()),
             }
         }
         fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
@@ -501,10 +498,7 @@ pub mod enum_visitor {
         {
             match T::try_from(value as i32) {
                 Ok(en) => Ok(en.into()),
-                Err(_) => Err(serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Signed(value as i64),
-                    &self,
-                )),
+                Err(_) => Ok(T::default().into()),
             }
         }
 
@@ -526,7 +520,7 @@ pub mod enum_visitor {
         where
             E: serde::de::Error,
         {
-            Ok(Self::Value::default())
+            Ok(T::default().into())
         }
     }
 
@@ -619,10 +613,7 @@ pub mod enum_opt_visitor {
         {
             match T::from_str(value) {
                 Ok(en) => Ok(Some(en.into())),
-                Err(_) => Err(serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Str(value),
-                    &self,
-                )),
+                Err(_) => Ok(Some(T::default().into())),
             }
         }
 
@@ -632,10 +623,7 @@ pub mod enum_opt_visitor {
         {
             match T::try_from(value as i32) {
                 Ok(en) => Ok(Some(en.into())),
-                Err(_) => Err(serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Signed(value as i64),
-                    &self,
-                )),
+                Err(_) => Ok(Some(T::default().into())),
             }
         }
 
