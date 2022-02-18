@@ -171,7 +171,7 @@ impl Timestamp {
 impl Eq for Timestamp {}
 
 #[cfg(feature = "std")]
-#[allow(clippy::derive_hash_xor_eq)] // Derived logic is correct: comparing the 2 feilds for equality
+#[allow(clippy::derive_hash_xor_eq)] // Derived logic is correct: comparing the 2 fields for equality
 impl std::hash::Hash for Timestamp {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.seconds.hash(state);

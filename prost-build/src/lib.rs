@@ -271,7 +271,7 @@ impl Config {
     /// // Match all map fields in a package.
     /// config.btree_map(&[".my_messages"]);
     ///
-    /// // Match all map fields. Expecially useful in `no_std` contexts.
+    /// // Match all map fields. Specially useful in `no_std` contexts.
     /// config.btree_map(&["."]);
     ///
     /// // Match all map fields in a nested message.
@@ -332,7 +332,7 @@ impl Config {
     /// // Match all bytes fields in a package.
     /// config.bytes(&[".my_messages"]);
     ///
-    /// // Match all bytes fields. Expecially useful in `no_std` contexts.
+    /// // Match all bytes fields. Specially useful in `no_std` contexts.
     /// config.bytes(&["."]);
     ///
     /// // Match all bytes fields in a nested message.
