@@ -118,7 +118,9 @@ fn sub_path_iter(full_path: &str) -> impl Iterator<Item = &str> {
 /// Example: prefixes(".a.b.c.d") -> [".a.b.c", ".a.b", ".a"]
 fn prefixes(fq_path: &str) -> impl Iterator<Item = &str> {
     std::iter::successors(Some(fq_path), |path| {
-        path.rsplit_once('.').map(|split| split.0).filter(|path| !path.is_empty())
+        path.rsplit_once('.')
+            .map(|split| split.0)
+            .filter(|path| !path.is_empty())
     })
     .skip(1)
 }
@@ -129,7 +131,9 @@ fn prefixes(fq_path: &str) -> impl Iterator<Item = &str> {
 /// Example: suffixes(".a.b.c.d") -> ["a.b.c.d", "b.c.d", "c.d", "d"]
 fn suffixes(fq_path: &str) -> impl Iterator<Item = &str> {
     std::iter::successors(Some(fq_path), |path| {
-        path.split_once('.').map(|split| split.1).filter(|path| !path.is_empty())
+        path.split_once('.')
+            .map(|split| split.1)
+            .filter(|path| !path.is_empty())
     })
     .skip(1)
 }
