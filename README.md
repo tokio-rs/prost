@@ -372,7 +372,7 @@ extend google.protobuf.FileOptions {
 }
 ```
 
-You need to compile these definitions alone before your other protos. The above will generate const `Extension` fields `MY_OPT` and `MY_OPT_REPEATED` that you'll need to register in an `ExtensionRegistry` as well as request data from an `Extendable` message.
+You need to compile these definitions alone before your other protos. The above will generate const `Extension` fields `MY_OPT` and `MY_REPEATED_OPT` that you'll need to register in an `ExtensionRegistry` as well as request data from an `Extendable` message.
 
 ### Setting Option Data in Proto Files
 
@@ -397,7 +397,7 @@ mod custom_options {
 fn generate() {
     let mut extension_registry = ExtensionRegistry::new();
     extension_registry.register(custom_options::MY_OPT); // const Extension definitions.
-    extension_registry.register(custom_options::MY_OPT_REPEATED);
+    extension_registry.register(custom_options::MY_REPEATED_OPT);
     let descriptor_set: FileDescriptorSet = Message::decode_with_extensions(DESCRIPTOR_SET_BYTES, extension_registry);
     for file in descriptor_set.file {
         println!("file {} my_opt: {:?}", file.name.unwrap(),
@@ -405,7 +405,7 @@ fn generate() {
                  file.options.extension_data(&custom_options::MY_OPT));
         println!("file {} my_opt: {:?}", file.name.unwrap(),
                  // Returns an Option<Vec<String>> (based on our Extension declared above).
-                 file.options.extension_data(&custom_options::MY_OPT_REPEATED));
+                 file.options.extension_data(&custom_options::MY_REPEATED_OPT));
     }
 }
 ```
