@@ -21,7 +21,7 @@ macro_rules! test_custom_option {
     ($test_name: ident, $extension: expr, $expected: expr) => {
         #[test]
         fn $test_name() {
-            run_test(&$extension, $expected)
+            run_test($extension, $expected)
         }
     };
 }
@@ -224,7 +224,7 @@ mod message {
 
 #[test]
 fn field() {
-    let extension = &custom_options::FIELD_OPT;
+    let extension = custom_options::FIELD_OPT;
     let file_descriptor_set = load_desc_set(extension);
     let test_msg = find_test_msg(&file_descriptor_set);
     let field = test_msg
@@ -242,7 +242,7 @@ fn field() {
 
 #[test]
 fn oneof() {
-    let extension = &custom_options::ONEOF_OPT;
+    let extension = custom_options::ONEOF_OPT;
     let file_descriptor_set = load_desc_set(extension);
     let test_msg = find_test_msg(&file_descriptor_set);
     assert_eq!(test_msg.oneof_decl.len(), 1);
@@ -257,7 +257,7 @@ fn oneof() {
 
 #[test]
 fn enum_opt() {
-    let extension = &custom_options::ENUM_OPT;
+    let extension = custom_options::ENUM_OPT;
     let file_descriptor_set = load_desc_set(extension);
     let test_enum = find_test_enum(&file_descriptor_set);
     let enum_options = test_enum.options.as_ref().expect("Enum has no options");
@@ -270,7 +270,7 @@ fn enum_opt() {
 
 #[test]
 fn enum_value() {
-    let extension = &custom_options::ENUM_VALUE_OPT;
+    let extension = custom_options::ENUM_VALUE_OPT;
     let file_descriptor_set = load_desc_set(extension);
     let test_enum = find_test_enum(&file_descriptor_set);
     let enum_value = test_enum.value.get(0).expect("Enum value missing.");

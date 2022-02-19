@@ -14,11 +14,11 @@ macro_rules! test_extension {
         fn $test_name() -> Result<(), DecodeError> {
             let mut message = extensions::ExtendableMessage::default();
             message
-                .set_extension_data(&$extension, $value)
+                .set_extension_data($extension, $value)
                 .expect("Failed to set ext data");
-            let message = roundtrip(&message, &$extension);
+            let message = roundtrip(&message, $extension);
             let ext_data = message
-                .extension_data(&$extension)
+                .extension_data($extension)
                 .expect("Failed to get ext data");
             assert_eq!(*ext_data, $value);
             Ok(())
@@ -151,11 +151,11 @@ fn clear_message_clears_ext_set() {
     let mut message = extensions::ExtendableMessage::default();
     let data = "data".to_string();
     message
-        .set_extension_data(&extensions::EXT_STRING, data.clone())
+        .set_extension_data(extensions::EXT_STRING, data.clone())
         .expect("Failed to set ext data");
-    assert_eq!(message.extension_data(&extensions::EXT_STRING), Ok(&data));
+    assert_eq!(message.extension_data(extensions::EXT_STRING), Ok(&data));
     message.clear();
-    assert!(message.extension_data(&extensions::EXT_STRING).is_err());
+    assert!(message.extension_data(extensions::EXT_STRING).is_err());
 }
 
 fn roundtrip<M>(message: &M, extension: &'static dyn Extension) -> M
