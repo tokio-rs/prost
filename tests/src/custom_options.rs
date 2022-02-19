@@ -286,6 +286,44 @@ fn enum_value() {
     assert_eq!(ext_data, &"hello");
 }
 
+#[test]
+fn register_extensions() {
+    let mut extension_registry = ExtensionRegistry::new();
+    custom_options::register_extensions(&mut extension_registry);
+    custom_options_ext::register_extensions(&mut extension_registry);
+
+    let enum_value_opt = extension_registry.extension(
+        custom_options::ENUM_VALUE_OPT.extendable_type_id(),
+        custom_options::ENUM_VALUE_OPT.field_tag(),
+    );
+    assert!(matches!(enum_value_opt, Some(_)));
+
+    let message_opt_from_ext = extension_registry.extension(
+        custom_options_ext::MESSAGE_OPT_FROM_EXT.extendable_type_id(),
+        custom_options_ext::MESSAGE_OPT_FROM_EXT.field_tag(),
+    );
+    assert!(matches!(message_opt_from_ext, Some(_)));
+}
+
+#[test]
+fn register_message_extensions() {
+    let mut extension_registry = ExtensionRegistry::new();
+    custom_options::NestedOptions::register_extensions(&mut extension_registry);
+    custom_options_ext::NestedOptions::register_extensions(&mut extension_registry);
+
+    let nested_opt = extension_registry.extension(
+        custom_options::NestedOptions::NESTED_OPT.extendable_type_id(),
+        custom_options::NestedOptions::NESTED_OPT.field_tag(),
+    );
+    assert!(matches!(nested_opt, Some(_)));
+
+    let nested_opt_from_ext = extension_registry.extension(
+        custom_options_ext::NestedOptions::NESTED_OPT_FROM_EXT.extendable_type_id(),
+        custom_options_ext::NestedOptions::NESTED_OPT_FROM_EXT.field_tag(),
+    );
+    assert!(matches!(nested_opt_from_ext, Some(_)));
+}
+
 fn load_desc_set(extension_to_test: &'static dyn Extension) -> FileDescriptorSet {
     Message::decode_with_extensions(DESCRIPTOR_SET_BYTES, registry(extension_to_test))
         .expect("Failed to decode descriptor set")

@@ -90,9 +90,10 @@ impl<'a> CodeGenerator<'a> {
                 .push_str("// Extension types defined inside the file `");
             code_gen.buf.push_str(&file_name);
             code_gen.buf.push_str("`\n");
-            for extension in file.extension.into_iter() {
-                code_gen.append_file_extension(extension);
+            for extension in file.extension.iter() {
+                code_gen.append_file_extension(&extension);
             }
+            code_gen.append_registration(&file.extension, ExtensionContext::File);
         }
 
         code_gen.path.push(4);
@@ -292,9 +293,10 @@ impl<'a> CodeGenerator<'a> {
                 .push_str("// Extension types defined inside the message `");
             self.buf.push_str(&fq_message_name);
             self.buf.push_str("`\n");
-            for extension in message.extension.into_iter() {
+            for extension in message.extension.iter() {
                 self.append_extension(extension, &fq_message_name);
             }
+            self.append_registration(&message.extension, ExtensionContext::Message);
         }
         if has_impl_block {
             self.append_impl_close();
@@ -336,11 +338,44 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("\";\n");
     }
 
-    fn append_file_extension(&mut self, extension: FieldDescriptorProto) {
+    fn append_file_extension(&mut self, extension: &FieldDescriptorProto) {
         self.append_extension(extension, "");
     }
 
-    fn append_extension(&mut self, extension: FieldDescriptorProto, fq_message_name: &str) {
+    fn append_registration(&mut self, extensions: &[FieldDescriptorProto], context: ExtensionContext) {
+        if extensions.is_empty() {
+            return;
+        }
+
+        self.push_indent();
+        self.buf.push_str("/// Registers all protobuf extensions defined in this ");
+        let ctx = match context {
+            ExtensionContext::Message => "message",
+            ExtensionContext::File => "module",
+        };
+        self.buf.push_str(ctx);
+        self.buf.push_str(".\n");
+        self.push_indent();
+        self.buf.push_str("#[allow(dead_code)]\n");
+        self.push_indent();
+        self.buf.push_str("pub fn register_extensions(registry: &mut ::prost::ExtensionRegistry) {\n");
+        self.depth += 1;
+        for ext in extensions {
+            self.push_indent();
+            self.buf.push_str("registry.register(");
+            match context {
+                ExtensionContext::Message => self.buf.push_str("Self::"),
+                _ => {}
+            }
+            self.buf.push_str(&ext.name().to_ascii_uppercase());
+            self.buf.push_str(");\n");
+        }
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+    }
+
+    fn append_extension(&mut self, extension: &FieldDescriptorProto, fq_message_name: &str) {
         let extendee = extension.extendee.as_ref().unwrap();
         debug!(
             "    extension: {:?}, target msg type: {:?}, field tag: {:?}",
@@ -985,6 +1020,11 @@ fn is_extendable(message: &DescriptorProto) -> bool {
 
 fn defines_extensions(message: &DescriptorProto) -> bool {
     !message.extension.is_empty()
+}
+
+enum ExtensionContext {
+    File,
+    Message,
 }
 
 fn proto_int_type_str(field_type: Type) -> &'static str {

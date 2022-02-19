@@ -158,6 +158,18 @@ fn clear_message_clears_ext_set() {
     assert!(message.extension_data(extensions::EXT_STRING).is_err());
 }
 
+#[test]
+fn register_extensions() {
+    let mut extension_registry = ExtensionRegistry::new();
+    extensions::register_extensions(&mut extension_registry);
+
+    let enum_value_opt = extension_registry.extension(
+        extensions::EXT_MESSAGE_REPEATED.extendable_type_id(),
+        extensions::EXT_MESSAGE_REPEATED.field_tag(),
+    );
+    assert!(matches!(enum_value_opt, Some(_)));
+}
+
 fn roundtrip<M>(message: &M, extension: &'static dyn Extension) -> M
 where
     M: Message + Default,
