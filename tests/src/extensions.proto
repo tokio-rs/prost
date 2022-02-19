@@ -12,6 +12,7 @@ message ExtendableMessage {
 }
 
 extend ExtendableMessage {
+  // Double value extension
   optional double ext_double = 100;
   optional float ext_float = 101;
   optional int32 ext_int32 = 102;

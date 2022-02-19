@@ -84,17 +84,14 @@ impl<'a> CodeGenerator<'a> {
         let file_name = file.name.as_ref().unwrap();
         debug!("file: {:?}, package: {:?}", file_name, code_gen.package);
 
-        if !file.extension.is_empty() {
-            code_gen
-                .buf
-                .push_str("// Extension types defined inside the file `");
-            code_gen.buf.push_str(&file_name);
-            code_gen.buf.push_str("`\n");
-            for extension in file.extension.iter() {
-                code_gen.append_file_extension(&extension);
-            }
-            code_gen.append_registration(&file.extension, ExtensionContext::File);
+        code_gen.path.push(7);
+        for (idx, extension) in file.extension.iter().enumerate() {
+            code_gen.path.push(idx as i32);
+            code_gen.append_file_extension(&extension);
+            code_gen.path.pop();
         }
+        code_gen.path.pop();
+        code_gen.append_registration(&file.extension, ExtensionContext::File);
 
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
@@ -288,16 +285,16 @@ impl<'a> CodeGenerator<'a> {
         if is_extendable {
             self.append_extendable_type_id(&fq_message_name);
         }
-        if defines_extensions {
-            self.buf
-                .push_str("// Extension types defined inside the message `");
-            self.buf.push_str(&fq_message_name);
-            self.buf.push_str("`\n");
-            for extension in message.extension.iter() {
-                self.append_extension(extension, &fq_message_name);
-            }
-            self.append_registration(&message.extension, ExtensionContext::Message);
+
+        self.path.push(6);
+        for (idx, extension) in message.extension.iter().enumerate() {
+            self.path.push(idx as i32);
+            self.append_extension(extension, &fq_message_name);
+            self.path.pop();
         }
+        self.path.pop();
+        self.append_registration(&message.extension, ExtensionContext::Message);
+
         if has_impl_block {
             self.append_impl_close();
         }
@@ -339,26 +336,32 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_file_extension(&mut self, extension: &FieldDescriptorProto) {
-        self.append_extension(extension, "");
+        self.append_extension(extension, extension.extendee.as_deref().unwrap());
     }
 
-    fn append_registration(&mut self, extensions: &[FieldDescriptorProto], context: ExtensionContext) {
+    fn append_registration(
+        &mut self,
+        extensions: &[FieldDescriptorProto],
+        context: ExtensionContext,
+    ) {
         if extensions.is_empty() {
             return;
         }
 
         self.push_indent();
-        self.buf.push_str("/// Registers all protobuf extensions defined in this ");
+        self.buf
+            .push_str("/// Registers all protobuf extensions defined in this ");
         let ctx = match context {
             ExtensionContext::Message => "message",
             ExtensionContext::File => "module",
         };
         self.buf.push_str(ctx);
-        self.buf.push_str(".\n");
+        self.buf.push_str("\n");
         self.push_indent();
         self.buf.push_str("#[allow(dead_code)]\n");
         self.push_indent();
-        self.buf.push_str("pub fn register_extensions(registry: &mut ::prost::ExtensionRegistry) {\n");
+        self.buf
+            .push_str("pub fn register_extensions(registry: &mut ::prost::ExtensionRegistry) {\n");
         self.depth += 1;
         for ext in extensions {
             self.push_indent();
@@ -396,6 +399,7 @@ impl<'a> CodeGenerator<'a> {
             }
         };
 
+        self.append_doc(fq_message_name, extension.name.as_deref());
         self.push_indent();
         self.buf.push_str("pub const ");
         self.buf.push_str(&extension.name().to_ascii_uppercase());

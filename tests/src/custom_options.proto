@@ -11,6 +11,7 @@ message CustomOptionType {
 }
 
 extend google.protobuf.FileOptions {
+    // A basic file option for a double
     double file_opt_double = 50000;
     float file_opt_float = 50001;
     int32 file_opt_int32 = 50002;
@@ -120,6 +121,7 @@ extend google.protobuf.EnumValueOptions {
 
 message NestedOptions {
     extend google.protobuf.MessageOptions {
+        // A nested extension
         string nested_opt = 50001;
     }
 }
