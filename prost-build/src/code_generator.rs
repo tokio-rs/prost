@@ -420,8 +420,8 @@ impl<'a> CodeGenerator<'a> {
     fn append_type_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         for attribute in self.config.type_attributes.get(fq_message_name) {
-            push_indent(&mut self.buf, self.depth);
-            self.buf.push_str(&attribute);
+            push_indent(self.buf, self.depth);
+            self.buf.push_str(attribute);
             self.buf.push('\n');
         }
     }
@@ -433,8 +433,8 @@ impl<'a> CodeGenerator<'a> {
             .field_attributes
             .get_field(fq_message_name, field_name)
         {
-            push_indent(&mut self.buf, self.depth);
-            self.buf.push_str(&attribute);
+            push_indent(self.buf, self.depth);
+            self.buf.push_str(attribute);
             self.buf.push('\n');
         }
     }
@@ -530,7 +530,7 @@ impl<'a> CodeGenerator<'a> {
                         .and_then(|ty| ty.split('.').last())
                         .unwrap();
 
-                    strip_enum_prefix(&to_upper_camel(&enum_type), &enum_value)
+                    strip_enum_prefix(&to_upper_camel(enum_type), &enum_value)
                 } else {
                     &enum_value
                 };
@@ -736,7 +736,7 @@ impl<'a> CodeGenerator<'a> {
             self.config.disable_comments.get(fq_name).next().is_none()
         };
         if append_doc {
-            Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf)
+            Comments::from_location(self.location()).append_with_indent(self.depth, self.buf)
         }
     }
 
@@ -782,7 +782,7 @@ impl<'a> CodeGenerator<'a> {
 
             self.path.push(idx as i32);
             let stripped_prefix = if self.config.strip_enum_prefix {
-                Some(to_upper_camel(&enum_name))
+                Some(to_upper_camel(enum_name))
             } else {
                 None
             };
@@ -803,7 +803,7 @@ impl<'a> CodeGenerator<'a> {
         prefix_to_strip: Option<String>,
     ) {
         self.append_doc(fq_enum_name, Some(value.name()));
-        self.append_field_attributes(fq_enum_name, &value.name());
+        self.append_field_attributes(fq_enum_name, value.name());
         self.push_indent();
         let name = to_upper_camel(value.name());
         let name_unprefixed = match prefix_to_strip {
@@ -867,12 +867,12 @@ impl<'a> CodeGenerator<'a> {
         };
 
         if let Some(service_generator) = self.config.service_generator.as_mut() {
-            service_generator.generate(service, &mut self.buf)
+            service_generator.generate(service, self.buf)
         }
     }
 
     fn push_indent(&mut self) {
-        push_indent(&mut self.buf, self.depth);
+        push_indent(self.buf, self.depth);
     }
 
     fn push_mod(&mut self, module: &str) {
