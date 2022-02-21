@@ -843,7 +843,7 @@ impl Config {
         let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
-                format!("invalid FileDescriptorSet: {}", error.to_string()),
+                format!("invalid FileDescriptorSet: {}", error),
             )
         })?;
 
@@ -924,7 +924,7 @@ impl Config {
             written += subwritten;
             if subwritten != matching.len() {
                 let modname = matching[0][..=depth].join(".");
-                if let Some(_) = basepath {
+                if basepath.is_some() {
                     self.write_line(
                         outfile,
                         depth + 1,
@@ -966,8 +966,8 @@ impl Config {
                 packages.insert(module.clone(), file.package().to_string());
             }
 
-            let mut buf = modules.entry(module).or_insert_with(String::new);
-            CodeGenerator::generate(self, &message_graph, &extern_paths, file, &mut buf);
+            let buf = modules.entry(module).or_insert_with(String::new);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, file, buf);
         }
 
         if let Some(ref mut service_generator) = self.service_generator {

@@ -90,7 +90,7 @@ impl ExternPaths {
         for (idx, _) in pb_ident.rmatch_indices('.') {
             if let Some(rust_path) = self.extern_paths.get(&pb_ident[..idx]) {
                 let mut segments = pb_ident[idx + 1..].split('.');
-                let ident_type = segments.next_back().map(|segment| to_upper_camel(&segment));
+                let ident_type = segments.next_back().map(to_upper_camel);
 
                 return Some(
                     rust_path
@@ -103,7 +103,7 @@ impl ExternPaths {
                                 // it into a raw identifier, since it's being used as the keyword.
                                 segment.to_owned()
                             } else {
-                                to_snake(&segment)
+                                to_snake(segment)
                             }
                         })
                         .chain(ident_type.into_iter())
