@@ -55,7 +55,7 @@ fn test_timestamp() {
     );
 
     let mut hashset = HashSet::new();
-    assert!(hashset.insert(timestamp.clone()));
+    assert!(hashset.insert(timestamp));
     assert!(
         !hashset.insert(non_normalized_timestamp),
         "hash for normalized should match and not inserted"
