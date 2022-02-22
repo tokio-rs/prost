@@ -403,7 +403,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str("pub const ");
         self.buf.push_str(&extension.name().to_ascii_uppercase());
-        self.buf.push_str(": &::prost::ExtensionImpl<");
+        self.buf.push_str(": &'static ::prost::ExtensionImpl<");
         append_field_type(self.buf);
         self.buf.push_str("> = &::prost::ExtensionImpl::<");
         append_field_type(self.buf);
