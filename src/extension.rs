@@ -813,9 +813,11 @@ mod tests {
         fn create_test_extension_set(ext_value_data: &str) -> ExtensionSet<TestExtendable> {
             let mut extension_set = ExtensionSet::<TestExtendable>::default();
             let ext_value = Box::new(create_ext_value(ext_value_data));
+            extension_set.tag_to_value = Some(Box::new(ExtensionSetValues::default()));
             extension_set
                 .tag_to_value
-                .insert(Box::new(ExtensionSetValues::default()))
+                .as_mut()
+                .unwrap()
                 .insert(TEST_EXTENSION.field_tag(), ext_value.inner_clone());
             extension_set
         }
