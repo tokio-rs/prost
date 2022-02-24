@@ -401,6 +401,8 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(fq_message_name, extension.name.as_deref());
         self.push_indent();
+        self.buf.push_str("#[allow(clippy::redundant_static_lifetimes)]\n");
+        self.push_indent();
         self.buf.push_str("pub const ");
         self.buf.push_str(&extension.name().to_ascii_uppercase());
         self.buf.push_str(": &'static ::prost::ExtensionImpl<");
