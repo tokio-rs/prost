@@ -847,17 +847,26 @@ impl Config {
             )
         })?;
 
-        let modules = self.generate(file_descriptor_set.file)?;
-        for (module, content) in &modules {
-            let mut filename = if module.is_empty() {
+        let requests: Vec<_> = file_descriptor_set.file.into_iter().map(|descriptor| {
+            (self.module(&descriptor), descriptor)
+        }).collect();
+
+        let file_names: HashMap<Module, String> = requests.iter().map(|req| {
+            let mut file_name = if req.0.is_empty() {
                 self.default_package_filename.clone()
             } else {
-                module.join(".")
+                req.0.join(".")
             };
 
-            filename.push_str(".rs");
+            file_name.push_str(".rs");
 
-            let output_path = target.join(&filename);
+            (req.0.clone(), file_name)
+        }).collect();
+
+        let modules = self.generate(requests)?;
+        for (module, content) in &modules {
+            let file_name = file_names.get(module).expect("every module should have a filename");
+            let output_path = target.join(file_name);
 
             let previous_content = fs::read(&output_path);
 
@@ -865,9 +874,9 @@ impl Config {
                 .map(|previous_content| previous_content == content.as_bytes())
                 .unwrap_or(false)
             {
-                trace!("unchanged: {:?}", filename);
+                trace!("unchanged: {:?}", file_name);
             } else {
-                trace!("writing: {:?}", filename);
+                trace!("writing: {:?}", file_name);
                 fs::write(output_path, content)?;
             }
         }
@@ -949,25 +958,29 @@ impl Config {
         outfile.write_all(format!("{}{}\n", ("    ").to_owned().repeat(depth), line).as_bytes())
     }
 
-    fn generate(&mut self, files: Vec<FileDescriptorProto>) -> Result<HashMap<Module, String>> {
+    /// Processes a set of modules and file descriptors, returning a map of modules to generated
+    /// code contents.
+    ///
+    /// This is generally used when control over the output should not be managed by Prost,
+    /// such as in a flow for a `protoc` code generating plugin. When compiling as part of a
+    /// `build.rs` file, instead use [`compile_protos()`].
+    pub fn generate(&mut self, requests: Vec<(Module, FileDescriptorProto)>) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(&files)
+        let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1))
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
-        for file in files {
-            let module = self.module(&file);
-
+        for request in requests {
             // Only record packages that have services
-            if !file.service.is_empty() {
-                packages.insert(module.clone(), file.package().to_string());
+            if !request.1.service.is_empty() {
+                packages.insert(request.0.clone(), request.1.package().to_string());
             }
 
-            let buf = modules.entry(module).or_insert_with(String::new);
-            CodeGenerator::generate(self, &message_graph, &extern_paths, file, buf);
+            let buf = modules.entry(request.0).or_insert_with(String::new);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, request.1, buf);
         }
 
         if let Some(ref mut service_generator) = self.service_generator {

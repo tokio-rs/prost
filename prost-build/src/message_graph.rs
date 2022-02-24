@@ -15,7 +15,7 @@ pub struct MessageGraph {
 }
 
 impl MessageGraph {
-    pub fn new(files: &[FileDescriptorProto]) -> Result<MessageGraph, String> {
+    pub fn new<'a>(files: impl Iterator<Item=&'a FileDescriptorProto>) -> Result<MessageGraph, String> {
         let mut msg_graph = MessageGraph {
             index: HashMap::new(),
             graph: Graph::new(),
