@@ -1,3 +1,4 @@
+use crate::alloc::boxed::Box;
 use crate::alloc::collections::btree_map::Entry;
 use crate::alloc::collections::BTreeMap;
 use crate::alloc::fmt::{Display, Formatter};
@@ -618,11 +619,14 @@ fn registry_key(extension: &'static dyn Extension) -> RegistryKey {
 
 #[cfg(test)]
 mod tests {
+    use crate::alloc::boxed::Box;
+    use crate::alloc::string::{String, ToString};
     use crate::extension::{ExtendableTypeId, ExtensionValueImpl};
     use crate::{Extendable, ExtensionImpl, ExtensionSet, ExtensionValue, ProtoIntType};
     use core::marker::PhantomData;
 
     mod extension_value {
+        use crate::alloc::string::{String, ToString};
         use crate::extension::tests::{create_ext_value, create_ext_value_dyn};
         use crate::extension::ExtensionValueImpl;
 
@@ -681,6 +685,8 @@ mod tests {
     }
 
     mod extension_set {
+        use crate::alloc::boxed::Box;
+        use crate::alloc::string::ToString;
         use crate::extension::tests::{
             create_ext_value, TestExtendable, TEST_EXTENSION, TEST_EXTENSION_B,
         };
@@ -713,6 +719,7 @@ mod tests {
         }
 
         mod extension_data {
+            use crate::alloc::string::ToString;
             use crate::extension::tests::extension_set::create_test_extension_set;
             use crate::extension::tests::{OTHER_TEST_EXTENSION, TEST_EXTENSION, TEST_EXTENSION_B};
             use crate::extension::ExtensionSetError;

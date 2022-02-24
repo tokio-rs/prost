@@ -1,5 +1,9 @@
 //! Types used for dynamically encoding to and merging from encoded protobuf binary data by delegating to the `crate::encoding` module.
 
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use bytes::{Buf, BufMut};
 
 use crate::bytes::buf::UninitSlice;
