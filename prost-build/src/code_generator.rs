@@ -327,7 +327,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
     }
 
-    fn append_extendable_type_id(&mut self, extendable_type_id: &String) {
+    fn append_extendable_type_id(&mut self, extendable_type_id: &str) {
         self.push_indent();
         self.buf
             .push_str("const EXTENDABLE_TYPE_ID: &'static str = \"");
@@ -356,7 +356,7 @@ impl<'a> CodeGenerator<'a> {
             ExtensionContext::File => "module",
         };
         self.buf.push_str(ctx);
-        self.buf.push_str("\n");
+        self.buf.push('\n');
         self.push_indent();
         self.buf.push_str("#[allow(dead_code)]\n");
         self.push_indent();
@@ -366,9 +366,8 @@ impl<'a> CodeGenerator<'a> {
         for ext in extensions {
             self.push_indent();
             self.buf.push_str("registry.register(");
-            match context {
-                ExtensionContext::Message => self.buf.push_str("Self::"),
-                _ => {}
+            if let ExtensionContext::Message = context {
+                self.buf.push_str("Self::");
             }
             self.buf.push_str(&ext.name().to_ascii_uppercase());
             self.buf.push_str(");\n");
@@ -401,7 +400,8 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(fq_message_name, extension.name.as_deref());
         self.push_indent();
-        self.buf.push_str("#[allow(clippy::redundant_static_lifetimes)]\n");
+        self.buf
+            .push_str("#[allow(clippy::redundant_static_lifetimes)]\n");
         self.push_indent();
         self.buf.push_str("pub const ");
         self.buf.push_str(&extension.name().to_ascii_uppercase());

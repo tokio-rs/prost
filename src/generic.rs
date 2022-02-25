@@ -212,14 +212,14 @@ pub trait MergeRepeated {
 }
 pub trait EncodeRepeated {
     fn encode_repeated(
-        vec: &Vec<Self>,
+        vec: &[Self],
         proto_int_type: ProtoIntType,
         tag: u32,
         buf: &mut EncodeBuffer,
     ) where
         Self: Sized;
 
-    fn encoded_len_repeated(vec: &Vec<Self>, proto_int_type: ProtoIntType, tag: u32) -> usize
+    fn encoded_len_repeated(vec: &[Self], proto_int_type: ProtoIntType, tag: u32) -> usize
     where
         Self: Sized;
 }

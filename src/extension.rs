@@ -296,7 +296,7 @@ where
 
     fn for_each_tag_value<F>(&self, mut action: F)
     where
-        F: FnMut(&FieldTag, &Box<dyn ExtensionValue>) -> (),
+        F: FnMut(&FieldTag, &Box<dyn ExtensionValue>),
     {
         let tag_to_value = match self.tag_to_value.as_ref() {
             None => return,
@@ -315,7 +315,7 @@ impl<TOwner> Clone for ExtensionSet<TOwner> {
             Some(tag_to_value) => {
                 let mut cloned = Box::new(ExtensionSetValues::default());
                 for (tag, ext_value) in tag_to_value.as_ref() {
-                    cloned.insert(tag.clone(), ext_value.inner_clone());
+                    cloned.insert(*tag, ext_value.inner_clone());
                 }
                 Some(cloned)
             }
@@ -460,7 +460,7 @@ where
         buf: &mut MergeBuffer,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError> {
-        let data = self.data.get_or_insert_with(|| T::default());
+        let data = self.data.get_or_insert_with(T::default);
         data.merge(proto_int_type, wire_type, buf, ctx)
     }
 }
@@ -571,9 +571,10 @@ where
     }
 
     fn create_value(&self) -> Box<dyn ExtensionValue> {
-        let mut value = ExtensionValueImpl::<T>::default();
-        value.proto_int_type = self.proto_int_type;
-        Box::new(value)
+        Box::new(ExtensionValueImpl::<T> {
+            proto_int_type: self.proto_int_type,
+            ..Default::default()
+        })
     }
 }
 
@@ -583,6 +584,7 @@ type RegistryKey = (ExtendableTypeId, FieldTag);
 ///
 /// Users should load the registry with the static Extensions from generated code via `register`
 /// before decoding a message.
+#[derive(Default)]
 pub struct ExtensionRegistry {
     extensions: BTreeMap<RegistryKey, &'static dyn Extension>,
 }
@@ -595,9 +597,7 @@ impl Debug for ExtensionRegistry {
 
 impl ExtensionRegistry {
     pub fn new() -> Self {
-        Self {
-            extensions: Default::default(),
-        }
+        Default::default()
     }
 
     pub fn register(&mut self, extension: &'static dyn Extension) {
@@ -609,7 +609,7 @@ impl ExtensionRegistry {
         type_id: ExtendableTypeId,
         tag: FieldTag,
     ) -> Option<&'static dyn Extension> {
-        self.extensions.get(&(type_id, tag)).map(|ext| *ext)
+        self.extensions.get(&(type_id, tag)).copied()
     }
 }
 

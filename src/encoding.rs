@@ -220,9 +220,10 @@ impl Default for DecodeContext {
 
 impl DecodeContext {
     pub(crate) fn with_extensions(extension_registry: ExtensionRegistry) -> DecodeContext {
-        let mut ctx = DecodeContext::default();
-        ctx.extension_registry = Some(Rc::new(extension_registry));
-        ctx
+        DecodeContext {
+            extension_registry: Some(Rc::new(extension_registry)),
+            ..Default::default()
+        }
     }
 
     /// Call this function before recursively decoding.

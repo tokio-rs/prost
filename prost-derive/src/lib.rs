@@ -271,7 +271,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
         impl #impl_generics ::prost::EncodeRepeated for #ident #ty_generics #where_clause {
             fn encode_repeated(
-                vec: &::prost::alloc::vec::Vec<Self>,
+                vec: &[Self],
                 _: ::prost::ProtoIntType,
                 tag: u32,
                 buf: &mut ::prost::EncodeBuffer,
@@ -280,7 +280,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 ::prost::encoding::message::encode_repeated(tag, vec, buf)
             }
 
-            fn encoded_len_repeated(vec: &::prost::alloc::vec::Vec<Self>, _: ::prost::ProtoIntType, tag: u32) -> usize {
+            fn encoded_len_repeated(vec: &[Self], _: ::prost::ProtoIntType, tag: u32) -> usize {
                 ::prost::encoding::message::encoded_len_repeated(tag, vec)
             }
         }
