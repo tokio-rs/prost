@@ -734,7 +734,7 @@ impl DefaultValue {
                         _ => (),
                     }
                 }
-                match syn::parse_str::<Lit>(&value) {
+                match syn::parse_str::<Lit>(value) {
                     Ok(Lit::Str(_)) => (),
                     Ok(lit) => return DefaultValue::from_lit(ty, lit),
                     _ => (),

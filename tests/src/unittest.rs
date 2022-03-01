@@ -40,9 +40,9 @@ fn extreme_default_values() {
 
     assert_eq!("? ? ?? ?? ??? ??/ ??-", pb.cpp_trigraph());
 
-    assert_eq!("hel\0lo", pb.string_with_zero());
-    assert_eq!(b"wor\0ld", pb.bytes_with_zero());
-    assert_eq!("ab\0c", pb.string_piece_with_zero());
-    assert_eq!("12\03", pb.cord_with_zero());
+    assert_eq!("hel\x00lo", pb.string_with_zero());
+    assert_eq!(b"wor\x00ld", pb.bytes_with_zero());
+    assert_eq!("ab\x00c", pb.string_piece_with_zero());
+    assert_eq!("12\x003", pb.cord_with_zero());
     assert_eq!("${unknown}", pb.replacement_string());
 }

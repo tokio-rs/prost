@@ -84,10 +84,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     assert!(!bytes.is_empty());
     assert!(bytes.len() > 10 || bytes[bytes.len() - 1] < 0x80);
 
-    let mut b: u8;
-    let mut part0: u32;
-    b = unsafe { *bytes.get_unchecked(0) };
-    part0 = u32::from(b);
+    let mut b: u8 = unsafe { *bytes.get_unchecked(0) };
+    let mut part0: u32 = u32::from(b);
     if b < 0x80 {
         return Ok((u64::from(part0), 1));
     };
@@ -112,9 +110,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part0 -= 0x80 << 21;
     let value = u64::from(part0);
 
-    let mut part1: u32;
     b = unsafe { *bytes.get_unchecked(4) };
-    part1 = u32::from(b);
+    let mut part1: u32 = u32::from(b);
     if b < 0x80 {
         return Ok((value + (u64::from(part1) << 28), 5));
     };
@@ -139,9 +136,8 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
     part1 -= 0x80 << 21;
     let value = value + ((u64::from(part1)) << 28);
 
-    let mut part2: u32;
     b = unsafe { *bytes.get_unchecked(8) };
-    part2 = u32::from(b);
+    let mut part2: u32 = u32::from(b);
     if b < 0x80 {
         return Ok((value + (u64::from(part2) << 56), 9));
     };
@@ -194,6 +190,7 @@ where
 /// The context should be passed by value and can be freely cloned. When passing
 /// to a function which is decoding a nested object, then use `enter_recursion`.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "no-recursion-limit", derive(Default))]
 pub struct DecodeContext {
     /// How many times we can recurse in the current decode stack before we hit
     /// the recursion limit.
@@ -205,19 +202,13 @@ pub struct DecodeContext {
     recurse_count: u32,
 }
 
+#[cfg(not(feature = "no-recursion-limit"))]
 impl Default for DecodeContext {
-    #[cfg(not(feature = "no-recursion-limit"))]
     #[inline]
     fn default() -> DecodeContext {
         DecodeContext {
             recurse_count: crate::RECURSION_LIMIT,
         }
-    }
-
-    #[cfg(feature = "no-recursion-limit")]
-    #[inline]
-    fn default() -> DecodeContext {
-        DecodeContext {}
     }
 }
 
@@ -843,7 +834,7 @@ pub mod string {
             }
 
             let drop_guard = DropGuard(value.as_mut_vec());
-            bytes::merge(wire_type, drop_guard.0, buf, ctx)?;
+            bytes::merge_one_copy(wire_type, drop_guard.0, buf, ctx)?;
             match str::from_utf8(drop_guard.0) {
                 Ok(_) => {
                     // Success; do not clear the bytes.
@@ -990,7 +981,33 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
+        //
+        // This is intended for A and B both being Bytes so it is zero-copy.
+        // Some combinations of A and B types may cause a double-copy,
+        // in which case merge_one_copy() should be used instead.
         value.replace_with(buf.copy_to_bytes(len));
+        Ok(())
+    }
+
+    pub(super) fn merge_one_copy<A, B>(
+        wire_type: WireType,
+        value: &mut A,
+        buf: &mut B,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        A: BytesAdapter,
+        B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(DecodeError::new("buffer underflow"));
+        }
+        let len = len as usize;
+
+        // If we must copy, make sure to copy only once.
+        value.replace_with(buf.take(len));
         Ok(())
     }
 
