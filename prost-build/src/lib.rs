@@ -847,25 +847,32 @@ impl Config {
             )
         })?;
 
-        let requests: Vec<_> = file_descriptor_set.file.into_iter().map(|descriptor| {
-            (self.module(&descriptor), descriptor)
-        }).collect();
+        let requests: Vec<_> = file_descriptor_set
+            .file
+            .into_iter()
+            .map(|descriptor| (self.module(&descriptor), descriptor))
+            .collect();
 
-        let file_names: HashMap<Module, String> = requests.iter().map(|req| {
-            let mut file_name = if req.0.is_empty() {
-                self.default_package_filename.clone()
-            } else {
-                req.0.join(".")
-            };
+        let file_names: HashMap<Module, String> = requests
+            .iter()
+            .map(|req| {
+                let mut file_name = if req.0.is_empty() {
+                    self.default_package_filename.clone()
+                } else {
+                    req.0.join(".")
+                };
 
-            file_name.push_str(".rs");
+                file_name.push_str(".rs");
 
-            (req.0.clone(), file_name)
-        }).collect();
+                (req.0.clone(), file_name)
+            })
+            .collect();
 
         let modules = self.generate(requests)?;
         for (module, content) in &modules {
-            let file_name = file_names.get(module).expect("every module should have a filename");
+            let file_name = file_names
+                .get(module)
+                .expect("every module should have a filename");
             let output_path = target.join(file_name);
 
             let previous_content = fs::read(&output_path);
@@ -964,7 +971,10 @@ impl Config {
     /// This is generally used when control over the output should not be managed by Prost,
     /// such as in a flow for a `protoc` code generating plugin. When compiling as part of a
     /// `build.rs` file, instead use [`compile_protos()`].
-    pub fn generate(&mut self, requests: Vec<(Module, FileDescriptorProto)>) -> Result<HashMap<Module, String>> {
+    pub fn generate(
+        &mut self,
+        requests: Vec<(Module, FileDescriptorProto)>,
+    ) -> Result<HashMap<Module, String>> {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
