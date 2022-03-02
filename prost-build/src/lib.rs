@@ -847,13 +847,13 @@ impl Config {
             )
         })?;
 
-        let requests: Vec<_> = file_descriptor_set
+        let requests = file_descriptor_set
             .file
             .into_iter()
             .map(|descriptor| (self.module(&descriptor), descriptor))
-            .collect();
+            .collect::<Vec<_>>();
 
-        let file_names: HashMap<Module, String> = requests
+        let file_names = requests
             .iter()
             .map(|req| {
                 let mut file_name = if req.0.is_empty() {
@@ -866,7 +866,7 @@ impl Config {
 
                 (req.0.clone(), file_name)
             })
-            .collect();
+            .collect::<HashMap<Module, String>>();
 
         let modules = self.generate(requests)?;
         for (module, content) in &modules {
