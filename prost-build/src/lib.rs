@@ -123,6 +123,7 @@ use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
 use std::io::{Error, ErrorKind, Result, Write};
+use std::ops::RangeToInclusive;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -136,8 +137,6 @@ use crate::extern_paths::ExternPaths;
 use crate::ident::to_snake;
 use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
-
-type Module = Vec<String>;
 
 /// A service generator takes a service descriptor and generates Rust code.
 ///
@@ -850,21 +849,21 @@ impl Config {
         let requests = file_descriptor_set
             .file
             .into_iter()
-            .map(|descriptor| (self.module(&descriptor), descriptor))
+            .map(|descriptor| {
+                (
+                    Module::from_protobuf_package_name(descriptor.package()),
+                    descriptor,
+                )
+            })
             .collect::<Vec<_>>();
 
         let file_names = requests
             .iter()
             .map(|req| {
-                let mut file_name = if req.0.is_empty() {
-                    self.default_package_filename.clone()
-                } else {
-                    req.0.join(".")
-                };
-
-                file_name.push_str(".rs");
-
-                (req.0.clone(), file_name)
+                (
+                    req.0.clone(),
+                    req.0.to_file_name_or(&self.default_package_filename),
+                )
             })
             .collect::<HashMap<Module, String>>();
 
@@ -912,17 +911,17 @@ impl Config {
     ) -> Result<usize> {
         let mut written = 0;
         while !entries.is_empty() {
-            let modident = &entries[0][depth];
+            let modident = entries[0].part(depth);
             let matching: Vec<&Module> = entries
                 .iter()
-                .filter(|&v| &v[depth] == modident)
+                .filter(|&v| v.part(depth) == modident)
                 .copied()
                 .collect();
             {
                 // Will NLL sort this mess out?
                 let _temp = entries
                     .drain(..)
-                    .filter(|&v| &v[depth] != modident)
+                    .filter(|&v| v.part(depth) != modident)
                     .collect();
                 entries = _temp;
             }
@@ -939,7 +938,7 @@ impl Config {
             )?;
             written += subwritten;
             if subwritten != matching.len() {
-                let modname = matching[0][..=depth].join(".");
+                let modname = matching[0].to_partial_file_name(..=depth);
                 if basepath.is_some() {
                     self.write_line(
                         outfile,
@@ -1002,14 +1001,6 @@ impl Config {
 
         Ok(modules)
     }
-
-    fn module(&self, file: &FileDescriptorProto) -> Module {
-        file.package()
-            .split('.')
-            .filter(|s| !s.is_empty())
-            .map(to_snake)
-            .collect()
-    }
 }
 
 impl default::Default for Config {
@@ -1051,6 +1042,68 @@ impl fmt::Debug for Config {
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
             .finish()
+    }
+}
+
+/// A Rust module path for a Protobuf package.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Module {
+    components: Vec<String>,
+}
+
+impl Module {
+    /// Construct a module path from an iterator of parts.
+    pub fn from_parts<I: IntoIterator<Item = S>, S: Into<String>>(parts: I) -> Self {
+        Self {
+            components: parts.into_iter().map(|s| s.into()).collect(),
+        }
+    }
+
+    /// Construct a module path from a Protobuf package name.
+    ///
+    /// Constituent parts are automatically converted to snake case in order to follow
+    /// Rust module naming conventions.
+    pub fn from_protobuf_package_name(name: &str) -> Self {
+        Self {
+            components: name
+                .split('.')
+                .filter(|s| !s.is_empty())
+                .map(to_snake)
+                .collect(),
+        }
+    }
+
+    /// An iterator over the parts of the path
+    pub fn parts(&self) -> impl Iterator<Item = &str> {
+        self.components.iter().map(|s| s.as_str())
+    }
+
+    /// Format the module path into a filename for generated Rust code.
+    ///
+    /// If the module path is empty, `default` is used to provide the root of the filename.
+    pub fn to_file_name_or(&self, default: &str) -> String {
+        let mut root = if self.components.is_empty() {
+            default.to_owned()
+        } else {
+            self.components.join(".")
+        };
+
+        root.push_str(".rs");
+
+        root
+    }
+
+    /// The number of parts in the module's path.
+    pub fn len(&self) -> usize {
+        self.components.len()
+    }
+
+    fn to_partial_file_name(&self, range: RangeToInclusive<usize>) -> String {
+        self.components[range].join(".")
+    }
+
+    fn part(&self, idx: usize) -> &str {
+        self.components[idx].as_str()
     }
 }
 
