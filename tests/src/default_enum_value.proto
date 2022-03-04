@@ -1,4 +1,4 @@
-// From https://github.com/danburkert/prost/issues/118
+// From https://github.com/tokio-rs/prost/issues/118
 
 syntax = "proto2";
 

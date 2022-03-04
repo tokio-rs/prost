@@ -71,7 +71,7 @@ impl<'a> CodeGenerator<'a> {
 
         let mut code_gen = CodeGenerator {
             config,
-            package: file.package.unwrap_or_else(String::new),
+            package: file.package.unwrap_or_default(),
             source_info,
             syntax,
             message_graph,
