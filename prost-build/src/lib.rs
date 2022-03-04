@@ -1053,7 +1053,11 @@ pub struct Module {
 
 impl Module {
     /// Construct a module path from an iterator of parts.
-    pub fn from_parts<I: IntoIterator<Item = S>, S: Into<String>>(parts: I) -> Self {
+    pub fn from_parts<I>(parts: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<String>,
+    {
         Self {
             components: parts.into_iter().map(|s| s.into()).collect(),
         }
