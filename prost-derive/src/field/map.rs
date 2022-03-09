@@ -319,7 +319,7 @@ impl Field {
         };
         match &self.value_ty {
             ValueTy::Scalar(ty) => {
-                if let &scalar::Ty::Bytes(_) = ty {
+                if let scalar::Ty::Bytes(_) = *ty {
                     return quote! {
                         struct #wrapper_name<'a>(&'a dyn ::core::fmt::Debug);
                         impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
