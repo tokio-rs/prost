@@ -282,7 +282,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     // TODO(konradjniemiec): we need to default to not failing here,
     // and instead deriving the proto names to avoid breaking changes.
-    if variants.is_empty() || variants.len() != proto_names.len() {
+    if variants.is_empty() {
         panic!("Enumeration must have at least one variant");
     }
 
