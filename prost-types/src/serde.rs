@@ -150,6 +150,35 @@ pub fn is_default<T: Default + PartialEq>(t: &T) -> bool {
     t == &T::default()
 }
 
+pub mod empty {
+    struct EmptyVisitor;
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for EmptyVisitor {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid empty object")
+        }
+
+        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let _ = map;
+            Ok(())
+        }
+    }
+
+    pub fn serialize<S>(_: &(), serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let map = serializer.serialize_map(Some(0))?;
+        map.end()
+    }
+}
+
 pub mod vec {
     struct VecVisitor<'de, T>
     where
@@ -1682,6 +1711,19 @@ pub mod i64 {
     {
         deserializer.deserialize_any(I64Visitor)
     }
+
+    pub struct I64Serializer;
+
+    impl crate::serde::SerializeMethod for I64Serializer {
+        type Value = i64;
+        #[cfg(feature = "std")]
+        fn serialize<S>(value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(&value.to_string())
+        }
+    }
 }
 
 pub mod i64_opt {
@@ -1764,6 +1806,18 @@ pub mod i64_opt {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_any(I64Visitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &std::option::Option<i64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use crate::serde::SerializeMethod;
+        match value {
+            None => serializer.serialize_none(),
+            Some(double) => crate::serde::i64::I64Serializer::serialize(double, serializer),
+        }
     }
 }
 
@@ -2004,6 +2058,19 @@ pub mod u64 {
     {
         deserializer.deserialize_any(U64Visitor)
     }
+
+    pub struct U64Serializer;
+
+    impl crate::serde::SerializeMethod for U64Serializer {
+        type Value = u64;
+        #[cfg(feature = "std")]
+        fn serialize<S>(value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(&value.to_string())
+        }
+    }
 }
 
 pub mod u64_opt {
@@ -2079,6 +2146,19 @@ pub mod u64_opt {
     {
         deserializer.deserialize_any(U64Visitor)
     }
+
+        #[cfg(feature = "std")]
+        pub fn serialize<S>(value: &std::option::Option<u64>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            use crate::serde::SerializeMethod;
+            match value {
+                None => serializer.serialize_none(),
+                Some(double) => crate::serde::u64::U64Serializer::serialize(double, serializer),
+            }
+        }
+
 }
 
 pub mod f64 {
@@ -2109,7 +2189,7 @@ pub mod f64 {
         where
             E: serde::de::Error,
         {
-            Ok(value as f64)
+            Ok(value)
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
@@ -2190,7 +2270,7 @@ pub mod f64_opt {
         where
             E: serde::de::Error,
         {
-            Ok(Some(value as f64))
+            Ok(Some(value))
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
