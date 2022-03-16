@@ -120,7 +120,7 @@ impl<'a> CodeGenerator<'a> {
 
         let mut code_gen = CodeGenerator {
             config,
-            package: file.package.unwrap_or_else(String::new),
+            package: file.package.unwrap_or_default(),
             source_info,
             syntax,
             message_graph,
@@ -313,8 +313,8 @@ impl<'a> CodeGenerator<'a> {
     fn append_type_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         for attribute in self.config.type_attributes.get(fq_message_name) {
-            push_indent(&mut self.buf, self.depth);
-            self.buf.push_str(&attribute);
+            push_indent(self.buf, self.depth);
+            self.buf.push_str(attribute);
             self.buf.push('\n');
         }
     }
@@ -362,8 +362,8 @@ impl<'a> CodeGenerator<'a> {
             .field_attributes
             .get_field(fq_message_name, field_name)
         {
-            push_indent(&mut self.buf, self.depth);
-            self.buf.push_str(&attribute);
+            push_indent(self.buf, self.depth);
+            self.buf.push_str(attribute);
             self.buf.push('\n');
         }
     }
@@ -711,7 +711,7 @@ impl<'a> CodeGenerator<'a> {
                         .and_then(|ty| ty.split('.').last())
                         .unwrap();
 
-                    strip_enum_prefix(&to_upper_camel(&enum_type), &enum_value)
+                    strip_enum_prefix(&to_upper_camel(enum_type), &enum_value)
                 } else {
                     &enum_value
                 };
@@ -966,7 +966,7 @@ impl<'a> CodeGenerator<'a> {
             self.config.disable_comments.get(fq_name).next().is_none()
         };
         if append_doc {
-            Comments::from_location(self.location()).append_with_indent(self.depth, &mut self.buf)
+            Comments::from_location(self.location()).append_with_indent(self.depth, self.buf)
         }
     }
 
@@ -1013,7 +1013,7 @@ impl<'a> CodeGenerator<'a> {
 
             self.path.push(idx as i32);
             let stripped_prefix = if self.config.strip_enum_prefix {
-                Some(to_upper_camel(&enum_name))
+                Some(to_upper_camel(enum_name))
             } else {
                 None
             };
@@ -1034,7 +1034,7 @@ impl<'a> CodeGenerator<'a> {
         prefix_to_strip: Option<String>,
     ) {
         self.append_doc(fq_enum_name, Some(value.name()));
-        self.append_field_attributes(fq_enum_name, &value.name());
+        self.append_field_attributes(fq_enum_name, value.name());
         self.push_indent();
         self.buf
             .push_str(&format!(r#"#[prost(enum_field_name="{}")]"#, value.name()));
@@ -1102,12 +1102,12 @@ impl<'a> CodeGenerator<'a> {
         };
 
         if let Some(service_generator) = self.config.service_generator.as_mut() {
-            service_generator.generate(service, &mut self.buf)
+            service_generator.generate(service, self.buf)
         }
     }
 
     fn push_indent(&mut self) {
-        push_indent(&mut self.buf, self.depth);
+        push_indent(self.buf, self.depth);
     }
 
     fn push_mod(&mut self, module: &str) {
@@ -1355,7 +1355,7 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     dst.push(octal);
                 }
                 b'x' | b'X' => {
-                    if p + 2 > len {
+                    if p + 3 > len {
                         panic!(
                             "invalid c-escaped default binary value ({}): incomplete hex value",
                             s
@@ -1464,6 +1464,12 @@ mod tests {
             &b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"[..],
             &unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe"#)[..]
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "incomplete hex value")]
+    fn test_unescape_c_escape_string_incomplete_hex_value() {
+        unescape_c_escape_string(r#"\x1"#);
     }
 
     #[test]

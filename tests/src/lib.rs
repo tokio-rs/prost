@@ -106,7 +106,6 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
-use alloc::format;
 use alloc::vec::Vec;
 
 use bytes::Buf;
