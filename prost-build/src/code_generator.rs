@@ -555,14 +555,14 @@ impl<'a> CodeGenerator<'a> {
         optional: bool,
         repeated: bool,
         json_name: &str,
-        is_oneof_field: bool,
+        oneof: bool,
     ) {
         if let None = self.config.json_mapping.get_first(fq_message_name) {
             return;
         }
         self.append_shared_json_field_attributes(field_name, json_name);
 
-        if !is_oneof_field {
+        if !oneof {
             push_indent(&mut self.buf, self.depth);
             self.buf
                 .push_str(r#"#[serde(skip_serializing_if = "::prost_types::serde::is_default")]"#);
@@ -898,7 +898,6 @@ impl<'a> CodeGenerator<'a> {
                 field.number()
             ));
             self.append_field_attributes(&oneof_name, field.name());
-
             let ty = self.resolve_type(&field, fq_message_name);
             let ty_or_enum = match type_ {
                 Type::Enum => "enum".to_string(),
@@ -915,7 +914,6 @@ impl<'a> CodeGenerator<'a> {
                 field.json_name(),
                 true,
             );
-
             self.push_indent();
 
             let boxed = (type_ == Type::Message || type_ == Type::Group)
