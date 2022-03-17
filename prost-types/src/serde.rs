@@ -160,12 +160,16 @@ pub mod empty {
             formatter.write_str("a valid empty object")
         }
 
-        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: serde::de::MapAccess<'de>,
         {
-            let _ = map;
-            Ok(())
+            let tmp: std::option::Option<((), ())> = map.next_entry()?;
+            if tmp.is_some() {
+                Err(::serde::de::Error::custom("this is a message, not empty"))
+            } else {
+                Ok(())
+            }
         }
     }
 
@@ -196,12 +200,16 @@ pub mod empty_opt {
             formatter.write_str("a valid empty object")
         }
 
-        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: serde::de::MapAccess<'de>,
         {
-            let _ = map;
-            Ok(Some(()))
+            let tmp: std::option::Option<((), ())> = map.next_entry()?;
+            if tmp.is_some() {
+                Err(::serde::de::Error::custom("this is a message, not empty"))
+            } else {
+                Ok(Some(()))
+            }
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
