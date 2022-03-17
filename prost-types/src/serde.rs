@@ -169,6 +169,13 @@ pub mod empty {
         }
     }
 
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<(), D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(EmptyVisitor)
+    }
+
     pub fn serialize<S>(_: &(), serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -176,6 +183,62 @@ pub mod empty {
         use serde::ser::SerializeMap;
         let map = serializer.serialize_map(Some(0))?;
         map.end()
+    }
+}
+
+pub mod empty_opt {
+    struct EmptyVisitor;
+    #[cfg(feature = "std")]
+    impl<'de> serde::de::Visitor<'de> for EmptyVisitor {
+        type Value = std::option::Option<()>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a valid empty object")
+        }
+
+        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let _ = map;
+            Ok(Some(()))
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(Some(()))
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<std::option::Option<()>, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(EmptyVisitor)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(opt: &std::option::Option<()>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        if opt.is_some() {
+            let map = serializer.serialize_map(Some(0))?;
+            map.end()
+        } else {
+            serializer.serialize_none()
+        }
     }
 }
 
@@ -2147,18 +2210,17 @@ pub mod u64_opt {
         deserializer.deserialize_any(U64Visitor)
     }
 
-        #[cfg(feature = "std")]
-        pub fn serialize<S>(value: &std::option::Option<u64>, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            use crate::serde::SerializeMethod;
-            match value {
-                None => serializer.serialize_none(),
-                Some(double) => crate::serde::u64::U64Serializer::serialize(double, serializer),
-            }
+    #[cfg(feature = "std")]
+    pub fn serialize<S>(value: &std::option::Option<u64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use crate::serde::SerializeMethod;
+        match value {
+            None => serializer.serialize_none(),
+            Some(double) => crate::serde::u64::U64Serializer::serialize(double, serializer),
         }
-
+    }
 }
 
 pub mod f64 {

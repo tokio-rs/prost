@@ -60,6 +60,8 @@ impl<'a> CodeGenerator<'a> {
         map_key: bool,
     ) -> (Option<String>, Option<String>) {
         match (ty, optional, collection, map_key) {
+            ("()", false, false, _) => (Some("::prost_types::serde::empty::serialize".to_string()), Some("::prost_types::serde::empty::deserialize".to_string())),
+            ("()", true, false, _) => (Some("::prost_types::serde::empty_opt::serialize".to_string()), Some("::prost_types::serde::empty_opt::deserialize".to_string())),
             ("bool", false, false, _) =>  (None, Some("::prost_types::serde::bool::deserialize".to_string())),
             ("bool", true, false, _) =>  (None, Some("::prost_types::serde::bool_opt::deserialize".to_string())),
             ("bool", _, true, false) =>  (None, Some("::prost_types::serde::bool::BoolVisitor".to_string())),
