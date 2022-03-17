@@ -425,16 +425,20 @@ pub mod enum_serde {
                 )),
             }
         }
+
         fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
             match T::try_from(value as i32) {
                 Ok(en) => Ok(en.into()),
-                Err(_) => Err(serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Signed(value as i64),
-                    &self,
-                )),
+                // There is a test in the conformance tests:
+                // Required.Proto3.JsonInput.EnumFieldUnknownValue.Validator
+                // That implies this should return the default value, so we
+                // will. This also helps when parsing a oneof, since this means
+                // we won't fail to deserialize when we have an out of bounds
+                // enum value.
+                Err(_) => Ok(T::default().into()),
             }
         }
 
@@ -562,10 +566,13 @@ pub mod enum_opt {
         {
             match T::try_from(value as i32) {
                 Ok(en) => Ok(Some(en.into())),
-                Err(_) => Err(serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Signed(value as i64),
-                    &self,
-                )),
+                // There is a test in the conformance tests:
+                // Required.Proto3.JsonInput.EnumFieldUnknownValue.Validator
+                // That implies this should return the default value, so we
+                // will. This also helps when parsing a oneof, since this means
+                // we won't fail to deserialize when we have an out of bounds
+                // enum value.
+                Err(_) => Ok(Some(T::default().into())),
             }
         }
 
