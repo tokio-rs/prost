@@ -32,6 +32,7 @@ impl Duration {
     /// Normalizes the duration to a canonical format.
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
+    ///
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L79-L100
     pub fn normalize(&mut self) {
         // Make sure nanos is in the range.
@@ -125,6 +126,7 @@ impl Timestamp {
     /// Normalizes the timestamp to a canonical format.
     ///
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
+    ///
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
     #[cfg(feature = "std")]
     pub fn normalize(&mut self) {
