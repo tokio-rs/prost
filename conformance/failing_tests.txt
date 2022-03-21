@@ -11,11 +11,6 @@ Recommended.Proto3.JsonInput.MapFieldValueIsNull
 Recommended.Proto3.JsonInput.NullValueInOtherOneofNewFormat.Validator
 Recommended.Proto3.JsonInput.NullValueInOtherOneofOldFormat.Validator
 Recommended.Proto3.JsonInput.RepeatedFieldPrimitiveElementIsNull
-Recommended.Proto3.JsonInput.TimestampHas3FractionalDigits.Validator
-Recommended.Proto3.JsonInput.TimestampHas6FractionalDigits.Validator
-Recommended.Proto3.JsonInput.TimestampHas9FractionalDigits.Validator
-Recommended.Proto3.JsonInput.TimestampHasZeroFractionalDigit.Validator
-Recommended.Proto3.JsonInput.TimestampZeroNormalized.Validator
 Required.DurationProtoInputTooLarge.JsonOutput
 Required.DurationProtoInputTooSmall.JsonOutput
 Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
@@ -69,10 +64,11 @@ Required.Proto3.JsonInput.Struct.JsonOutput
 Required.Proto3.JsonInput.Struct.ProtobufOutput
 Required.Proto3.JsonInput.StructWithEmptyListValue.JsonOutput
 Required.Proto3.JsonInput.StructWithEmptyListValue.ProtobufOutput
-Required.Proto3.JsonInput.TimestampMinValue.JsonOutput
-Required.Proto3.JsonInput.TimestampMinValue.ProtobufOutput
-Required.Proto3.JsonInput.TimestampRepeatedValue.JsonOutput
-Required.Proto3.JsonInput.TimestampRepeatedValue.ProtobufOutput
+Required.Proto3.JsonInput.TimestampJsonInputLowercaseT
+Required.Proto3.JsonInput.TimestampJsonInputLowercaseZ
+Required.Proto3.JsonInput.TimestampJsonInputMissingT
+Required.Proto3.JsonInput.TimestampJsonInputMissingZ
+Required.Proto3.JsonInput.TimestampJsonInputTooSmall
 Required.Proto3.JsonInput.ValueAcceptBool.JsonOutput
 Required.Proto3.JsonInput.ValueAcceptBool.ProtobufOutput
 Required.Proto3.JsonInput.ValueAcceptFloat.JsonOutput

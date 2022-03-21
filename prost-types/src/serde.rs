@@ -4,14 +4,7 @@ impl ::serde::Serialize for crate::Timestamp {
     where
         S: ::serde::Serializer,
     {
-        use std::convert::TryInto;
-        serializer.serialize_str(
-            &chrono::DateTime::<chrono::Utc>::from_utc(
-                chrono::NaiveDateTime::from_timestamp(self.seconds, self.nanos.try_into().unwrap()),
-                chrono::Utc,
-            )
-            .to_rfc3339(),
-        )
+        serializer.serialize_str(&crate::datetime::DateTime::from(self.clone()).to_string())
     }
 }
 
@@ -29,19 +22,12 @@ impl<'de> ::serde::de::Visitor<'de> for TimestampVisitor {
     where
         E: ::serde::de::Error,
     {
-        use std::convert::TryInto;
-        let dt = chrono::DateTime::parse_from_rfc3339(value)
-            .map_err(::serde::de::Error::custom)?
-            .naive_utc();
-        Ok(crate::Timestamp::from(
-            std::time::UNIX_EPOCH
-                + std::time::Duration::new(
-                    dt.timestamp()
-                        .try_into()
-                        .map_err(::serde::de::Error::custom)?,
-                    dt.timestamp_subsec_nanos(),
-                ),
-        ))
+        crate::datetime::parse_timestamp(value.as_bytes()).ok_or_else( || {
+            serde::de::Error::invalid_value(
+                serde::de::Unexpected::Str(value),
+                &self,
+            )
+        })
     }
 }
 
