@@ -1,72 +1,29 @@
 //! Finds the appropriate `protoc` binary and Protobuf include directory for this host, and outputs
 //! build directives so that the main `prost-build` crate can use them.
 //!
-//! The following locations are checked for `protoc` in decreasing priority:
+//! This build script attempts to find `protoc` in a few ways:
 //!
-//!     1. The `PROTOC` environment variable.
-//!     2. The bundled `protoc`.
-//!     3. The `protoc` on the `PATH`.
-//!
-//! If no `protoc` binary is available in these locations, the build fails.
+//!     1. If `PROTOC_NO_VENDOR` is enabled, it will check the `PROTOC` environment variable
+//!         then check the `PATH` for a `protoc` or `protoc.exe`.
+//!     2. If the `vendored` feature flag is enabled or `protoc` can't be found via the environment
+//!         variable or in the `PATH` then `prost-build` will attempt to build `protoc` from the
+//!         bundled source code.
+//!     3. Otherwise, it will attempt to execute from the `PATH` and fail if it does not exist.
 //!
 //! The following locations are checked for the Protobuf include directory in decreasing priority:
 //!
 //!     1. The `PROTOC_INCLUDE` environment variable.
 //!     2. The bundled Protobuf include directory.
+//!
 
-use std::env;
+use cfg_if::cfg_if;
 use std::path::PathBuf;
+use std::{env, fs};
+use which::which;
 
 /// Returns the path to the location of the bundled Protobuf artifacts.
 fn bundle_path() -> PathBuf {
-    env::current_dir()
-        .unwrap()
-        .join("third-party")
-        .join("protobuf")
-}
-
-/// Returns the path to the `protoc` pointed to by the `PROTOC` environment variable, if it is set.
-fn env_protoc() -> Option<PathBuf> {
-    let protoc = match env::var_os("PROTOC") {
-        Some(path) => PathBuf::from(path),
-        None => return None,
-    };
-
-    Some(protoc)
-}
-
-/// We can only use a bundled protoc if the interpreter necessary to load the binary is available.
-///
-/// The interpreter is specific to the binary and can be queried via e.g. `patchelf
-/// --print-interpreter`, or via readelf, or similar.
-fn is_interpreter(path: &'static str) -> bool {
-    // Here we'd check for it being executable and other things, but for now it being present is
-    // probably good enough.
-    std::fs::metadata(path).is_ok()
-}
-
-/// Returns the path to the bundled `protoc`, if it is available for the host platform.
-fn bundled_protoc() -> Option<PathBuf> {
-    let protoc_bin_name = match (env::consts::OS, env::consts::ARCH) {
-        ("linux", "x86") if is_interpreter("/lib/ld-linux.so.2") => "protoc-linux-x86_32",
-        ("linux", "x86_64") if is_interpreter("/lib64/ld-linux-x86-64.so.2") => {
-            "protoc-linux-x86_64"
-        }
-        ("linux", "aarch64") if is_interpreter("/lib/ld-linux-aarch64.so.1") => {
-            "protoc-linux-aarch_64"
-        }
-        ("macos", "x86_64") => "protoc-osx-x86_64",
-        ("macos", "aarch64") => "protoc-osx-aarch64",
-        ("windows", _) => "protoc-win32.exe",
-        _ => return None,
-    };
-
-    Some(bundle_path().join(protoc_bin_name))
-}
-
-/// Returns the path to the `protoc` included on the `PATH`, if it exists.
-fn path_protoc() -> Option<PathBuf> {
-    which::which("protoc").ok()
+    env::current_dir().unwrap().join("third-party")
 }
 
 /// Returns the path to the Protobuf include directory pointed to by the `PROTOC_INCLUDE`
@@ -98,14 +55,52 @@ fn bundled_protoc_include() -> PathBuf {
     bundle_path().join("include")
 }
 
+/// Check for `protoc` via the `PROTOC` env var or in the `PATH`.
+fn path_protoc() -> Option<PathBuf> {
+    env::var_os("PROTOC")
+        .map(PathBuf::from)
+        .or_else(|| which("protoc").ok())
+}
+
+/// Returns true if the vendored flag is enabled.
+fn vendored() -> bool {
+    cfg_if! {
+        if #[cfg(feature = "vendored")] {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+/// Compile `protoc` via `cmake`.
+fn compile() -> Option<PathBuf> {
+    let protobuf_src = bundle_path().join("protobuf").join("cmake");
+
+    let dst = cmake::Config::new(protobuf_src).build();
+
+    Some(dst.join("bin").join("protoc"))
+}
+
+/// Try to find a `protoc` through a few methods.
+///
+/// Check module docs for more info.
+fn protoc() -> Option<PathBuf> {
+    if env::var_os("PROTOC_NO_VENDOR").is_some() {
+        path_protoc()
+    } else if vendored() {
+        compile()
+    } else {
+        path_protoc().or_else(compile)
+    }
+}
+
 fn main() {
-    let protoc = env_protoc()
-        .or_else(bundled_protoc)
-        .or_else(path_protoc)
-        .expect(
-            "Failed to find the protoc binary. The PROTOC environment variable is not set, \
-             there is no bundled protoc for this platform, and protoc is not in the PATH",
-        );
+    // let protoc = env_protoc().or_else(path_protoc).expect(
+    //     "Failed to find the protoc binary. The PROTOC environment variable is not set, \
+    //          there is no bundled protoc for this platform, and protoc is not in the PATH",
+    // );
+    let protoc = protoc().expect("Failed to find or build the protoc binary");
 
     let protoc_include = env_protoc_include().unwrap_or_else(bundled_protoc_include);
 
