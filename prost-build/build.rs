@@ -17,8 +17,8 @@
 //!
 
 use cfg_if::cfg_if;
+use std::env;
 use std::path::PathBuf;
-use std::{env, fs};
 use which::which;
 
 /// Returns the path to the location of the bundled Protobuf artifacts.
@@ -76,6 +76,8 @@ fn vendored() -> bool {
 /// Compile `protoc` via `cmake`.
 fn compile() -> Option<PathBuf> {
     let protobuf_src = bundle_path().join("protobuf").join("cmake");
+
+    println!("cargo:rerun-if-changed={}", protobuf_src.display());
 
     let dst = cmake::Config::new(protobuf_src).build();
 
