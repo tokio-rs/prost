@@ -322,7 +322,12 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_json_message_attributes(&mut self, fq_message_name: &str) {
-        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_some()
+        {
             self.push_indent();
             self.buf
                 .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
@@ -337,7 +342,12 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_json_oneof_enum_attributes(&mut self, fq_message_name: &str) {
-        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_some()
+        {
             self.push_indent();
             self.buf
                 .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
@@ -350,7 +360,12 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_json_oneof_field_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        if let Some(_) = self.config.json_mapping.get_first(fq_message_name) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_some()
+        {
             self.push_indent();
             self.buf.push_str("#[serde(flatten)]");
             self.buf.push('\n');
@@ -373,19 +388,20 @@ impl<'a> CodeGenerator<'a> {
     // Shared fields between field and map fields.
     fn append_shared_json_field_attributes(&mut self, field_name: &str, json_name: &str) {
         // If there is a json name specified, add it.
-        if json_name.len() > 0 {
-            push_indent(&mut self.buf, self.depth);
+        if !json_name.is_empty() {
+            push_indent(self.buf, self.depth);
             self.buf
                 .push_str(&format!(r#"#[serde(rename = "{}")]"#, json_name,));
             self.buf.push('\n');
         }
         // Always alias to the field name for deserializing.
-        push_indent(&mut self.buf, self.depth);
+        push_indent(self.buf, self.depth);
         self.buf
             .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
         self.buf.push('\n');
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn append_json_map_field_attributes(
         &mut self,
         fq_message_name: &str,
@@ -397,13 +413,18 @@ impl<'a> CodeGenerator<'a> {
         map_type: &str,
         json_name: &str,
     ) {
-        if let None = self.config.json_mapping.get_first(fq_message_name) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_none()
+        {
             return;
         }
         self.append_shared_json_field_attributes(field_name, json_name);
 
         // Use is_empty instead of is_default to avoid allocations.
-        push_indent(&mut self.buf, self.depth);
+        push_indent(self.buf, self.depth);
         self.buf.push_str(&format!(
             r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
             map_type
@@ -415,14 +436,14 @@ impl<'a> CodeGenerator<'a> {
         let (value_se_opt, value_de_opt) =
             self.get_custom_json_type_mappers(value_ty, value_type_name, false, true, false);
 
-        push_indent(&mut self.buf, self.depth);
+        push_indent(self.buf, self.depth);
         match (key_se_opt, key_de_opt, value_se_opt, value_de_opt, map_type) {
             (Some(key_se), Some(key_de), Some(value_se), Some(value_de), "::std::collections::HashMap") => {
                 self.buf.push_str(
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom_to_custom::serialize::<_, {}, {}>")]"#, key_se, value_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
                 );
@@ -436,7 +457,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom::serialize::<_, {}, _>")]"#, key_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
                 );
@@ -446,7 +467,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom::serialize::<_, {}, _>")]"#, key_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom::deserialize::<_, {}, _>")]"#, key_de)
                 );
@@ -460,7 +481,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom_value::serialize::<_, _, {}>")]"#, value_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
                 );
@@ -470,7 +491,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom_value::serialize::<_, _, {}>")]"#, value_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_value::deserialize::<_, _, {}>")]"#, value_de)
                 );
@@ -481,7 +502,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom_to_custom::serialize::<_, {}, {}>")]"#, key_se, value_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
                 );
@@ -495,7 +516,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom::serialize::<_, {}, _>")]"#, key_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
                 );
@@ -505,7 +526,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom::serialize::<_, {}, _>")]"#, key_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom::deserialize::<_, {}, _>")]"#, key_de)
                 );
@@ -519,7 +540,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom_value::serialize::<_, _, {}>")]"#, value_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
                 );
@@ -530,7 +551,7 @@ impl<'a> CodeGenerator<'a> {
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom_value::serialize::<_, _, {}>")]"#, value_se)
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_value::deserialize::<_, _, {}>")]"#, value_de)
                 );
@@ -548,6 +569,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push('\n');
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn append_json_field_attributes(
         &mut self,
         fq_message_name: &str,
@@ -559,13 +581,18 @@ impl<'a> CodeGenerator<'a> {
         json_name: &str,
         oneof: bool,
     ) {
-        if let None = self.config.json_mapping.get_first(fq_message_name) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_none()
+        {
             return;
         }
         self.append_shared_json_field_attributes(field_name, json_name);
 
         if !oneof {
-            push_indent(&mut self.buf, self.depth);
+            push_indent(self.buf, self.depth);
             self.buf
                 .push_str(r#"#[serde(skip_serializing_if = "::prost_types::serde::is_default")]"#);
             self.buf.push('\n');
@@ -577,42 +604,42 @@ impl<'a> CodeGenerator<'a> {
             repeated,
         ) {
             ((Some(se), Some(de)), false) => {
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf
                     .push_str(&format!(r#"#[serde(serialize_with = "{}")]"#, se));
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf
                     .push_str(&format!(r#"#[serde(deserialize_with = "{}")]"#, de));
                 self.buf.push('\n');
             }
             ((None, Some(de)), false) => {
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf
                     .push_str(&format!(r#"#[serde(deserialize_with = "{}")]"#, de));
                 self.buf.push('\n');
             }
             ((Some(se), Some(de)), true) => {
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(serialize_with = "::prost_types::serde::repeated::serialize::<_, {}>")]"#, se),
                 );
                 self.buf.push('\n');
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::repeated::deserialize::<_, {}>")]"#, de),
                 );
                 self.buf.push('\n');
             }
             ((None, Some(de)), true) => {
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     &format!(r#"#[serde(deserialize_with = "::prost_types::serde::repeated::deserialize::<_, {}>")]"#, de),
                 );
                 self.buf.push('\n');
             }
             (_, true) => {
-                push_indent(&mut self.buf, self.depth);
+                push_indent(self.buf, self.depth);
                 self.buf.push_str(
                     r#"#[serde(deserialize_with = "::prost_types::serde::vec::deserialize")]"#,
                 );
@@ -1040,7 +1067,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf
             .push_str(&format!(r#"#[prost(enum_field_name="{}")]"#, value.name()));
-        self.buf.push_str("\n");
+        self.buf.push('\n');
         self.push_indent();
         let name = to_upper_camel(value.name());
         let name_unprefixed = match prefix_to_strip {

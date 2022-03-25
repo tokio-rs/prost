@@ -29,3 +29,4 @@ lexical = { version = "6", default-features = false, features = ["parse-integers
 
 [dev-dependencies]
 proptest = "1"
+serde_json = "1"

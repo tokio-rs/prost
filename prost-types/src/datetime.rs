@@ -68,7 +68,7 @@ impl DateTime {
                 // Format subseconds to either nothing, millis, micros, or nanos.
                 let nanos = self.inner.nanos;
                 let subsec = if nanos == 0 {
-                    format!("")
+                    String::new()
                 } else if nanos % 1_000_000 == 0 {
                     format!(".{:03}", nanos / 1_000_000)
                 } else if nanos % 1_000 == 0 {
@@ -200,7 +200,6 @@ fn days_in_month(year: i64, month: u8) -> u8 {
     DAYS_IN_MONTH[usize::from(month - 1)] + u8::from(is_leap && month == 2)
 }
 
-
 macro_rules! ensure {
     ($expr:expr) => {{
         if !$expr {
@@ -243,7 +242,6 @@ fn parse_date(b: &[u8]) -> Option<(i64, u8, u8, &[u8])> {
     let (day, b) = parse_two_digit_numeric(b)?;
     Some((year, month, day, b))
 }
-
 
 /// Parses a time in RFC 3339 format from `b`, returning the hour, minute, second, and nanos.
 ///
@@ -524,11 +522,196 @@ pub(crate) fn parse_timestamp(b: &[u8]) -> Option<crate::Timestamp> {
     Some(crate::Timestamp { seconds, nanos })
 }
 
-
 impl From<DateTime> for crate::Timestamp {
     fn from(date_time: DateTime) -> crate::Timestamp {
         let seconds = date_time_to_seconds(&date_time);
         let nanos = date_time.nanos;
-        crate::Timestamp { seconds, nanos: nanos as i32 }
+        crate::Timestamp {
+            seconds,
+            nanos: nanos as i32,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Timestamp;
+
+    #[test]
+    fn test_min_max() {
+        assert_eq!(
+            DateTime::MIN,
+            DateTime::from(Timestamp {
+                seconds: i64::MIN,
+                nanos: 0
+            }),
+        );
+        assert_eq!(
+            DateTime::MAX,
+            DateTime::from(Timestamp {
+                seconds: i64::MAX,
+                nanos: 999_999_999
+            }),
+        );
+    }
+
+    #[test]
+    fn test_datetime_from_timestamp() {
+        let case = |expected: &str, secs: i64, nanos: i32| {
+            let timestamp = Timestamp {
+                seconds: secs,
+                nanos,
+            };
+            assert_eq!(
+                expected,
+                format!("{}", DateTime::from(timestamp.clone())),
+                "timestamp: {:?}",
+                timestamp
+            );
+        };
+
+        // Mostly generated with:
+        //  - date -jur <secs> +"%Y-%m-%dT%H:%M:%S.000000000Z"
+        //  - http://unixtimestamp.50x.eu/
+
+        case("1970-01-01T00:00:00Z", 0, 0);
+
+        case("1970-01-01T00:00:00.000000001Z", 0, 1);
+        case("1970-01-01T00:00:00.123450Z", 0, 123_450_000);
+        case("1970-01-01T00:00:00.050Z", 0, 50_000_000);
+        case("1970-01-01T00:00:01.000000001Z", 1, 1);
+        case("1970-01-01T00:01:01.000000001Z", 60 + 1, 1);
+        case("1970-01-01T01:01:01.000000001Z", 60 * 60 + 60 + 1, 1);
+        case(
+            "1970-01-02T01:01:01.000000001Z",
+            24 * 60 * 60 + 60 * 60 + 60 + 1,
+            1,
+        );
+
+        case("1969-12-31T23:59:59Z", -1, 0);
+        case("1969-12-31T23:59:59.000001Z", -1, 1_000);
+        case("1969-12-31T23:59:59.500Z", -1, 500_000_000);
+        case("1969-12-31T23:58:59.000001Z", -60 - 1, 1_000);
+        case("1969-12-31T22:58:59.000001Z", -60 * 60 - 60 - 1, 1_000);
+        case(
+            "1969-12-30T22:58:59.000000001Z",
+            -24 * 60 * 60 - 60 * 60 - 60 - 1,
+            1,
+        );
+
+        case("2038-01-19T03:14:07Z", i32::MAX as i64, 0);
+        case("2038-01-19T03:14:08Z", i32::MAX as i64 + 1, 0);
+        case("1901-12-13T20:45:52Z", i32::MIN as i64, 0);
+        case("1901-12-13T20:45:51Z", i32::MIN as i64 - 1, 0);
+        case("+292277026596-12-04T15:30:07Z", i64::MAX, 0);
+        case("+292277026596-12-04T15:30:06Z", i64::MAX - 1, 0);
+        case("-292277022657-01-27T08:29:53Z", i64::MIN + 1, 0);
+
+        case("1900-01-01T00:00:00Z", -2_208_988_800, 0);
+        case("1899-12-31T23:59:59Z", -2_208_988_801, 0);
+        case("0000-01-01T00:00:00Z", -62_167_219_200, 0);
+        case("-0001-12-31T23:59:59Z", -62_167_219_201, 0);
+
+        case("1234-05-06T07:08:09Z", -23_215_049_511, 0);
+        case("-1234-05-06T07:08:09Z", -101_097_651_111, 0);
+        case("2345-06-07T08:09:01Z", 11_847_456_541, 0);
+        case("-2345-06-07T08:09:01Z", -136_154_620_259, 0);
+    }
+
+    #[test]
+    fn test_parse_timestamp() {
+        // RFC 3339 Section 5.8 Examples
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1985-04-12T23:20:50.52Z\"").unwrap(),
+            Timestamp::date_time_nanos(1985, 4, 12, 23, 20, 50, 520_000_000),
+        );
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1996-12-19T16:39:57-08:00\"").unwrap(),
+            Timestamp::date_time(1996, 12, 20, 0, 39, 57),
+        );
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1996-12-19T16:39:57-08:00\"").unwrap(),
+            Timestamp::date_time(1996, 12, 20, 0, 39, 57),
+        );
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1990-12-31T23:59:60Z\"").unwrap(),
+            Timestamp::date_time(1990, 12, 31, 23, 59, 59),
+        );
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1990-12-31T15:59:60-08:00\"").unwrap(),
+            Timestamp::date_time(1990, 12, 31, 23, 59, 59),
+        );
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1937-01-01T12:00:27.87+00:20\"").unwrap(),
+            Timestamp::date_time_nanos(1937, 1, 1, 11, 40, 27, 870_000_000),
+        );
+
+        // Date
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1937-01-01\"").unwrap(),
+            Timestamp::date(1937, 1, 1),
+        );
+
+        // Negative year
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"-0008-01-01\"").unwrap(),
+            Timestamp::date(-8, 1, 1),
+        );
+
+        // Plus year
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"+19370-01-01\"").unwrap(),
+            Timestamp::date(19370, 1, 1),
+        );
+
+        // Full nanos
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"2020-02-03T01:02:03.123456789Z\"").unwrap(),
+            Timestamp::date_time_nanos(2020, 2, 3, 1, 2, 3, 123_456_789),
+        );
+
+        // Leap day
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"2020-02-29T01:02:03.00Z\"").unwrap(),
+            Timestamp::from(DateTime {
+                year: 2020,
+                month: 2,
+                day: 29,
+                hour: 1,
+                minute: 2,
+                second: 3,
+                nanos: 0,
+            }),
+        );
+
+        // Test extensions to RFC 3339.
+        // ' ' instead of 'T' as date/time separator.
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1985-04-12 23:20:50.52Z\"").unwrap(),
+            Timestamp::date_time_nanos(1985, 4, 12, 23, 20, 50, 520_000_000),
+        );
+
+        // No time zone specified.
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1985-04-12T23:20:50.52\"").unwrap(),
+            Timestamp::date_time_nanos(1985, 4, 12, 23, 20, 50, 520_000_000),
+        );
+
+        // Offset without minutes specified.
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"1996-12-19T16:39:57-08\"").unwrap(),
+            Timestamp::date_time(1996, 12, 20, 0, 39, 57),
+        );
+
+        // Snowflake stage style.
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"2015-09-12 00:47:19.591 Z\"").unwrap(),
+            Timestamp::date_time_nanos(2015, 9, 12, 0, 47, 19, 591_000_000),
+        );
+        assert_eq!(
+            serde_json::from_str::<Timestamp>("\"2020-06-15 00:01:02.123 +0800\"").unwrap(),
+            Timestamp::date_time_nanos(2020, 6, 14, 16, 1, 2, 123_000_000),
+        );
     }
 }

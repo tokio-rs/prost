@@ -22,11 +22,8 @@ impl<'de> ::serde::de::Visitor<'de> for TimestampVisitor {
     where
         E: ::serde::de::Error,
     {
-        crate::datetime::parse_timestamp(value.as_bytes()).ok_or_else( || {
-            serde::de::Error::invalid_value(
-                serde::de::Unexpected::Str(value),
-                &self,
-            )
+        crate::datetime::parse_timestamp(value.as_bytes()).ok_or_else(|| {
+            serde::de::Error::invalid_value(serde::de::Unexpected::Str(value), &self)
         })
     }
 }
@@ -341,7 +338,7 @@ pub mod repeated {
     }
 
     pub fn serialize<S, F>(
-        value: &Vec<<F as crate::serde::SerializeMethod>::Value>,
+        value: &[<F as crate::serde::SerializeMethod>::Value],
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -378,9 +375,9 @@ pub mod enum_serde {
             + Default,
     {
         fn new() -> Self {
-            return Self {
+            Self {
                 _type: &std::marker::PhantomData,
-            };
+            }
         }
     }
 
@@ -1327,7 +1324,7 @@ pub mod string {
         where
             E: serde::de::Error,
         {
-            return Ok(value.to_string());
+            Ok(value.to_string())
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -1362,7 +1359,7 @@ pub mod string_opt {
         where
             E: serde::de::Error,
         {
-            return Ok(Some(value.to_string()));
+            Ok(Some(value.to_string()))
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -1396,7 +1393,7 @@ pub mod bool {
 
     impl crate::serde::HasConstructor for BoolVisitor {
         fn new() -> Self {
-            return Self {};
+            Self {}
         }
     }
 
@@ -1412,7 +1409,7 @@ pub mod bool {
         where
             E: serde::de::Error,
         {
-            return Ok(value);
+            Ok(value)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -1436,7 +1433,7 @@ pub mod bool_map_key {
 
     impl crate::serde::HasConstructor for BoolVisitor {
         fn new() -> Self {
-            return Self {};
+            Self {}
         }
     }
 
@@ -1503,7 +1500,7 @@ pub mod bool_opt {
         where
             E: serde::de::Error,
         {
-            return Ok(Some(value));
+            Ok(Some(value))
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -1535,7 +1532,7 @@ pub mod i32 {
 
     impl crate::serde::HasConstructor for I32Visitor {
         fn new() -> I32Visitor {
-            return I32Visitor {};
+            I32Visitor {}
         }
     }
 
@@ -1628,7 +1625,7 @@ pub mod i32_opt {
             E: serde::de::Error,
         {
             use std::convert::TryFrom;
-            i32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+            i32::try_from(value).map(Some).map_err(E::custom)
         }
 
         fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
@@ -1654,7 +1651,7 @@ pub mod i32_opt {
             E: serde::de::Error,
         {
             use std::convert::TryFrom;
-            i32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+            i32::try_from(value).map(Some).map_err(E::custom)
         }
 
         fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -1668,7 +1665,7 @@ pub mod i32_opt {
                     .map_err(E::custom)
                     .and_then(|x| self.visit_f64(x))
             } else {
-                value.parse::<i32>().map(|x| Some(x)).map_err(E::custom)
+                value.parse::<i32>().map(Some).map_err(E::custom)
             }
         }
 
@@ -1701,7 +1698,7 @@ pub mod i64 {
 
     impl crate::serde::HasConstructor for I64Visitor {
         fn new() -> Self {
-            return Self {};
+            Self {}
         }
     }
 
@@ -1831,7 +1828,7 @@ pub mod i64_opt {
             E: serde::de::Error,
         {
             use std::convert::TryFrom;
-            i64::try_from(value).map(|x| Some(x)).map_err(E::custom)
+            i64::try_from(value).map(Some).map_err(E::custom)
         }
 
         fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -1845,7 +1842,7 @@ pub mod i64_opt {
                     .map_err(E::custom)
                     .and_then(|x| self.visit_f64(x))
             } else {
-                value.parse::<i64>().map(|x| Some(x)).map_err(E::custom)
+                value.parse::<i64>().map(Some).map_err(E::custom)
             }
         }
 
@@ -1890,7 +1887,7 @@ pub mod u32 {
 
     impl crate::serde::HasConstructor for U32Visitor {
         fn new() -> Self {
-            return Self {};
+            Self {}
         }
     }
 
@@ -1983,7 +1980,7 @@ pub mod u32_opt {
             E: serde::de::Error,
         {
             use std::convert::TryFrom;
-            u32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+            u32::try_from(value).map(Some).map_err(E::custom)
         }
 
         fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E>
@@ -2009,7 +2006,7 @@ pub mod u32_opt {
             E: serde::de::Error,
         {
             use std::convert::TryFrom;
-            u32::try_from(value).map(|x| Some(x)).map_err(E::custom)
+            u32::try_from(value).map(Some).map_err(E::custom)
         }
 
         fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -2023,7 +2020,7 @@ pub mod u32_opt {
                     .map_err(E::custom)
                     .and_then(|x| self.visit_f64(x))
             } else {
-                value.parse::<u32>().map(|x| Some(x)).map_err(E::custom)
+                value.parse::<u32>().map(Some).map_err(E::custom)
             }
         }
 
@@ -2056,7 +2053,7 @@ pub mod u64 {
 
     impl crate::serde::HasConstructor for U64Visitor {
         fn new() -> Self {
-            return Self {};
+            Self {}
         }
     }
 
@@ -2184,7 +2181,7 @@ pub mod u64_opt {
                     .map_err(E::custom)
                     .and_then(|x| self.visit_f64(x))
             } else {
-                value.parse::<u64>().map(|x| Some(x)).map_err(E::custom)
+                value.parse::<u64>().map(Some).map_err(E::custom)
             }
         }
 
@@ -2229,7 +2226,7 @@ pub mod f64 {
 
     impl crate::serde::HasConstructor for F64Visitor {
         fn new() -> F64Visitor {
-            return F64Visitor {};
+            F64Visitor {}
         }
     }
 
@@ -2351,7 +2348,7 @@ pub mod f64_opt {
                 "NaN" => Ok(Some(f64::NAN)),
                 "Infinity" => Ok(Some(f64::INFINITY)),
                 "-Infinity" => Ok(Some(f64::NEG_INFINITY)),
-                _ => value.parse::<f64>().map(|x| Some(x)).map_err(E::custom),
+                _ => value.parse::<f64>().map(Some).map_err(E::custom),
             }
         }
 
@@ -2396,7 +2393,7 @@ pub mod f32 {
 
     impl crate::serde::HasConstructor for F32Visitor {
         fn new() -> F32Visitor {
-            return F32Visitor {};
+            F32Visitor {}
         }
     }
 
@@ -2532,7 +2529,7 @@ pub mod f32_opt {
                 "NaN" => Ok(Some(f32::NAN)),
                 "Infinity" => Ok(Some(f32::INFINITY)),
                 "-Infinity" => Ok(Some(f32::NEG_INFINITY)),
-                _ => value.parse::<f32>().map(|x| Some(x)).map_err(E::custom),
+                _ => value.parse::<f32>().map(Some).map_err(E::custom),
             }
         }
 
@@ -2577,7 +2574,7 @@ pub mod vec_u8 {
 
     impl crate::serde::HasConstructor for VecU8Visitor {
         fn new() -> Self {
-            return Self {};
+            Self {}
         }
     }
 
@@ -2642,9 +2639,7 @@ pub mod vec_u8_opt {
         where
             E: serde::de::Error,
         {
-            base64::decode(value)
-                .map(|str| Some(str))
-                .map_err(E::custom)
+            base64::decode(value).map(Some).map_err(E::custom)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>

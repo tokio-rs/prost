@@ -148,8 +148,8 @@ where
                 Ok(all_types) => Ok(all_types),
                 Err(error) => Err(format!(
                     "error deserializing json: {} at {}",
-                    error.to_string(),
-                    error.path().to_string()
+                    error,
+                    error.path(),
                 )),
             }
         }
@@ -238,7 +238,7 @@ pub fn roundtrip<M>(
 where
     M: Message + Default + DeserializeOwned + Serialize,
 {
-    let all_types: M = match decode(payload.clone()) {
+    let all_types: M = match decode(payload) {
         Ok(all_types) => all_types,
         Err(error) => return RoundtripResult::DecodeError(error),
     };
