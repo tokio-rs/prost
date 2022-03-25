@@ -8,6 +8,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -24,7 +26,10 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -54,6 +59,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -78,6 +85,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -113,7 +122,10 @@ jobs:
   vendored:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: install toolchain
         uses: actions-rs/toolchain@v1
         with:
