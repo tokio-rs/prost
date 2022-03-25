@@ -225,6 +225,7 @@ pub struct Config {
     bytes_type: PathMap<BytesType>,
     type_attributes: PathMap<String>,
     field_attributes: PathMap<String>,
+    json_mapping: PathMap<()>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
@@ -443,6 +444,28 @@ impl Config {
     {
         self.type_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    /// Generates serde attributes in order to conform to the proto to json spec.
+    /// Once applied, all messages will implement Serialize and Deserialize, and
+    /// serde_json can be used to go to/from json.
+    ///
+    /// Verification of the implementation is done in the `conformance` crate. See
+    /// the failed list for any limitations in the current implementation.
+    ///
+    /// More on the proto/json spec can be found [here](https://developers.google.com/protocol-buffers/docs/proto3#json).
+    ///
+    /// There are additional options that Google suggests, however none are currently
+    /// implemented.
+    pub fn json_mapping<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        for matcher in paths {
+            self.json_mapping.insert(matcher.as_ref().to_string(), ());
+        }
         self
     }
 
@@ -1016,6 +1039,7 @@ impl default::Default for Config {
             bytes_type: PathMap::default(),
             type_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
+            json_mapping: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,

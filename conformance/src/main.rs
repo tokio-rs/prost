@@ -49,53 +49,33 @@ fn main() -> io::Result<()> {
 }
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
-    match request.requested_output_format() {
-        WireFormat::Unspecified => {
+    let rof = request.requested_output_format();
+    match (rof, request.payload.as_ref()) {
+        (WireFormat::Unspecified, _) | (_, None) => {
             return conformance_response::Result::ParseError(
-                "output format unspecified".to_string(),
+                "input/output format unspecified".to_string(),
             );
         }
-        WireFormat::Json => {
+        (WireFormat::Jspb, _) | (_, Some(conformance_request::Payload::JspbPayload(_))) => {
             return conformance_response::Result::Skipped(
-                "JSON output is not supported".to_string(),
+                "JSPB input/output is not supported".to_string(),
             );
         }
-        WireFormat::Jspb => {
+        (WireFormat::TextFormat, _) | (_, Some(conformance_request::Payload::TextPayload(_))) => {
             return conformance_response::Result::Skipped(
-                "JSPB output is not supported".to_string(),
+                "TEXT_FORMAT input/output is not supported".to_string(),
             );
         }
-        WireFormat::TextFormat => {
-            return conformance_response::Result::Skipped(
-                "TEXT_FORMAT output is not supported".to_string(),
-            );
-        }
-        WireFormat::Protobuf => (),
+        (WireFormat::Protobuf, _) | (WireFormat::Json, _) => (),
     };
 
-    let buf = match request.payload {
-        None => return conformance_response::Result::ParseError("no payload".to_string()),
-        Some(conformance_request::Payload::JsonPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
+    let result = match (&*request.message_type, request.payload) {
+        ("protobuf_test_messages.proto2.TestAllTypesProto2", Some(payload)) => {
+            roundtrip::<TestAllTypesProto2>(payload, rof)
         }
-        Some(conformance_request::Payload::JspbPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
+        ("protobuf_test_messages.proto3.TestAllTypesProto3", Some(payload)) => {
+            roundtrip::<TestAllTypesProto3>(payload, rof)
         }
-        Some(conformance_request::Payload::TextPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
-        }
-        Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
-    };
-
-    let roundtrip = match &*request.message_type {
-        "protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip::<TestAllTypesProto2>(&buf),
-        "protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip::<TestAllTypesProto3>(&buf),
         _ => {
             return conformance_response::Result::ParseError(format!(
                 "unknown message type: {}",
@@ -104,13 +84,9 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         }
     };
 
-    match roundtrip {
-        RoundtripResult::Ok(buf) => conformance_response::Result::ProtobufPayload(buf),
-        RoundtripResult::DecodeError(error) => {
-            conformance_response::Result::ParseError(error.to_string())
-        }
-        RoundtripResult::Error(error) => {
-            conformance_response::Result::RuntimeError(error.to_string())
-        }
+    match result {
+        RoundtripResult::Ok(result) => result,
+        RoundtripResult::DecodeError(error) => conformance_response::Result::ParseError(error),
+        RoundtripResult::Error(error) => conformance_response::Result::RuntimeError(error),
     }
 }

@@ -246,10 +246,12 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     // Map the variants into 'fields'.
     let mut variants: Vec<(Ident, Expr)> = Vec::new();
+    let mut proto_names: Vec<String> = Vec::new();
     for Variant {
         ident,
         fields,
         discriminant,
+        attrs,
         ..
     } in punctuated_variants
     {
@@ -262,12 +264,30 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
         match discriminant {
             Some((_, expr)) => variants.push((ident, expr)),
-            None => bail!("Enumeration variants must have a disriminant"),
+            None => bail!("Enumeration variants must have a discriminant"),
+        }
+
+        let metas = crate::field::prost_attrs(attrs);
+        for meta in metas {
+            if let syn::Meta::NameValue(syn::MetaNameValue { path, lit, .. }) = meta {
+                if path.is_ident("enum_field_name") {
+                    if let syn::Lit::Str(lit_str) = lit {
+                        proto_names.push(lit_str.value());
+                        break;
+                    }
+                }
+            }
         }
     }
 
+    // TODO(konradjniemiec): we need to default to not failing here,
+    // and instead deriving the proto names to avoid breaking changes.
     if variants.is_empty() {
         panic!("Enumeration must have at least one variant");
+    }
+
+    if variants.len() != proto_names.len() {
+        panic!("Number of annotated protonames was unexpected. You probably want to upgrade prost-build.");
     }
 
     let default = variants[0].0.clone();
@@ -278,6 +298,17 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let from = variants.iter().map(
         |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
     );
+
+    let to_string = variants
+        .iter()
+        .zip(proto_names.iter())
+        .map(|(&(ref variant, _), proto_name)| quote!(#ident::#variant => #proto_name));
+    assert!(to_string.len() > 0);
+    let from_string = variants
+        .iter()
+        .zip(proto_names.iter())
+        .map(|(&(ref variant, _), proto_name)| quote!(#proto_name => #ident::#variant));
+    assert!(from_string.len() > 0);
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!(
@@ -313,6 +344,31 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         impl #impl_generics ::core::convert::From::<#ident> for i32 #ty_generics #where_clause {
             fn from(value: #ident) -> i32 {
                 value as i32
+            }
+        }
+
+        impl #impl_generics ::core::convert::TryFrom::<i32> for #ident #ty_generics #where_clause {
+            type Error = &'static str;
+            fn try_from(value: i32) -> Result<Self, Self::Error> {
+                Self::from_i32(value).ok_or_else(|| "invalid i32 value for enum")
+            }
+        }
+
+        impl #impl_generics ToString for #ident #ty_generics #where_clause {
+            fn to_string(&self) -> String {
+                match self {
+                    #(#to_string,)*
+                }.to_string()
+            }
+        }
+
+        impl #impl_generics ::core::str::FromStr for #ident #ty_generics #where_clause {
+            type Err = &'static str;
+            fn from_str(value: &str) -> Result<Self, Self::Err> {
+                Ok(match value {
+                    #(#from_string,)*
+                    _ => Self::default(),
+                })
             }
         }
     };

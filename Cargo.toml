@@ -43,6 +43,7 @@ bench = false
 default = ["prost-derive", "std"]
 no-recursion-limit = []
 std = []
+json = []
 
 [dependencies]
 bytes = { version = "1", default-features = false }

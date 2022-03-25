@@ -11,7 +11,8 @@ edition = "2018"
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost = { path = ".." }
-prost-types = { path = "../prost-types" }
+prost-types = { path = "../prost-types", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
 anyhow = "1"

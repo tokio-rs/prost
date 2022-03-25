@@ -45,6 +45,57 @@ fn push_indent(buf: &mut String, depth: u8) {
 }
 
 impl<'a> CodeGenerator<'a> {
+    /// Returns (serializer, deserializer) function names to use in serde
+    /// serialize_with and deserialize_with macros respectively. If none are
+    /// specified, the default works fine.
+    /// If collection is true, the return is no longer the function, but instead,
+    /// the Visitor type that will be used for either the repeated helper or
+    /// custom map helper.
+    fn get_custom_json_type_mappers(
+        &self,
+        ty: &str,
+        type_name: String,
+        optional: bool,
+        collection: bool,
+        map_key: bool,
+    ) -> (Option<String>, Option<String>) {
+        match (ty, optional, collection, map_key) {
+            ("()", false, false, _) => (Some("::prost_types::serde::empty::serialize".to_string()), Some("::prost_types::serde::empty::deserialize".to_string())),
+            ("()", true, false, _) => (Some("::prost_types::serde::empty_opt::serialize".to_string()), Some("::prost_types::serde::empty_opt::deserialize".to_string())),
+            ("bool", false, false, _) =>  (None, Some("::prost_types::serde::bool::deserialize".to_string())),
+            ("bool", true, false, _) =>  (None, Some("::prost_types::serde::bool_opt::deserialize".to_string())),
+            ("bool", _, true, false) =>  (None, Some("::prost_types::serde::bool::BoolVisitor".to_string())),
+            ("bool", _, true, true) =>  (Some("::prost_types::serde::bool_map_key::BoolKeySerializer".to_string()), Some("::prost_types::serde::bool_map_key::BoolVisitor".to_string())),
+            ("i32", false, false, _) =>  (None, Some("::prost_types::serde::i32::deserialize".to_string())),
+            ("i32", true, false, _) =>  (None, Some("::prost_types::serde::i32_opt::deserialize".to_string())),
+            ("i32", _, true, _) =>  (None, Some("::prost_types::serde::i32::I32Visitor".to_string())),
+            ("enum", false, false, _) =>  (Some(format!("::prost_types::serde::enum_serde::serialize::<_, {}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::serde::enum_serde::deserialize::<_, {}>", self.resolve_ident(&type_name)))),
+            ("enum", true, false, _) =>  (Some(format!("::prost_types::serde::enum_opt::serialize::<_, {}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::serde::enum_opt::deserialize::<_, {}>", self.resolve_ident(&type_name)))),
+            ("enum", _, true, _) =>  (Some(format!("::prost_types::serde::enum_serde::EnumSerializer<{}>", self.resolve_ident(&type_name))), Some(format!("::prost_types::serde::enum_serde::EnumVisitor::<{}>", self.resolve_ident(&type_name)))),
+            ("i64", false, false, _) =>  (Some("<::prost_types::serde::i64::I64Serializer as ::prost_types::serde::SerializeMethod>::serialize".to_string()), Some("::prost_types::serde::i64::deserialize".to_string())),
+            ("i64", true, false, _) =>  (Some("::prost_types::serde::i64_opt::serialize".to_string()), Some("::prost_types::serde::i64_opt::deserialize".to_string())),
+            ("i64", _, true, _) =>  (Some("::prost_types::serde::i64::I64Serializer".to_string()), Some("::prost_types::serde::i64::I64Visitor".to_string())),
+            ("u32", false, false, _) =>  (None, Some("::prost_types::serde::u32::deserialize".to_string())),
+            ("u32", true, false, _) =>  (None, Some("::prost_types::serde::u32_opt::deserialize".to_string())),
+            ("u32", _, true, _) =>  (None, Some("::prost_types::serde::u32::U32Visitor".to_string())),
+            ("u64", false, false, _) =>  (Some("<::prost_types::serde::u64::U64Serializer as ::prost_types::serde::SerializeMethod>::serialize".to_string()), Some("::prost_types::serde::u64::deserialize".to_string())),
+            ("u64", true, false, _) =>  (Some("::prost_types::serde::u64_opt::serialize".to_string()), Some("::prost_types::serde::u64_opt::deserialize".to_string())),
+            ("u64", _, true, _) =>  (Some("::prost_types::serde::u64::U64Serializer".to_string()), Some("::prost_types::serde::u64::U64Visitor".to_string())),
+            ("f64", false, false, _) =>  (Some("<::prost_types::serde::f64::F64Serializer as ::prost_types::serde::SerializeMethod>::serialize".to_string()), Some("::prost_types::serde::f64::deserialize".to_string())),
+            ("f64", true, false, _) =>  (Some("::prost_types::serde::f64_opt::serialize".to_string()), Some("::prost_types::serde::f64_opt::deserialize".to_string())),
+            ("f64", _, true, _) =>  (Some("::prost_types::serde::f64::F64Serializer".to_string()), Some("::prost_types::serde::f64::F64Visitor".to_string())),
+            ("f32", false, false, _) =>  (Some("<::prost_types::serde::f32::F32Serializer as ::prost_types::serde::SerializeMethod>::serialize".to_string()), Some("::prost_types::serde::f32::deserialize".to_string())),
+            ("f32", true, false, _) =>  (Some("::prost_types::serde::f32_opt::serialize".to_string()), Some("::prost_types::serde::f32_opt::deserialize".to_string())),
+            ("f32", _, true, _) =>  (Some("::prost_types::serde::f32::F32Serializer".to_string()), Some("::prost_types::serde::f32::F32Visitor".to_string())),
+            ("::prost::alloc::string::String", false, false, _) =>  (None, Some("::prost_types::serde::string::deserialize".to_string())),
+            ("::prost::alloc::string::String", true, false, _) =>  (None, Some("::prost_types::serde::string_opt::deserialize".to_string())),
+            ("::prost::alloc::vec::Vec<u8>", false, false, _) =>  (Some("<::prost_types::serde::vec_u8::VecU8Serializer as ::prost_types::serde::SerializeMethod>::serialize".to_string()), Some("::prost_types::serde::vec_u8::deserialize".to_string())),
+            ("::prost::alloc::vec::Vec<u8>", true, false, _) =>  (Some("::prost_types::serde::vec_u8_opt::serialize".to_string()), Some("::prost_types::serde::vec_u8_opt::deserialize".to_string())),
+            ("::prost::alloc::vec::Vec<u8>", _, true, _) =>  (Some("::prost_types::serde::vec_u8::VecU8Serializer".to_string()), Some("::prost_types::serde::vec_u8::VecU8Visitor".to_string())),
+            (_,_, _, _) =>  (None, None)
+        }
+    }
+
     pub fn generate(
         config: &mut Config,
         message_graph: &MessageGraph,
@@ -183,6 +234,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
+        self.append_json_message_attributes(&fq_message_name);
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
@@ -269,6 +321,57 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
+    fn append_json_message_attributes(&mut self, fq_message_name: &str) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_some()
+        {
+            self.push_indent();
+            self.buf
+                .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
+            self.buf.push('\n');
+            self.push_indent();
+            self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
+            self.buf.push('\n');
+            self.push_indent();
+            self.buf.push_str(r#"#[serde(default)]"#);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_json_oneof_enum_attributes(&mut self, fq_message_name: &str) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_some()
+        {
+            self.push_indent();
+            self.buf
+                .push_str("#[derive(serde::Deserialize, serde::Serialize)]");
+            self.buf.push('\n');
+            self.push_indent();
+            self.buf.push_str(r#"#[serde(rename_all = "camelCase")]"#);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_json_oneof_field_attributes(&mut self, fq_message_name: &str) {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_some()
+        {
+            self.push_indent();
+            self.buf.push_str("#[serde(flatten)]");
+            self.buf.push('\n');
+        }
+    }
+
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         for attribute in self
@@ -279,6 +382,270 @@ impl<'a> CodeGenerator<'a> {
             push_indent(self.buf, self.depth);
             self.buf.push_str(attribute);
             self.buf.push('\n');
+        }
+    }
+
+    // Shared fields between field and map fields.
+    fn append_shared_json_field_attributes(&mut self, field_name: &str, json_name: &str) {
+        // If there is a json name specified, add it.
+        if !json_name.is_empty() {
+            push_indent(self.buf, self.depth);
+            self.buf
+                .push_str(&format!(r#"#[serde(rename = "{}")]"#, json_name,));
+            self.buf.push('\n');
+        }
+        // Always alias to the field name for deserializing.
+        push_indent(self.buf, self.depth);
+        self.buf
+            .push_str(&format!(r#"#[serde(alias = "{}")]"#, field_name,));
+        self.buf.push('\n');
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn append_json_map_field_attributes(
+        &mut self,
+        fq_message_name: &str,
+        field_name: &str,
+        key_ty: &str,
+        value_ty: &str,
+        key_type_name: String,
+        value_type_name: String,
+        map_type: &str,
+        json_name: &str,
+    ) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_none()
+        {
+            return;
+        }
+        self.append_shared_json_field_attributes(field_name, json_name);
+
+        // Use is_empty instead of is_default to avoid allocations.
+        push_indent(self.buf, self.depth);
+        self.buf.push_str(&format!(
+            r#"#[serde(skip_serializing_if = "{}::is_empty")]"#,
+            map_type
+        ));
+        self.buf.push('\n');
+
+        let (key_se_opt, key_de_opt) =
+            self.get_custom_json_type_mappers(key_ty, key_type_name, false, true, true);
+        let (value_se_opt, value_de_opt) =
+            self.get_custom_json_type_mappers(value_ty, value_type_name, false, true, false);
+
+        push_indent(self.buf, self.depth);
+        match (key_se_opt, key_de_opt, value_se_opt, value_de_opt, map_type) {
+            (Some(key_se), Some(key_de), Some(value_se), Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom_to_custom::serialize::<_, {}, {}>")]"#, key_se, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            }
+            (None, Some(key_de), None, Some(value_de), "::std::collections::HashMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                ),
+            (Some(key_se), Some(key_de), None, Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            },
+            (Some(key_se), Some(key_de), None, None, "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom::deserialize::<_, {}, _>")]"#, key_de)
+                );
+            },
+            (None, Some(key_de), None, None, "::std::collections::HashMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom::deserialize::<_, {}, _>")]"#, key_de)
+                ),
+            (None, Some(key_de), Some(value_se), Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom_value::serialize::<_, _, {}>")]"#, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            },
+            (None, None, Some(value_se), Some(value_de), "::std::collections::HashMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::map_custom_value::serialize::<_, _, {}>")]"#, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::map_custom_value::deserialize::<_, _, {}>")]"#, value_de)
+                );
+            },
+
+            (Some(key_se), Some(key_de), Some(value_se), Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom_to_custom::serialize::<_, {}, {}>")]"#, key_se, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            }
+            (None, Some(key_de), None, Some(value_de), "::prost::alloc::collections::BTreeMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                ),
+            (Some(key_se), Some(key_de), None, Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+            },
+            (Some(key_se), Some(key_de), None, None, "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom::serialize::<_, {}, _>")]"#, key_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom::deserialize::<_, {}, _>")]"#, key_de)
+                );
+            },
+            (None, Some(key_de), None, None, "::prost::alloc::collections::BTreeMap") =>
+                self.buf.push_str(
+            &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom::deserialize::<_, {}, _>")]"#, key_de)
+                ),
+            (None, Some(key_de), Some(value_se), Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom_value::serialize::<_, _, {}>")]"#, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_to_custom::deserialize::<_, {}, {}>")]"#, key_de, value_de)
+                );
+
+            },
+            (None, None, Some(value_se), Some(value_de), "::prost::alloc::collections::BTreeMap") => {
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::btree_map_custom_value::serialize::<_, _, {}>")]"#, value_se)
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::btree_map_custom_value::deserialize::<_, _, {}>")]"#, value_de)
+                );
+            },
+            (_, _, _, _, "::std::collections::HashMap") =>
+                self.buf.push_str(
+                    r#"#[serde(deserialize_with = "::prost_types::serde::map::deserialize")]"#,
+                ),
+            (_, _, _, _, "::prost::alloc::collections::BTreeMap") =>
+                        self.buf.push_str(
+                            r#"#[serde(deserialize_with = "::prost_types::serde::btree_map::deserialize")]"#,
+                        ),
+            _ => (),
+        }
+        self.buf.push('\n');
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn append_json_field_attributes(
+        &mut self,
+        fq_message_name: &str,
+        ty: &str,
+        type_name: String,
+        field_name: &str,
+        optional: bool,
+        repeated: bool,
+        json_name: &str,
+        oneof: bool,
+    ) {
+        if self
+            .config
+            .json_mapping
+            .get_first(fq_message_name)
+            .is_none()
+        {
+            return;
+        }
+        self.append_shared_json_field_attributes(field_name, json_name);
+
+        if !oneof {
+            push_indent(self.buf, self.depth);
+            self.buf
+                .push_str(r#"#[serde(skip_serializing_if = "::prost_types::serde::is_default")]"#);
+            self.buf.push('\n');
+        }
+        // Add custom deserializers and optionally serializers for most primitive types
+        // and their optional and repeated counterparts.
+        match (
+            self.get_custom_json_type_mappers(ty, type_name, optional, repeated, false),
+            repeated,
+        ) {
+            ((Some(se), Some(de)), false) => {
+                push_indent(self.buf, self.depth);
+                self.buf
+                    .push_str(&format!(r#"#[serde(serialize_with = "{}")]"#, se));
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf
+                    .push_str(&format!(r#"#[serde(deserialize_with = "{}")]"#, de));
+                self.buf.push('\n');
+            }
+            ((None, Some(de)), false) => {
+                push_indent(self.buf, self.depth);
+                self.buf
+                    .push_str(&format!(r#"#[serde(deserialize_with = "{}")]"#, de));
+                self.buf.push('\n');
+            }
+            ((Some(se), Some(de)), true) => {
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(serialize_with = "::prost_types::serde::repeated::serialize::<_, {}>")]"#, se),
+                );
+                self.buf.push('\n');
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::repeated::deserialize::<_, {}>")]"#, de),
+                );
+                self.buf.push('\n');
+            }
+            ((None, Some(de)), true) => {
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    &format!(r#"#[serde(deserialize_with = "::prost_types::serde::repeated::deserialize::<_, {}>")]"#, de),
+                );
+                self.buf.push('\n');
+            }
+            (_, true) => {
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(
+                    r#"#[serde(deserialize_with = "::prost_types::serde::vec::deserialize")]"#,
+                );
+                self.buf.push('\n');
+            }
+            _ => {}
         }
     }
 
@@ -385,6 +752,21 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
+        let ty_or_enum = match type_ {
+            Type::Enum => "enum".to_string(),
+            _ => ty.clone(),
+        };
+
+        self.append_json_field_attributes(
+            fq_message_name,
+            &ty_or_enum,
+            field.type_name().to_string(),
+            field.name(),
+            optional,
+            repeated,
+            field.json_name(),
+            false,
+        );
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -444,6 +826,24 @@ impl<'a> CodeGenerator<'a> {
             field.number()
         ));
         self.append_field_attributes(fq_message_name, field.name());
+        let key_ty_or_enum = match key.r#type() {
+            Type::Enum => "enum".to_string(),
+            _ => key_ty.clone(),
+        };
+        let value_ty_or_enum = match value.r#type() {
+            Type::Enum => "enum".to_string(),
+            _ => value_ty.clone(),
+        };
+        self.append_json_map_field_attributes(
+            fq_message_name,
+            field.name(),
+            &key_ty_or_enum,
+            &value_ty_or_enum,
+            key.type_name().to_string(),
+            value.type_name().to_string(),
+            map_type.rust_type(),
+            field.json_name(),
+        );
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",
@@ -477,6 +877,7 @@ impl<'a> CodeGenerator<'a> {
                 .join(", ")
         ));
         self.append_field_attributes(fq_message_name, oneof.name());
+        self.append_json_oneof_field_attributes(fq_message_name);
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: ::core::option::Option<{}>,\n",
@@ -500,6 +901,7 @@ impl<'a> CodeGenerator<'a> {
 
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
+        self.append_json_oneof_enum_attributes(&oneof_name);
         self.push_indent();
         self.buf
             .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
@@ -525,9 +927,23 @@ impl<'a> CodeGenerator<'a> {
                 field.number()
             ));
             self.append_field_attributes(&oneof_name, field.name());
-
-            self.push_indent();
             let ty = self.resolve_type(&field, fq_message_name);
+            let ty_or_enum = match type_ {
+                Type::Enum => "enum".to_string(),
+                _ => ty.clone(),
+            };
+
+            self.append_json_field_attributes(
+                &oneof_name,
+                &ty_or_enum,
+                field.type_name().to_string(),
+                field.name(),
+                false,
+                false,
+                field.json_name(),
+                true,
+            );
+            self.push_indent();
 
             let boxed = (type_ == Type::Message || type_ == Type::Group)
                 && self
@@ -601,6 +1017,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_enum_name, None);
         self.append_type_attributes(&fq_enum_name);
+        self.append_json_oneof_enum_attributes(&fq_enum_name);
         self.push_indent();
         self.buf.push_str(
             "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",
@@ -647,6 +1064,10 @@ impl<'a> CodeGenerator<'a> {
     ) {
         self.append_doc(fq_enum_name, Some(value.name()));
         self.append_field_attributes(fq_enum_name, value.name());
+        self.push_indent();
+        self.buf
+            .push_str(&format!(r#"#[prost(enum_field_name="{}")]"#, value.name()));
+        self.buf.push('\n');
         self.push_indent();
         let name = to_upper_camel(value.name());
         let name_unprefixed = match prefix_to_strip {

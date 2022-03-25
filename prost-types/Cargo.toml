@@ -18,10 +18,15 @@ doctest = false
 [features]
 default = ["std"]
 std = ["prost/std"]
+json = ["prost/json", "lexical"]
 
 [dependencies]
+base64 = "0.13"
 bytes = { version = "1", default-features = false }
+serde = { version = "1", features = ["derive"] }
 prost = { version = "0.9.0", path = "..", default-features = false, features = ["prost-derive"] }
+lexical = { version = "6", default-features = false, features = ["parse-integers", "parse-floats"], optional = true }
 
 [dev-dependencies]
 proptest = "1"
+serde_json = "1"

@@ -21,6 +21,12 @@ pub mod compiler {
     include!("compiler.rs");
 }
 
+#[cfg(feature = "json")]
+pub mod serde;
+
+#[cfg(feature = "json")]
+pub mod datetime;
+
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
 // are defined in both directions.
@@ -164,6 +170,45 @@ impl Timestamp {
         // TODO: should this be checked?
         // debug_assert!(self.seconds >= -62_135_596_800 && self.seconds <= 253_402_300_799,
         //               "invalid timestamp: {:?}", self);
+    }
+
+    /// Creates a new `Timestamp` at the start of the provided UTC date.
+    ///
+    /// This is primarily meant for creating timestamp literals in tests.
+    pub fn date(year: i64, month: u8, day: u8) -> Timestamp {
+        Timestamp::date_time_nanos(year, month, day, 0, 0, 0, 0)
+    }
+
+    /// Creates a new `Timestamp` instance with the provided UTC date and time.
+    ///
+    /// This is primarily useful for creating timestamp literals in tests.
+    pub fn date_time(year: i64, month: u8, day: u8, hour: u8, minute: u8, second: u8) -> Timestamp {
+        Timestamp::date_time_nanos(year, month, day, hour, minute, second, 0)
+    }
+
+    /// Creates a new `Timestamp` instance with the provided UTC date and time.
+    ///
+    /// This is primarily useful for creating timestamp literals in tests.
+    pub fn date_time_nanos(
+        year: i64,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+        nanos: u32,
+    ) -> Timestamp {
+        let date_time = crate::datetime::DateTime {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            nanos,
+        };
+        assert!(date_time.is_valid(), "invalid date time: {}", date_time);
+        Timestamp::from(date_time)
     }
 }
 
