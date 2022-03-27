@@ -1061,7 +1061,7 @@ impl fmt::Debug for Config {
 }
 
 /// A Rust module path for a Protobuf package.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Module {
     components: Vec<String>,
 }
