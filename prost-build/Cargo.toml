@@ -1,6 +1,6 @@
 [package]
 name = "prost-build"
-version = "0.9.1"
+version = "0.10.0"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Tokio Contributors <team@tokio.rs>",
@@ -23,8 +23,8 @@ itertools = "0.10"
 log = "0.4"
 multimap = { version = "0.8", default-features = false }
 petgraph = { version = "0.6", default-features = false }
-prost = { version = "0.9.0", path = "..", default-features = false }
-prost-types = { version = "0.9.0", path = "../prost-types", default-features = false }
+prost = { version = "0.10.0", path = "..", default-features = false }
+prost-types = { version = "0.10.0", path = "../prost-types", default-features = false }
 tempfile = "3"
 lazy_static = "1.4.0"
 regex = { version = "1.5.5", default-features = false, features = ["std", "unicode-bool"] }
