@@ -47,6 +47,13 @@ start-to-finish example.
 `proto3` syntax. `prost`'s goal is to make the generated code as simple as
 possible.
 
+### `protoc`
+
+It's recommended to install `protoc` locally in your path to improve build times.
+Prost uses `protoc` to parse protobuf files and will attempt to compile protobuf
+from source requiring a C++ toolchain. For more info checkout the [`prost-build`](prost-build)
+docs.
+
 ### Packages
 
 Prost can now generate code for `.proto` files that don't have a package spec. 

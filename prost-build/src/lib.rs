@@ -97,17 +97,28 @@
 //! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
-//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in the
-//! prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux (non-musl), macOS,
-//! and Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
-//! `protoc` or `protoc.exe` binary on the `PATH` is used. If `protoc` is not available in any of
-//! these fallback locations, then the build fails.
+//! If no `PROTOC` environment variable is set then `prost-build` will search the
+//! current path for `protoc` or `protoc.exe`. If `protoc` is not found via these
+//! two methods then `prost-build` will attempt to compile `protoc` from the bundled
+//! source.
+//!
+//! If you would not like `prost-build` to not compile `protoc` from source ever then
+//! ensure you have set `PROTO_NO_VENDOR` environment variable as this will disable
+//! compiling from source even if the `vendored` feature flag is enabled.
+//!
+//! If you would like to always compile from source then setting the `vendored` feature
+//! flag will force `prost-build` to always build `protoc` from source.
 //!
 //! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
 //! bundled in the prost-build crate is be used.
 //!
-//! To force `prost-build` to use the `protoc` on the `PATH`, add `PROTOC=protoc` to the
-//! environment.
+//! ### Compiling `protoc` from source
+//!
+//! Compiling `protoc` from source requires a few external dependencies. Currently,
+//! `prost-build` uses `cmake` to build `protoc`. For more information check out the
+//! [protobuf build instructions](protobuf-build).
+//!
+//! [protobuf-build]: https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
 
 mod ast;
 mod code_generator;
