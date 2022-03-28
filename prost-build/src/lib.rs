@@ -1061,7 +1061,7 @@ impl fmt::Debug for Config {
 }
 
 /// A Rust module path for a Protobuf package.
-#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Module {
     components: Vec<String>,
 }
@@ -1123,6 +1123,20 @@ impl Module {
 
     fn part(&self, idx: usize) -> &str {
         self.components[idx].as_str()
+    }
+}
+
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut parts = self.parts();
+        if let Some(first) = parts.next() {
+            f.write_str(first)?;
+        }
+        for part in parts {
+            f.write_str("::")?;
+            f.write_str(part)?;
+        }
+        Ok(())
     }
 }
 
