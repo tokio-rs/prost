@@ -1092,7 +1092,7 @@ impl Module {
         }
     }
 
-    /// An iterator over the parts of the path
+    /// An iterator over the parts of the path.
     pub fn parts(&self) -> impl Iterator<Item = &str> {
         self.components.iter().map(|s| s.as_str())
     }
@@ -1115,6 +1115,11 @@ impl Module {
     /// The number of parts in the module's path.
     pub fn len(&self) -> usize {
         self.components.len()
+    }
+
+    /// Whether the module's path contains any components.
+    pub fn is_empty(&self) -> bool {
+        self.components.is_empty()
     }
 
     fn to_partial_file_name(&self, range: RangeToInclusive<usize>) -> String {
