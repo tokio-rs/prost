@@ -98,11 +98,13 @@ fn protoc() -> Option<PathBuf> {
 }
 
 fn main() {
-    // let protoc = env_protoc().or_else(path_protoc).expect(
-    //     "Failed to find the protoc binary. The PROTOC environment variable is not set, \
-    //          there is no bundled protoc for this platform, and protoc is not in the PATH",
-    // );
-    let protoc = protoc().expect("Failed to find or build the protoc binary");
+    let protoc = protoc().expect(
+        "Failed to find or build the protoc binary. The PROTOC environment \
+    is not set, `protoc` is not in PATH or you are missing the requirements to compile protobuf \
+    from source. \n \
+    Check out the `prost-build` README for instructions on the requirements: \
+    https://github.com/tokio-rs/prost#generated-code",
+    );
 
     let protoc_include = env_protoc_include().unwrap_or_else(bundled_protoc_include);
 
