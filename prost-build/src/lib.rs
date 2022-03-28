@@ -1061,7 +1061,7 @@ impl fmt::Debug for Config {
 }
 
 /// A Rust module path for a Protobuf package.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Module {
     components: Vec<String>,
 }
@@ -1092,7 +1092,7 @@ impl Module {
         }
     }
 
-    /// An iterator over the parts of the path
+    /// An iterator over the parts of the path.
     pub fn parts(&self) -> impl Iterator<Item = &str> {
         self.components.iter().map(|s| s.as_str())
     }
@@ -1117,12 +1117,31 @@ impl Module {
         self.components.len()
     }
 
+    /// Whether the module's path contains any components.
+    pub fn is_empty(&self) -> bool {
+        self.components.is_empty()
+    }
+
     fn to_partial_file_name(&self, range: RangeToInclusive<usize>) -> String {
         self.components[range].join(".")
     }
 
     fn part(&self, idx: usize) -> &str {
         self.components[idx].as_str()
+    }
+}
+
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut parts = self.parts();
+        if let Some(first) = parts.next() {
+            f.write_str(first)?;
+        }
+        for part in parts {
+            f.write_str("::")?;
+            f.write_str(part)?;
+        }
+        Ok(())
     }
 }
 
