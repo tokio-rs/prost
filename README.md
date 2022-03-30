@@ -213,8 +213,15 @@ the Rust field:
 | --- | --- | --- |
 | `proto2` | `optional` | `Option<T>` |
 | `proto2` | `required` | `T` |
-| `proto3` | default | `T` |
-| `proto2`/`proto3` | repeated | `Vec<T>` |
+| `proto3` | default | `T` for scalar types, `Option<T>` otherwise |
+| `proto3` | `optional` | `Option<T>` |
+| `proto2`/`proto3` | `repeated` | `Vec<T>` |
+
+Note that in `proto3` the default representation for all user-defined message
+types is `Option<T>`, and for scalar types just `T` (during decoding, a missing
+value is populated by `T::default()`). If you need a witness of the presence of
+a scalar type `T`, use the `optional` modifier to enforce an `Option<T>`
+representation in the generated Rust struct.
 
 #### Map Fields
 
