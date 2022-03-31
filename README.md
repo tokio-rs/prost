@@ -29,9 +29,9 @@ First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```
 [dependencies]
-prost = "0.9"
+prost = "0.10"
 # Only necessary if using Protobuf well-known types:
-prost-types = "0.9"
+prost-types = "0.10"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
@@ -46,6 +46,13 @@ start-to-finish example.
 `prost` generates Rust code from source `.proto` files using the `proto2` or
 `proto3` syntax. `prost`'s goal is to make the generated code as simple as
 possible.
+
+### `protoc`
+
+It's recommended to install `protoc` locally in your path to improve build times.
+Prost uses `protoc` to parse protobuf files and will attempt to compile protobuf
+from source requiring a C++ toolchain. For more info checkout the [`prost-build`](prost-build)
+docs.
 
 ### Packages
 

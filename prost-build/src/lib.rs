@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.9.1")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.10.0")]
 #![allow(clippy::option_as_ref_deref)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -97,17 +97,28 @@
 //! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
-//! If `PROTOC` is not found in the environment, then a pre-compiled `protoc` binary bundled in the
-//! prost-build crate is used. Pre-compiled `protoc` binaries exist for Linux (non-musl), macOS,
-//! and Windows systems. If no pre-compiled `protoc` is available for the host platform, then the
-//! `protoc` or `protoc.exe` binary on the `PATH` is used. If `protoc` is not available in any of
-//! these fallback locations, then the build fails.
+//! If no `PROTOC` environment variable is set then `prost-build` will search the
+//! current path for `protoc` or `protoc.exe`. If `protoc` is not found via these
+//! two methods then `prost-build` will attempt to compile `protoc` from the bundled
+//! source.
+//!
+//! If you would not like `prost-build` to not compile `protoc` from source ever then
+//! ensure you have set `PROTO_NO_VENDOR` environment variable as this will disable
+//! compiling from source even if the `vendored` feature flag is enabled.
+//!
+//! If you would like to always compile from source then setting the `vendored` feature
+//! flag will force `prost-build` to always build `protoc` from source.
 //!
 //! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
 //! bundled in the prost-build crate is be used.
 //!
-//! To force `prost-build` to use the `protoc` on the `PATH`, add `PROTOC=protoc` to the
-//! environment.
+//! ### Compiling `protoc` from source
+//!
+//! Compiling `protoc` from source requires a few external dependencies. Currently,
+//! `prost-build` uses `cmake` to build `protoc`. For more information check out the
+//! [protobuf build instructions](protobuf-build).
+//!
+//! [protobuf-build]: https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
 
 mod ast;
 mod code_generator;
@@ -1050,7 +1061,7 @@ impl fmt::Debug for Config {
 }
 
 /// A Rust module path for a Protobuf package.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Module {
     components: Vec<String>,
 }
@@ -1081,7 +1092,7 @@ impl Module {
         }
     }
 
-    /// An iterator over the parts of the path
+    /// An iterator over the parts of the path.
     pub fn parts(&self) -> impl Iterator<Item = &str> {
         self.components.iter().map(|s| s.as_str())
     }
@@ -1106,12 +1117,31 @@ impl Module {
         self.components.len()
     }
 
+    /// Whether the module's path contains any components.
+    pub fn is_empty(&self) -> bool {
+        self.components.is_empty()
+    }
+
     fn to_partial_file_name(&self, range: RangeToInclusive<usize>) -> String {
         self.components[range].join(".")
     }
 
     fn part(&self, idx: usize) -> &str {
         self.components[idx].as_str()
+    }
+}
+
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut parts = self.parts();
+        if let Some(first) = parts.next() {
+            f.write_str(first)?;
+        }
+        for part in parts {
+            f.write_str("::")?;
+            f.write_str(part)?;
+        }
+        Ok(())
     }
 }
 
