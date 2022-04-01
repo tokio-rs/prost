@@ -58,58 +58,36 @@ impl DateTime {
             && self.second < 60
             && self.nanos < 1_000_000_000
     }
-
-    /// Returns a `Display`-able type which formats only the time portion of the datetime, e.g. `12:34:56.123456`.
-    pub(crate) fn time(self) -> impl fmt::Display {
-        struct Time {
-            inner: DateTime,
-        }
-
-        impl fmt::Display for Time {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                // Format subseconds to either nothing, millis, micros, or nanos.
-                let nanos = self.inner.nanos;
-                let subsec = if nanos == 0 {
-                    String::new()
-                } else if nanos % 1_000_000 == 0 {
-                    format!(".{:03}", nanos / 1_000_000)
-                } else if nanos % 1_000 == 0 {
-                    format!(".{:06}", nanos / 1_000)
-                } else {
-                    format!(".{:09}", nanos)
-                };
-
-                write!(
-                    f,
-                    "{:02}:{:02}:{:02}{}",
-                    self.inner.hour, self.inner.minute, self.inner.second, subsec,
-                )
-            }
-        }
-
-        Time { inner: self }
-    }
 }
 
 impl fmt::Display for DateTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Pad years to at least 4 digits.
-        let year = if self.year > 9999 {
-            format!("+{}", self.year)
+        if self.year > 9999 {
+            write!(f, "+{}", self.year)?;
         } else if self.year < 0 {
-            format!("{:05}", self.year)
+            write!(f, "{:05}", self.year)?;
         } else {
-            format!("{:04}", self.year)
+            write!(f, "{:04}", self.year)?;
         };
 
         write!(
             f,
-            "{}-{:02}-{:02}T{}Z",
-            year,
-            self.month,
-            self.day,
-            self.time()
-        )
+            "-{:02}-{:02}T{:02}:{:02}:{:02}",
+            self.month, self.day, self.hour, self.minute, self.second,
+        )?;
+
+        // Format subseconds to either nothing, millis, micros, or nanos.
+        let nanos = self.nanos;
+        if nanos == 0 {
+            write!(f, "Z")
+        } else if nanos % 1_000_000 == 0 {
+            write!(f, ".{:03}Z", nanos / 1_000_000)
+        } else if nanos % 1_000 == 0 {
+            write!(f, ".{:06}Z", nanos / 1_000)
+        } else {
+            write!(f, ".{:09}Z", nanos)
+        }
     }
 }
 

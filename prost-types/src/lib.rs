@@ -255,6 +255,7 @@ pub struct TimestampOutOfSystemRangeError {
     pub timestamp: Timestamp,
 }
 
+#[cfg(feature = "std")]
 impl fmt::Display for TimestampOutOfSystemRangeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
