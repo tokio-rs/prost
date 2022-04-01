@@ -509,7 +509,7 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<crate::Timestamp> {
         return Some(crate::Timestamp::from(date_time));
     }
 
-    // Accept either 'T' or ' ' as delimeter between date and time.
+    // Accept either 'T' or ' ' as delimiter between date and time.
     let b = parse_char_ignore_case(b, b'T').or_else(|| parse_char(b, b' '))?;
     let (hour, minute, mut second, nanos, b) = parse_time(b)?;
     let (offset_hour, offset_minute, b) = parse_offset(b)?;
