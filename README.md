@@ -476,4 +476,4 @@ pub enum Gender {
 
 See [LICENSE](LICENSE) for details.
 
-Copyright 2017 Dan Burkert
+Copyright 2022 Dan Burkert & Tokio Contributors
