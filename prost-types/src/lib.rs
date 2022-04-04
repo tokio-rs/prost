@@ -294,6 +294,7 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
     }
 }
 
+/// An error indicating failure to parse a timestamp in RFC-3339 format.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct TimestampParseError;

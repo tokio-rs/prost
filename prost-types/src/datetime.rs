@@ -3,6 +3,8 @@
 
 use core::fmt;
 
+use crate::Timestamp;
+
 /// A point in time, represented as a date and time in the UTC timezone.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct DateTime {
@@ -91,7 +93,7 @@ impl fmt::Display for DateTime {
     }
 }
 
-impl From<crate::Timestamp> for DateTime {
+impl From<Timestamp> for DateTime {
     /// musl's [`__secs_to_tm`][1] converted to Rust via [c2rust][2] and then cleaned up by hand.
     ///
     /// All existing `strftime`-like APIs in Rust are unable to handle the full range of timestamps
@@ -99,7 +101,9 @@ impl From<crate::Timestamp> for DateTime {
     ///
     /// [1]: http://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
     /// [2]: https://c2rust.com/
-    fn from(timestamp: crate::Timestamp) -> DateTime {
+    fn from(mut timestamp: Timestamp) -> DateTime {
+        timestamp.normalize();
+
         let t = timestamp.seconds;
         let nanos = timestamp.nanos;
 
@@ -466,14 +470,14 @@ pub(crate) fn year_to_seconds(year: i64) -> (i128, bool) {
     )
 }
 
-/// Parses a timestamp in RFC 3339 format from `b`.
-pub(crate) fn parse_timestamp(s: &str) -> Option<crate::Timestamp> {
+/// Parses a timestamp in RFC 3339 format from `s`.
+pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
     // Check that the string is ASCII, since subsequent parsing steps use byte-level indexing.
     ensure!(s.is_ascii());
 
-    let (year, month, day, b) = parse_date(s)?;
+    let (year, month, day, s) = parse_date(s)?;
 
-    if b.is_empty() {
+    if s.is_empty() {
         // The string only contained a date.
         let date_time = DateTime {
             year,
@@ -484,15 +488,15 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<crate::Timestamp> {
 
         ensure!(date_time.is_valid());
 
-        return Some(crate::Timestamp::from(date_time));
+        return Some(Timestamp::from(date_time));
     }
 
     // Accept either 'T' or ' ' as delimiter between date and time.
-    let b = parse_char_ignore_case(b, b'T').or_else(|| parse_char(b, b' '))?;
-    let (hour, minute, mut second, nanos, b) = parse_time(b)?;
-    let (offset_hour, offset_minute, b) = parse_offset(b)?;
+    let s = parse_char_ignore_case(s, b'T').or_else(|| parse_char(s, b' '))?;
+    let (hour, minute, mut second, nanos, s) = parse_time(s)?;
+    let (offset_hour, offset_minute, s) = parse_offset(s)?;
 
-    ensure!(b.is_empty());
+    ensure!(s.is_empty());
 
     // Detect whether the timestamp falls in a leap second. If this is the case, roll it back
     // to the previous second. To be maximally conservative, this should be checking that the
@@ -516,19 +520,19 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<crate::Timestamp> {
 
     ensure!(date_time.is_valid());
 
-    let crate::Timestamp { seconds, nanos } = crate::Timestamp::from(date_time);
+    let Timestamp { seconds, nanos } = Timestamp::from(date_time);
 
     let seconds =
         seconds.checked_sub(i64::from(offset_hour) * 3600 + i64::from(offset_minute) * 60)?;
 
-    Some(crate::Timestamp { seconds, nanos })
+    Some(Timestamp { seconds, nanos })
 }
 
-impl From<DateTime> for crate::Timestamp {
-    fn from(date_time: DateTime) -> crate::Timestamp {
+impl From<DateTime> for Timestamp {
+    fn from(date_time: DateTime) -> Timestamp {
         let seconds = date_time_to_seconds(&date_time);
         let nanos = date_time.nanos;
-        crate::Timestamp {
+        Timestamp {
             seconds,
             nanos: nanos as i32,
         }
@@ -541,7 +545,6 @@ mod tests {
     use proptest::prelude::*;
 
     use super::*;
-    use crate::Timestamp;
 
     #[test]
     fn test_min_max() {
