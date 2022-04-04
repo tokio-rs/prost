@@ -84,33 +84,25 @@ impl Duration {
     }
 }
 
-/// Converts a `std::time::Duration` to a `Duration`.
-impl From<time::Duration> for Duration {
-    fn from(duration: time::Duration) -> Duration {
-        let seconds = duration.as_secs();
-        let seconds = if seconds > i64::MAX as u64 {
-            i64::MAX
-        } else {
-            seconds as i64
-        };
-        let nanos = duration.subsec_nanos();
-        let nanos = if nanos > i32::MAX as u32 {
-            i32::MAX
-        } else {
-            nanos as i32
-        };
+impl TryFrom<time::Duration> for Duration {
+    type Error = DurationError;
+
+    /// Converts a `std::time::Duration` to a `Duration`, failing if the duration is too large.
+    fn try_from(duration: time::Duration) -> Result<Duration, DurationError> {
+        let seconds = i64::try_from(duration.as_secs()).map_err(|_| DurationError::OutOfRange)?;
+        let nanos = duration.subsec_nanos() as i32;
+
         let mut duration = Duration { seconds, nanos };
         duration.normalize();
-        duration
+        Ok(duration)
     }
 }
 
 impl TryFrom<Duration> for time::Duration {
-    type Error = time::Duration;
+    type Error = DurationError;
 
-    /// Converts a `Duration` to a result containing a positive (`Ok`) or negative (`Err`)
-    /// `std::time::Duration`.
-    fn try_from(mut duration: Duration) -> Result<time::Duration, time::Duration> {
+    /// Converts a `Duration` to a `std::time::Duration`, failing if the duration is negative.
+    fn try_from(mut duration: Duration) -> Result<time::Duration, DurationError> {
         duration.normalize();
         if duration.seconds >= 0 {
             Ok(time::Duration::new(
@@ -118,11 +110,82 @@ impl TryFrom<Duration> for time::Duration {
                 duration.nanos as u32,
             ))
         } else {
-            Err(time::Duration::new(
+            Err(DurationError::NegativeDuration(time::Duration::new(
                 (-duration.seconds) as u64,
                 (-duration.nanos) as u32,
-            ))
+            )))
         }
+    }
+}
+
+impl fmt::Display for Duration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = self.clone();
+        d.normalize();
+        if self.seconds < 0 && self.nanos < 0 {
+            write!(f, "-")?;
+        }
+        write!(f, "{}", d.seconds.abs())?;
+
+        // Format subseconds to either nothing, millis, micros, or nanos.
+        let nanos = d.nanos.abs();
+        if nanos == 0 {
+            write!(f, "s")
+        } else if nanos % 1_000_000 == 0 {
+            write!(f, ".{:03}s", nanos / 1_000_000)
+        } else if nanos % 1_000 == 0 {
+            write!(f, ".{:06}s", nanos / 1_000)
+        } else {
+            write!(f, ".{:09}s", nanos)
+        }
+    }
+}
+
+/// A duration handling error.
+#[derive(Debug, PartialEq)]
+#[non_exhaustive]
+pub enum DurationError {
+    /// Indicates failure to parse a [`Duration`] from a string.
+    ///
+    /// The [`Duration`] string format is specified in the [Protobuf JSON mapping specification][1].
+    ///
+    /// [1]: https://developers.google.com/protocol-buffers/docs/proto3#json
+    ParseFailure,
+
+    /// Indicates failure to convert a `prost_types::Duration` to a `std::time::Duration` because
+    /// the duration is negative. The included `std::time::Duration` matches the magnitude of the
+    /// original negative `prost_types::Duration`.
+    NegativeDuration(time::Duration),
+
+    /// Indicates failure to convert a `std::time::Duration` to a `prost_types::Duration`.
+    ///
+    /// Converting a `std::time::Duration` to a `prost_types::Duration` fails if the magnitude
+    /// exceeds that representable by `prost_types::Duration`.
+    OutOfRange,
+}
+
+impl fmt::Display for DurationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DurationError::ParseFailure => write!(f, "failed to parse duration"),
+            DurationError::NegativeDuration(duration) => {
+                write!(f, "failed to convert negative duration: {:?}", duration)
+            }
+            DurationError::OutOfRange => {
+                write!(f, "failed to convert duration out of range")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for DurationError {}
+
+impl FromStr for Duration {
+    type Err = DurationError;
+
+    fn from_str(s: &str) -> Result<Duration, DurationError> {
+        datetime::parse_duration(s).ok_or(DurationError::ParseFailure)
     }
 }
 
@@ -333,7 +396,7 @@ impl fmt::Display for Timestamp {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{self, SystemTime, UNIX_EPOCH};
 
     use proptest::prelude::*;
 
@@ -359,6 +422,31 @@ mod tests {
                 prop_assert_eq!(Timestamp::from(system_time), timestamp);
             }
         }
+
+        #[test]
+        fn check_duration_roundtrip(
+            std_duration in time::Duration::arbitrary(),
+        ) {
+            let prost_duration = match Duration::try_from(std_duration) {
+                Ok(duration) => duration,
+                Err(_) => return Err(TestCaseError::reject("duration out of range")),
+            };
+            prop_assert_eq!(time::Duration::try_from(prost_duration.clone()).unwrap(), std_duration);
+
+            if std_duration != time::Duration::default() {
+                let neg_prost_duration = Duration {
+                    seconds: -prost_duration.seconds,
+                    nanos: -prost_duration.nanos,
+                };
+
+                prop_assert!(
+                    matches!(
+                        time::Duration::try_from(neg_prost_duration),
+                        Err(DurationError::NegativeDuration(d)) if d == std_duration,
+                    )
+                )
+            }
+        }
     }
 
     #[cfg(feature = "std")]
@@ -374,28 +462,28 @@ mod tests {
         // character of the behaviour being tested, but ensures that the tests are
         // valid for both POSIX (1 ns precision) and Windows (100 ns precision).
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(1_001, 0)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(1_001, 0)),
             Timestamp {
                 seconds: -1_001,
                 nanos: 0
             }
         );
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(0, 999_999_900)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(0, 999_999_900)),
             Timestamp {
                 seconds: -1,
                 nanos: 100
             }
         );
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(2_001_234, 12_300)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(2_001_234, 12_300)),
             Timestamp {
                 seconds: -2_001_235,
                 nanos: 999_987_700
             }
         );
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(768, 65_432_100)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(768, 65_432_100)),
             Timestamp {
                 seconds: -769,
                 nanos: 934_567_900
@@ -408,21 +496,21 @@ mod tests {
     fn check_timestamp_negative_seconds_1ns() {
         // UNIX-only test cases with 1 ns precision
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(0, 999_999_999)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(0, 999_999_999)),
             Timestamp {
                 seconds: -1,
                 nanos: 1
             }
         );
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(1_234_567, 123)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(1_234_567, 123)),
             Timestamp {
                 seconds: -1_234_568,
                 nanos: 999_999_877
             }
         );
         assert_eq!(
-            Timestamp::from(UNIX_EPOCH - Duration::new(890, 987_654_321)),
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(890, 987_654_321)),
             Timestamp {
                 seconds: -891,
                 nanos: 12_345_679
@@ -487,7 +575,7 @@ mod tests {
         ];
 
         for case in cases.iter() {
-            let mut test_duration = crate::Duration {
+            let mut test_duration = Duration {
                 seconds: case.1,
                 nanos: case.2,
             };
@@ -495,7 +583,7 @@ mod tests {
 
             assert_eq!(
                 test_duration,
-                crate::Duration {
+                Duration {
                     seconds: case.3,
                     nanos: case.4,
                 },
