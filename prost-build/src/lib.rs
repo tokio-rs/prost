@@ -116,7 +116,7 @@
 //!
 //! Compiling `protoc` from source requires a few external dependencies. Currently,
 //! `prost-build` uses `cmake` to build `protoc`. For more information check out the
-//! [protobuf build instructions](protobuf-build).
+//! [protobuf build instructions][protobuf-build].
 //!
 //! [protobuf-build]: https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
 
