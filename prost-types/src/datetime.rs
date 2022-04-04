@@ -638,53 +638,51 @@ mod tests {
     fn test_parse_timestamp() {
         // RFC 3339 Section 5.8 Examples
         assert_eq!(
-            "1985-04-12T23:20:50.52Z".parse::<Timestamp>().unwrap(),
+            "1985-04-12T23:20:50.52Z".parse::<Timestamp>(),
             Timestamp::date_time_nanos(1985, 4, 12, 23, 20, 50, 520_000_000),
         );
         assert_eq!(
-            "1996-12-19T16:39:57-08:00".parse::<Timestamp>().unwrap(),
+            "1996-12-19T16:39:57-08:00".parse::<Timestamp>(),
             Timestamp::date_time(1996, 12, 20, 0, 39, 57),
         );
         assert_eq!(
-            "1996-12-19T16:39:57-08:00".parse::<Timestamp>().unwrap(),
+            "1996-12-19T16:39:57-08:00".parse::<Timestamp>(),
             Timestamp::date_time(1996, 12, 20, 0, 39, 57),
         );
         assert_eq!(
-            "1990-12-31T23:59:60Z".parse::<Timestamp>().unwrap(),
+            "1990-12-31T23:59:60Z".parse::<Timestamp>(),
             Timestamp::date_time(1990, 12, 31, 23, 59, 59),
         );
         assert_eq!(
-            "1990-12-31T15:59:60-08:00".parse::<Timestamp>().unwrap(),
+            "1990-12-31T15:59:60-08:00".parse::<Timestamp>(),
             Timestamp::date_time(1990, 12, 31, 23, 59, 59),
         );
         assert_eq!(
-            "1937-01-01T12:00:27.87+00:20".parse::<Timestamp>().unwrap(),
+            "1937-01-01T12:00:27.87+00:20".parse::<Timestamp>(),
             Timestamp::date_time_nanos(1937, 1, 1, 11, 40, 27, 870_000_000),
         );
 
         // Date
         assert_eq!(
-            "1937-01-01".parse::<Timestamp>().unwrap(),
+            "1937-01-01".parse::<Timestamp>(),
             Timestamp::date(1937, 1, 1),
         );
 
         // Negative year
         assert_eq!(
-            "-0008-01-01".parse::<Timestamp>().unwrap(),
+            "-0008-01-01".parse::<Timestamp>(),
             Timestamp::date(-8, 1, 1),
         );
 
         // Plus year
         assert_eq!(
-            "+19370-01-01".parse::<Timestamp>().unwrap(),
+            "+19370-01-01".parse::<Timestamp>(),
             Timestamp::date(19370, 1, 1),
         );
 
         // Full nanos
         assert_eq!(
-            "2020-02-03T01:02:03.123456789Z"
-                .parse::<Timestamp>()
-                .unwrap(),
+            "2020-02-03T01:02:03.123456789Z".parse::<Timestamp>(),
             Timestamp::date_time_nanos(2020, 2, 3, 1, 2, 3, 123_456_789),
         );
 
@@ -705,31 +703,29 @@ mod tests {
         // Test extensions to RFC 3339.
         // ' ' instead of 'T' as date/time separator.
         assert_eq!(
-            "1985-04-12 23:20:50.52Z".parse::<Timestamp>().unwrap(),
+            "1985-04-12 23:20:50.52Z".parse::<Timestamp>(),
             Timestamp::date_time_nanos(1985, 4, 12, 23, 20, 50, 520_000_000),
         );
 
         // No time zone specified.
         assert_eq!(
-            "1985-04-12T23:20:50.52".parse::<Timestamp>().unwrap(),
+            "1985-04-12T23:20:50.52".parse::<Timestamp>(),
             Timestamp::date_time_nanos(1985, 4, 12, 23, 20, 50, 520_000_000),
         );
 
         // Offset without minutes specified.
         assert_eq!(
-            "1996-12-19T16:39:57-08".parse::<Timestamp>().unwrap(),
+            "1996-12-19T16:39:57-08".parse::<Timestamp>(),
             Timestamp::date_time(1996, 12, 20, 0, 39, 57),
         );
 
         // Snowflake stage style.
         assert_eq!(
-            "2015-09-12 00:47:19.591 Z".parse::<Timestamp>().unwrap(),
+            "2015-09-12 00:47:19.591 Z".parse::<Timestamp>(),
             Timestamp::date_time_nanos(2015, 9, 12, 0, 47, 19, 591_000_000),
         );
         assert_eq!(
-            "2020-06-15 00:01:02.123 +0800"
-                .parse::<Timestamp>()
-                .unwrap(),
+            "2020-06-15 00:01:02.123 +0800".parse::<Timestamp>(),
             Timestamp::date_time_nanos(2020, 6, 14, 16, 1, 2, 123_000_000),
         );
     }
