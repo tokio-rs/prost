@@ -251,6 +251,7 @@ impl From<std::time::SystemTime> for Timestamp {
     }
 }
 
+/// A timestamp handling error.
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum TimestampError {
