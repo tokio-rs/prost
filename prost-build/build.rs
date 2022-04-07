@@ -73,15 +73,62 @@ fn vendored() -> bool {
     }
 }
 
-/// Compile `protoc` via `cmake`.
+/// Compile `protoc`.
 fn compile() -> Option<PathBuf> {
-    let protobuf_src = bundle_path().join("protobuf").join("cmake");
+    let protobuf_src = bundle_path().join("protobuf/src/google/protobuf");
 
     println!("cargo:rerun-if-changed={}", protobuf_src.display());
 
-    let dst = cmake::Config::new(protobuf_src).build();
+    // compile our protoc wrapper lib
+    {
+        let mut build = cc::Build::new();
+        build.cpp(true);
+        build.flag("-Wno-unused-parameter");
 
-    Some(dst.join("bin").join("protoc"))
+        build.includes([bundle_path().join("protobuf/src")]);
+
+        build.files(
+            [
+                "any.cc",
+                "any_lite.cc",
+                "arena.cc",
+                "descriptor.cc",
+                "dynamic_message.cc",
+                "extension_set.cc",
+                "map_field.cc",
+                "message.cc",
+                "message_lite.cc",
+                "generated_message_reflection.cc",
+                "generated_message_util.cc",
+                "parse_context.cc",
+                "repeated_field.cc",
+                "repeated_ptr_field.cc",
+                "text_format.cc",
+                "unknown_field_set.cc",
+                "wire_format.cc",
+                "wire_format_lite.cc",
+                "io/coded_stream.cc",
+                "io/strtod.cc",
+                "io/tokenizer.cc",
+                "io/zero_copy_stream.cc",
+                "io/zero_copy_stream_impl_lite.cc",
+                "stubs/common.cc",
+                "stubs/stringpiece.cc",
+                "stubs/stringprintf.cc",
+                "stubs/structurally_valid.cc",
+                "stubs/strutil.cc",
+            ]
+            .iter()
+            .map(|fname| protobuf_src.join(fname)),
+        );
+
+        // This is our little wrapper that only does the 1 thing prost-build
+        // actually needs from the the bloated protoc binary
+        build.file("src/libprotoc.cpp");
+        build.compile("protoc");
+    }
+
+    Some(PathBuf::from("linked"))
 }
 
 /// Try to find a `protoc` through a few methods.
