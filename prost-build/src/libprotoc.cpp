@@ -161,6 +161,7 @@ public:
 
         // Avoid integer overflow in returned '*size'.
         new_size = std::min(new_size, old_size + std::numeric_limits<int>::max());
+        new_size = std::max(new_size, size_t(1024));
         this->buffer_base = this->impl->resize_buffer(this->impl->context, new_size);
 
         *data = ((uint8_t*)buffer_base + old_size);
@@ -215,9 +216,8 @@ class ErrorPrinter
     , public google::protobuf::io::ErrorCollector
     , public DescriptorPool::ErrorCollector {
 public:
-    ErrorPrinter(DiskSourceTree* tree = nullptr)
-      : tree_(tree),
-        found_errors_(false),
+    ErrorPrinter()
+      : found_errors_(false),
         found_warnings_(false) {}
   ~ErrorPrinter() {}
 
@@ -279,7 +279,6 @@ private:
         }
     }
 
-    DiskSourceTree* tree_;
     bool found_errors_;
     bool found_warnings_;
 };
@@ -294,14 +293,16 @@ extern "C" {
     ) {
         // We're forced to reallocate these because some of the following APIs
         // only take std::string :p
-        std::vector<std::string> inputs(num_inputs);
+        std::vector<std::string> inputs;
+        inputs.reserve(num_inputs);
         // I'm sure there's some fancier way to initialize this these days but I
         // prefer to keep the C++ as dumb as possible
         for (size_t i = 0; i < num_inputs; ++i) {
             inputs.push_back(std::string(input_files[i].path, input_files[i].len));
         }
 
-        std::vector<std::string> includes(num_includes);
+        std::vector<std::string> includes;
+        includes.reserve(num_includes);
         for (size_t i = 0; i < num_includes; ++i) {
             includes.push_back(std::string(includes_paths[i].path, includes_paths[i].len));
         }
@@ -324,7 +325,7 @@ extern "C" {
             return 1;
         }
 
-        std::unique_ptr<ErrorPrinter> error_collector(new ErrorPrinter(source_tree.get()));
+        std::unique_ptr<ErrorPrinter> error_collector(new ErrorPrinter());
         std::unique_ptr<SourceTreeDescriptorDatabase> source_tree_database(
             new SourceTreeDescriptorDatabase(source_tree.get(), descriptor_set_in_database.get()));
         source_tree_database->RecordErrorsTo(error_collector.get());
@@ -334,7 +335,8 @@ extern "C" {
         descriptor_pool->EnforceWeakDependencies(true);
 
         // Try to actually parse all of our inputs, if this
-        std::vector<const FileDescriptor*> parsed(inputs.size());
+        std::vector<const FileDescriptor*> parsed;
+        parsed.reserve(inputs.size());
         if (!parse_input_files(inputs, descriptor_pool.get(), &parsed)) {
             return 1;
         }

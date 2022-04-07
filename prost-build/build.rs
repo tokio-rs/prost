@@ -82,8 +82,19 @@ fn compile() -> Option<PathBuf> {
     // compile our protoc wrapper lib
     {
         let mut build = cc::Build::new();
-        build.cpp(true);
-        build.flag("-Wno-unused-parameter");
+        build
+            .cpp(true)
+            // We _always_ want to build optmized, protoc code is far too slow otherwise
+            .opt_level_str("2");
+
+        // Disable all the compiler warnings for the protoc code we have no
+        // intention of changing
+        if !build.get_compiler().is_like_msvc() {
+            build
+                .flag("-Wno-unused-parameter")
+                .flag("-Wno-redundant-move")
+                .flag("-Wno-sign-compare");
+        }
 
         build.includes([bundle_path().join("protobuf/src")]);
 
@@ -92,31 +103,42 @@ fn compile() -> Option<PathBuf> {
                 "any.cc",
                 "any_lite.cc",
                 "arena.cc",
+                "arenastring.cc",
                 "descriptor.cc",
+                "descriptor.pb.cc",
+                "descriptor_database.cc",
                 "dynamic_message.cc",
                 "extension_set.cc",
+                "extension_set_heavy.cc",
+                "implicit_weak_message.cc",
+                "map.cc",
                 "map_field.cc",
                 "message.cc",
                 "message_lite.cc",
                 "generated_message_reflection.cc",
                 "generated_message_util.cc",
                 "parse_context.cc",
+                "reflection_ops.cc",
                 "repeated_field.cc",
                 "repeated_ptr_field.cc",
                 "text_format.cc",
                 "unknown_field_set.cc",
                 "wire_format.cc",
                 "wire_format_lite.cc",
+                "compiler/importer.cc",
+                "compiler/parser.cc",
                 "io/coded_stream.cc",
                 "io/strtod.cc",
                 "io/tokenizer.cc",
                 "io/zero_copy_stream.cc",
+                "io/zero_copy_stream_impl.cc",
                 "io/zero_copy_stream_impl_lite.cc",
                 "stubs/common.cc",
                 "stubs/stringpiece.cc",
                 "stubs/stringprintf.cc",
                 "stubs/structurally_valid.cc",
                 "stubs/strutil.cc",
+                "stubs/substitute.cc",
             ]
             .iter()
             .map(|fname| protobuf_src.join(fname)),
@@ -126,6 +148,8 @@ fn compile() -> Option<PathBuf> {
         // actually needs from the the bloated protoc binary
         build.file("src/libprotoc.cpp");
         build.compile("protoc");
+
+        println!("cargo:rerun-if-changed=src/libprotoc.cpp");
     }
 
     Some(PathBuf::from("linked"))
