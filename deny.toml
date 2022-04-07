@@ -1,0 +1,11 @@
+[licenses]
+allow = ["Apache-2.0", "MIT", "BSD-3-Clause"]
+
+[bans]
+deny = [{ name = "cmake" }]
+skip = [
+    # old csv via old criterion
+    { name = "itoa", version = "=0.4.8" },
+    # Proptest includes 2 version :(
+    { name = "quick-error", version = "=1.2.3" },
+]
