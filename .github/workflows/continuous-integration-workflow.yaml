@@ -138,3 +138,11 @@ jobs:
       - name: cargo check
         run: cd test-vendored && cargo check
 
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: EmbarkStudios/cargo-deny-action@v1
