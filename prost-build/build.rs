@@ -91,6 +91,7 @@ fn compile() -> Option<PathBuf> {
         // intention of changing
         if !build.get_compiler().is_like_msvc() {
             build
+                .flag("-std=c++11")
                 .flag("-Wno-unused-parameter")
                 .flag("-Wno-redundant-move")
                 .flag("-Wno-sign-compare")
