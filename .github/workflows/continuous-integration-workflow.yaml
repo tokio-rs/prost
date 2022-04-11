@@ -69,6 +69,7 @@ jobs:
             profile: minimal
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
+      - uses: Swatinem/rust-cache@v1
       - name: test
         uses: actions-rs/cargo@v1
         with:
@@ -93,6 +94,7 @@ jobs:
             toolchain: nightly
             default: true
             profile: minimal
+      - uses: Swatinem/rust-cache@v1
       - name: install cargo-no-std-check
         uses: actions-rs/cargo@v1
         with:
@@ -132,6 +134,7 @@ jobs:
             toolchain: stable
             default: true
             profile: minimal
+      - uses: Swatinem/rust-cache@v1
       - name: cargo check
         run: cd test-vendored && cargo check
 
