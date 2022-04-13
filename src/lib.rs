@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost/0.10.0")]
+#![doc(html_root_url = "https://docs.rs/prost/0.10.1")]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // Re-export the alloc crate for use within derived code.
