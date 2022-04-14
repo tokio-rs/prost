@@ -12,14 +12,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::convert::TryFrom;
+use core::fmt;
 use core::i32;
 use core::i64;
+use core::str::FromStr;
 use core::time;
 
 include!("protobuf.rs");
 pub mod compiler {
     include!("compiler.rs");
 }
+
+mod datetime;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
@@ -128,7 +132,6 @@ impl Timestamp {
     /// Based on [`google::protobuf::util::CreateNormalized`][1].
     ///
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
-    #[cfg(feature = "std")]
     pub fn normalize(&mut self) {
         // Make sure nanos is in the range.
         if self.nanos <= -NANOS_PER_SECOND || self.nanos >= NANOS_PER_SECOND {
@@ -164,6 +167,50 @@ impl Timestamp {
         // TODO: should this be checked?
         // debug_assert!(self.seconds >= -62_135_596_800 && self.seconds <= 253_402_300_799,
         //               "invalid timestamp: {:?}", self);
+    }
+
+    /// Creates a new `Timestamp` at the start of the provided UTC date.
+    pub fn date(year: i64, month: u8, day: u8) -> Result<Timestamp, TimestampError> {
+        Timestamp::date_time_nanos(year, month, day, 0, 0, 0, 0)
+    }
+
+    /// Creates a new `Timestamp` instance with the provided UTC date and time.
+    pub fn date_time(
+        year: i64,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+    ) -> Result<Timestamp, TimestampError> {
+        Timestamp::date_time_nanos(year, month, day, hour, minute, second, 0)
+    }
+
+    /// Creates a new `Timestamp` instance with the provided UTC date and time.
+    pub fn date_time_nanos(
+        year: i64,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+        nanos: u32,
+    ) -> Result<Timestamp, TimestampError> {
+        let date_time = datetime::DateTime {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            nanos,
+        };
+
+        if date_time.is_valid() {
+            Ok(Timestamp::from(date_time))
+        } else {
+            Err(TimestampError::InvalidDateTime)
+        }
     }
 }
 
@@ -204,37 +251,52 @@ impl From<std::time::SystemTime> for Timestamp {
     }
 }
 
-/// Indicates that a [`Timestamp`] could not be converted to
-/// [`SystemTime`][std::time::SystemTime] because it is out of range.
-///
-/// The range of times that can be represented by `SystemTime` depends on the platform.
-/// All `Timestamp`s are likely representable on 64-bit Unix-like platforms, but
-/// other platforms, such as Windows and 32-bit Linux, may not be able to represent
-/// the full range of `Timestamp`s.
-#[cfg(feature = "std")]
-#[derive(Debug)]
+/// A timestamp handling error.
+#[derive(Debug, PartialEq)]
 #[non_exhaustive]
-pub struct TimestampOutOfSystemRangeError {
-    pub timestamp: Timestamp,
+pub enum TimestampError {
+    /// Indicates that a [`Timestamp`] could not be converted to
+    /// [`SystemTime`][std::time::SystemTime] because it is out of range.
+    ///
+    /// The range of times that can be represented by `SystemTime` depends on the platform. All
+    /// `Timestamp`s are likely representable on 64-bit Unix-like platforms, but other platforms,
+    /// such as Windows and 32-bit Linux, may not be able to represent the full range of
+    /// `Timestamp`s.
+    OutOfSystemRange(Timestamp),
+
+    /// An error indicating failure to parse a timestamp in RFC-3339 format.
+    ParseFailure,
+
+    /// Indicates an error when constructing a timestamp due to invalid date or time data.
+    InvalidDateTime,
 }
 
-#[cfg(feature = "std")]
-impl core::fmt::Display for TimestampOutOfSystemRangeError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{:?} is not representable as a `SystemTime` because it is out of range",
-            self
-        )
+impl fmt::Display for TimestampError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TimestampError::OutOfSystemRange(timestamp) => {
+                write!(
+                    f,
+                    "{} is not representable as a `SystemTime` because it is out of range",
+                    timestamp
+                )
+            }
+            TimestampError::ParseFailure => {
+                write!(f, "failed to parse RFC-3339 formatted timestamp")
+            }
+            TimestampError::InvalidDateTime => {
+                write!(f, "invalid date or time")
+            }
+        }
     }
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for TimestampOutOfSystemRangeError {}
+impl std::error::Error for TimestampError {}
 
 #[cfg(feature = "std")]
 impl TryFrom<Timestamp> for std::time::SystemTime {
-    type Error = TimestampOutOfSystemRangeError;
+    type Error = TimestampError;
 
     fn try_from(mut timestamp: Timestamp) -> Result<std::time::SystemTime, Self::Error> {
         let orig_timestamp = timestamp.clone();
@@ -251,9 +313,21 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
             system_time.checked_add(time::Duration::from_nanos(timestamp.nanos as u64))
         });
 
-        system_time.ok_or(TimestampOutOfSystemRangeError {
-            timestamp: orig_timestamp,
-        })
+        system_time.ok_or(TimestampError::OutOfSystemRange(orig_timestamp))
+    }
+}
+
+impl FromStr for Timestamp {
+    type Err = TimestampError;
+
+    fn from_str(s: &str) -> Result<Timestamp, TimestampError> {
+        datetime::parse_timestamp(s).ok_or(TimestampError::ParseFailure)
+    }
+}
+
+impl fmt::Display for Timestamp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        datetime::DateTime::from(self.clone()).fmt(f)
     }
 }
 
