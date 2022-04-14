@@ -93,7 +93,8 @@ fn compile() -> Option<PathBuf> {
             build
                 .flag("-Wno-unused-parameter")
                 .flag("-Wno-redundant-move")
-                .flag("-Wno-sign-compare");
+                .flag("-Wno-sign-compare")
+                .flag("-Wno-stringop-overflow");
         }
 
         build.includes(&[bundle_path().join("protobuf/src")]);
