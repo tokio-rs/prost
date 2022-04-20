@@ -340,7 +340,7 @@ fn parse_digits(s: &str) -> (&str, &str) {
         .as_bytes()
         .iter()
         .position(|c| !c.is_ascii_digit())
-        .unwrap_or_else(|| s.len());
+        .unwrap_or(s.len());
     s.split_at(idx)
 }
 
