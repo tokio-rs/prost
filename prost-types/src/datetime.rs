@@ -3,6 +3,7 @@
 
 use core::fmt;
 
+use crate::Duration;
 use crate::Timestamp;
 
 /// A point in time, represented as a date and time in the UTC timezone.
@@ -247,6 +248,16 @@ fn parse_time(s: &str) -> Option<(u8, u8, u8, u32, &str)> {
     let s = parse_char(s, b':')?;
     let (second, s) = parse_two_digit_numeric(s)?;
 
+    let (nanos, s) = parse_nanos(s)?;
+
+    Some((hour, minute, second, nanos, s))
+}
+
+/// Parses an optional nanosecond time from ASCII string `s`, returning the nanos and remaining
+/// string.
+fn parse_nanos(s: &str) -> Option<(u32, &str)> {
+    debug_assert!(s.is_ascii());
+
     // Parse the nanoseconds, if present.
     let (nanos, s) = if let Some(s) = parse_char(s, b'.') {
         let (digits, s) = parse_digits(s);
@@ -257,7 +268,7 @@ fn parse_time(s: &str) -> Option<(u8, u8, u8, u32, &str)> {
         (0, s)
     };
 
-    Some((hour, minute, second, nanos, s))
+    Some((nanos, s))
 }
 
 /// Parses a timezone offset in RFC 3339 format from ASCII string `s`, returning the offset hour,
@@ -329,7 +340,7 @@ fn parse_digits(s: &str) -> (&str, &str) {
         .as_bytes()
         .iter()
         .position(|c| !c.is_ascii_digit())
-        .unwrap_or_else(|| s.len());
+        .unwrap_or(s.len());
     s.split_at(idx)
 }
 
@@ -528,6 +539,40 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
     Some(Timestamp { seconds, nanos })
 }
 
+/// Parse a duration in the [Protobuf JSON encoding spec format][1].
+///
+/// [1]: https://developers.google.com/protocol-buffers/docs/proto3#json
+pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
+    // Check that the string is ASCII, since subsequent parsing steps use byte-level indexing.
+    ensure!(s.is_ascii());
+
+    let (is_negative, s) = match parse_char(s, b'-') {
+        Some(s) => (true, s),
+        None => (false, s),
+    };
+
+    let (digits, s) = parse_digits(s);
+    let seconds = digits.parse::<i64>().ok()?;
+
+    let (nanos, s) = parse_nanos(s)?;
+
+    let s = parse_char(s, b's')?;
+    ensure!(s.is_empty());
+    ensure!(nanos < crate::NANOS_PER_SECOND as u32);
+
+    // If the duration is negative, also flip the nanos sign.
+    let (seconds, nanos) = if is_negative {
+        (-seconds, -(nanos as i32))
+    } else {
+        (seconds, nanos as i32)
+    };
+
+    Some(Duration {
+        seconds,
+        nanos: nanos as i32,
+    })
+}
+
 impl From<DateTime> for Timestamp {
     fn from(date_time: DateTime) -> Timestamp {
         let seconds = date_time_to_seconds(&date_time);
@@ -541,6 +586,8 @@ impl From<DateTime> for Timestamp {
 
 #[cfg(test)]
 mod tests {
+
+    use std::convert::TryFrom;
 
     use proptest::prelude::*;
 
@@ -731,16 +778,67 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_duration() {
+        let case = |s: &str, seconds: i64, nanos: i32| {
+            assert_eq!(
+                s.parse::<Duration>().unwrap(),
+                Duration { seconds, nanos },
+                "duration: {}",
+                s
+            );
+        };
+
+        case("0s", 0, 0);
+        case("0.0s", 0, 0);
+        case("0.000s", 0, 0);
+
+        case("-0s", 0, 0);
+        case("-0.0s", 0, 0);
+        case("-0.000s", 0, 0);
+
+        case("-0s", 0, 0);
+        case("-0.0s", 0, 0);
+        case("-0.000s", 0, 0);
+
+        case("0.05s", 0, 50_000_000);
+        case("0.050s", 0, 50_000_000);
+
+        case("-0.05s", 0, -50_000_000);
+        case("-0.050s", 0, -50_000_000);
+
+        case("1s", 1, 0);
+        case("1.0s", 1, 0);
+        case("1.000s", 1, 0);
+
+        case("-1s", -1, 0);
+        case("-1.0s", -1, 0);
+        case("-1.000s", -1, 0);
+
+        case("15s", 15, 0);
+        case("15.1s", 15, 100_000_000);
+        case("15.100s", 15, 100_000_000);
+
+        case("-15s", -15, 0);
+        case("-15.1s", -15, -100_000_000);
+        case("-15.100s", -15, -100_000_000);
+
+        case("100.000000009s", 100, 9);
+        case("-100.000000009s", -100, -9);
+    }
+
+    #[test]
     fn test_parse_non_ascii() {
         assert!("2021️⃣-06-15 00:01:02.123 +0800"
             .parse::<Timestamp>()
             .is_err());
+
+        assert!("1️⃣s".parse::<Duration>().is_err());
     }
 
     proptest! {
         #[cfg(feature = "std")]
         #[test]
-        fn check_parse_to_string_roundtrip(
+        fn check_timestamp_parse_to_string_roundtrip(
             system_time in std::time::SystemTime::arbitrary(),
         ) {
 
@@ -750,6 +848,22 @@ mod tests {
                 ts,
                 ts.to_string().parse::<Timestamp>().unwrap(),
             )
+        }
+
+        #[test]
+        fn check_duration_parse_to_string_roundtrip(
+            duration in core::time::Duration::arbitrary(),
+        ) {
+            let duration = match Duration::try_from(duration) {
+                Ok(duration) => duration,
+                Err(_) => return Err(TestCaseError::reject("duration out of range")),
+            };
+
+            prop_assert_eq!(
+                &duration,
+                &duration.to_string().parse::<Duration>().unwrap(),
+                "{}", duration.to_string()
+            );
         }
     }
 }
