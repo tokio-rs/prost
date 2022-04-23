@@ -28,6 +28,9 @@ prost-types = { version = "0.10.0", path = "../prost-types", default-features = 
 tempfile = "3"
 lazy_static = "1.4.0"
 regex = { version = "1.5.5", default-features = false, features = ["std", "unicode-bool"] }
+# These two must be kept in sync
+pulldown-cmark = "0.9"
+pulldown-cmark-to-cmark = "10.0"
 
 [build-dependencies]
 which = { version = "4", default-features = false }
