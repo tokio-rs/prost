@@ -139,6 +139,9 @@ impl Comments {
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
         s = RULE_BRACKETS.replace_all(&s, r"\$1$2\$3").to_string();
+        if !s.is_empty() {
+            s.insert(0, ' ');
+        }
         s
     }
 }
@@ -201,22 +204,22 @@ mod tests {
             TestCases {
                 name: "valid_http",
                 input: "See https://www.rust-lang.org/".to_string(),
-                expected: "///See <https://www.rust-lang.org/>\n".to_string(),
+                expected: "/// See <https://www.rust-lang.org/>\n".to_string(),
             },
             TestCases {
                 name: "valid_https",
                 input: "See https://www.rust-lang.org/".to_string(),
-                expected: "///See <https://www.rust-lang.org/>\n".to_string(),
+                expected: "/// See <https://www.rust-lang.org/>\n".to_string(),
             },
             TestCases {
                 name: "valid_https_parenthesis",
                 input: "See (https://www.rust-lang.org/)".to_string(),
-                expected: "///See (<https://www.rust-lang.org/>)\n".to_string(),
+                expected: "/// See (<https://www.rust-lang.org/>)\n".to_string(),
             },
             TestCases {
                 name: "invalid",
                 input: "See note://abc".to_string(),
-                expected: "///See note://abc\n".to_string(),
+                expected: "/// See note://abc\n".to_string(),
             },
         ];
         for t in tests {
@@ -245,22 +248,22 @@ mod tests {
             TestCases {
                 name: "valid_brackets",
                 input: "foo [bar] baz".to_string(),
-                expected: "///foo \\[bar\\] baz\n".to_string(),
+                expected: "/// foo \\[bar\\] baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_start_bracket",
                 input: "foo [= baz".to_string(),
-                expected: "///foo [= baz\n".to_string(),
+                expected: "/// foo [= baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_end_bracket",
                 input: "foo =] baz".to_string(),
-                expected: "///foo =] baz\n".to_string(),
+                expected: "/// foo =] baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_bracket_combination",
                 input: "[0, 9)".to_string(),
-                expected: "///[0, 9)\n".to_string(),
+                expected: "/// [0, 9)\n".to_string(),
             },
         ];
         for t in tests {
