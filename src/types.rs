@@ -422,3 +422,38 @@ impl Message for () {
     }
     fn clear(&mut self) {}
 }
+
+#[cfg(feature = "with-uuid")]
+impl Message for uuid::Uuid {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        bytes::encode(1, &Bytes::from(self.as_bytes().to_vec()), buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        if tag == 1 {
+            let mut bytes = Bytes::from(self.as_bytes().to_vec());
+            bytes::merge(wire_type, &mut bytes, buf, ctx)
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        bytes::encoded_len(1, &Bytes::from(self.as_bytes().to_vec()))
+    }
+
+    fn clear(&mut self) {}
+}

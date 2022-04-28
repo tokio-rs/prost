@@ -41,13 +41,15 @@ exclude = [
 bench = false
 
 [features]
-default = ["prost-derive", "std"]
+default = ["prost-derive", "std", "with-uuid"]
 no-recursion-limit = []
 std = []
+with-uuid = ["uuid"]
 
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.10.0", path = "prost-derive", optional = true }
+uuid = { version = "^1", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
