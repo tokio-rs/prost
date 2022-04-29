@@ -137,10 +137,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                     })
                 },
             }
-        },
+        }
         None => quote! {
             _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
-        }
+        },
     };
 
     let struct_name = if fields.is_empty() {
