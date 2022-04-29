@@ -183,10 +183,7 @@ impl Field {
     }
 
     pub fn is_unknown(&self) -> bool {
-        match *self {
-            Field::Unknown(_) => true,
-            _ => false,
-        }
+        matches!(self, Field::Unknown(_))
     }
 }
 
