@@ -79,7 +79,9 @@ fn compile() -> Option<PathBuf> {
 
     println!("cargo:rerun-if-changed={}", protobuf_src.display());
 
-    let dst = cmake::Config::new(protobuf_src).build();
+    let dst = cmake::Config::new(protobuf_src)
+        .define("protobuf_BUILD_TESTS", "OFF")
+        .build();
 
     Some(dst.join("bin").join("protoc"))
 }
