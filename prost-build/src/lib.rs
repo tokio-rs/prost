@@ -880,10 +880,6 @@ impl Config {
 
         let modules = self.generate(requests)?;
         for (module, content) in &modules {
-            if content.is_empty() {
-                continue;
-            }
-
             let file_name = file_names
                 .get(module)
                 .expect("every module should have a filename");
