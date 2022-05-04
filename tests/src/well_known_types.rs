@@ -62,6 +62,7 @@ fn test_timestamp() {
     );
 }
 
+#[cfg(feature = "std")]
 mod include {
     include!(concat!(
         env!("OUT_DIR"),
