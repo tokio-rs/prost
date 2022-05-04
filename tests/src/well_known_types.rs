@@ -61,3 +61,10 @@ fn test_timestamp() {
         "hash for normalized should match and not inserted"
     );
 }
+
+mod include {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/wellknown_include/wellknown_include.rs"
+    ));
+}
