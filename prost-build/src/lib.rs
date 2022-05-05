@@ -986,7 +986,7 @@ impl Config {
                         p.as_ref()
                             .as_os_str()
                             .encode_wide()
-                            .flatten(|c| [((c & 0xff00) >> 8) as u8, c & 0xff])
+                            .flat_map(|c| [((c & 0xff00) >> 8) as u8, c & 0xff])
                             .collect::<Vec<_>>()
                             .into()
                     })
