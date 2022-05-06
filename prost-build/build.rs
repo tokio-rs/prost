@@ -145,7 +145,7 @@ fn compile(stub: bool) -> Option<PathBuf> {
 
             if env::var("CARGO_CFG_TARGET_FAMILY").as_deref() == Ok("windows") {
                 build.files(
-                    ["io/io_win32.cc", "stubs/status.cc"]
+                    ["io/io_win32.cc", "stubs/int128.cc", "stubs/status.cc"]
                         .iter()
                         .map(|fname| protobuf_src.join(fname)),
                 );
