@@ -1,3 +1,9 @@
+[advisories]
+ignore = [
+    # serde_cbor is unmaintained, but brought in by criterion
+    "RUSTSEC-2021-0127",
+]
+
 [licenses]
 allow = ["Apache-2.0", "MIT", "BSD-3-Clause"]
 
