@@ -1004,12 +1004,15 @@ impl Config {
             #[cfg(windows)]
             {
                 use std::os::windows::ffi::OsStrExt;
-                path.as_ref()
-                    .as_os_str()
-                    .encode_wide()
-                    .flat_map(|c| [((c & 0xff00) >> 8) as u8, (c & 0xff) as u8].into_iter())
-                    .collect::<Vec<_>>()
-                    .into()
+                let os_str = path.as_ref().as_os_str();
+                let mut pv = Vec::with_capacity(os_str.len() * 2);
+
+                for c in os_str.encode_wide() {
+                    pv.push(((c & 0xff00) >> 8) as u8);
+                    pv.push((c & 0xff) as u8);
+                }
+
+                pv.into()
             }
         }
 
