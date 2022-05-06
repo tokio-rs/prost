@@ -1003,16 +1003,21 @@ impl Config {
 
             #[cfg(windows)]
             {
-                use std::os::windows::ffi::OsStrExt;
-                let os_str = path.as_ref().as_os_str();
-                let mut pv = Vec::with_capacity(os_str.len() * 2);
-
-                for c in os_str.encode_wide() {
-                    pv.push(((c & 0xff00) >> 8) as u8);
-                    pv.push((c & 0xff) as u8);
+                // https://internals.rust-lang.org/t/pathbuf-to-cstring/12560/19
+                // protobuf is internally (incorrectly) using std::string to store
+                // paths, and I don't know if it's expected to work with actual
+                // non-ascii/utf-8 paths, so for now just cheat until someone
+                // complains about it not working
+                match path.as_ref().to_string_lossy() {
+                    std::borrow::Cow::Owned(s) => {
+                        log::warn!(
+                            "non utf-8 path '{}' detected, this may fail in protoc",
+                            path.as_ref().display()
+                        );
+                        s.into_bytes().into()
+                    }
+                    std::borrow::Cow::Borrowed(s) => s.as_bytes().into(),
                 }
-
-                pv.into()
             }
         }
 

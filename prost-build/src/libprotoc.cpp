@@ -336,8 +336,6 @@ extern "C" {
             source_tree->MapPath("", include);
         }
 
-        // Map input files to virtual paths if possible. I'm not sure if this
-        // is even needed since as stated prost really doesn't do virtual paths
         if (!make_inputs_relative(&inputs, source_tree.get())) {
             return 1;
         }
