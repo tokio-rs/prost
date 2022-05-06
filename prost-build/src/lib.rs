@@ -1003,6 +1003,7 @@ impl Config {
 
             #[cfg(windows)]
             {
+                use std::os::windows::ffi::OsStrExt;
                 path.as_ref()
                     .as_os_str()
                     .encode_wide()
