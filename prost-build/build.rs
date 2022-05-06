@@ -96,7 +96,7 @@ fn compile() -> Option<PathBuf> {
                 .flag("-Wno-sign-compare");
         }
 
-        build.includes([bundle_path().join("protobuf/src")]);
+        build.includes(&[bundle_path().join("protobuf/src")]);
 
         build.files(
             [
