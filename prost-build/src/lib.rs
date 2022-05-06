@@ -1007,7 +1007,7 @@ impl Config {
                 path.as_ref()
                     .as_os_str()
                     .encode_wide()
-                    .flat_map(|c| [((c & 0xff00) >> 8) as u8, (c & 0xff) as u8])
+                    .flat_map(|c| [((c & 0xff00) >> 8) as u8, (c & 0xff) as u8].into_iter())
                     .collect::<Vec<_>>()
                     .into()
             }
