@@ -797,63 +797,7 @@ impl Config {
         // this figured out.
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
-        let buf = if protoc() == Path::new("linked") {
-            Self::serialize_file_descriptor_set(protos, includes)?
-        } else {
-            let tmp;
-            let file_descriptor_set_path = if let Some(path) = &self.file_descriptor_set_path {
-                path.clone()
-            } else {
-                if self.skip_protoc_run {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        "file_descriptor_set_path is required with skip_protoc_run",
-                    ));
-                }
-                tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
-                tmp.path().join("prost-descriptor-set")
-            };
-
-            if !self.skip_protoc_run {
-                let mut cmd = Command::new(protoc());
-                cmd.arg("--include_imports")
-                    .arg("--include_source_info")
-                    .arg("-o")
-                    .arg(&file_descriptor_set_path);
-
-                for include in includes {
-                    cmd.arg("-I").arg(include.as_ref());
-                }
-
-                // Set the protoc include after the user includes in case the user wants to
-                // override one of the built-in .protos.
-                cmd.arg("-I").arg(protoc_include());
-
-                for arg in &self.protoc_args {
-                    cmd.arg(arg);
-                }
-
-                for proto in protos {
-                    cmd.arg(proto.as_ref());
-                }
-
-                let output = cmd.output().map_err(|error| {
-                Error::new(
-                    error.kind(),
-                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): {}", error),
-                )
-            })?;
-
-                if !output.status.success() {
-                    return Err(Error::new(
-                        ErrorKind::Other,
-                        format!("protoc failed: {}", String::from_utf8_lossy(&output.stderr)),
-                    ));
-                }
-            }
-
-            fs::read(file_descriptor_set_path)?
-        };
+        let buf = self.load_file_descriptor_set(protos, includes)?;
 
         let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
             Error::new(
@@ -918,6 +862,89 @@ impl Config {
         Ok(())
     }
 
+    fn load_file_descriptor_set(
+        &self,
+        protos: &[impl AsRef<Path>],
+        includes: &[impl AsRef<Path>],
+    ) -> Result<Vec<u8>> {
+        if self.skip_protoc_run {
+            if let Some(path) = &self.file_descriptor_set_path {
+                return Ok(fs::read(path)?);
+            } else {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    "file_descriptor_set_path is required with skip_protoc_run",
+                ));
+            }
+        }
+
+        if protoc() == Path::new("linked") {
+            let file_descriptor_set = Self::serialize_file_descriptor_set(protos, includes)?;
+
+            // If the user has set the file descriptor path manually then also save it
+            // to disk in case they are counting on that behavior
+            if let Some(path) = &self.file_descriptor_set_path {
+                std::fs::write(path, &file_descriptor_set)?;
+            }
+
+            Ok(file_descriptor_set)
+        } else {
+            let tmp;
+            let file_descriptor_set_path = if let Some(path) = &self.file_descriptor_set_path {
+                path.clone()
+            } else {
+                if self.skip_protoc_run {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        "file_descriptor_set_path is required with skip_protoc_run",
+                    ));
+                }
+                tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
+                tmp.path().join("prost-descriptor-set")
+            };
+
+            if !self.skip_protoc_run {
+                let mut cmd = Command::new(protoc());
+                cmd.arg("--include_imports")
+                    .arg("--include_source_info")
+                    .arg("-o")
+                    .arg(&file_descriptor_set_path);
+
+                for include in includes {
+                    cmd.arg("-I").arg(include.as_ref());
+                }
+
+                // Set the protoc include after the user includes in case the user wants to
+                // override one of the built-in .protos.
+                cmd.arg("-I").arg(protoc_include());
+
+                for arg in &self.protoc_args {
+                    cmd.arg(arg);
+                }
+
+                for proto in protos {
+                    cmd.arg(proto.as_ref());
+                }
+
+                let output = cmd.output().map_err(|error| {
+                Error::new(
+                    error.kind(),
+                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): {}", error),
+                )
+            })?;
+
+                if !output.status.success() {
+                    return Err(Error::new(
+                        ErrorKind::Other,
+                        format!("protoc failed: {}", String::from_utf8_lossy(&output.stderr)),
+                    ));
+                }
+            }
+
+            fs::read(file_descriptor_set_path)
+        }
+    }
+
     fn serialize_file_descriptor_set(
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
@@ -966,32 +993,28 @@ impl Config {
             paths: Vec<CPath>,
         }
 
-        fn path_bufs<'s>(paths: &'s [impl AsRef<Path>]) -> PathBufs<'s> {
-            let storage: Vec<std::borrow::Cow<'s, [u8]>>;
+        #[inline]
+        fn path_to_vec<'s>(path: &'s impl AsRef<Path>) -> std::borrow::Cow<'s, [u8]> {
             #[cfg(unix)]
             {
                 use std::os::unix::ffi::OsStrExt;
-                storage = paths
-                    .iter()
-                    .map(|p| p.as_ref().as_os_str().as_bytes().into())
-                    .collect();
+                path.as_ref().as_os_str().as_bytes().into()
             }
 
             #[cfg(windows)]
             {
-                use std::os::windows::ffi::OsStrExt;
-                storage = paths
-                    .iter()
-                    .map(|p| {
-                        p.as_ref()
-                            .as_os_str()
-                            .encode_wide()
-                            .flat_map(|c| [((c & 0xff00) >> 8) as u8, c & 0xff])
-                            .collect::<Vec<_>>()
-                            .into()
-                    })
-                    .collect();
+                path.as_ref()
+                    .as_os_str()
+                    .encode_wide()
+                    .flat_map(|c| [((c & 0xff00) >> 8) as u8, c & 0xff])
+                    .collect::<Vec<_>>()
+                    .into()
             }
+        }
+
+        #[inline]
+        fn path_bufs<'s>(paths: &'s [impl AsRef<Path>]) -> PathBufs<'s> {
+            let storage: Vec<_> = paths.iter().map(path_to_vec).collect();
 
             let paths = storage
                 .iter()
@@ -1005,7 +1028,19 @@ impl Config {
         }
 
         let protos = path_bufs(protos);
-        let includes = path_bufs(includes);
+        let mut includes = path_bufs(includes);
+
+        // Explicitly add the default protoc includes, these are normally added
+        // by the CLI, which we don't use
+        let protoc_include = protoc_include();
+        {
+            let pi = path_to_vec(&protoc_include);
+            includes.paths.push(CPath {
+                path: pi.as_ref().as_ptr().cast(),
+                len: pi.len(),
+            });
+            includes.storage.push(pi);
+        }
 
         let mut output_vec = Vec::new();
 
@@ -1027,7 +1062,10 @@ impl Config {
         {
             Ok(output_vec)
         } else {
-            panic!("oh noes");
+            Err(Error::new(
+                ErrorKind::Other,
+                "failed to serialize file descriptor set, see stderr",
+            ))
         }
     }
 

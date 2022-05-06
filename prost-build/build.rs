@@ -16,7 +16,6 @@
 //!     2. The bundled Protobuf include directory.
 //!
 
-use cfg_if::cfg_if;
 use std::env;
 use std::path::PathBuf;
 use which::which;
@@ -64,17 +63,14 @@ fn path_protoc() -> Option<PathBuf> {
 
 /// Returns true if the vendored flag is enabled.
 fn vendored() -> bool {
-    cfg_if! {
-        if #[cfg(feature = "vendored")] {
-            true
-        } else {
-            false
-        }
-    }
+    env::var("CARGO_FEATURE_VENDORED").is_ok()
 }
 
-/// Compile `protoc`.
-fn compile() -> Option<PathBuf> {
+/// Compile `protoc`. If stub is true, this won't do anything other than emit
+/// the single function we need to link, this is needed if the `vendored`
+/// feature is being used, but the user has also set the `PROTOC_NO_VENDOR` flag
+/// so protoc will be used at runtime
+fn compile(stub: bool) -> Option<PathBuf> {
     let protobuf_src = bundle_path().join("protobuf/src/google/protobuf");
 
     println!("cargo:rerun-if-changed={}", protobuf_src.display());
@@ -100,51 +96,57 @@ fn compile() -> Option<PathBuf> {
 
         build.includes(&[bundle_path().join("protobuf/src")]);
 
-        build.files(
-            [
-                "any.cc",
-                "any_lite.cc",
-                "arena.cc",
-                "arenastring.cc",
-                "descriptor.cc",
-                "descriptor.pb.cc",
-                "descriptor_database.cc",
-                "dynamic_message.cc",
-                "extension_set.cc",
-                "extension_set_heavy.cc",
-                "implicit_weak_message.cc",
-                "map.cc",
-                "map_field.cc",
-                "message.cc",
-                "message_lite.cc",
-                "generated_message_reflection.cc",
-                "generated_message_util.cc",
-                "parse_context.cc",
-                "reflection_ops.cc",
-                "repeated_field.cc",
-                "repeated_ptr_field.cc",
-                "text_format.cc",
-                "unknown_field_set.cc",
-                "wire_format.cc",
-                "wire_format_lite.cc",
-                "compiler/importer.cc",
-                "compiler/parser.cc",
-                "io/coded_stream.cc",
-                "io/strtod.cc",
-                "io/tokenizer.cc",
-                "io/zero_copy_stream.cc",
-                "io/zero_copy_stream_impl.cc",
-                "io/zero_copy_stream_impl_lite.cc",
-                "stubs/common.cc",
-                "stubs/stringpiece.cc",
-                "stubs/stringprintf.cc",
-                "stubs/structurally_valid.cc",
-                "stubs/strutil.cc",
-                "stubs/substitute.cc",
-            ]
-            .iter()
-            .map(|fname| protobuf_src.join(fname)),
-        );
+        if !stub {
+            build.files(
+                [
+                    "any.cc",
+                    "any_lite.cc",
+                    "arena.cc",
+                    "arenastring.cc",
+                    "descriptor.cc",
+                    "descriptor.pb.cc",
+                    "descriptor_database.cc",
+                    "dynamic_message.cc",
+                    "extension_set.cc",
+                    "extension_set_heavy.cc",
+                    "implicit_weak_message.cc",
+                    "map.cc",
+                    "map_field.cc",
+                    "message.cc",
+                    "message_lite.cc",
+                    "generated_message_reflection.cc",
+                    "generated_message_util.cc",
+                    "parse_context.cc",
+                    "reflection_ops.cc",
+                    "repeated_field.cc",
+                    "repeated_ptr_field.cc",
+                    "text_format.cc",
+                    "unknown_field_set.cc",
+                    "wire_format.cc",
+                    "wire_format_lite.cc",
+                    "compiler/importer.cc",
+                    "compiler/parser.cc",
+                    "io/coded_stream.cc",
+                    "io/strtod.cc",
+                    "io/tokenizer.cc",
+                    "io/zero_copy_stream.cc",
+                    "io/zero_copy_stream_impl.cc",
+                    "io/zero_copy_stream_impl_lite.cc",
+                    "stubs/common.cc",
+                    "stubs/stringpiece.cc",
+                    "stubs/stringprintf.cc",
+                    "stubs/structurally_valid.cc",
+                    "stubs/strutil.cc",
+                    "stubs/substitute.cc",
+                ]
+                .iter()
+                .map(|fname| protobuf_src.join(fname)),
+            );
+        }
+
+        if stub {
+            build.define("STUB_ONLY", "1");
+        }
 
         // This is our little wrapper that only does the 1 thing prost-build
         // actually needs from the the bloated protoc binary
@@ -162,11 +164,17 @@ fn compile() -> Option<PathBuf> {
 /// Check module docs for more info.
 fn protoc() -> Option<PathBuf> {
     if env::var_os("PROTOC_NO_VENDOR").is_some() {
+        compile(true);
         path_protoc()
     } else if vendored() {
-        compile()
+        compile(false)
     } else {
-        path_protoc().or_else(compile)
+        if let Some(path) = path_protoc() {
+            compile(true);
+            Some(path)
+        } else {
+            compile(false)
+        }
     }
 }
 
@@ -188,4 +196,5 @@ fn main() {
     );
     println!("cargo:rerun-if-env-changed=PROTOC");
     println!("cargo:rerun-if-env-changed=PROTOC_INCLUDE");
+    println!("cargo:rerun-if-env-changed=PROTOC_NO_VENDOR");
 }

@@ -1,4 +1,6 @@
 #include <stdio.h>
+
+#ifndef STUB_ONLY
 #include <string>
 #include <vector>
 
@@ -11,8 +13,7 @@
 #include <google/protobuf/stubs/stringpiece.h>
 
 #include <google/protobuf/port_def.inc>
-
-
+#endif // STUB_ONLY
 
 extern "C" {
     // Small and simple and FFI safe, unlike `StringPiece`
@@ -31,8 +32,24 @@ extern "C" {
         capacity    buffer_capacity;
         void*       context;
     };
+
+    #ifdef STUB_ONLY
+    // Expose a function that always fails in case the user has configured
+    // the `vendored` feature, but has also set the `PROTOC_NO_VENDOR`
+    // env var, meaning we still need to link the lib, but it won't actually be used
+    int write_descriptor_set(
+        const Path* input_files,
+        size_t num_inputs,
+        const Path* includes_paths,
+        size_t num_includes,
+        Buffer* output
+    ) {
+        return 1;
+    }
+    #endif // STUB_ONLY
 }
 
+#ifndef STUB_ONLY
 using google::protobuf::FileDescriptor;
 using google::protobuf::FileDescriptorSet;
 using google::protobuf::DescriptorPool;
@@ -316,7 +333,7 @@ extern "C" {
         // own -I args with the ':/;' separated virtual path. I seriously doubt
         // this happens in practice. (famous last words)
         for (const auto& include : includes) {
-            source_tree->MapPath(include, "");
+            source_tree->MapPath("", include);
         }
 
         // Map input files to virtual paths if possible. I'm not sure if this
@@ -348,3 +365,4 @@ extern "C" {
         return 0;
     }
 }
+#endif // STUB_ONLY
