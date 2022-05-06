@@ -2,7 +2,11 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
+#![allow(
+    clippy::implicit_hasher,
+    clippy::ptr_arg,
+    clippy::manual_range_contains
+)]
 
 use alloc::collections::BTreeMap;
 use alloc::format;
