@@ -62,18 +62,8 @@ fn path_protoc() -> Option<PathBuf> {
         .or_else(|| which("protoc").ok())
 }
 
-/// Returns true if the vendored flag is enabled.
-fn vendored() -> bool {
-    cfg_if! {
-        if #[cfg(feature = "vendored")] {
-            true
-        } else {
-            false
-        }
-    }
-}
-
 /// Compile `protoc` via `cmake`.
+#[cfg(feature = "vendored")]
 fn compile() -> Option<PathBuf> {
     let protobuf_src = bundle_path().join("protobuf").join("cmake");
 
@@ -89,11 +79,15 @@ fn compile() -> Option<PathBuf> {
 /// Check module docs for more info.
 fn protoc() -> Option<PathBuf> {
     if env::var_os("PROTOC_NO_VENDOR").is_some() {
-        path_protoc()
-    } else if vendored() {
-        compile()
-    } else {
-        path_protoc().or_else(compile)
+        return path_protoc();
+    }
+
+    cfg_if! {
+        if #[cfg(feature = "vendored")] {
+            path_protoc().or_else(compile)
+        } else {
+            path_protoc()
+        }
     }
 }
 
