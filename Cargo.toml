@@ -27,6 +27,7 @@ members = [
   "tests-2015",
   "tests-no-std",
   "tests/single-include",
+  "b_tests",
 ]
 
 exclude = [
