@@ -21,11 +21,14 @@ cfg-if = "1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
+uuid = "*"
 
 [dev-dependencies]
 diff = "0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
+remove_dir_all = "0.6"
+uuid = "1"
 
 [build-dependencies]
 cfg-if = "1"

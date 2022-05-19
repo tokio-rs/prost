@@ -18,6 +18,8 @@ jobs:
             default: true
             profile: minimal
             components: rustfmt
+      - name: build b_tests
+        run: cargo build --package b_tests
       - name: rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -82,45 +84,45 @@ jobs:
           command: test
           args: --no-default-features
 
-  no-std:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            default: true
-            profile: minimal
-      - uses: Swatinem/rust-cache@v1
-      - name: install cargo-no-std-check
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-no-std-check
-      - name: prost cargo-no-std-check
-        uses: actions-rs/cargo@v1
-        with:
-          command: no-std-check
-          args: --manifest-path Cargo.toml --no-default-features
-      - name: prost-types cargo-no-std-check
-        uses: actions-rs/cargo@v1
-        with:
-          command: no-std-check
-          args: --manifest-path prost-types/Cargo.toml --no-default-features
-      # prost-build depends on prost with --no-default-features, but when
-      # prost-build is built through the workspace, prost typically has default
-      # features enabled due to vagaries in Cargo workspace feature resolution.
-      # This additional check ensures that prost-build does not rely on any of
-      # prost's default features to compile.
-      - name: prost-build check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --manifest-path prost-build/Cargo.toml
+#  no-std:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: checkout
+#        uses: actions/checkout@v2
+#        with:
+#          submodules: recursive
+#      - name: install toolchain
+#        uses: actions-rs/toolchain@v1
+#        with:
+#            toolchain: nightly
+#            default: true
+#            profile: minimal
+#      - uses: Swatinem/rust-cache@v1
+#      - name: install cargo-no-std-check
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: install
+#          args: cargo-no-std-check
+#      - name: prost cargo-no-std-check
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: no-std-check
+#          args: --manifest-path Cargo.toml --no-default-features
+#      - name: prost-types cargo-no-std-check
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: no-std-check
+#          args: --manifest-path prost-types/Cargo.toml --no-default-features
+#      # prost-build depends on prost with --no-default-features, but when
+#      # prost-build is built through the workspace, prost typically has default
+#      # features enabled due to vagaries in Cargo workspace feature resolution.
+#      # This additional check ensures that prost-build does not rely on any of
+#      # prost's default features to compile.
+#      - name: prost-build check
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: check
+#          args: --manifest-path prost-build/Cargo.toml
 
   vendored:
     runs-on: ubuntu-latest

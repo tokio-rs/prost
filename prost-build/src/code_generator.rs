@@ -18,7 +18,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType};
+use crate::{BytesType, Config, CustomType, MapType};
 
 #[derive(PartialEq)]
 enum Syntax {
@@ -311,7 +311,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field);
+        let type_tag = self.field_type_tag(&field, fq_message_name);
         self.buf.push_str(&type_tag);
 
         if type_ == Type::Bytes {
@@ -377,6 +377,7 @@ impl<'a> CodeGenerator<'a> {
                 } else {
                     &enum_value
                 };
+
                 self.buf.push_str(stripped_prefix);
             } else {
                 self.buf.push_str(&default.escape_default().to_string());
@@ -385,6 +386,32 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
+
+        if self.config.strict_messages {
+            match field.r#type() {
+                Type::Message => match field.label() {
+                    Label::Optional => {
+                        if let Some(ref s) = field.name {
+                            if !s.starts_with("o_") {
+                                self.buf.push_str("#[prost(strict)]\n");
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Type::Enum => {
+                    if !self.config.inline_enums {
+                        if self.config.inline_enums {
+                            self.buf.push_str("#[prost(inlined)]\n");
+                        } else {
+                            self.buf.push_str("#[prost(strict)]\n");
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
         self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -433,8 +460,8 @@ impl<'a> CodeGenerator<'a> {
             .get_first_field(fq_message_name, field.name())
             .copied()
             .unwrap_or_default();
-        let key_tag = self.field_type_tag(key);
-        let value_tag = self.map_value_type_tag(value);
+        let key_tag = self.field_type_tag(key, fq_message_name);
+        let value_tag = self.map_value_type_tag(value, fq_message_name);
 
         self.buf.push_str(&format!(
             "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
@@ -476,6 +503,9 @@ impl<'a> CodeGenerator<'a> {
                 .map(|&(ref field, _)| field.number())
                 .join(", ")
         ));
+        if self.config.strict_messages && !oneof.name.clone().unwrap().starts_with("o_") {
+            self.buf.push_str("#[prost(strict)]\n");
+        }
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
         self.buf.push_str(&format!(
@@ -518,7 +548,7 @@ impl<'a> CodeGenerator<'a> {
             self.path.pop();
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field);
+            let ty_tag = self.field_type_tag(&field, fq_message_name);
             self.buf.push_str(&format!(
                 "#[prost({}, tag=\"{}\")]\n",
                 ty_tag,
@@ -746,24 +776,36 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
-        match field.r#type() {
-            Type::Float => String::from("f32"),
-            Type::Double => String::from("f64"),
-            Type::Uint32 | Type::Fixed32 => String::from("u32"),
-            Type::Uint64 | Type::Fixed64 => String::from("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
-            Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
-            Type::Bool => String::from("bool"),
-            Type::String => String::from("::prost::alloc::string::String"),
-            Type::Bytes => self
-                .config
-                .bytes_type
-                .get_first_field(fq_message_name, field.name())
-                .copied()
-                .unwrap_or_default()
-                .rust_type()
-                .to_owned(),
-            Type::Group | Type::Message => self.resolve_ident(field.type_name()),
+        if let Some(the_type) = self
+            .config
+            .custom_type
+            .get_first_field(fq_message_name, field.name())
+        {
+            match the_type {
+                CustomType::Uuid => "uuid::Uuid".to_string(),
+            }
+        } else if self.config.inline_enums && matches!(field.r#type(), Type::Enum) {
+            self.resolve_ident(field.type_name())
+        } else {
+            match field.r#type() {
+                Type::Float => String::from("f32"),
+                Type::Double => String::from("f64"),
+                Type::Uint32 | Type::Fixed32 => String::from("u32"),
+                Type::Uint64 | Type::Fixed64 => String::from("u64"),
+                Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+                Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
+                Type::Bool => String::from("bool"),
+                Type::String => String::from("::prost::alloc::string::String"),
+                Type::Bytes => self
+                    .config
+                    .bytes_type
+                    .get_first_field(fq_message_name, field.name())
+                    .copied()
+                    .unwrap_or_default()
+                    .rust_type()
+                    .to_owned(),
+                Type::Group | Type::Message => self.resolve_ident(field.type_name()),
+            }
         }
     }
 
@@ -801,39 +843,62 @@ impl<'a> CodeGenerator<'a> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.r#type() {
-            Type::Float => Cow::Borrowed("float"),
-            Type::Double => Cow::Borrowed("double"),
-            Type::Int32 => Cow::Borrowed("int32"),
-            Type::Int64 => Cow::Borrowed("int64"),
-            Type::Uint32 => Cow::Borrowed("uint32"),
-            Type::Uint64 => Cow::Borrowed("uint64"),
-            Type::Sint32 => Cow::Borrowed("sint32"),
-            Type::Sint64 => Cow::Borrowed("sint64"),
-            Type::Fixed32 => Cow::Borrowed("fixed32"),
-            Type::Fixed64 => Cow::Borrowed("fixed64"),
-            Type::Sfixed32 => Cow::Borrowed("sfixed32"),
-            Type::Sfixed64 => Cow::Borrowed("sfixed64"),
-            Type::Bool => Cow::Borrowed("bool"),
-            Type::String => Cow::Borrowed("string"),
-            Type::Bytes => Cow::Borrowed("bytes"),
-            Type::Group => Cow::Borrowed("group"),
-            Type::Message => Cow::Borrowed("message"),
-            Type::Enum => Cow::Owned(format!(
-                "enumeration={:?}",
+    fn field_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+    ) -> Cow<'static, str> {
+        if let Some(the_type) = self
+            .config
+            .custom_type
+            .get_first_field(fq_message_name, field.name())
+        {
+            match the_type {
+                CustomType::Uuid => Cow::Borrowed("uuid"),
+            }
+        } else if self.config.inline_enums && matches!(field.r#type(), Type::Enum) {
+            Cow::Owned(format!(
+                "inlined_enum={:?}",
                 self.resolve_ident(field.type_name())
-            )),
+            ))
+        } else {
+            match field.r#type() {
+                Type::Float => Cow::Borrowed("float"),
+                Type::Double => Cow::Borrowed("double"),
+                Type::Int32 => Cow::Borrowed("int32"),
+                Type::Int64 => Cow::Borrowed("int64"),
+                Type::Uint32 => Cow::Borrowed("uint32"),
+                Type::Uint64 => Cow::Borrowed("uint64"),
+                Type::Sint32 => Cow::Borrowed("sint32"),
+                Type::Sint64 => Cow::Borrowed("sint64"),
+                Type::Fixed32 => Cow::Borrowed("fixed32"),
+                Type::Fixed64 => Cow::Borrowed("fixed64"),
+                Type::Sfixed32 => Cow::Borrowed("sfixed32"),
+                Type::Sfixed64 => Cow::Borrowed("sfixed64"),
+                Type::Bool => Cow::Borrowed("bool"),
+                Type::String => Cow::Borrowed("string"),
+                Type::Bytes => Cow::Borrowed("bytes"),
+                Type::Group => Cow::Borrowed("group"),
+                Type::Message => Cow::Borrowed("message"),
+                Type::Enum => Cow::Owned(format!(
+                    "enumeration={:?}",
+                    self.resolve_ident(field.type_name())
+                )),
+            }
         }
     }
 
-    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn map_value_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+    ) -> Cow<'static, str> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
             )),
-            _ => self.field_type_tag(field),
+            _ => self.field_type_tag(field, fq_message_name),
         }
     }
 

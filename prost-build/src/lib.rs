@@ -226,10 +226,16 @@ impl Default for BytesType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum CustomType {
+    Uuid,
+}
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
 pub struct Config {
+    start_file_with: Vec<String>,
     file_descriptor_set_path: Option<PathBuf>,
     service_generator: Option<Box<dyn ServiceGenerator>>,
     map_type: PathMap<MapType>,
@@ -243,6 +249,9 @@ pub struct Config {
     default_package_filename: String,
     protoc_args: Vec<OsString>,
     disable_comments: PathMap<()>,
+    custom_type: PathMap<CustomType>,
+    strict_messages: bool,
+    inline_enums: bool,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
 }
@@ -251,6 +260,12 @@ impl Config {
     /// Creates a new code generator configuration with default options.
     pub fn new() -> Config {
         Config::default()
+    }
+
+    pub fn add_start_to_file<T: ToString>(&mut self, s: T) -> &mut Self {
+        self.start_file_with.push(s.to_string());
+
+        self
     }
 
     /// Configure the code generator to generate Rust [`BTreeMap`][1] fields for Protobuf
@@ -408,6 +423,18 @@ impl Config {
         self
     }
 
+    pub fn fields_attribute<P, A>(&mut self, paths: &[P], attribute: A) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        for path in paths.iter() {
+            self.field_attribute(path, &attribute);
+        }
+
+        self
+    }
+
     /// Add additional attribute to matched messages, enums and one-ofs.
     ///
     /// # Arguments
@@ -454,6 +481,19 @@ impl Config {
     {
         self.type_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    pub fn types_attribute<P, A>(&mut self, paths: &[P], attribute: A) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        for path in paths.iter() {
+            self.type_attributes
+                .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        }
+
         self
     }
 
@@ -754,6 +794,36 @@ impl Config {
         self
     }
 
+    pub fn add_type_mapping<M>(&mut self, to_match: M, custom_type: CustomType) -> &mut Self
+    where
+        M: ToString,
+    {
+        self.custom_type.insert(to_match.to_string(), custom_type);
+
+        self
+    }
+
+    pub fn add_types_mapping<M>(&mut self, to_match: Vec<M>, custom_type: CustomType) -> &mut Self
+    where
+        M: ToString,
+    {
+        for to_match in to_match.into_iter() {
+            self.add_type_mapping(to_match, custom_type);
+        }
+
+        self
+    }
+
+    pub fn strict_messages(&mut self) -> &mut Self {
+        self.strict_messages = true;
+        self
+    }
+
+    pub fn inline_enums(&mut self) -> &mut Self {
+        self.inline_enums = true;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -894,7 +964,14 @@ impl Config {
                 trace!("unchanged: {:?}", file_name);
             } else {
                 trace!("writing: {:?}", file_name);
-                fs::write(output_path, content)?;
+
+                let mut file = std::fs::File::create(output_path)?;
+
+                for i in &self.start_file_with {
+                    writeln!(file, "{}", i)?;
+                }
+
+                writeln!(file, "{}", content)?;
             }
         }
 
@@ -1017,6 +1094,7 @@ impl Config {
 impl default::Default for Config {
     fn default() -> Config {
         Config {
+            start_file_with: vec![],
             file_descriptor_set_path: None,
             service_generator: None,
             map_type: PathMap::default(),
@@ -1030,6 +1108,9 @@ impl default::Default for Config {
             default_package_filename: "_".to_string(),
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
+            custom_type: PathMap::default(),
+            strict_messages: false,
+            inline_enums: false,
             skip_protoc_run: false,
             include_file: None,
         }

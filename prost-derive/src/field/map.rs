@@ -41,6 +41,7 @@ fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
         ty,
         kind,
         tag: 0, // Not used here
+        strict: false,
     }
 }
 
