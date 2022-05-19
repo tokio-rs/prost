@@ -92,6 +92,13 @@ fn bootstrap() {
             .unwrap();
     }
 
-    assert_eq!(protobuf, bootstrapped_protobuf);
-    assert_eq!(compiler, bootstrapped_compiler);
+    // Remove the weird newlines
+    assert_eq!(
+        protobuf.replace('\n', ""),
+        bootstrapped_protobuf.replace('\n', "")
+    );
+    assert_eq!(
+        compiler.replace('\n', ""),
+        bootstrapped_compiler.replace('\n', "")
+    );
 }

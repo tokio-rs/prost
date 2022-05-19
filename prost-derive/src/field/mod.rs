@@ -2,11 +2,12 @@ mod group;
 mod map;
 mod message;
 mod oneof;
-mod scalar;
+pub mod scalar;
 
 use std::fmt;
 use std::slice;
 
+pub use crate::field::scalar::{Kind, Ty};
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -51,6 +52,60 @@ impl Field {
         };
 
         Ok(Some(field))
+    }
+
+    pub fn validate(&self, ident: &Ident) -> TokenStream {
+        let empty = quote! {};
+        let expect_non_nil = quote! {
+            if self.#ident.is_none() {
+                debug_assert!(false, "Unexpected nil value for {}", stringify!(self.#ident));
+
+                return Err(::prost::ValidateError::new("Empty non-nil message"))
+            }
+        };
+        let field = match self {
+            Field::Scalar(s) => s,
+            Field::Message(f) => return if f.strict { expect_non_nil } else { empty },
+            Field::Oneof(f) => return if f.strict { expect_non_nil } else { empty },
+            _ => return empty,
+        };
+
+        match field.kind {
+            Kind::Plain(_) => {
+                // Continue
+            }
+            _ => return empty,
+        };
+        match field.ty {
+            Ty::Uuid => {
+                quote! {
+                    if self.#ident == uuid::Uuid::nil() {
+                        debug_assert!(false, "Uuid was nil");
+
+                        return Err(::prost::ValidateError::new("Uuid was nil"))
+                    }
+                }
+            }
+            Ty::Enumeration(ref path) if field.strict => {
+                quote! {
+                    if self.#ident == 0 || !#path::is_valid(self.#ident) {
+                        debug_assert!(false, "Invalid case: {}", self.#ident);
+
+                        return Err(::prost::ValidateError::new("Illegal case found"))
+                    }
+                }
+            }
+            Ty::InlinedEnum(_) => {
+                quote! {
+                    if self.#ident as i32 == 0 || self.#ident == Default::default() {
+                        debug_assert!(false, "Invalid case");
+
+                        return Err(::prost::ValidateError::new("Illegal case found"))
+                    }
+                }
+            }
+            _ => empty,
+        }
     }
 
     /// Creates a new oneof `Field` from an iterator of field attributes.

@@ -3,17 +3,27 @@
 use std::iter;
 
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct PathMap<T> {
     // insertion order might actually matter (to avoid warning about legacy-derive-helpers)
     // see: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#legacy-derive-helpers
     pub(crate) matchers: Vec<(String, T)>,
 }
 
-impl<T> PathMap<T> {
+impl<T> Default for PathMap<T> {
+    fn default() -> Self {
+        Self {
+            matchers: Default::default(),
+        }
+    }
+}
+
+impl<T: Clone + PartialEq> PathMap<T> {
     /// Inserts a new matcher and associated value to the path map.
     pub(crate) fn insert(&mut self, matcher: String, value: T) {
-        self.matchers.push((matcher, value));
+        if !self.matchers.contains(&(matcher.clone(), value.clone())) {
+            self.matchers.push((matcher, value));
+        }
     }
 
     /// Returns a iterator over all the value matching the given fd_path and associated suffix/prefix path

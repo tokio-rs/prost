@@ -92,7 +92,7 @@ pub struct EncodeError {
 
 impl EncodeError {
     /// Creates a new `EncodeError`.
-    pub(crate) fn new(required: usize, remaining: usize) -> EncodeError {
+    pub fn new(required: usize, remaining: usize) -> EncodeError {
         EncodeError {
             required,
             remaining,
@@ -117,6 +117,35 @@ impl fmt::Display for EncodeError {
             "failed to encode Protobuf message; insufficient buffer capacity (required: {}, remaining: {})",
             self.required, self.remaining
         )
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct ValidateError {
+    inner: Box<Inner>,
+}
+
+impl ValidateError {
+    pub fn new(description: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            inner: Box::new(Inner {
+                description: description.into(),
+                stack: Vec::new(),
+            }),
+        }
+    }
+}
+
+impl From<ValidateError> for DecodeError {
+    fn from(s: ValidateError) -> Self {
+        DecodeError { inner: s.inner }
+    }
+}
+
+impl From<ValidateError> for EncodeError {
+    fn from(_: ValidateError) -> Self {
+        // This is ugly but whatever
+        EncodeError::new(0, 0)
     }
 }
 

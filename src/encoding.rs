@@ -873,6 +873,90 @@ pub mod string {
     }
 }
 
+pub mod uuid {
+    use super::*;
+    use crate::alloc::str::FromStr;
+    use crate::alloc::string::ToString;
+
+    pub fn encode<B>(tag: u32, value: &::uuid::Uuid, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        super::string::encode(tag, &value.to_string(), buf)
+    }
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut ::uuid::Uuid,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        let mut to_merge = String::with_capacity(36);
+
+        super::string::merge(wire_type, &mut to_merge, buf, ctx)?;
+
+        let uuid = string_to_uuid(&to_merge)?;
+
+        *value = uuid;
+
+        Ok(())
+    }
+
+    fn string_to_uuid(s: &str) -> Result<::uuid::Uuid, DecodeError> {
+        // Check if the merged string is an actual uuid
+        match ::uuid::Uuid::from_str(s) {
+            Ok(uuid) => Ok(uuid),
+            Err(err) => Err(DecodeError::new(format!(
+                "invalid Uuid value: {}, error: {}",
+                s, err
+            ))),
+        }
+    }
+
+    encode_repeated!(::uuid::Uuid);
+
+    pub fn merge_repeated<B>(
+        wire_type: WireType,
+        values: &mut Vec<::uuid::Uuid>,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        let mut strings = alloc::vec::Vec::new();
+
+        super::string::merge_repeated(wire_type, &mut strings, buf, ctx)?;
+
+        for string in strings {
+            let uuid = string_to_uuid(&string)?;
+
+            values.push(uuid);
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub fn encoded_len(tag: u32, value: &::uuid::Uuid) -> usize {
+        super::string::encoded_len(tag, &value.to_string())
+    }
+
+    #[inline]
+    pub fn encoded_len_repeated(tag: u32, values: &[::uuid::Uuid]) -> usize {
+        super::string::encoded_len_repeated(
+            tag,
+            values
+                .iter()
+                .map(|u| u.to_string())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )
+    }
+}
+
 pub trait BytesAdapter: sealed::BytesAdapter {}
 
 mod sealed {

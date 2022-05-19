@@ -9,6 +9,7 @@ use bytes::{Buf, BufMut};
 use crate::encoding::{
     decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
 };
+use crate::error::ValidateError;
 use crate::DecodeError;
 use crate::EncodeError;
 
@@ -43,6 +44,17 @@ pub trait Message: Debug + Send + Sync {
     /// Returns the encoded length of the message without a length delimiter.
     fn encoded_len(&self) -> usize;
 
+    fn encode_buffer(&self) -> Result<alloc::vec::Vec<u8>, EncodeError>
+    where
+        Self: Sized,
+    {
+        let mut buffer = alloc::vec::Vec::with_capacity(self.encoded_len());
+
+        self.encode(&mut buffer)?;
+
+        Ok(buffer)
+    }
+
     /// Encodes the message to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
@@ -58,6 +70,11 @@ pub trait Message: Debug + Send + Sync {
         }
 
         self.encode_raw(buf);
+        self.validate()?;
+        Ok(())
+    }
+
+    fn validate(&self) -> Result<(), ValidateError> {
         Ok(())
     }
 
@@ -113,7 +130,11 @@ pub trait Message: Debug + Send + Sync {
         Self: Default,
     {
         let mut message = Self::default();
-        Self::merge(&mut message, &mut buf).map(|_| message)
+        let msg = Self::merge(&mut message, &mut buf).map(|_| message)?;
+
+        msg.validate()?;
+
+        Ok(msg)
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.

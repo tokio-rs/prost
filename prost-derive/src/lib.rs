@@ -16,8 +16,7 @@ use syn::{
 };
 
 mod field;
-use crate::field::Field;
-
+use crate::field::{Field, Kind, Ty};
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
@@ -103,8 +102,69 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
         let merge = field.merge(quote!(value));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
-        let tags = Itertools::intersperse(tags, quote!(|));
+        let tags = Itertools::intersperse(tags,quote!(|));
 
+        let field: &Field = field;
+        match field {
+            Field::Scalar(s) => {
+                match &s.ty {
+                    Ty::InlinedEnum(p) => {
+                        match s.kind {
+                            Kind::Plain(_) => {
+                                assert_eq!(1, field.tags().len());
+                                return quote! {
+                                    #(#tags)* => {
+                                        let mut owned = Default::default();
+                                        let mut value = &mut owned;
+
+                                        #merge.map_err(|mut error| {
+                                            error.push(STRUCT_NAME, stringify!(#field_ident));
+                                            error
+                                        })?;
+
+                                        match #p::from_i32(owned) {
+                                            Some(p) => self.#field_ident = p,
+                                            None => return Err(::prost::DecodeError::new("Invalid enum case"))
+                                        }
+
+                                        Ok(())
+                                    },
+                                }
+                            }
+                            Kind::Packed => {
+                                return quote! {
+                                    #(#tags)* => {
+                                        let mut owned = Default::default();
+                                        let mut value = &mut owned;
+
+                                        #merge.map_err(|mut error| {
+                                            error.push(STRUCT_NAME, stringify!(#field_ident));
+                                            error
+                                        })?;
+
+                                        let owned_len = owned.len();
+
+                                        self.#field_ident = owned.into_iter().filter_map(|n| #p::from_i32(n)).collect();
+
+                                        if owned_len == self.#field_ident.len() {
+                                            Ok(())
+                                        } else {
+                                            Err(::prost::DecodeError::new("Mismatch in decoded enum len"))
+                                        }
+                                    },
+                                }
+                            }
+                            _ => panic!("Merge not supported")
+                        }
+                    },
+                    _ => {
+
+                    }
+                }
+            },
+            _ => {
+            }
+        }
         quote! {
             #(#tags)* => {
                 let mut value = &mut self.#field_ident;
@@ -171,6 +231,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(f.debug_tuple(stringify!(#ident)))
     };
 
+    // Validations fields:
+    // - Uuids are not default
+    // - Enum is not set to the first case
+    let validate = fields.iter().map(|(ident, field)| field.validate(&ident));
+
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
@@ -197,6 +262,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             #[inline]
             fn encoded_len(&self) -> usize {
                 0 #(+ #encoded_len)*
+            }
+
+            fn validate(&self) -> Result<(), ::prost::ValidateError> {
+                #(#validate)*
+
+                Ok(())
             }
 
             fn clear(&mut self) {
@@ -391,6 +462,60 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
         let tag = field.tags()[0];
         let merge = field.merge(quote!(value));
+
+        let field: &Field = field;
+        match field {
+            Field::Scalar(s) => {
+                match &s.ty {
+                    Ty::InlinedEnum(p) => {
+                        return quote! {
+                            #tag => {
+                                match field {
+                                    ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                                        let mut v = Default::default();
+
+                                        ::prost::encoding::int32::merge(wire_type, &mut v, buf, ctx)?;
+
+                                        match #p::from_i32(v) {
+                                            Some(v) => {
+                                               *value = v;
+                                            }
+                                            None => {
+                                                return Err(::prost::DecodeError::new("Unknown enum"))
+                                            }
+                                        }
+
+                                        Ok(())
+                                    },
+                                    _ => {
+                                        let mut owned_value = ::core::default::Default::default();
+
+                                        ::prost::encoding::int32::merge(wire_type, &mut owned_value, buf, ctx)?;
+
+                                        match #p::from_i32(owned_value) {
+                                            Some(v) => {
+                                               *field = ::core::option::Option::Some(#ident::#variant_ident(v))
+                                            }
+                                            None => {
+                                                return Err(::prost::DecodeError::new("Unknown enum"))
+                                            }
+                                        }
+
+                                        Ok(())
+                                    },
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            _ => {
+
+            }
+        }
+
+
         quote! {
             #tag => {
                 match field {
