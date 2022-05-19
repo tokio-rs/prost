@@ -87,6 +87,6 @@ fn bootstrap() {
             .unwrap();
     }
 
-    assert_eq!(protobuf, bootstrapped_protobuf);
-    assert_eq!(compiler, bootstrapped_compiler);
+    assert_eq!(protobuf.trim(), bootstrapped_protobuf.trim());
+    assert_eq!(compiler.trim(), bootstrapped_compiler.trim());
 }
