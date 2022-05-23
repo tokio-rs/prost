@@ -21,7 +21,7 @@ path = "../tests/src/lib.rs"
 # [1]: https://github.com/rust-lang/cargo/pull/8074
 
 [dependencies]
-anyhow = { version = "1", default-features = false }
+anyhow = { version = "1.0.45", default-features = false }
 bytes = { version = "1", default-features = false }
 cfg-if = "1"
 prost = { path = "..", default-features = false, features = ["prost-derive"] }
