@@ -1294,7 +1294,7 @@ macro_rules! map {
             encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(), tag, values)
         }
 
-        /// Generic protobuf map encode function with an overriden value default.
+        /// Generic protobuf map encode function with an overridden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
@@ -1334,7 +1334,7 @@ macro_rules! map {
             }
         }
 
-        /// Generic protobuf map merge function with an overriden value default.
+        /// Generic protobuf map merge function with an overridden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
@@ -1373,7 +1373,7 @@ macro_rules! map {
             Ok(())
         }
 
-        /// Generic protobuf map encode function with an overriden value default.
+        /// Generic protobuf map encode function with an overridden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
