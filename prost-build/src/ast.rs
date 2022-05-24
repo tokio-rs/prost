@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use prost_types::source_code_info::Location;
+#[cfg(feature = "cleanup-markdown")]
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use regex::Regex;
 
@@ -18,6 +19,15 @@ pub struct Comments {
 
 impl Comments {
     pub(crate) fn from_location(location: &Location) -> Comments {
+        #[cfg(not(feature = "cleanup-markdown"))]
+        fn get_lines<S>(comments: S) -> Vec<String>
+        where
+            S: AsRef<str>,
+        {
+            comments.as_ref().lines().map(str::to_owned).collect()
+        }
+
+        #[cfg(feature = "cleanup-markdown")]
         fn get_lines<S>(comments: S) -> Vec<String>
         where
             S: AsRef<str>,
