@@ -1,5 +1,5 @@
 [package]
-name = "test-vendored"
+name = "test-pure"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -10,4 +10,6 @@ publish = false
 
 [build-dependencies]
 prost-build = { path = "../prost-build", features = ["vendored"] }
-protobuf-src = "1.0.5+3.19.3"
+
+protobuf = "3"
+protobuf-parse = "3"

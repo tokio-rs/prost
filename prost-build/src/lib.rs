@@ -245,6 +245,8 @@ pub struct Config {
     disable_comments: PathMap<()>,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
+    protoc_path: Option<PathBuf>,
+    protoc_include_path: Option<PathBuf>,
 }
 
 impl Config {
@@ -721,6 +723,24 @@ impl Config {
         self
     }
 
+    /// Configures the path from where to find the `protoc` binary.
+    pub fn protoc_path<P>(&mut self, arg: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.protoc_path = Some(arg.into());
+        self
+    }
+
+    /// Configures the path from where the protobuf include files are.
+    pub fn protoc_include_path<P>(&mut self, arg: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.protoc_include_path = Some(arg.into());
+        self
+    }
+
     /// Configures the optional module filename for easy inclusion of all generated Rust files
     ///
     /// If set, generates a file (inside the `OUT_DIR` or `out_dir()` as appropriate) which contains
@@ -812,7 +832,19 @@ impl Config {
         };
 
         if !self.skip_protoc_run {
-            let mut cmd = Command::new(protoc());
+            let protoc = self
+                .protoc_path
+                .as_ref()
+                .map(PathBuf::clone)
+                .unwrap_or_else(protoc_from_env);
+
+            let protoc_include = self
+                .protoc_include_path
+                .as_ref()
+                .map(PathBuf::clone)
+                .unwrap_or_else(protoc_from_env);
+
+            let mut cmd = Command::new(protoc);
             cmd.arg("--include_imports")
                 .arg("--include_source_info")
                 .arg("-o")
@@ -824,7 +856,7 @@ impl Config {
 
             // Set the protoc include after the user includes in case the user wants to
             // override one of the built-in .protos.
-            cmd.arg("-I").arg(protoc_include());
+            cmd.arg("-I").arg(protoc_include);
 
             for arg in &self.protoc_args {
                 cmd.arg(arg);
@@ -1031,6 +1063,8 @@ impl default::Default for Config {
             protoc_args: Vec::new(),
             disable_comments: PathMap::default(),
             skip_protoc_run: false,
+            protoc_path: None,
+            protoc_include_path: None,
             include_file: None,
         }
     }
@@ -1188,19 +1222,33 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 }
 
 /// Returns the path to the `protoc` binary.
-pub fn protoc() -> PathBuf {
-    match env::var_os("PROTOC") {
-        Some(protoc) => PathBuf::from(protoc),
-        None => PathBuf::from(env!("PROTOC")),
-    }
+pub fn protoc_from_env() -> PathBuf {
+    env::var_os("PROTOC")
+        .map(PathBuf::from)
+        .or_else(|| which::which("protoc").ok())
+        .expect("`PROTOC` environment variable not set or `protoc` not found in `PATH`.")
 }
 
 /// Returns the path to the Protobuf include directory.
-pub fn protoc_include() -> PathBuf {
-    match env::var_os("PROTOC_INCLUDE") {
-        Some(include) => PathBuf::from(include),
-        None => PathBuf::from(env!("PROTOC_INCLUDE")),
+pub fn protoc_include_from_env() -> PathBuf {
+    let protoc_include: PathBuf = env::var_os("PROTOC_INCLUDE")
+        .expect("`PROTOC_INCLUDE` environment variable not set")
+        .into();
+
+    if !protoc_include.exists() {
+        panic!(
+            "PROTOC_INCLUDE environment variable points to non-existent directory ({:?})",
+            protoc_include
+        );
     }
+    if !protoc_include.is_dir() {
+        panic!(
+            "PROTOC_INCLUDE environment variable points to a non-directory file ({:?})",
+            protoc_include
+        );
+    }
+
+    protoc_include
 }
 
 #[cfg(test)]

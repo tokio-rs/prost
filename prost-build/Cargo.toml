@@ -28,11 +28,7 @@ prost-types = { version = "0.10.0", path = "../prost-types", default-features = 
 tempfile = "3"
 lazy_static = "1.4.0"
 regex = { version = "1.5.5", default-features = false, features = ["std", "unicode-bool"] }
-
-[build-dependencies]
-which = { version = "4", default-features = false }
-cfg-if = "1"
-cmake = "0.1"
+which = "4"
 
 [dev-dependencies]
 env_logger = { version = "0.8", default-features = false }
