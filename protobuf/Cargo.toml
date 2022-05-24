@@ -14,11 +14,11 @@ prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]
-anyhow = "1"
-curl = "0.4"
-flate2 = "1.0"
+anyhow = "1.0.1"
+curl = "0.4.13"
+flate2 = "1.0.3"
 prost-build = { path = "../prost-build" }
-tar = "0.4"
+tar = "0.4.15"
 tempfile = "3"
 
 [dev-dependencies]

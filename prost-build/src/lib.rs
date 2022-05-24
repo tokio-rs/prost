@@ -103,7 +103,7 @@
 //! source.
 //!
 //! If you would not like `prost-build` to not compile `protoc` from source ever then
-//! ensure you have set `PROTO_NO_VENDOR` environment variable as this will disable
+//! ensure you have set `PROTOC_NO_VENDOR` environment variable as this will disable
 //! compiling from source even if the `vendored` feature flag is enabled.
 //!
 //! If you would like to always compile from source then setting the `vendored` feature
@@ -880,10 +880,6 @@ impl Config {
 
         let modules = self.generate(requests)?;
         for (module, content) in &modules {
-            if content.is_empty() {
-                continue;
-            }
-
             let file_name = file_names
                 .get(module)
                 .expect("every module should have a filename");
