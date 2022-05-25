@@ -844,7 +844,7 @@ impl Config {
                 .map(PathBuf::clone)
                 .unwrap_or_else(protoc_from_env);
 
-            let mut cmd = Command::new(protoc);
+            let mut cmd = Command::new(protoc.clone());
             cmd.arg("--include_imports")
                 .arg("--include_source_info")
                 .arg("-o")
@@ -869,7 +869,7 @@ impl Config {
             let output = cmd.output().map_err(|error| {
             Error::new(
                 error.kind(),
-                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): {}", error),
+                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
             )
         })?;
 
@@ -881,7 +881,15 @@ impl Config {
             }
         }
 
-        let buf = fs::read(file_descriptor_set_path)?;
+        let buf = fs::read(&file_descriptor_set_path).map_err(|e| {
+            Error::new(
+                e.kind(),
+                format!(
+                    "unable to open file_descriptor_set_path: {:?}, OS: {}",
+                    &file_descriptor_set_path, e
+                ),
+            )
+        })?;
         let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
