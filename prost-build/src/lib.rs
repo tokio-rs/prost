@@ -627,7 +627,7 @@ impl Config {
     ///
     /// In `build.rs`:
     ///
-    /// ```rust
+    /// ```rust, no_run
     /// # use std::env;
     /// # use std::path::PathBuf;
     /// # let mut config = prost_build::Config::new();
@@ -1333,6 +1333,7 @@ mod tests {
         let _ = env_logger::try_init();
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
+            .out_dir(std::env::temp_dir())
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
     }
@@ -1347,6 +1348,7 @@ mod tests {
         Config::new()
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
+            .out_dir(std::env::temp_dir())
             .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
             .unwrap();
 
