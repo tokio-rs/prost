@@ -424,12 +424,14 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
+            /// Encodes the message to a buffer.
             pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 match *self {
                     #(#encode,)*
                 }
             }
 
+            /// Decodes an instance of the message from a buffer, and merges it into self.
             pub fn merge<B>(
                 field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
@@ -444,6 +446,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 }
             }
 
+            /// Returns the encoded length of the message without a length delimiter.
             #[inline]
             pub fn encoded_len(&self) -> usize {
                 match *self {
