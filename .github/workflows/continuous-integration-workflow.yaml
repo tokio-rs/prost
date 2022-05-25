@@ -26,8 +26,8 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     env:
-      PROTOC: vendored-protoc
-      PROTOC_INCLUDE: vendored-bin/include
+      PROTOC: ${{ github.workspace }}/vendored-bin/protoc
+      PROTOC_INCLUDE: ${{ github.workspace }}/vendored-bin/include
     steps:
       - name: checkout
         uses: actions/checkout@v2
@@ -51,8 +51,8 @@ jobs:
   minversions:
     runs-on: ubuntu-latest
     env:
-      PROTOC: vendored-protoc
-      PROTOC_INCLUDE: vendored-bin/include
+      PROTOC: ${{ github.workspace }}/vendored-bin/protoc
+      PROTOC_INCLUDE: ${{ github.workspace }}/vendored-bin/include
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -83,8 +83,8 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     env:
-      PROTOC: vendored-protoc
-      PROTOC_INCLUDE: vendored-bin/include
+      PROTOC: ${{ github.workspace }}/vendored-bin/protoc
+      PROTOC_INCLUDE: ${{ github.workspace }}/vendored-bin/include
     strategy:
       matrix:
         toolchain:
