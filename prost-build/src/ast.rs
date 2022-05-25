@@ -289,4 +289,48 @@ mod tests {
             assert_eq!(t.expected, actual, "failed {}", t.name);
         }
     }
+
+    #[test]
+    fn test_codeblocks() {
+        struct TestCase {
+            name: &'static str,
+            input: &'static str,
+            #[allow(unused)]
+            cleanedup_expected: Vec<&'static str>,
+        }
+
+        let tests = vec![
+            TestCase {
+                name: "unlabelled_block",
+                input: "    thingy\n",
+                cleanedup_expected: vec!["", "```text", "thingy", "```"],
+            },
+            TestCase {
+                name: "rust_block",
+                input: "```rust\nfoo.bar()\n```\n",
+                cleanedup_expected: vec!["", "```compile_fail", "foo.bar()", "```"],
+            },
+            TestCase {
+                name: "js_block",
+                input: "```javascript\nfoo.bar()\n```\n",
+                cleanedup_expected: vec!["", "```text,javascript", "foo.bar()", "```"],
+            },
+        ];
+
+        for t in tests {
+            let loc = Location {
+                path: vec![],
+                span: vec![],
+                leading_comments: Some(t.input.into()),
+                trailing_comments: None,
+                leading_detached_comments: vec![],
+            };
+            let comments = Comments::from_location(&loc);
+            #[cfg(feature = "cleanup-markdown")]
+            let expected = t.cleanedup_expected;
+            #[cfg(not(feature = "cleanup-markdown"))]
+            let expected: Vec<&str> = t.input.lines().collect();
+            assert_eq!(expected, comments.leading, "failed {}", t.name);
+        }
+    }
 }
