@@ -9,5 +9,5 @@ publish = false
 [dependencies]
 
 [build-dependencies]
-prost-build = { path = "../../prost-build", features = ["vendored"] }
+prost-build = { path = "../../prost-build" }
 protobuf-src = "1.0.5+3.19.3"
