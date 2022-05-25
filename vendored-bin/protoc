@@ -1,9 +1,0 @@
-#! /bin/bash
-
-VERSION=3.20.1
-OS=osx
-ARCH=aarch_64
-
-DIR=$(eval dirname $0)
-
-$DIR/protoc-${VERSION}-${OS}-${ARCH}/bin/protoc $@

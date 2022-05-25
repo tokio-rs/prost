@@ -25,9 +25,6 @@ jobs:
 
   clippy:
     runs-on: ubuntu-latest
-    # env:
-    #   PROTOC: ${{ github.workspace }}/vendored-bin/protoc-${{ runtime.os }}-${{ runtime.arch }}
-    #   PROTOC_INCLUDE: ${{ github.workspace }}/vendored-bin/include
     steps:
       - name: checkout
         uses: actions/checkout@v2
@@ -42,6 +39,8 @@ jobs:
             components: clippy
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
       - name: clippy
@@ -52,9 +51,6 @@ jobs:
 
   minversions:
     runs-on: ubuntu-latest
-    # env:
-    #   PROTOC: ${{ github.workspace }}/vendored-bin/protoc-${{ runtime.os }}-${{ runtime.arch }}
-    #   PROTOC_INCLUDE: ${{ github.workspace }}/vendored-bin/include
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -69,6 +65,8 @@ jobs:
           submodules: recursive
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
       - name: cargo update -Zminimal-versions
@@ -86,9 +84,6 @@ jobs:
 
   test:
     runs-on: ${{ matrix.os }}
-    # env:
-    #   PROTOC: ${{ github.workspace }}/vendored-bin/protoc-${{ runtime.os }}-${{ runtime.arch }}
-    #   PROTOC_INCLUDE: ${{ github.workspace }}/vendored-bin/include
     strategy:
       matrix:
         toolchain:
@@ -111,6 +106,8 @@ jobs:
             profile: minimal
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
       - uses: Swatinem/rust-cache@v1
@@ -140,6 +137,8 @@ jobs:
             profile: minimal
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v1
       - name: install cargo-no-std-check
         uses: actions-rs/cargo@v1
