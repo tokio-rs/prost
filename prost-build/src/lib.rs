@@ -77,6 +77,18 @@
 //! That's it! Run `cargo doc` to see documentation for the generated code. The full
 //! example project can be found on [GitHub](https://github.com/danburkert/snazzy).
 //!
+//! ### Cleaning up Markdown in code docs
+//!
+//! If you are using protobuf files from third parties, where the author of the protobuf
+//! is not treating comments as Markdown, or is, but has codeblocks in their docs,
+//! then you may need to clean up the documentation in order that `cargo test --doc`
+//! will not fail spuriously, and that `cargo doc` doesn't attempt to render the
+//! codeblocks as Rust code.
+//!
+//! To do this, in your `Cargo.toml`, add `features = ["cleanup-markdown"]` to the inclusion
+//! of the `prost-build` crate and when your code is generated, the code docs will automatically
+//! be cleaned up a bit.
+//!
 //! ## Sourcing `protoc`
 //!
 //! `prost-build` depends on the Protocol Buffers compiler, `protoc`, to parse `.proto` files into

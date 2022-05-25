@@ -71,7 +71,7 @@ pub mod code_generator_response {
         /// The file name, relative to the output directory.  The name must not
         /// contain "." or ".." components and must be relative, not be absolute (so,
         /// the file cannot lie outside the output directory).  "/" must be used as
-        /// the path separator, not "\".
+        /// the path separator, not "".
         ///
         /// If the name is omitted, the content will be appended to the previous
         /// file.  This allows the generator to break large files into small chunks,
@@ -87,7 +87,7 @@ pub mod code_generator_response {
         /// produced by another code generator.  The original generator may provide
         /// insertion points by placing special annotations in the file that look
         /// like:
-        ///   @@protoc_insertion_point(NAME)
+        /// @@protoc_insertion_point(NAME)
         /// The annotation can have arbitrary text before and after it on the line,
         /// which allows it to be placed in a comment.  NAME should be replaced with
         /// an identifier naming the point -- this is what other generators will use
@@ -99,7 +99,7 @@ pub mod code_generator_response {
         ///
         /// For example, the C++ code generator places the following line in the
         /// .pb.h files that it generates:
-        ///   // @@protoc_insertion_point(namespace_scope)
+        /// // @@protoc_insertion_point(namespace_scope)
         /// This line appears within the scope of the file's package namespace, but
         /// outside of any particular class.  Another plugin can then specify the
         /// insertion_point "namespace_scope" to generate additional classes or
