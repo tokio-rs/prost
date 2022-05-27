@@ -1078,7 +1078,8 @@ fn build_enum_value_mappings<'a>(
                 strip_enum_prefix(generated_enum_name, &generated_variant_name);
         }
 
-        if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), value.name()) {
+        if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), value.name())
+        {
             panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
                 generated_variant_name, old_v, value.name());
         }
