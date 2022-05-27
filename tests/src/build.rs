@@ -49,6 +49,7 @@ fn main() {
         PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
             .join("file_descriptor_set.bin"),
     );
+    config.generate_enum_strings();
 
     config
         .compile_protos(&[src.join("ident_conversion.proto")], includes)
