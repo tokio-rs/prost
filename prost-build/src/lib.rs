@@ -250,7 +250,6 @@ pub struct Config {
     field_attributes: PathMap<String>,
     prost_types: bool,
     strip_enum_prefix: bool,
-    generate_enum_strings: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
     default_package_filename: String,
@@ -691,17 +690,6 @@ impl Config {
         self
     }
 
-    /// Generate enum variant -> `&'static str` mappings for enum types. The values of the mappings
-    /// are exactly as they appear in the `.proto` file without any transformations; as such, they
-    /// are compatible with similar generated methods in other languages (e.g. `SomeEnum_Name()` in
-    /// C++ when using `protoc`).
-    ///
-    /// If enabled, the generated code will include `.to_str_name()` method for each enum.
-    pub fn generate_enum_strings(&mut self) -> &mut Self {
-        self.generate_enum_strings = true;
-        self
-    }
-
     /// Configures the output directory where generated Rust files will be written.
     ///
     /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
@@ -1049,7 +1037,6 @@ impl default::Default for Config {
             field_attributes: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
-            generate_enum_strings: false,
             out_dir: None,
             extern_paths: Vec::new(),
             default_package_filename: "_".to_string(),
@@ -1072,7 +1059,6 @@ impl fmt::Debug for Config {
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
-            .field("generate_enum_strings", &self.generate_enum_strings)
             .field("out_dir", &self.out_dir)
             .field("extern_paths", &self.extern_paths)
             .field("default_package_filename", &self.default_package_filename)
