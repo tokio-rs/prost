@@ -736,6 +736,27 @@ impl Config {
     }
 
     /// Configures the path from where to find the `protoc` binary.
+    ///
+    /// If set, `compile_protos `will use the provided path to invoke `protoc`
+    /// from.
+    ///
+    /// # Default
+    ///
+    /// By default, if `protoc_path` is not set then `compile_protos` will check
+    /// the `PROCOC` environment variable or will look for `protoc` in the
+    /// system's `PATH` variable.
+    ///
+    /// # Example `build.rs`
+    ///
+    /// ```rust,no_run
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    /// . protoc.protoc_path("some/protoc/path");
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
+    /// }
+    /// ```
     pub fn protoc_path<P>(&mut self, arg: P) -> &mut Self
     where
         P: Into<PathBuf>,
@@ -745,6 +766,28 @@ impl Config {
     }
 
     /// Configures the path from where the protobuf include files are.
+    ///
+    /// IF set, `compile_protos` will use the path provided to search for the
+    /// included well known protobuf types.
+    ///
+    /// # Default
+    ///
+    /// By default, this will check the `PROTOC_INCLUDE` environment variable
+    /// for the include path. If `compile_wellknown_types` is enabled and
+    /// `compile_protos` can not find the correct include path it will error
+    /// out.
+    ///
+    /// # Example `build.rs`
+    ///
+    /// ```rust,no_run
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    /// . protoc.protoc_path("some/protoc/path");
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
+    /// }
+    /// ```
     pub fn protoc_include_path<P>(&mut self, arg: P) -> &mut Self
     where
         P: Into<PathBuf>,
