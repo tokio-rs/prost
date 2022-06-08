@@ -21,6 +21,13 @@ prost-build = { path = "../prost-build" }
 tar = "0.4.15"
 tempfile = "3"
 
+# With libz-sys `1.1.8` the msrv has been bumped to 1.54. Since, this dep
+# is not a dep of the actual prost crates we will force cargo to not include
+# the new version.
+#
+# https://github.com/rust-lang/libz-sys/issues/101
+libz-sys = { version = "1.1, < 1.1.7", optional = true }
+
 [dev-dependencies]
 criterion = "0.3"
 cfg-if = "1"
