@@ -80,7 +80,7 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - 1.53.0
+          - 1.56.1
         os:
           - ubuntu-latest
           - macos-latest

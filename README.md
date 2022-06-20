@@ -41,6 +41,13 @@ more details and examples.
 See the [snazzy repository](https://github.com/danburkert/snazzy) for a simple
 start-to-finish example.
 
+### MSRV
+
+`prost` follows the `tokio-rs` projects MSRV model and supports 1.56+. For more
+information on the tokio msrv policy you can check it out [here][tokio msrv]
+
+[tokio msrv]: https://github.com/tokio-rs/tokio/#supported-rust-versions
+
 ## Generated Code
 
 `prost` generates Rust code from source `.proto` files using the `proto2` or
