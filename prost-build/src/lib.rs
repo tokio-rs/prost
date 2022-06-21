@@ -447,9 +447,9 @@ impl Config {
     /// config.type_attribute(".", "#[derive(Eq)]");
     /// // Some messages want to be serializable with serde as well.
     /// config.type_attribute("my_messages.MyMessageType",
-    ///                       "#[derive(Serialize)] #[serde(rename-all = \"snake_case\")]");
+    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
     /// config.type_attribute("my_messages.MyMessageType.MyNestedMessageType",
-    ///                       "#[derive(Serialize)] #[serde(rename-all = \"snake_case\")]");
+    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
     /// ```
     ///
     /// # Oneof fields

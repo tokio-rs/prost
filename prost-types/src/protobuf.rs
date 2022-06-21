@@ -208,6 +208,34 @@ pub mod field_descriptor_proto {
         /// Uses ZigZag encoding.
         Sint64 = 18,
     }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                Type::Double => "TYPE_DOUBLE",
+                Type::Float => "TYPE_FLOAT",
+                Type::Int64 => "TYPE_INT64",
+                Type::Uint64 => "TYPE_UINT64",
+                Type::Int32 => "TYPE_INT32",
+                Type::Fixed64 => "TYPE_FIXED64",
+                Type::Fixed32 => "TYPE_FIXED32",
+                Type::Bool => "TYPE_BOOL",
+                Type::String => "TYPE_STRING",
+                Type::Group => "TYPE_GROUP",
+                Type::Message => "TYPE_MESSAGE",
+                Type::Bytes => "TYPE_BYTES",
+                Type::Uint32 => "TYPE_UINT32",
+                Type::Enum => "TYPE_ENUM",
+                Type::Sfixed32 => "TYPE_SFIXED32",
+                Type::Sfixed64 => "TYPE_SFIXED64",
+                Type::Sint32 => "TYPE_SINT32",
+                Type::Sint64 => "TYPE_SINT64",
+            }
+        }
+    }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Label {
@@ -215,6 +243,19 @@ pub mod field_descriptor_proto {
         Optional = 1,
         Required = 2,
         Repeated = 3,
+    }
+    impl Label {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                Label::Optional => "LABEL_OPTIONAL",
+                Label::Required => "LABEL_REQUIRED",
+                Label::Repeated => "LABEL_REPEATED",
+            }
+        }
     }
 }
 /// Describes a oneof.
@@ -460,6 +501,19 @@ pub mod file_options {
         /// Generate code using MessageLite and the lite runtime.
         LiteRuntime = 3,
     }
+    impl OptimizeMode {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                OptimizeMode::Speed => "SPEED",
+                OptimizeMode::CodeSize => "CODE_SIZE",
+                OptimizeMode::LiteRuntime => "LITE_RUNTIME",
+            }
+        }
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessageOptions {
@@ -612,6 +666,19 @@ pub mod field_options {
         Cord = 1,
         StringPiece = 2,
     }
+    impl CType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                CType::String => "STRING",
+                CType::Cord => "CORD",
+                CType::StringPiece => "STRING_PIECE",
+            }
+        }
+    }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum JsType {
@@ -621,6 +688,19 @@ pub mod field_options {
         JsString = 1,
         /// Use JavaScript numbers.
         JsNumber = 2,
+    }
+    impl JsType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                JsType::JsNormal => "JS_NORMAL",
+                JsType::JsString => "JS_STRING",
+                JsType::JsNumber => "JS_NUMBER",
+            }
+        }
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -706,6 +786,19 @@ pub mod method_options {
         NoSideEffects = 1,
         /// idempotent, but may have side effects
         Idempotent = 2,
+    }
+    impl IdempotencyLevel {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                IdempotencyLevel::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
+                IdempotencyLevel::NoSideEffects => "NO_SIDE_EFFECTS",
+                IdempotencyLevel::Idempotent => "IDEMPOTENT",
+            }
+        }
     }
 }
 /// A message representing a option the parser does not recognize. This only
@@ -1165,6 +1258,35 @@ pub mod field {
         /// Field type sint64.
         TypeSint64 = 18,
     }
+    impl Kind {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                Kind::TypeUnknown => "TYPE_UNKNOWN",
+                Kind::TypeDouble => "TYPE_DOUBLE",
+                Kind::TypeFloat => "TYPE_FLOAT",
+                Kind::TypeInt64 => "TYPE_INT64",
+                Kind::TypeUint64 => "TYPE_UINT64",
+                Kind::TypeInt32 => "TYPE_INT32",
+                Kind::TypeFixed64 => "TYPE_FIXED64",
+                Kind::TypeFixed32 => "TYPE_FIXED32",
+                Kind::TypeBool => "TYPE_BOOL",
+                Kind::TypeString => "TYPE_STRING",
+                Kind::TypeGroup => "TYPE_GROUP",
+                Kind::TypeMessage => "TYPE_MESSAGE",
+                Kind::TypeBytes => "TYPE_BYTES",
+                Kind::TypeUint32 => "TYPE_UINT32",
+                Kind::TypeEnum => "TYPE_ENUM",
+                Kind::TypeSfixed32 => "TYPE_SFIXED32",
+                Kind::TypeSfixed64 => "TYPE_SFIXED64",
+                Kind::TypeSint32 => "TYPE_SINT32",
+                Kind::TypeSint64 => "TYPE_SINT64",
+            }
+        }
+    }
     /// Whether a field is optional, required, or repeated.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
@@ -1177,6 +1299,20 @@ pub mod field {
         Required = 2,
         /// For repeated fields.
         Repeated = 3,
+    }
+    impl Cardinality {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn to_str_name(&self) -> &'static str {
+            match self {
+                Cardinality::Unknown => "CARDINALITY_UNKNOWN",
+                Cardinality::Optional => "CARDINALITY_OPTIONAL",
+                Cardinality::Required => "CARDINALITY_REQUIRED",
+                Cardinality::Repeated => "CARDINALITY_REPEATED",
+            }
+        }
     }
 }
 /// Enum type definition.
@@ -1236,6 +1372,18 @@ pub enum Syntax {
     Proto2 = 0,
     /// Syntax `proto3`.
     Proto3 = 1,
+}
+impl Syntax {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn to_str_name(&self) -> &'static str {
+        match self {
+            Syntax::Proto2 => "SYNTAX_PROTO2",
+            Syntax::Proto3 => "SYNTAX_PROTO3",
+        }
+    }
 }
 /// Api is a light-weight descriptor for an API Interface.
 ///
@@ -1790,6 +1938,17 @@ pub struct ListValue {
 pub enum NullValue {
     /// Null value.
     NullValue = 0,
+}
+impl NullValue {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn to_str_name(&self) -> &'static str {
+        match self {
+            NullValue::NullValue => "NULL_VALUE",
+        }
+    }
 }
 /// A Timestamp represents a point in time independent of any time zone or local
 /// calendar, encoded as a count of seconds and fractions of seconds at
