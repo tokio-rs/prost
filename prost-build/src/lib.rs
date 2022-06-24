@@ -92,45 +92,35 @@
 //! ## Sourcing `protoc`
 //!
 //! `prost-build` depends on the Protocol Buffers compiler, `protoc`, to parse `.proto` files into
-//! a representation that can be transformed into Rust. If set, `prost-build` uses the `PROTOC` and
-//! `PROTOC_INCLUDE` environment variables for locating `protoc` and the Protobuf includes
-//! directory. For example, on a macOS system where Protobuf is installed with Homebrew, set the
-//! environment to:
+//! a representation that can be transformed into Rust. If set, `prost-build` uses the `PROTOC`
+//! for locating `protoc`. For example, on a macOS system where Protobuf is installed
+//! with Homebrew, set the environment variables to:
 //!
 //! ```bash
 //! PROTOC=/usr/local/bin/protoc
-//! PROTOC_INCLUDE=/usr/local/include
 //! ```
 //!
 //! and in a typical Linux installation:
 //!
 //! ```bash
 //! PROTOC=/usr/bin/protoc
-//! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
 //! If no `PROTOC` environment variable is set then `prost-build` will search the
-//! current path for `protoc` or `protoc.exe`. If `protoc` is not found via these
-//! two methods then `prost-build` will attempt to compile `protoc` from the bundled
-//! source.
-//!
-//! If you would not like `prost-build` to not compile `protoc` from source ever then
-//! ensure you have set `PROTOC_NO_VENDOR` environment variable as this will disable
-//! compiling from source even if the `vendored` feature flag is enabled.
-//!
-//! If you would like to always compile from source then setting the `vendored` feature
-//! flag will force `prost-build` to always build `protoc` from source.
-//!
-//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
-//! bundled in the prost-build crate is be used.
+//! current path for `protoc` or `protoc.exe`. If `prost-buld` can not find `protoc`
+//! via these methods the `compile_protos` method will fail.
 //!
 //! ### Compiling `protoc` from source
 //!
-//! Compiling `protoc` from source requires a few external dependencies. Currently,
-//! `prost-build` uses `cmake` to build `protoc`. For more information check out the
-//! [protobuf build instructions][protobuf-build].
+//! To compile `protoc` from source you can use the `protobuf-src` crate and
+//! set the correct environment variables.
+//! ```no_run,ignore, rust
+//! std::env::set_var("PROTOC", protobuf_src::protoc());
 //!
-//! [protobuf-build]: https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
+//! // Now compile your proto files via prost-build
+//! ```
+//!
+//! [`protobuf-src`]: https://docs.rs/protobuf-src
 
 mod ast;
 mod code_generator;
