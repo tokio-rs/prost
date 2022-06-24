@@ -1,12 +1,16 @@
 [package]
 name = "test-vendored"
 version = "0.1.0"
+edition = "2018"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+prost = { path = "../.." }
+prost-types = { path = "../../prost-types" }
+bytes = "1"
 
 [build-dependencies]
-prost-build = { path = "../../prost-build" }
+prost-build = { path = "../../prost-build" , features = ["cleanup-markdown"]}
 protobuf-src = "1.0.5+3.19.3"

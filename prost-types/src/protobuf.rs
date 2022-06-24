@@ -132,6 +132,7 @@ pub struct FieldDescriptorProto {
     /// For booleans, "true" or "false".
     /// For strings, contains the default text contents (not escaped in any way).
     /// For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
+    /// TODO(kenton):  Base-64 encode?
     #[prost(string, optional, tag="7")]
     pub default_value: ::core::option::Option<::prost::alloc::string::String>,
     /// If set, gives the index of a oneof in the containing type's oneof_decl
@@ -630,19 +631,8 @@ pub struct FieldOptions {
     /// implementation must either *always* check its required fields, or *never*
     /// check its required fields, regardless of whether or not the message has
     /// been parsed.
-    ///
-    /// As of 2021, lazy does no correctness checks on the byte stream during
-    /// parsing.  This may lead to crashes if and when an invalid byte stream is
-    /// finally parsed upon access.
-    ///
-    /// TODO(b/211906113):  Enable validation on lazy fields.
     #[prost(bool, optional, tag="5", default="false")]
     pub lazy: ::core::option::Option<bool>,
-    /// unverified_lazy does no correctness checks on the byte stream. This should
-    /// only be used where lazy with verification is prohibitive for performance
-    /// reasons.
-    #[prost(bool, optional, tag="15", default="false")]
-    pub unverified_lazy: ::core::option::Option<bool>,
     /// Is this field deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
     /// for accessors, or it will be completely ignored; in the very least, this
@@ -903,8 +893,8 @@ pub mod source_code_info {
         /// location.
         ///
         /// Each element is a field number or an index.  They form a path from
-        /// the root FileDescriptorProto to the place where the definition occurs.
-        /// For example, this path:
+        /// the root FileDescriptorProto to the place where the definition.  For
+        /// example, this path:
         /// \[ 4, 3, 2, 7, 1 \]
         /// refers to:
         /// file.message_type(3)  // 4, 3
@@ -1080,7 +1070,7 @@ pub mod generated_code_info {
 /// in the type URL, for example "foo.bar.com/x/y.z" will yield type
 /// name "y.z".
 ///
-/// JSON
+/// # JSON
 ///
 /// The JSON representation of an `Any` value uses the regular
 /// representation of the deserialized, embedded message, with an

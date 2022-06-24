@@ -16,6 +16,7 @@ fn bootstrap() {
         .parent()
         .unwrap()
         .join("tests")
+        .join("src")
         .join("include");
     let protobuf = include.join("google").join("protobuf");
 
@@ -27,7 +28,6 @@ fn bootstrap() {
     prost_build::Config::new()
         .compile_well_known_types()
         .btree_map(&["."])
-        .protoc_include_path(include)
         .out_dir(tempdir.path())
         .compile_protos(
             &[
@@ -45,7 +45,7 @@ fn bootstrap() {
                 protobuf.join("timestamp.proto"),
                 protobuf.join("type.proto"),
             ],
-            &[""],
+            &[include],
         )
         .unwrap();
 
