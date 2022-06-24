@@ -180,6 +180,6 @@ jobs:
             default: true
             profile: minimal
       - uses: Swatinem/rust-cache@v1
-      - name: cargo check
-        run: cd test-vendored && cargo check
+      - name: cargo test -p test-vendored
+        run: cargo test -p test-vendored 
 
