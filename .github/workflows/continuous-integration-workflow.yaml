@@ -165,21 +165,3 @@ jobs:
         with:
           command: check
           args: --manifest-path prost-build/Cargo.toml
-
-  vendored:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: stable
-            default: true
-            profile: minimal
-      - uses: Swatinem/rust-cache@v1
-      - name: cargo test -p test-vendored
-        run: cargo test -p test-vendored 
-
