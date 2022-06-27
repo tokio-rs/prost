@@ -1057,7 +1057,7 @@ struct EnumVariantMapping<'a> {
 fn build_enum_value_mappings<'a>(
     generated_enum_name: &str,
     do_strip_enum_prefix: bool,
-    enum_values: &'a Vec<EnumValueDescriptorProto>,
+    enum_values: &'a [EnumValueDescriptorProto],
 ) -> Vec<EnumVariantMapping<'a>> {
     let mut numbers = HashSet::new();
     let mut generated_names = HashMap::new();
