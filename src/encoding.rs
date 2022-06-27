@@ -1444,7 +1444,7 @@ mod test {
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
     {
-        prop_assume!(MIN_TAG <= tag && tag <= MAX_TAG);
+        prop_assume!((MIN_TAG..=MAX_TAG).contains(&tag));
 
         let expected_len = encoded_len(tag, value.borrow());
 
@@ -1533,7 +1533,7 @@ mod test {
         M: FnMut(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         L: FnOnce(u32, &B) -> usize,
     {
-        prop_assume!(MIN_TAG <= tag && tag <= MAX_TAG);
+        prop_assume!((MIN_TAG..=MAX_TAG).contains(&tag));
 
         let expected_len = encoded_len(tag, value.borrow());
 
