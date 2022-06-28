@@ -107,7 +107,7 @@
 //! ```
 //!
 //! If no `PROTOC` environment variable is set then `prost-build` will search the
-//! current path for `protoc` or `protoc.exe`. If `prost-buld` can not find `protoc`
+//! current path for `protoc` or `protoc.exe`. If `prost-build` can not find `protoc`
 //! via these methods the `compile_protos` method will fail.
 //!
 //! ### Compiling `protoc` from source
