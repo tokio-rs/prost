@@ -662,7 +662,7 @@ impl<'a> CodeGenerator<'a> {
         );
         self.push_indent();
         self.buf
-            .push_str("pub fn to_str_name(&self) -> &'static str {\n");
+            .push_str("pub fn as_str_name(&self) -> &'static str {\n");
         self.depth += 1;
 
         self.push_indent();
@@ -685,7 +685,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.depth -= 1;
         self.push_indent();
-        self.buf.push_str("}\n"); // End of to_str_name()
+        self.buf.push_str("}\n"); // End of as_str_name()
 
         self.path.pop();
         self.depth -= 1;

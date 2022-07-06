@@ -214,7 +214,7 @@ pub mod field_descriptor_proto {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 Type::Double => "TYPE_DOUBLE",
                 Type::Float => "TYPE_FLOAT",
@@ -250,7 +250,7 @@ pub mod field_descriptor_proto {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 Label::Optional => "LABEL_OPTIONAL",
                 Label::Required => "LABEL_REQUIRED",
@@ -507,7 +507,7 @@ pub mod file_options {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 OptimizeMode::Speed => "SPEED",
                 OptimizeMode::CodeSize => "CODE_SIZE",
@@ -661,7 +661,7 @@ pub mod field_options {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 CType::String => "STRING",
                 CType::Cord => "CORD",
@@ -684,7 +684,7 @@ pub mod field_options {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 JsType::JsNormal => "JS_NORMAL",
                 JsType::JsString => "JS_STRING",
@@ -782,7 +782,7 @@ pub mod method_options {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 IdempotencyLevel::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
                 IdempotencyLevel::NoSideEffects => "NO_SIDE_EFFECTS",
@@ -1253,7 +1253,7 @@ pub mod field {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 Kind::TypeUnknown => "TYPE_UNKNOWN",
                 Kind::TypeDouble => "TYPE_DOUBLE",
@@ -1295,7 +1295,7 @@ pub mod field {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 Cardinality::Unknown => "CARDINALITY_UNKNOWN",
                 Cardinality::Optional => "CARDINALITY_OPTIONAL",
@@ -1368,7 +1368,7 @@ impl Syntax {
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn to_str_name(&self) -> &'static str {
+    pub fn as_str_name(&self) -> &'static str {
         match self {
             Syntax::Proto2 => "SYNTAX_PROTO2",
             Syntax::Proto3 => "SYNTAX_PROTO3",
@@ -1934,7 +1934,7 @@ impl NullValue {
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn to_str_name(&self) -> &'static str {
+    pub fn as_str_name(&self) -> &'static str {
         match self {
             NullValue::NullValue => "NULL_VALUE",
         }

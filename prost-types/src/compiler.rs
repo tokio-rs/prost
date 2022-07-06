@@ -141,7 +141,7 @@ pub mod code_generator_response {
         ///
         /// The values are not transformed in any way and thus are considered stable
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn to_str_name(&self) -> &'static str {
+        pub fn as_str_name(&self) -> &'static str {
             match self {
                 Feature::None => "FEATURE_NONE",
                 Feature::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
