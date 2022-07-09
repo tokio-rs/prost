@@ -1,5 +1,7 @@
 use lazy_static::lazy_static;
 use prost_types::source_code_info::Location;
+#[cfg(feature = "cleanup-markdown")]
+use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use regex::Regex;
 
 /// Comments on a Protobuf item.
@@ -17,11 +19,57 @@ pub struct Comments {
 
 impl Comments {
     pub(crate) fn from_location(location: &Location) -> Comments {
+        #[cfg(not(feature = "cleanup-markdown"))]
         fn get_lines<S>(comments: S) -> Vec<String>
         where
             S: AsRef<str>,
         {
             comments.as_ref().lines().map(str::to_owned).collect()
+        }
+
+        #[cfg(feature = "cleanup-markdown")]
+        fn get_lines<S>(comments: S) -> Vec<String>
+        where
+            S: AsRef<str>,
+        {
+            let comments = comments.as_ref();
+            let mut buffer = String::with_capacity(comments.len() + 256);
+            let opts = pulldown_cmark_to_cmark::Options {
+                code_block_token_count: 3,
+                ..Default::default()
+            };
+            match pulldown_cmark_to_cmark::cmark_with_options(
+                Parser::new_ext(comments, Options::all() - Options::ENABLE_SMART_PUNCTUATION).map(
+                    |event| {
+                        fn map_codeblock(kind: CodeBlockKind) -> CodeBlockKind {
+                            match kind {
+                                CodeBlockKind::Fenced(s) => {
+                                    if &*s == "rust" {
+                                        CodeBlockKind::Fenced("compile_fail".into())
+                                    } else {
+                                        CodeBlockKind::Fenced(format!("text,{}", s).into())
+                                    }
+                                }
+                                CodeBlockKind::Indented => CodeBlockKind::Fenced("text".into()),
+                            }
+                        }
+                        match event {
+                            Event::Start(Tag::CodeBlock(kind)) => {
+                                Event::Start(Tag::CodeBlock(map_codeblock(kind)))
+                            }
+                            Event::End(Tag::CodeBlock(kind)) => {
+                                Event::End(Tag::CodeBlock(map_codeblock(kind)))
+                            }
+                            e => e,
+                        }
+                    },
+                ),
+                &mut buffer,
+                opts,
+            ) {
+                Ok(_) => buffer.lines().map(str::to_owned).collect(),
+                Err(_) => comments.lines().map(str::to_owned).collect(),
+            }
         }
 
         let leading_detached = location
@@ -101,6 +149,9 @@ impl Comments {
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
         s = RULE_BRACKETS.replace_all(&s, r"\$1$2\$3").to_string();
+        if !s.is_empty() {
+            s.insert(0, ' ');
+        }
         s
     }
 }
@@ -163,22 +214,22 @@ mod tests {
             TestCases {
                 name: "valid_http",
                 input: "See https://www.rust-lang.org/".to_string(),
-                expected: "///See <https://www.rust-lang.org/>\n".to_string(),
+                expected: "/// See <https://www.rust-lang.org/>\n".to_string(),
             },
             TestCases {
                 name: "valid_https",
                 input: "See https://www.rust-lang.org/".to_string(),
-                expected: "///See <https://www.rust-lang.org/>\n".to_string(),
+                expected: "/// See <https://www.rust-lang.org/>\n".to_string(),
             },
             TestCases {
                 name: "valid_https_parenthesis",
                 input: "See (https://www.rust-lang.org/)".to_string(),
-                expected: "///See (<https://www.rust-lang.org/>)\n".to_string(),
+                expected: "/// See (<https://www.rust-lang.org/>)\n".to_string(),
             },
             TestCases {
                 name: "invalid",
                 input: "See note://abc".to_string(),
-                expected: "///See note://abc\n".to_string(),
+                expected: "/// See note://abc\n".to_string(),
             },
         ];
         for t in tests {
@@ -207,22 +258,22 @@ mod tests {
             TestCases {
                 name: "valid_brackets",
                 input: "foo [bar] baz".to_string(),
-                expected: "///foo \\[bar\\] baz\n".to_string(),
+                expected: "/// foo \\[bar\\] baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_start_bracket",
                 input: "foo [= baz".to_string(),
-                expected: "///foo [= baz\n".to_string(),
+                expected: "/// foo [= baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_end_bracket",
                 input: "foo =] baz".to_string(),
-                expected: "///foo =] baz\n".to_string(),
+                expected: "/// foo =] baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_bracket_combination",
                 input: "[0, 9)".to_string(),
-                expected: "///[0, 9)\n".to_string(),
+                expected: "/// [0, 9)\n".to_string(),
             },
         ];
         for t in tests {
@@ -236,6 +287,50 @@ mod tests {
             input.append_with_indent(0, &mut actual);
 
             assert_eq!(t.expected, actual, "failed {}", t.name);
+        }
+    }
+
+    #[test]
+    fn test_codeblocks() {
+        struct TestCase {
+            name: &'static str,
+            input: &'static str,
+            #[allow(unused)]
+            cleanedup_expected: Vec<&'static str>,
+        }
+
+        let tests = vec![
+            TestCase {
+                name: "unlabelled_block",
+                input: "    thingy\n",
+                cleanedup_expected: vec!["", "```text", "thingy", "```"],
+            },
+            TestCase {
+                name: "rust_block",
+                input: "```rust\nfoo.bar()\n```\n",
+                cleanedup_expected: vec!["", "```compile_fail", "foo.bar()", "```"],
+            },
+            TestCase {
+                name: "js_block",
+                input: "```javascript\nfoo.bar()\n```\n",
+                cleanedup_expected: vec!["", "```text,javascript", "foo.bar()", "```"],
+            },
+        ];
+
+        for t in tests {
+            let loc = Location {
+                path: vec![],
+                span: vec![],
+                leading_comments: Some(t.input.into()),
+                trailing_comments: None,
+                leading_detached_comments: vec![],
+            };
+            let comments = Comments::from_location(&loc);
+            #[cfg(feature = "cleanup-markdown")]
+            let expected = t.cleanedup_expected;
+            #[cfg(not(feature = "cleanup-markdown"))]
+            let expected: Vec<&str> = t.input.lines().collect();
+            assert_eq!(expected, comments.leading, "failed {}", t.name);
         }
     }
 }

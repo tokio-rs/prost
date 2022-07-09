@@ -14,7 +14,8 @@ edition = "2018"
 
 [features]
 default = []
-vendored = []
+# When MSRV moves to 1.60, these can change to dep:
+cleanup-markdown = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
 
 [dependencies]
 bytes = { version = "1", default-features = false }
@@ -28,11 +29,11 @@ prost-types = { version = "0.10.0", path = "../prost-types", default-features = 
 tempfile = "3"
 lazy_static = "1.4.0"
 regex = { version = "1.5.5", default-features = false, features = ["std", "unicode-bool"] }
+which = "4"
 
-[build-dependencies]
-which = { version = "4", default-features = false }
-cfg-if = "1"
-cmake = "0.1"
+# These two must be kept in sync, used for `cleanup-markdown` feature.
+pulldown-cmark = { version = "0.9.1", optional = true, default-features = false }
+pulldown-cmark-to-cmark = { version = "10.0.1", optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.8", default-features = false }

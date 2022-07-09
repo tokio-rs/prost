@@ -112,6 +112,18 @@ fn main() {
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
+    let out = std::env::var("OUT_DIR").unwrap();
+    let out_path = PathBuf::from(out).join("wellknown_include");
+
+    std::fs::create_dir_all(&out_path).unwrap();
+
+    prost_build::Config::new()
+        .bytes(&["."])
+        .out_dir(out_path)
+        .include_file("wellknown_include.rs")
+        .compile_protos(&[src.join("well_known_types.proto")], includes)
+        .unwrap();
+
     config
         .compile_protos(
             &[src.join("packages/widget_factory.proto")],

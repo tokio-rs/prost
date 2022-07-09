@@ -77,48 +77,50 @@
 //! That's it! Run `cargo doc` to see documentation for the generated code. The full
 //! example project can be found on [GitHub](https://github.com/danburkert/snazzy).
 //!
+//! ### Cleaning up Markdown in code docs
+//!
+//! If you are using protobuf files from third parties, where the author of the protobuf
+//! is not treating comments as Markdown, or is, but has codeblocks in their docs,
+//! then you may need to clean up the documentation in order that `cargo test --doc`
+//! will not fail spuriously, and that `cargo doc` doesn't attempt to render the
+//! codeblocks as Rust code.
+//!
+//! To do this, in your `Cargo.toml`, add `features = ["cleanup-markdown"]` to the inclusion
+//! of the `prost-build` crate and when your code is generated, the code docs will automatically
+//! be cleaned up a bit.
+//!
 //! ## Sourcing `protoc`
 //!
 //! `prost-build` depends on the Protocol Buffers compiler, `protoc`, to parse `.proto` files into
-//! a representation that can be transformed into Rust. If set, `prost-build` uses the `PROTOC` and
-//! `PROTOC_INCLUDE` environment variables for locating `protoc` and the Protobuf includes
-//! directory. For example, on a macOS system where Protobuf is installed with Homebrew, set the
-//! environment to:
+//! a representation that can be transformed into Rust. If set, `prost-build` uses the `PROTOC`
+//! for locating `protoc`. For example, on a macOS system where Protobuf is installed
+//! with Homebrew, set the environment variables to:
 //!
 //! ```bash
 //! PROTOC=/usr/local/bin/protoc
-//! PROTOC_INCLUDE=/usr/local/include
 //! ```
 //!
 //! and in a typical Linux installation:
 //!
 //! ```bash
 //! PROTOC=/usr/bin/protoc
-//! PROTOC_INCLUDE=/usr/include
 //! ```
 //!
 //! If no `PROTOC` environment variable is set then `prost-build` will search the
-//! current path for `protoc` or `protoc.exe`. If `protoc` is not found via these
-//! two methods then `prost-build` will attempt to compile `protoc` from the bundled
-//! source.
-//!
-//! If you would not like `prost-build` to not compile `protoc` from source ever then
-//! ensure you have set `PROTO_NO_VENDOR` environment variable as this will disable
-//! compiling from source even if the `vendored` feature flag is enabled.
-//!
-//! If you would like to always compile from source then setting the `vendored` feature
-//! flag will force `prost-build` to always build `protoc` from source.
-//!
-//! If `PROTOC_INCLUDE` is not found in the environment, then the Protobuf include directory
-//! bundled in the prost-build crate is be used.
+//! current path for `protoc` or `protoc.exe`. If `prost-build` can not find `protoc`
+//! via these methods the `compile_protos` method will fail.
 //!
 //! ### Compiling `protoc` from source
 //!
-//! Compiling `protoc` from source requires a few external dependencies. Currently,
-//! `prost-build` uses `cmake` to build `protoc`. For more information check out the
-//! [protobuf build instructions][protobuf-build].
+//! To compile `protoc` from source you can use the `protobuf-src` crate and
+//! set the correct environment variables.
+//! ```no_run,ignore, rust
+//! std::env::set_var("PROTOC", protobuf_src::protoc());
 //!
-//! [protobuf-build]: https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
+//! // Now compile your proto files via prost-build
+//! ```
+//!
+//! [`protobuf-src`]: https://docs.rs/protobuf-src
 
 mod ast;
 mod code_generator;
@@ -434,9 +436,9 @@ impl Config {
     /// config.type_attribute(".", "#[derive(Eq)]");
     /// // Some messages want to be serializable with serde as well.
     /// config.type_attribute("my_messages.MyMessageType",
-    ///                       "#[derive(Serialize)] #[serde(rename-all = \"snake_case\")]");
+    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
     /// config.type_attribute("my_messages.MyMessageType.MyNestedMessageType",
-    ///                       "#[derive(Serialize)] #[serde(rename-all = \"snake_case\")]");
+    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
     /// ```
     ///
     /// # Oneof fields
@@ -652,7 +654,7 @@ impl Config {
     ///
     /// In `build.rs`:
     ///
-    /// ```rust
+    /// ```rust, no_run
     /// # use std::env;
     /// # use std::path::PathBuf;
     /// # let mut config = prost_build::Config::new();
@@ -839,19 +841,30 @@ impl Config {
         };
 
         if !self.skip_protoc_run {
-            let mut cmd = Command::new(protoc());
+            let protoc = protoc_from_env();
+
+            let mut cmd = Command::new(protoc.clone());
             cmd.arg("--include_imports")
                 .arg("--include_source_info")
                 .arg("-o")
                 .arg(&file_descriptor_set_path);
 
             for include in includes {
-                cmd.arg("-I").arg(include.as_ref());
+                if include.as_ref().exists() {
+                    cmd.arg("-I").arg(include.as_ref());
+                } else {
+                    println!(
+                        "ignoring {} since it does not exist.",
+                        include.as_ref().display()
+                    )
+                }
             }
 
             // Set the protoc include after the user includes in case the user wants to
             // override one of the built-in .protos.
-            cmd.arg("-I").arg(protoc_include());
+            if let Some(protoc_include) = protoc_include_from_env() {
+                cmd.arg("-I").arg(protoc_include);
+            }
 
             for arg in &self.protoc_args {
                 cmd.arg(arg);
@@ -861,10 +874,12 @@ impl Config {
                 cmd.arg(proto.as_ref());
             }
 
+            println!("Running: {:?}", cmd);
+
             let output = cmd.output().map_err(|error| {
             Error::new(
                 error.kind(),
-                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): {}", error),
+                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
             )
         })?;
 
@@ -876,7 +891,15 @@ impl Config {
             }
         }
 
-        let buf = fs::read(file_descriptor_set_path)?;
+        let buf = fs::read(&file_descriptor_set_path).map_err(|e| {
+            Error::new(
+                e.kind(),
+                format!(
+                    "unable to open file_descriptor_set_path: {:?}, OS: {}",
+                    &file_descriptor_set_path, e
+                ),
+            )
+        })?;
         let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
@@ -907,10 +930,6 @@ impl Config {
 
         let modules = self.generate(requests)?;
         for (module, content) in &modules {
-            if content.is_empty() {
-                continue;
-            }
-
             let file_name = file_names
                 .get(module)
                 .expect("every module should have a filename");
@@ -1221,19 +1240,40 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 }
 
 /// Returns the path to the `protoc` binary.
-pub fn protoc() -> PathBuf {
-    match env::var_os("PROTOC") {
-        Some(protoc) => PathBuf::from(protoc),
-        None => PathBuf::from(env!("PROTOC")),
-    }
+pub fn protoc_from_env() -> PathBuf {
+    let msg = "
+Could not find `protoc` installation and this build crate cannot proceed without
+this knowledge. If `protoc` is installed and this crate had trouble finding
+it, you can set the `PROTOC` environment variable with the specific path to your
+installed `protoc` binary.
+
+For more information: https://docs.rs/prost-build/#sourcing-protoc
+";
+
+    env::var_os("PROTOC")
+        .map(PathBuf::from)
+        .or_else(|| which::which("protoc").ok())
+        .expect(msg)
 }
 
 /// Returns the path to the Protobuf include directory.
-pub fn protoc_include() -> PathBuf {
-    match env::var_os("PROTOC_INCLUDE") {
-        Some(include) => PathBuf::from(include),
-        None => PathBuf::from(env!("PROTOC_INCLUDE")),
+pub fn protoc_include_from_env() -> Option<PathBuf> {
+    let protoc_include: PathBuf = env::var_os("PROTOC_INCLUDE")?.into();
+
+    if !protoc_include.exists() {
+        panic!(
+            "PROTOC_INCLUDE environment variable points to non-existent directory ({:?})",
+            protoc_include
+        );
     }
+    if !protoc_include.is_dir() {
+        panic!(
+            "PROTOC_INCLUDE environment variable points to a non-directory file ({:?})",
+            protoc_include
+        );
+    }
+
+    Some(protoc_include)
 }
 
 #[cfg(test)]
@@ -1310,6 +1350,7 @@ mod tests {
         let _ = env_logger::try_init();
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
+            .out_dir(std::env::temp_dir())
             .compile_protos(&["src/smoke_test.proto"], &["src"])
             .unwrap();
     }
@@ -1324,6 +1365,7 @@ mod tests {
         Config::new()
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
+            .out_dir(std::env::temp_dir())
             .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
             .unwrap();
 

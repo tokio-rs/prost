@@ -15,7 +15,7 @@ default = ["std"]
 std = []
 
 [dependencies]
-anyhow = "1"
+anyhow = "1.0.1"
 bytes = "1"
 cfg-if = "1"
 prost = { path = ".." }
@@ -24,7 +24,7 @@ protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
 diff = "0.1"
-prost-build = { path = "../prost-build" }
+prost-build = { path = "../prost-build", features = ["cleanup-markdown"] }
 tempfile = "3"
 
 [build-dependencies]

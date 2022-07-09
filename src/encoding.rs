@@ -1294,7 +1294,7 @@ macro_rules! map {
             encoded_len_with_default(key_encoded_len, val_encoded_len, &V::default(), tag, values)
         }
 
-        /// Generic protobuf map encode function with an overriden value default.
+        /// Generic protobuf map encode function with an overridden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
@@ -1334,7 +1334,7 @@ macro_rules! map {
             }
         }
 
-        /// Generic protobuf map merge function with an overriden value default.
+        /// Generic protobuf map merge function with an overridden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
@@ -1373,7 +1373,7 @@ macro_rules! map {
             Ok(())
         }
 
-        /// Generic protobuf map encode function with an overriden value default.
+        /// Generic protobuf map encode function with an overridden value default.
         ///
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
@@ -1444,7 +1444,7 @@ mod test {
         T: Debug + Default + PartialEq + Borrow<B>,
         B: ?Sized,
     {
-        prop_assume!(MIN_TAG <= tag && tag <= MAX_TAG);
+        prop_assume!((MIN_TAG..=MAX_TAG).contains(&tag));
 
         let expected_len = encoded_len(tag, value.borrow());
 
@@ -1533,7 +1533,7 @@ mod test {
         M: FnMut(WireType, &mut T, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
         L: FnOnce(u32, &B) -> usize,
     {
-        prop_assume!(MIN_TAG <= tag && tag <= MAX_TAG);
+        prop_assume!((MIN_TAG..=MAX_TAG).contains(&tag));
 
         let expected_len = encoded_len(tag, value.borrow());
 

@@ -281,7 +281,7 @@ fn parse_offset(s: &str) -> Option<(i8, i8, &str)> {
         return Some((0, 0, s));
     }
 
-    // Snowflake's timestamp format contains a space seperator before the offset.
+    // Snowflake's timestamp format contains a space separator before the offset.
     let s = parse_char(s, b' ').unwrap_or(s);
 
     if let Some(s) = parse_char_ignore_case(s, b'Z') {
@@ -301,7 +301,7 @@ fn parse_offset(s: &str) -> Option<(i8, i8, &str)> {
             // No offset minutes are sepcified, e.g. +00 or +07.
             (0, s)
         } else {
-            // Optional colon seperator between the hour and minute digits.
+            // Optional colon separator between the hour and minute digits.
             let s = parse_char(s, b':').unwrap_or(s);
             let (minute, s) = parse_two_digit_numeric(s)?;
             (minute, s)
@@ -332,7 +332,7 @@ fn parse_two_digit_numeric(s: &str) -> Option<(u8, &str)> {
     Some((digits.parse().ok()?, s))
 }
 
-/// Splits ASCII string `s` at the first occurance of a non-digit character.
+/// Splits ASCII string `s` at the first occurrence of a non-digit character.
 fn parse_digits(s: &str) -> (&str, &str) {
     debug_assert!(s.is_ascii());
 
