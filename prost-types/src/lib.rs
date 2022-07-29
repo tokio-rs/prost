@@ -372,7 +372,7 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
                 timestamp
                     .seconds
                     .checked_neg()
-                    .ok_or(TimestampError::OutOfSystemRange(timestamp.clone()))?
+                    .ok_or_else(|| TimestampError::OutOfSystemRange(timestamp.clone()))?
                     as u64,
             ))
         };
