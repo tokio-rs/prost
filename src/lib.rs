@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost/0.10.1")]
+#![doc(html_root_url = "https://docs.rs/prost/0.11")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../README.md")]
 
