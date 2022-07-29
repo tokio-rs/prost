@@ -12,7 +12,8 @@ readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [workspace]
 members = [
