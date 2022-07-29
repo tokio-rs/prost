@@ -369,7 +369,11 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
             std::time::UNIX_EPOCH.checked_add(time::Duration::from_secs(timestamp.seconds as u64))
         } else {
             std::time::UNIX_EPOCH.checked_sub(time::Duration::from_secs(
-                (-std::num::Wrapping(timestamp.seconds)).0 as u64,
+                timestamp
+                    .seconds
+                    .checked_neg()
+                    .ok_or(TimestampError::OutOfSystemRange(timestamp.clone()))?
+                    as u64,
             ))
         };
 
