@@ -368,8 +368,13 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
         let system_time = if timestamp.seconds >= 0 {
             std::time::UNIX_EPOCH.checked_add(time::Duration::from_secs(timestamp.seconds as u64))
         } else {
-            std::time::UNIX_EPOCH
-                .checked_sub(time::Duration::from_secs((-timestamp.seconds) as u64))
+            std::time::UNIX_EPOCH.checked_sub(time::Duration::from_secs(
+                timestamp
+                    .seconds
+                    .checked_neg()
+                    .ok_or(TimestampError::OutOfSystemRange(timestamp.clone()))?
+                    as u64,
+            ))
         };
 
         let system_time = system_time.and_then(|system_time| {
