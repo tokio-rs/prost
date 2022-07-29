@@ -56,10 +56,13 @@ possible.
 
 ### `protoc`
 
-It's recommended to install `protoc` locally in your path to improve build times.
-Prost uses `protoc` to parse protobuf files and will attempt to compile protobuf
-from source requiring a C++ toolchain. For more info checkout the [`prost-build`](prost-build)
-docs.
+With `prost-build` v0.11 release, `protoc` will be required to invoke
+`compile_protos` (unless `skip_protoc` is enabled). Prost will no longer provide
+bundled a `protoc` or attempt to compile `protoc` for users. For install
+instructions for `protoc` please check out the [protobuf install] instructions.
+
+[protobuf install]: https://github.com/protocolbuffers/protobuf#protocol-compiler-installation
+
 
 ### Packages
 
