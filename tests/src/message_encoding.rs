@@ -1,5 +1,5 @@
-use bytes::Bytes;
 use prost::alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
+use prost::bytes::Bytes;
 use prost::{Enumeration, Message, Oneof};
 
 use crate::check_message;

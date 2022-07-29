@@ -109,7 +109,7 @@ pub mod default_string_escape {
 use alloc::vec::Vec;
 
 use anyhow::anyhow;
-use bytes::Buf;
+use prost::bytes::Buf;
 
 use prost::Message;
 
