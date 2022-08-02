@@ -1,6 +1,6 @@
 [package]
 name = "prost-build"
-version = "0.11.0"
+version = "0.11.1"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com>",
