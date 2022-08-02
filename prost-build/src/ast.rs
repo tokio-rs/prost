@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 use prost_types::source_code_info::Location;
-#[cfg(feature = "cleanup-markdown")]
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use regex::Regex;
 
@@ -24,7 +23,50 @@ impl Comments {
         where
             S: AsRef<str>,
         {
-            comments.as_ref().lines().map(str::to_owned).collect()
+            let comments = comments.as_ref();
+
+            let mut buffer = String::with_capacity(comments.len() + 256);
+            let opts = pulldown_cmark_to_cmark::Options {
+                code_block_token_count: 3,
+                ..Default::default()
+            };
+
+            let mut is_in_indented_codeblock = false;
+            match pulldown_cmark_to_cmark::cmark_with_options(
+                Parser::new_ext(
+                    &comments,
+                    Options::all() - Options::ENABLE_SMART_PUNCTUATION,
+                )
+                .map(|event| match event {
+                    Event::Start(Tag::CodeBlock(kind)) => match kind {
+                        CodeBlockKind::Indented => {
+                            is_in_indented_codeblock = true;
+                            Event::Text("".into())
+                        }
+                        e => Event::Start(Tag::CodeBlock(e)),
+                    },
+                    Event::End(Tag::CodeBlock(kind)) => match kind {
+                        CodeBlockKind::Indented => {
+                            is_in_indented_codeblock = false;
+                            Event::Text("".into())
+                        }
+                        e => Event::End(Tag::CodeBlock(e)),
+                    },
+                    Event::Text(text) => {
+                        if is_in_indented_codeblock {
+                            let text = format!("    {}", text);
+                            return Event::Text(text.into());
+                        }
+                        Event::Text(text)
+                    }
+                    _ => event,
+                }),
+                &mut buffer,
+                opts,
+            ) {
+                Ok(_) => buffer.lines().map(str::to_owned).collect(),
+                Err(_) => comments.lines().map(str::to_owned).collect(),
+            }
         }
 
         #[cfg(feature = "cleanup-markdown")]
@@ -161,11 +203,9 @@ impl Comments {
 
     /// Sanitizes the line for rustdoc by performing the following operations:
     ///     - escape urls as <http://foo.com>
-    ///     - escape `[` & `]`
     fn sanitize_line(line: &str) -> String {
         lazy_static! {
             static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
-            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\S+)(])").unwrap();
         }
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
@@ -329,27 +369,34 @@ mod tests {
             },
             TestCases {
                 name: "invalid_start_bracket",
-                input: "foo [= baz".to_string(),
-                expected: "/// foo [= baz\n".to_string(),
+                input: "foo \\[= baz".to_string(),
+                expected: "/// foo \\[= baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_end_bracket",
-                input: "foo =] baz".to_string(),
-                expected: "/// foo =] baz\n".to_string(),
+                input: "foo =\\] baz".to_string(),
+                expected: "/// foo =\\] baz\n".to_string(),
             },
             TestCases {
                 name: "invalid_bracket_combination",
-                input: "[0, 9)".to_string(),
-                expected: "/// [0, 9)\n".to_string(),
+                input: "\\[0, 9)".to_string(),
+                expected: "/// \\[0, 9)\n".to_string(),
+            },
+            TestCases {
+                name: "should_not_escape_url_brackets",
+                input: "url: [bar](https://example.com)".to_string(),
+                expected: "/// url: [bar](<https://example.com>)\n".to_string(),
             },
         ];
         for t in tests {
-            let input = Comments {
-                leading_detached: vec![],
-                leading: vec![],
-                trailing: vec![t.input],
+            let loc = Location {
+                path: vec![],
+                span: vec![],
+                leading_detached_comments: vec![],
+                leading_comments: None,
+                trailing_comments: Some(t.input.into()),
             };
-
+            let input = Comments::from_location(&loc);
             let mut actual = "".to_string();
             input.append_with_indent(0, &mut actual);
 
@@ -363,6 +410,8 @@ mod tests {
             name: &'static str,
             input: &'static str,
             #[allow(unused)]
+            expected: Vec<&'static str>,
+            #[allow(unused)]
             cleanedup_expected: Vec<&'static str>,
         }
 
@@ -370,17 +419,46 @@ mod tests {
             TestCase {
                 name: "unlabelled_block",
                 input: "    thingy\n",
+                expected: vec!["    thingy"],
                 cleanedup_expected: vec!["", "```text", "thingy", "```"],
+            },
+            TestCase {
+                name: "unlabelled_block",
+                input: "    thingy\n        thingy2\n",
+                expected: vec!["    thingy", "        thingy2"],
+                cleanedup_expected: vec!["", "```text", "thingy", "    thingy2", "```"],
             },
             TestCase {
                 name: "rust_block",
                 input: "```rust\nfoo.bar()\n```\n",
+                expected: vec!["", "```rust", "foo.bar()", "```"],
                 cleanedup_expected: vec!["", "```compile_fail", "foo.bar()", "```"],
             },
             TestCase {
                 name: "js_block",
                 input: "```javascript\nfoo.bar()\n```\n",
+                expected: vec!["", "```javascript", "foo.bar()", "```"],
                 cleanedup_expected: vec!["", "```text,javascript", "foo.bar()", "```"],
+            },
+            TestCase {
+                name: "should_not_escape_square_brackets_in_codeblock",
+                input: "[escape this]\n```rust\nlet a = vec![1];\nlet a = vec![1, 2];\n```\n",
+                expected: vec![
+                    "\\[escape this\\]",
+                    "",
+                    "```rust",
+                    "let a = vec![1];",
+                    "let a = vec![1, 2];",
+                    "```",
+                ],
+                cleanedup_expected: vec![
+                    "\\[escape this\\]",
+                    "",
+                    "```compile_fail",
+                    "let a = vec![1];",
+                    "let a = vec![1, 2];",
+                    "```",
+                ],
             },
         ];
 
@@ -396,7 +474,8 @@ mod tests {
             #[cfg(feature = "cleanup-markdown")]
             let expected = t.cleanedup_expected;
             #[cfg(not(feature = "cleanup-markdown"))]
-            let expected: Vec<&str> = t.input.lines().collect();
+            let expected: Vec<&str> = t.expected;
+
             assert_eq!(expected, comments.leading, "failed {}", t.name);
         }
     }
