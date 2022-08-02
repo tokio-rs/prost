@@ -138,6 +138,27 @@ impl Comments {
         }
     }
 
+    /// Checks whether a RustDoc line should be indented.
+    ///
+    /// Lines should be indented if:
+    /// - they are non-empty, AND
+    ///   - they don't already start with a space
+    ///     OR
+    ///   - they start with several spaces.
+    ///
+    /// The last condition can happen in the case of multi-line Markdown lists
+    /// such as:
+    ///
+    /// - this is a list
+    ///   where some elements spans multiple lines
+    /// - but not all elements
+    fn should_indent(sanitized_line: &str) -> bool {
+        let mut chars = sanitized_line.chars();
+        chars
+            .next()
+            .map_or(false, |c| c != ' ' || chars.next() == Some(' '))
+    }
+
     /// Sanitizes the line for rustdoc by performing the following operations:
     ///     - escape urls as <http://foo.com>
     ///     - escape `[` & `]`
@@ -149,7 +170,7 @@ impl Comments {
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
         s = RULE_BRACKETS.replace_all(&s, r"\$1$2\$3").to_string();
-        if !s.is_empty() {
+        if Self::should_indent(&s) {
             s.insert(0, ' ');
         }
         s
@@ -201,6 +222,52 @@ pub struct Method {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_comment_append_with_indent_leaves_prespaced_lines() {
+        struct TestCases {
+            name: &'static str,
+            input: String,
+            expected: String,
+        }
+
+        let tests = vec![
+            TestCases {
+                name: "existing_space",
+                input: " A line with a single leading space.".to_string(),
+                expected: "/// A line with a single leading space.\n".to_string(),
+            },
+            TestCases {
+                name: "non_existing_space",
+                input: "A line without a single leading space.".to_string(),
+                expected: "/// A line without a single leading space.\n".to_string(),
+            },
+            TestCases {
+                name: "empty",
+                input: "".to_string(),
+                expected: "///\n".to_string(),
+            },
+            TestCases {
+                name: "multiple_leading_spaces",
+                input: "  a line with several leading spaces, such as in a markdown list"
+                    .to_string(),
+                expected: "///   a line with several leading spaces, such as in a markdown list\n"
+                    .to_string(),
+            },
+        ];
+        for t in tests {
+            let input = Comments {
+                leading_detached: vec![],
+                leading: vec![],
+                trailing: vec![t.input],
+            };
+
+            let mut actual = "".to_string();
+            input.append_with_indent(0, &mut actual);
+
+            assert_eq!(t.expected, actual, "failed {}", t.name);
+        }
+    }
 
     #[test]
     fn test_comment_append_with_indent_sanitizes_comment_doc_url() {
