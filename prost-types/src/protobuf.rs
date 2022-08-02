@@ -1017,34 +1017,34 @@ pub mod generated_code_info {
 /// Example 1: Pack and unpack a message in C++.
 ///
 /// ```text
-///  Foo foo = ...;
-///  Any any;
-///  any.PackFrom(foo);
-///  ...
-///  if (any.UnpackTo(&foo)) {
+/// Foo foo = ...;
+/// Any any;
+/// any.PackFrom(foo);
+/// ...
+/// if (any.UnpackTo(&foo)) {
 ///    ...
-///  }
+/// }
 /// ```
 ///
 /// Example 2: Pack and unpack a message in Java.
 ///
 /// ```text
-///  Foo foo = ...;
-///  Any any = Any.pack(foo);
-///  ...
-///  if (any.is(Foo.class)) {
+/// Foo foo = ...;
+/// Any any = Any.pack(foo);
+/// ...
+/// if (any.is(Foo.class)) {
 ///    foo = any.unpack(Foo.class);
-///  }
+/// }
 /// ```
 ///
 /// Example 3: Pack and unpack a message in Python.
 ///
 /// ```text
-///  foo = Foo(...)
-///  any = Any()
-///  any.Pack(foo)
-///  ...
-///  if any.Is(Foo.DESCRIPTOR):
+/// foo = Foo(...)
+/// any = Any()
+/// any.Pack(foo)
+/// ...
+/// if any.Is(Foo.DESCRIPTOR):
 ///    any.Unpack(foo)
 ///    ...
 /// ```
@@ -1077,17 +1077,17 @@ pub mod generated_code_info {
 /// additional field `@type` which contains the type URL. Example:
 ///
 /// ```text
-///  package google.profile;
-///  message Person {
+/// package google.profile;
+/// message Person {
 ///    string first_name = 1;
 ///    string last_name = 2;
-///  }
+/// }
 ///
-///  {
+/// {
 ///    "@type": "type.googleapis.com/google.profile.Person",
 ///    "firstName": <string>,
 ///    "lastName": <string>
-///  }
+/// }
 /// ```
 ///
 /// If the embedded message type is well-known and has a custom JSON
@@ -1096,10 +1096,10 @@ pub mod generated_code_info {
 /// field. Example (for message \\[google.protobuf.Duration\]\[\\]):
 ///
 /// ```text
-///  {
+/// {
 ///    "@type": "type.googleapis.com/google.protobuf.Duration",
 ///    "value": "1.212s"
-///  }
+/// }
 /// ```
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Any {
@@ -1473,30 +1473,30 @@ pub struct Method {
 /// Example of a simple mixin:
 ///
 /// ```text
-///  package google.acl.v1;
-///  service AccessControl {
+/// package google.acl.v1;
+/// service AccessControl {
 ///    // Get the underlying ACL object.
 ///    rpc GetAcl(GetAclRequest) returns (Acl) {
 ///      option (google.api.http).get = "/v1/{resource=**}:getAcl";
 ///    }
-///  }
+/// }
 ///
-///  package google.storage.v2;
-///  service Storage {
+/// package google.storage.v2;
+/// service Storage {
 ///    rpc GetAcl(GetAclRequest) returns (Acl);
 ///
 ///    // Get a data record.
 ///    rpc GetData(GetDataRequest) returns (Data) {
 ///      option (google.api.http).get = "/v2/{resource=**}";
 ///    }
-///  }
+/// }
 /// ```
 ///
 /// Example of a mixin configuration:
 ///
 /// ```text
-///  apis:
-///  - name: google.storage.v2.Storage
+/// apis:
+/// - name: google.storage.v2.Storage
 ///    mixins:
 ///    - name: google.acl.v1.AccessControl
 /// ```
@@ -1508,13 +1508,13 @@ pub struct Method {
 /// documentation and annotations as follows:
 ///
 /// ```text
-///  service Storage {
+/// service Storage {
 ///    // Get the underlying ACL object.
 ///    rpc GetAcl(GetAclRequest) returns (Acl) {
 ///      option (google.api.http).get = "/v2/{resource=**}:getAcl";
 ///    }
 ///    ...
-///  }
+/// }
 /// ```
 ///
 /// Note how the version in the path pattern changed from `v1` to `v2`.
@@ -1523,8 +1523,8 @@ pub struct Method {
 /// relative path under which inherited HTTP paths are placed. Example:
 ///
 /// ```text
-///  apis:
-///  - name: google.storage.v2.Storage
+/// apis:
+/// - name: google.storage.v2.Storage
 ///    mixins:
 ///    - name: google.acl.v1.AccessControl
 ///      root: acls
@@ -1533,13 +1533,13 @@ pub struct Method {
 /// This implies the following inherited HTTP annotation:
 ///
 /// ```text
-///  service Storage {
+/// service Storage {
 ///    // Get the underlying ACL object.
 ///    rpc GetAcl(GetAclRequest) returns (Acl) {
 ///      option (google.api.http).get = "/v2/acls/{resource=**}:getAcl";
 ///    }
 ///    ...
-///  }
+/// }
 /// ```
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mixin {
@@ -1563,47 +1563,47 @@ pub struct Mixin {
 /// Example 1: Compute Duration from two Timestamps in pseudo code.
 ///
 /// ```text
-///  Timestamp start = ...;
-///  Timestamp end = ...;
-///  Duration duration = ...;
+/// Timestamp start = ...;
+/// Timestamp end = ...;
+/// Duration duration = ...;
 ///
-///  duration.seconds = end.seconds - start.seconds;
-///  duration.nanos = end.nanos - start.nanos;
+/// duration.seconds = end.seconds - start.seconds;
+/// duration.nanos = end.nanos - start.nanos;
 ///
-///  if (duration.seconds < 0 && duration.nanos > 0) {
+/// if (duration.seconds < 0 && duration.nanos > 0) {
 ///    duration.seconds += 1;
 ///    duration.nanos -= 1000000000;
-///  } else if (duration.seconds > 0 && duration.nanos < 0) {
+/// } else if (duration.seconds > 0 && duration.nanos < 0) {
 ///    duration.seconds -= 1;
 ///    duration.nanos += 1000000000;
-///  }
+/// }
 /// ```
 ///
 /// Example 2: Compute Timestamp from Timestamp + Duration in pseudo code.
 ///
 /// ```text
-///  Timestamp start = ...;
-///  Duration duration = ...;
-///  Timestamp end = ...;
+/// Timestamp start = ...;
+/// Duration duration = ...;
+/// Timestamp end = ...;
 ///
-///  end.seconds = start.seconds + duration.seconds;
-///  end.nanos = start.nanos + duration.nanos;
+/// end.seconds = start.seconds + duration.seconds;
+/// end.nanos = start.nanos + duration.nanos;
 ///
-///  if (end.nanos < 0) {
+/// if (end.nanos < 0) {
 ///    end.seconds -= 1;
 ///    end.nanos += 1000000000;
-///  } else if (end.nanos >= 1000000000) {
+/// } else if (end.nanos >= 1000000000) {
 ///    end.seconds += 1;
 ///    end.nanos -= 1000000000;
-///  }
+/// }
 /// ```
 ///
 /// Example 3: Compute Duration from datetime.timedelta in Python.
 ///
 /// ```text
-///  td = datetime.timedelta(days=3, minutes=10)
-///  duration = Duration()
-///  duration.FromTimedelta(td)
+/// td = datetime.timedelta(days=3, minutes=10)
+/// duration = Duration()
+/// duration.FromTimedelta(td)
 /// ```
 ///
 /// # JSON Mapping
@@ -1634,8 +1634,8 @@ pub struct Duration {
 /// `FieldMask` represents a set of symbolic field paths, for example:
 ///
 /// ```text
-///  paths: "f.a"
-///  paths: "f.b.d"
+/// paths: "f.a"
+/// paths: "f.b.d"
 /// ```
 ///
 /// Here `f` represents a field in some root message, `a` and `b`
@@ -1654,15 +1654,15 @@ pub struct Duration {
 /// example is applied to a response message as follows:
 ///
 /// ```text
-///  f {
+/// f {
 ///    a : 22
 ///    b {
 ///      d : 1
 ///      x : 2
 ///    }
 ///    y : 13
-///  }
-///  z: 8
+/// }
+/// z: 8
 /// ```
 ///
 /// The result will not contain specific values for fields x,y and z
@@ -1670,12 +1670,12 @@ pub struct Duration {
 /// output):
 ///
 /// ```text
-///  f {
+/// f {
 ///    a : 22
 ///    b {
 ///      d : 1
 ///    }
-///  }
+/// }
 /// ```
 ///
 /// A repeated field is not allowed except at the last position of a
@@ -1715,24 +1715,24 @@ pub struct Duration {
 /// For example, given the target message:
 ///
 /// ```text
-///  f {
+/// f {
 ///    b {
 ///      d: 1
 ///      x: 2
 ///    }
 ///    c: \[1\]
-///  }
+/// }
 /// ```
 ///
 /// And an update message:
 ///
 /// ```text
-///  f {
+/// f {
 ///    b {
 ///      d: 10
 ///    }
 ///    c: \[2\]
-///  }
+/// }
 /// ```
 ///
 /// then if the field mask is:
@@ -1742,13 +1742,13 @@ pub struct Duration {
 /// then the result will be:
 ///
 /// ```text
-///  f {
+/// f {
 ///    b {
 ///      d: 10
 ///      x: 2
 ///    }
 ///    c: [1, 2]
-///  }
+/// }
 /// ```
 ///
 /// An implementation may provide options to override this default behavior for
@@ -1788,31 +1788,31 @@ pub struct Duration {
 /// As an example, consider the following message declarations:
 ///
 /// ```text
-///  message Profile {
+/// message Profile {
 ///    User user = 1;
 ///    Photo photo = 2;
-///  }
-///  message User {
+/// }
+/// message User {
 ///    string display_name = 1;
 ///    string address = 2;
-///  }
+/// }
 /// ```
 ///
 /// In proto a field mask for `Profile` may look as such:
 ///
 /// ```text
-///  mask {
+/// mask {
 ///    paths: "user.display_name"
 ///    paths: "photo"
-///  }
+/// }
 /// ```
 ///
 /// In JSON, the same mask is represented as below:
 ///
 /// ```text
-///  {
+/// {
 ///    mask: "user.displayName,photo"
-///  }
+/// }
 /// ```
 ///
 /// # Field Masks and Oneof Fields
@@ -1821,28 +1821,28 @@ pub struct Duration {
 /// following message:
 ///
 /// ```text
-///  message SampleMessage {
+/// message SampleMessage {
 ///    oneof test_oneof {
 ///      string name = 4;
 ///      SubMessage sub_message = 9;
 ///    }
-///  }
+/// }
 /// ```
 ///
 /// The field mask can be:
 ///
 /// ```text
-///  mask {
+/// mask {
 ///    paths: "name"
-///  }
+/// }
 /// ```
 ///
 /// Or:
 ///
 /// ```text
-///  mask {
+/// mask {
 ///    paths: "sub_message"
-///  }
+/// }
 /// ```
 ///
 /// Note that oneof type names ("test_oneof" in this case) cannot be used in
@@ -1959,51 +1959,51 @@ impl NullValue {
 /// Example 1: Compute Timestamp from POSIX `time()`.
 ///
 /// ```text
-///  Timestamp timestamp;
-///  timestamp.set_seconds(time(NULL));
-///  timestamp.set_nanos(0);
+/// Timestamp timestamp;
+/// timestamp.set_seconds(time(NULL));
+/// timestamp.set_nanos(0);
 /// ```
 ///
 /// Example 2: Compute Timestamp from POSIX `gettimeofday()`.
 ///
 /// ```text
-///  struct timeval tv;
-///  gettimeofday(&tv, NULL);
+/// struct timeval tv;
+/// gettimeofday(&tv, NULL);
 ///
-///  Timestamp timestamp;
-///  timestamp.set_seconds(tv.tv_sec);
-///  timestamp.set_nanos(tv.tv_usec * 1000);
+/// Timestamp timestamp;
+/// timestamp.set_seconds(tv.tv_sec);
+/// timestamp.set_nanos(tv.tv_usec * 1000);
 /// ```
 ///
 /// Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
 ///
 /// ```text
-///  FILETIME ft;
-///  GetSystemTimeAsFileTime(&ft);
-///  UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+/// FILETIME ft;
+/// GetSystemTimeAsFileTime(&ft);
+/// UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
 ///
-///  // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
-///  // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
-///  Timestamp timestamp;
-///  timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
-///  timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+/// // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+/// // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+/// Timestamp timestamp;
+/// timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+/// timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
 /// ```
 ///
 /// Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
 ///
 /// ```text
-///  long millis = System.currentTimeMillis();
+/// long millis = System.currentTimeMillis();
 ///
-///  Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+/// Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
 ///      .setNanos((int) ((millis % 1000) * 1000000)).build();
 /// ```
 ///
 /// Example 5: Compute Timestamp from Java `Instant.now()`.
 ///
 /// ```text
-///  Instant now = Instant.now();
+/// Instant now = Instant.now();
 ///
-///  Timestamp timestamp =
+/// Timestamp timestamp =
 ///      Timestamp.newBuilder().setSeconds(now.getEpochSecond())
 ///          .setNanos(now.getNano()).build();
 /// ```
@@ -2011,8 +2011,8 @@ impl NullValue {
 /// Example 6: Compute Timestamp from current time in Python.
 ///
 /// ```text
-///  timestamp = Timestamp()
-///  timestamp.GetCurrentTime()
+/// timestamp = Timestamp()
+/// timestamp.GetCurrentTime()
 /// ```
 ///
 /// # JSON Mapping
