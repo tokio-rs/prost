@@ -1,6 +1,8 @@
 use lazy_static::lazy_static;
 use prost_types::source_code_info::Location;
-use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
+#[cfg(feature = "cleanup-markdown")]
+use pulldown_cmark::{CodeBlockKind, Event, Tag};
+use pulldown_cmark::{Options, Parser};
 use regex::Regex;
 
 /// Comments on a Protobuf item.
@@ -31,36 +33,11 @@ impl Comments {
                 ..Default::default()
             };
 
-            let mut is_in_indented_codeblock = false;
             match pulldown_cmark_to_cmark::cmark_with_options(
                 Parser::new_ext(
                     &comments,
                     Options::all() - Options::ENABLE_SMART_PUNCTUATION,
-                )
-                .map(|event| match event {
-                    Event::Start(Tag::CodeBlock(kind)) => match kind {
-                        CodeBlockKind::Indented => {
-                            is_in_indented_codeblock = true;
-                            Event::Text("".into())
-                        }
-                        e => Event::Start(Tag::CodeBlock(e)),
-                    },
-                    Event::End(Tag::CodeBlock(kind)) => match kind {
-                        CodeBlockKind::Indented => {
-                            is_in_indented_codeblock = false;
-                            Event::Text("".into())
-                        }
-                        e => Event::End(Tag::CodeBlock(e)),
-                    },
-                    Event::Text(text) => {
-                        if is_in_indented_codeblock {
-                            let text = format!("    {}", text);
-                            return Event::Text(text.into());
-                        }
-                        Event::Text(text)
-                    }
-                    _ => event,
-                }),
+                ),
                 &mut buffer,
                 opts,
             ) {
@@ -209,7 +186,6 @@ impl Comments {
         }
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
-        s = RULE_BRACKETS.replace_all(&s, r"\$1$2\$3").to_string();
         if Self::should_indent(&s) {
             s.insert(0, ' ');
         }
@@ -419,13 +395,13 @@ mod tests {
             TestCase {
                 name: "unlabelled_block",
                 input: "    thingy\n",
-                expected: vec!["    thingy"],
+                expected: vec!["```", "thingy", "```"],
                 cleanedup_expected: vec!["", "```text", "thingy", "```"],
             },
             TestCase {
-                name: "unlabelled_block",
+                name: "indented_block",
                 input: "    thingy\n        thingy2\n",
-                expected: vec!["    thingy", "        thingy2"],
+                expected: vec!["```", "thingy", "    thingy2", "```"],
                 cleanedup_expected: vec!["", "```text", "thingy", "    thingy2", "```"],
             },
             TestCase {
