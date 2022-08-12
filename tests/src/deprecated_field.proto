@@ -5,6 +5,11 @@ package deprecated_field;
 message Test {
   string not_outdated = 1;
   string outdated = 2 [deprecated = true];
+
+  oneof test3 {
+    string oneof_not_outdated = 3;
+    string oneof_outdated = 4 [deprecated = true];
+  }
 }
 
 enum Test2 {

@@ -514,6 +514,11 @@ impl<'a> CodeGenerator<'a> {
             self.append_doc(fq_message_name, Some(field.name()));
             self.path.pop();
 
+            if self.deprecated(&field) {
+                self.push_indent();
+                self.buf.push_str("#[deprecated]\n");
+            }
+
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!(
