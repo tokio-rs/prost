@@ -296,6 +296,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             #[doc=#from_i32_doc]
+            #[allow(deprecated)]
             pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
                 match value {
                     #(#from,)*
@@ -304,6 +305,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
+        #[allow(deprecated)]
         impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> #ident {
                 #ident::#default
