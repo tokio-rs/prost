@@ -9,25 +9,14 @@ of how to integrate `prost-build` into a Cargo project.
 
 ## `protoc`
 
-`prost-build` uses `protoc` to parse the proto files. There are a few ways to make `protoc`
-available for `prost-build`. 
+`prost-build` uses `protoc` to parse the proto files. There are two ways to make `protoc`
+available for `prost-build`:
 
-The first option is to include `protoc` in your `PATH` this
-can be done by following the [`protoc` install instructions]. In addition, its possible to
-pass the `PROTOC=<my/path/to/protoc>` environment variable.
+* Include `protoc` in your `PATH`. This can be done by following the [`protoc` install instructions].
+* Pass the `PROTOC=<my/path/to/protoc>` environment variable with the path to
+  `protoc`.
 
 [`protoc` install instructions]: https://github.com/protocolbuffers/protobuf#protocol-compiler-installation
-
-The second option is to provide the `vendored` feature flag to `prost-build`. This will
-force `prost-build` to compile `protoc` from the bundled source. This will require that
-you have the correct dependencies installed include a C++ toolchain, cmake, etc. For
-more info on what the required dependencies are check [here].
-
-[here]: https://github.com/protocolbuffers/protobuf/blob/master/src/README.md
-
-If you would like to always ignore vendoring `protoc` you can additionally pass
-`PROTOC_NO_VENDOR` and this will always check the `PATH`/`PROTOC` environment
-variables and never compile `protoc` from source.
 
 ## License
 
