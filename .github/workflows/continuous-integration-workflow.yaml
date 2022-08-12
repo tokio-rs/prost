@@ -23,32 +23,6 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: stable
-            default: true
-            profile: minimal
-            components: clippy
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v3
-      - name: clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --workspace --all-features --all-targets
-
   minversions:
     runs-on: ubuntu-latest
     steps:
