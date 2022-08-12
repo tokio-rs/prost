@@ -8,7 +8,10 @@ mod test {
 
     #[test]
     fn test_hello() {
-        let msg = super::hello_world::HelloWorld { foo: 32 };
+        let msg = super::hello_world::HelloWorld {
+            foo: 32,
+            unknown_fields: std::collections::HashMap::new(),
+        };
         let mut buf = Vec::new();
         msg.encode_raw(&mut buf);
 

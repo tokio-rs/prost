@@ -208,6 +208,12 @@ impl<'a> CodeGenerator<'a> {
             }
             self.path.pop();
         }
+
+        self.push_indent();
+        self.buf.push_str(&format!(
+            "pub unknown_fields: std::collections::HashMap<i32, bool>,\n"
+        ));
+
         self.path.pop();
 
         self.path.push(8);
