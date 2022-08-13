@@ -1,7 +1,10 @@
 [package]
 name = "protobuf"
 version = "0.0.0"
-authors = ["Dan Burkert <dan@danburkert.com>"]
+authors = [
+    "Dan Burkert <dan@danburkert.com>",
+    "Tokio Contributors <team@tokio.rs>",
+]
 publish = false
 edition = "2018"
 
@@ -11,12 +14,19 @@ prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]
-anyhow = "1"
-curl = "0.4"
-flate2 = "1.0"
+anyhow = "1.0.1"
+curl = "0.4.13"
+flate2 = "1.0.3"
 prost-build = { path = "../prost-build" }
-tar = "0.4"
+tar = "0.4.15"
 tempfile = "3"
+
+# With libz-sys `1.1.8` the msrv has been bumped to 1.54. Since, this dep
+# is not a dep of the actual prost crates we will force cargo to not include
+# the new version.
+#
+# https://github.com/rust-lang/libz-sys/issues/101
+libz-sys = { version = "1.1, < 1.1.7", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"

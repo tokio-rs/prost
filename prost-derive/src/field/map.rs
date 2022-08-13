@@ -319,6 +319,17 @@ impl Field {
         };
         match &self.value_ty {
             ValueTy::Scalar(ty) => {
+                if let scalar::Ty::Bytes(_) = *ty {
+                    return quote! {
+                        struct #wrapper_name<'a>(&'a dyn ::core::fmt::Debug);
+                        impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                                self.0.fmt(f)
+                            }
+                        }
+                    };
+                }
+
                 let value = ty.rust_type();
                 quote! {
                     struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);

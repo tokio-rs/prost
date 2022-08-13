@@ -1,8 +1,17 @@
 syntax = "proto3";
 
-import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/type.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/api.proto";
+import "google/protobuf/descriptor.proto";
 import "google/protobuf/wrappers.proto";
+import "google/protobuf/source_context.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/compiler/plugin.proto";
+import "google/protobuf/duration.proto";
 
 package well_known_types;
 
@@ -29,4 +38,38 @@ message Foo {
     google.protobuf.StringValue string = 10;
 
     google.protobuf.BytesValue bytes = 11;
+}
+
+// https://github.com/tokio-rs/prost/issues/531
+message Test {
+  bytes bytes = 1;
+  map<string, bytes> bytes_dict = 2;
+}
+
+
+message Bar {
+    google.protobuf.Empty ee = 1;
+    google.protobuf.Timestamp ts = 2;
+    google.protobuf.Option p = 3;
+    google.protobuf.Any a = 4;
+    google.protobuf.Api b = 5;
+    google.protobuf.BoolValue c = 6;
+    google.protobuf.BytesValue d = 7;
+    google.protobuf.DoubleValue e = 8;
+    google.protobuf.Duration f = 9;
+    google.protobuf.Empty g = 10;
+    google.protobuf.Enum h = 11;
+    google.protobuf.EnumValue i = 12;
+    google.protobuf.Field j = 13;
+    google.protobuf.Int32Value k = 14;
+    google.protobuf.ListValue l = 15;
+    google.protobuf.Method m = 16;
+    google.protobuf.Mixin n = 17;
+    google.protobuf.NullValue pp = 18;
+    google.protobuf.Option o = 19;
+    google.protobuf.Struct q = 20;
+    google.protobuf.Syntax r = 21;
+    google.protobuf.Timestamp t = 22;
+    google.protobuf.Type s = 23;
+    google.protobuf.Value v = 24;
 }

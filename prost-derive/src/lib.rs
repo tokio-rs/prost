@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.7.0")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.10.1")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -102,11 +102,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let merge = fields.iter().map(|&(ref field_ident, ref field)| {
         let merge = field.merge(quote!(value));
-        let tags = field
-            .tags()
-            .into_iter()
-            .map(|tag| quote!(#tag))
-            .intersperse(quote!(|));
+        let tags = field.tags().into_iter().map(|tag| quote!(#tag));
+        let tags = Itertools::intersperse(tags, quote!(|));
+
         quote! {
             #(#tags)* => {
                 let mut value = &mut self.#field_ident;
@@ -206,7 +204,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics Default for #ident #ty_generics #where_clause {
+        impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> Self {
                 #ident {
                     #(#default)*
@@ -426,12 +424,14 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
+            /// Encodes the message to a buffer.
             pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
                 match *self {
                     #(#encode,)*
                 }
             }
 
+            /// Decodes an instance of the message from a buffer, and merges it into self.
             pub fn merge<B>(
                 field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
@@ -446,6 +446,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 }
             }
 
+            /// Returns the encoded length of the message without a length delimiter.
             #[inline]
             pub fn encoded_len(&self) -> usize {
                 match *self {

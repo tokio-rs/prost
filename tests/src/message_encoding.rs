@@ -1,5 +1,5 @@
-use bytes::Bytes;
 use prost::alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
+use prost::bytes::Bytes;
 use prost::{Enumeration, Message, Oneof};
 
 use crate::check_message;
@@ -284,7 +284,7 @@ pub struct DefaultValues {
     #[prost(int32, optional, tag = "2", default = "88")]
     pub optional_int32: Option<i32>,
 
-    #[prost(string, tag = "3", default = "fourty two")]
+    #[prost(string, tag = "3", default = "forty two")]
     pub string: String,
 
     #[prost(bytes = "vec", tag = "7", default = "b\"foo\\x00bar\"")]
@@ -308,7 +308,7 @@ fn check_default_values() {
     let default = DefaultValues::default();
     assert_eq!(default.int32, 42);
     assert_eq!(default.optional_int32, None);
-    assert_eq!(&default.string, "fourty two");
+    assert_eq!(&default.string, "forty two");
     assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
     assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
@@ -318,6 +318,7 @@ fn check_default_values() {
 }
 
 /// A protobuf enum.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Copy, Debug, PartialEq, Enumeration)]
 pub enum BasicEnumeration {
     ZERO = 0,
@@ -359,6 +360,10 @@ pub struct Basic {
 
     #[prost(oneof = "BasicOneof", tags = "8, 9")]
     pub oneof: Option<BasicOneof>,
+
+    #[prost(map = "string, bytes", tag = "12")]
+    #[cfg(feature = "std")]
+    pub bytes_map: ::std::collections::HashMap<String, Vec<u8>>,
 }
 
 #[derive(Clone, PartialEq, Message)]

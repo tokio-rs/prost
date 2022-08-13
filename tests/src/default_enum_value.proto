@@ -1,4 +1,4 @@
-// From https://github.com/danburkert/prost/issues/118
+// From https://github.com/tokio-rs/prost/issues/118
 
 syntax = "proto2";
 
@@ -17,7 +17,7 @@ message Test {
   optional PrivacyLevel privacy_level_4 = 3 [default = PRIVACY_LEVELPRIVACY_LEVEL_FOUR];
 }
 
-// danburkert/prost#310
+// tokio-rs/prost#310
 enum ERemoteClientBroadcastMsg {
     k_ERemoteClientBroadcastMsgDiscovery = 0;
 }
