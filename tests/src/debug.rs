@@ -56,21 +56,17 @@ fn basic() {
     );
 }
 
-/*
-TODO(tokio-rs/prost#56):
-
 /// A special case with a tuple struct
 #[test]
 fn tuple_struct() {
-    #[derive(Clone, PartialEq, Message)]
-    struct NewType(
-        #[prost(enumeration="BasicEnumeration", tag="5")]
-        i32,
+    #[derive(Clone, PartialEq, prost::Message)]
+    struct NewType(#[prost(enumeration = "BasicEnumeration", tag = "5")] i32);
+    assert_eq!(
+        format!("{:?}", NewType(BasicEnumeration::TWO as i32)),
+        "NewType(TWO)"
     );
-    assert_eq!(format!("{:?}", NewType(BasicEnumeration::TWO as i32)), "NewType(TWO)");
     assert_eq!(format!("{:?}", NewType(42)), "NewType(42)");
 }
-*/
 
 #[derive(Clone, PartialEq, prost::Oneof)]
 pub enum OneofWithEnum {
