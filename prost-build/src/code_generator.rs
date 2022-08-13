@@ -174,7 +174,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
         self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
+            .push_str("#[derive(Clone, PartialEq, Eq, ::prost::Message)]\n");
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -497,7 +497,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&oneof_name);
         self.push_indent();
         self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
+            .push_str("#[derive(Clone, PartialEq, Eq, ::prost::Oneof)]\n");
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
