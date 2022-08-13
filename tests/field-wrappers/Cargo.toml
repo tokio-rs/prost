@@ -1,0 +1,10 @@
+[package]
+name = "field-wrappers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = { path = "../../../prost" }
+
+[build-dependencies]
+prost-build = { path = "../../prost-build" }

@@ -235,6 +235,28 @@ impl Default for BytesType {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Wrapper {
+    Arc,
+    Box,
+}
+
+impl Wrapper {
+    pub(crate) fn as_tag(&self) -> &'static str {
+        match self {
+            Wrapper::Arc => "arc",
+            Wrapper::Box => "box",
+        }
+    }
+
+    pub(crate) fn as_type(&self) -> &'static str {
+        match self {
+            Wrapper::Arc => "::prost::alloc::sync::Arc",
+            Wrapper::Box => "::prost::alloc::boxed::Box",
+        }
+    }
+}
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
@@ -247,6 +269,7 @@ pub struct Config {
     message_attributes: PathMap<String>,
     enum_attributes: PathMap<String>,
     field_attributes: PathMap<String>,
+    field_wrappers: PathMap<Wrapper>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
@@ -418,6 +441,35 @@ impl Config {
     {
         self.field_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    fn field_wrapper<I, S>(&mut self, paths: I, wrapper: Wrapper)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        for path in paths {
+            self.field_wrappers
+                .insert(path.as_ref().to_string(), wrapper);
+        }
+    }
+
+    pub fn arc<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.field_wrapper(paths, Wrapper::Arc);
+        self
+    }
+
+    pub fn r#box<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.field_wrapper(paths, Wrapper::Box);
         self
     }
 
@@ -1214,6 +1266,7 @@ impl default::Default for Config {
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
+            field_wrappers: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
@@ -1238,6 +1291,7 @@ impl fmt::Debug for Config {
             .field("bytes_type", &self.bytes_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
+            .field("field_wrapper", &self.field_wrappers)
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
             .field("out_dir", &self.out_dir)

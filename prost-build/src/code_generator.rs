@@ -18,7 +18,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType};
+use crate::{BytesType, Config, MapType, Wrapper};
 
 #[derive(PartialEq)]
 enum Syntax {
@@ -308,18 +308,26 @@ impl<'a> CodeGenerator<'a> {
         let deprecated = self.deprecated(&field);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field, fq_message_name);
+        let field_wrapper = self
+            .config
+            .field_wrappers
+            .get_first_field(fq_message_name, field.name())
+            .copied();
 
+        // TODO: Merge `boxed` with `field_wrapper`
         let boxed = !repeated
+            && field_wrapper != Some(Wrapper::Box)
             && (type_ == Type::Message || type_ == Type::Group)
             && self
                 .message_graph
                 .is_nested(field.type_name(), fq_message_name);
 
         debug!(
-            "    field: {:?}, type: {:?}, boxed: {}",
+            "    field: {:?}, type: {:?}, boxed: {}, field_wrapper: {:?}",
             field.name(),
             ty,
-            boxed
+            boxed,
+            field_wrapper
         );
 
         self.append_doc(fq_message_name, Some(field.name()));
@@ -365,6 +373,10 @@ impl<'a> CodeGenerator<'a> {
             }
         }
 
+        if let Some(wrapper) = field_wrapper {
+            self.buf.push_str(", ");
+            self.buf.push_str(wrapper.as_tag());
+        }
         if boxed {
             self.buf.push_str(", boxed");
         }
@@ -410,6 +422,10 @@ impl<'a> CodeGenerator<'a> {
 
         let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
 
+        if let Some(wrapper) = field_wrapper {
+            self.buf.push_str(wrapper.as_type());
+            self.buf.push('<');
+        }
         if repeated {
             self.buf
                 .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
@@ -427,6 +443,9 @@ impl<'a> CodeGenerator<'a> {
         if repeated || optional {
             self.buf.push('>');
         }
+        if field_wrapper.is_some() {
+            self.buf.push('>');
+        }
         self.buf.push_str(",\n");
     }
 
@@ -439,12 +458,18 @@ impl<'a> CodeGenerator<'a> {
     ) {
         let key_ty = self.resolve_type(key, fq_message_name);
         let value_ty = self.resolve_type(value, fq_message_name);
+        let field_wrapper = self
+            .config
+            .field_wrappers
+            .get_first_field(fq_message_name, field.name())
+            .copied();
 
         debug!(
-            "    map field: {:?}, key type: {:?}, value type: {:?}",
+            "    map field: {:?}, key type: {:?}, value type: {:?}, wrapper: {:?}",
             field.name(),
             key_ty,
-            value_ty
+            value_ty,
+            field_wrapper,
         );
 
         self.append_doc(fq_message_name, Some(field.name()));
@@ -459,22 +484,49 @@ impl<'a> CodeGenerator<'a> {
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
 
-        self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
-            map_type.annotation(),
-            key_tag,
-            value_tag,
-            field.number()
-        ));
+        self.buf.push_str("#[prost(");
+
+        self.buf.push_str(map_type.annotation());
+        self.buf.push_str("=\"");
+        self.buf.push_str(&key_tag);
+        self.buf.push_str(", ");
+        self.buf.push_str(&value_tag);
+        self.buf.push_str("\"");
+
+        if let Some(wrapper) = field_wrapper {
+            self.buf.push_str(", ");
+            self.buf.push_str(wrapper.as_tag());
+        }
+
+        self.buf.push_str(", tag=\"");
+        self.buf.push_str(&field.number().to_string());
+        self.buf.push_str("\"");
+
+        self.buf.push_str(")]\n");
+
         self.append_field_attributes(fq_message_name, field.name());
         self.push_indent();
-        self.buf.push_str(&format!(
-            "pub {}: {}<{}, {}>,\n",
-            to_snake(field.name()),
-            map_type.rust_type(),
-            key_ty,
-            value_ty
-        ));
+        self.buf.push_str("pub ");
+        self.buf.push_str(&to_snake(field.name()));
+        self.buf.push_str(": ");
+
+        if let Some(wrapper) = field_wrapper {
+            self.buf.push_str(wrapper.as_type());
+            self.buf.push('<');
+        }
+
+        self.buf.push_str(map_type.rust_type());
+        self.buf.push_str("<");
+        self.buf.push_str(&key_ty);
+        self.buf.push_str(", ");
+        self.buf.push_str(&value_ty);
+        self.buf.push_str(">");
+
+        if field_wrapper.is_some() {
+            self.buf.push('>');
+        }
+
+        self.buf.push_str(",\n");
     }
 
     fn append_oneof_field(
@@ -484,6 +536,12 @@ impl<'a> CodeGenerator<'a> {
         oneof: &OneofDescriptorProto,
         fields: &[(FieldDescriptorProto, usize)],
     ) {
+        let field_wrapper = self
+            .config
+            .field_wrappers
+            .get_first_field(fq_message_name, oneof.name())
+            .copied();
+
         let name = format!(
             "{}::{}",
             to_snake(message_name),
@@ -491,21 +549,46 @@ impl<'a> CodeGenerator<'a> {
         );
         self.append_doc(fq_message_name, None);
         self.push_indent();
-        self.buf.push_str(&format!(
-            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
-            name,
-            fields
+        self.buf.push_str("#[prost(oneof=\"");
+        self.buf.push_str(&name);
+        self.buf.push_str("\"");
+
+        if let Some(wrapper) = field_wrapper {
+            self.buf.push_str(", ");
+            self.buf.push_str(wrapper.as_tag());
+        }
+
+        self.buf.push_str(", tags=\"");
+        self.buf.push_str(
+            &fields
                 .iter()
                 .map(|&(ref field, _)| field.number())
-                .join(", ")
-        ));
+                .join(", "),
+        );
+        self.buf.push_str("\"");
+
+        self.buf.push_str(")]\n");
+
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
-        self.buf.push_str(&format!(
-            "pub {}: ::core::option::Option<{}>,\n",
-            to_snake(oneof.name()),
-            name
-        ));
+        self.buf.push_str("pub ");
+        self.buf.push_str(&to_snake(oneof.name()));
+        self.buf.push_str(": ");
+
+        if let Some(wrapper) = field_wrapper {
+            self.buf.push_str(wrapper.as_type());
+            self.buf.push('<');
+        }
+
+        self.buf.push_str("::core::option::Option<");
+        self.buf.push_str(&name);
+        self.buf.push_str(">");
+
+        if field_wrapper.is_some() {
+            self.buf.push('>');
+        }
+
+        self.buf.push_str(",\n");
     }
 
     fn append_oneof(

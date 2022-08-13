@@ -3,18 +3,20 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Lit, Meta, MetaNameValue, NestedMeta, Path};
 
-use crate::field::{set_option, tags_attr};
+use crate::field::{field_ref, set_option, tags_attr, wrapper_attr, Wrapper};
 
 #[derive(Clone)]
 pub struct Field {
     pub ty: Path,
     pub tags: Vec<u32>,
+    pub wrapper: Option<Wrapper>,
 }
 
 impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut tags = None;
+        let mut wrapper = None;
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
@@ -39,6 +41,8 @@ impl Field {
                     _ => bail!("invalid oneof attribute: {:?}", attr),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
+            } else if let Some(w) = wrapper_attr(attr) {
+                set_option(&mut wrapper, w, "duplicate wrapper attribute")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;
             } else {
@@ -65,13 +69,14 @@ impl Field {
             None => bail!("oneof field is missing a tags attribute"),
         };
 
-        Ok(Some(Field { ty, tags }))
+        Ok(Some(Field { ty, tags, wrapper }))
     }
 
     /// Returns a statement which encodes the oneof field.
     pub fn encode(&self, ident: TokenStream) -> TokenStream {
+        let field = field_ref(&self.wrapper, ident);
         quote! {
-            if let Some(ref oneof) = #ident {
+            if let Some(oneof) = #field {
                 oneof.encode(buf)
             }
         }
@@ -88,12 +93,13 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the oneof field.
     pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
         let ty = &self.ty;
+        let field = field_ref(&self.wrapper, ident);
         quote! {
-            #ident.as_ref().map_or(0, #ty::encoded_len)
+            (#field).as_ref().map_or(0, #ty::encoded_len)
         }
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident = ::core::option::Option::None)
+        quote!(#ident.take())
     }
 }

@@ -108,10 +108,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         let merge = field.merge(quote!(value));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
         let tags = Itertools::intersperse(tags, quote!(|));
+        let mut_field = field.mut_field(field_ident);
 
         quote! {
             #(#tags)* => {
-                let mut value = &mut self.#field_ident;
+                let mut value = #mut_field;
                 #merge.map_err(|mut error| {
                     error.push(STRUCT_NAME, stringify!(#field_ident));
                     error
