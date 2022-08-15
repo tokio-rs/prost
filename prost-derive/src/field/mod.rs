@@ -3,6 +3,7 @@ mod map;
 mod message;
 mod oneof;
 mod scalar;
+mod unknown;
 
 use std::fmt;
 use std::slice;
@@ -24,6 +25,8 @@ pub enum Field {
     Oneof(oneof::Field),
     /// A group field.
     Group(group::Field),
+    /// Represents all other unknown fields
+    UnknownFields,
 }
 
 impl Field {
@@ -46,6 +49,8 @@ impl Field {
             Field::Oneof(field)
         } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
             Field::Group(field)
+        } else if let Some(_) = unknown::matches_attrs(&attrs)? {
+            Field::UnknownFields
         } else {
             bail!("no type attribute");
         };
@@ -84,6 +89,7 @@ impl Field {
             Field::Map(ref map) => vec![map.tag],
             Field::Oneof(ref oneof) => oneof.tags.clone(),
             Field::Group(ref group) => vec![group.tag],
+            Field::UnknownFields => vec![1000], // TODO(jason): see if we can get rid of this.
         }
     }
 
@@ -95,6 +101,7 @@ impl Field {
             Field::Map(ref map) => map.encode(ident),
             Field::Oneof(ref oneof) => oneof.encode(ident),
             Field::Group(ref group) => group.encode(ident),
+            Field::UnknownFields => crate::field::unknown::encode_unknown(ident),
         }
     }
 
@@ -107,6 +114,7 @@ impl Field {
             Field::Map(ref map) => map.merge(ident),
             Field::Oneof(ref oneof) => oneof.merge(ident),
             Field::Group(ref group) => group.merge(ident),
+            Field::UnknownFields => crate::field::unknown::merge_unknown(ident),
         }
     }
 
@@ -118,6 +126,7 @@ impl Field {
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
             Field::Group(ref group) => group.encoded_len(ident),
+            Field::UnknownFields => crate::field::unknown::encoding_len_unknown(ident), // TODO(jason): this one might be a problem
         }
     }
 
@@ -129,6 +138,7 @@ impl Field {
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),
             Field::Group(ref group) => group.clear(ident),
+            Field::UnknownFields => crate::field::unknown::clear_unknown(ident), // TODO(jason): this might also be a problem
         }
     }
 

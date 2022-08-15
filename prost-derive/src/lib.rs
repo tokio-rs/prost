@@ -201,6 +201,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
             where B: ::prost::bytes::Buf {
+                // TODO(jason): consider handling the unknown fields here.
                 #struct_name
                 match tag {
                     #(#merge)*

@@ -209,10 +209,14 @@ impl<'a> CodeGenerator<'a> {
             self.path.pop();
         }
 
-        self.push_indent();
-        self.buf.push_str(&format!(
-            "pub unknown_fields: std::collections::HashMap<i32, bool>,\n"
-        ));
+        if self.config.generate_unknown_fields {
+            self.push_indent();
+            self.buf.push_str(&format!("#[prost(unknown)]\n"));
+            self.push_indent();
+            self.buf.push_str(&format!(
+                "pub unknown_fields: ::prost::unknown::UnknownFields,\n"
+            ));
+        }
 
         self.path.pop();
 
