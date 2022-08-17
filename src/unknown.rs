@@ -51,15 +51,12 @@ impl UnknownField {
 }
 
 pub struct UnknownFields {
-    /// We use these to know which fields to skip.
-    known_field_tags: Vec<u32>,
     fields: Vec<UnknownField>,
 }
 
 impl Debug for UnknownFields {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("UnknownFields")
-            .field("known_field_tags", &self.known_field_tags)
             .field("fields", &self.fields)
             .finish()
     }
@@ -68,7 +65,6 @@ impl Debug for UnknownFields {
 impl Clone for UnknownFields {
     fn clone(&self) -> Self {
         Self {
-            known_field_tags: self.known_field_tags.clone(),
             fields: self.fields.clone(),
         }
     }
@@ -76,7 +72,7 @@ impl Clone for UnknownFields {
 
 impl PartialEq for UnknownFields {
     fn eq(&self, other: &Self) -> bool {
-        self.known_field_tags == other.known_field_tags && self.fields == other.fields
+        self.fields == other.fields
     }
 }
 
@@ -86,10 +82,7 @@ impl Eq for UnknownFields {
 
 impl Default for UnknownFields {
     fn default() -> Self {
-        Self {
-            known_field_tags: Vec::new(),
-            fields: Vec::new(),
-        }
+        Self { fields: Vec::new() }
     }
 }
 
@@ -111,13 +104,10 @@ impl UnknownFields {
         wire_type: WireType,
         tag: u32,
         buf: &mut B,
-        // ctx: DecodeContext,
     ) -> Result<(), DecodeError> {
-        // let (tag, wire_type) = decode_     key(buf)?;
         let bytes = match wire_type {
             WireType::Varint => {
                 let v = decode_varint(buf)?;
-                // I want to know how long it was, lol.
                 let mut bytes = Vec::new();
                 encode_varint(v, &mut bytes);
                 bytes
@@ -126,14 +116,12 @@ impl UnknownFields {
                 let mut bytes = Vec::with_capacity(4);
                 let mut take = buf.take(4);
                 bytes.put(&mut take);
-                // buf.advance(4);
                 bytes
             }
             WireType::SixtyFourBit => {
                 let mut bytes = Vec::with_capacity(8);
                 let mut take = buf.take(8);
                 bytes.put(&mut take);
-                // buf.advance(4);
                 bytes
             }
             WireType::LengthDelimited => {
@@ -141,7 +129,6 @@ impl UnknownFields {
                 let mut bytes = Vec::with_capacity(len);
                 let mut take = buf.take(len);
                 bytes.put(&mut take);
-                // buf.advance(4);
                 bytes
             }
             // TODO(jason)
@@ -154,8 +141,6 @@ impl UnknownFields {
             wire_type,
             bytes,
         });
-        // TODO(jason)
-        // (**self).merge_field(tag, wire_type, buf, ctx)
 
         Ok(())
     }

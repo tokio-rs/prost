@@ -9,29 +9,20 @@ use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, Nest
 use crate::field::{set_bool, tag_attr, word_attr, Label};
 
 pub fn encode_unknown(_ident: TokenStream) -> TokenStream {
-    // quote! {
-    //     if let Some(ref msg) = #ident {
-    //         ::prost::encoding::message::encode(1000, &#ident, buf);
-    //     }
-    // }
+    // TODO(jason): handle differently named `unknown_fields` structs (since users may want to name them something different)
+    // actually we need to write this more hygienically
     quote! {
         self.unknown_fields.encode_raw(buf)
     }
 }
 
 pub fn merge_unknown(_ident: TokenStream) -> TokenStream {
-    // quote! {
-    //     ::prost::encoding::message::merge(wire_type, #ident, buf, ctx)
-    // }
-    // TODO(jason): handle different named ones
     quote! {
         self.unknown_fields.merge_next_field(wire_type, tag, buf)
     }
 }
 
 pub fn encoding_len_unknown(ident: TokenStream) -> TokenStream {
-    // #ident.as_ref().map_or(0, |msg| ::prost::encoding::message::encoded_len(1000, msg))
-    // TODO(jason)
     quote! {
         self.unknown_fields.encoded_len()
     }

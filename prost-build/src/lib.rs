@@ -482,7 +482,8 @@ impl Config {
         self
     }
 
-    /// TODO(jason)
+    /// Configures the code generator to include an `unknown_fields` field in message structs,
+    /// which will include all unknown fields in a deserialized Protobuf.
     pub fn generate_unknown_fields(&mut self) -> &mut Self {
         self.generate_unknown_fields = true;
         self

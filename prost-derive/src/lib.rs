@@ -117,7 +117,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                     error
                 })
             },
-            // n => self.unknown_fields.merge_next_field(buf),
         }
     });
 
@@ -208,23 +207,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
             where B: ::prost::bytes::Buf {
-                // TODO(jason): consider handling the unknown fields here.
                 #struct_name
                 match tag {
                     #(#merge)*
-                //     t => {
-                //         let (tag, wire_type) = decode_key(buf).expect("TODO(jason): handle");
-                //         // TODO: handle when not using unknown fields
-                //         self.
-                //     // .map_err(
-                //     //     |mut error| {
-                //     //         error.push(STRUCT_NAME, "unknown_fields");
-                //     //         error
-                //     //     },
-                //     // )
-                // }
-                    // n => #ident.unknown_fields.merge_next_field(buf),
-                    // _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
                     #skip_or_merge_unknown
                 }
             }
