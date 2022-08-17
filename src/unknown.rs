@@ -1,4 +1,3 @@
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use core::fmt::Debug;
@@ -7,30 +6,77 @@ use core::usize;
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{
-    decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
+    decode_key, decode_varint, encode_key, encode_varint, encoded_len_varint, key_len, message,
+    DecodeContext, WireType,
 };
 use crate::DecodeError;
-use crate::EncodeError;
 use crate::Message;
 
-pub struct UnknownFields {}
+pub struct UnknownField {
+    tag: u32,
+    wire_type: WireType,
+    bytes: Vec<u8>,
+}
+
+impl Debug for UnknownField {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("UnknownField")
+            .field("tag", &self.tag)
+            .field("wire_type", &self.wire_type)
+            .field("bytes", &self.bytes)
+            .finish()
+    }
+}
+
+impl Clone for UnknownField {
+    fn clone(&self) -> Self {
+        Self {
+            tag: self.tag.clone(),
+            wire_type: self.wire_type.clone(),
+            bytes: self.bytes.clone(),
+        }
+    }
+}
+
+impl PartialEq for UnknownField {
+    fn eq(&self, other: &Self) -> bool {
+        self.tag == other.tag && self.wire_type == other.wire_type && self.bytes == other.bytes
+    }
+}
+
+impl UnknownField {
+    fn encoded_len(&self) -> usize {
+        key_len(self.tag) + self.bytes.len()
+    }
+}
+
+pub struct UnknownFields {
+    /// We use these to know which fields to skip.
+    known_field_tags: Vec<u32>,
+    fields: Vec<UnknownField>,
+}
 
 impl Debug for UnknownFields {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("UnknownFields")
+        f.debug_struct("UnknownFields")
+            .field("known_field_tags", &self.known_field_tags)
+            .field("fields", &self.fields)
+            .finish()
     }
 }
 
 impl Clone for UnknownFields {
     fn clone(&self) -> Self {
-        Self {}
+        Self {
+            known_field_tags: self.known_field_tags.clone(),
+            fields: self.fields.clone(),
+        }
     }
 }
 
-// TODO(jason): give a better partial eq implementation
 impl PartialEq for UnknownFields {
-    fn eq(&self, _other: &Self) -> bool {
-        false
+    fn eq(&self, other: &Self) -> bool {
+        self.known_field_tags == other.known_field_tags && self.fields == other.fields
     }
 }
 
@@ -40,43 +86,83 @@ impl Eq for UnknownFields {
 
 impl Default for UnknownFields {
     fn default() -> Self {
-        Self {}
+        Self {
+            known_field_tags: Vec::new(),
+            fields: Vec::new(),
+        }
     }
 }
 
-impl Message for UnknownFields {
-    fn encode_raw<B>(&self, buf: &mut B)
+impl UnknownFields {
+    pub fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,
     {
-        // TODO(jason)
-        // (**self).encode_raw(buf)
+        for field in self.fields.iter() {
+            encode_key(field.tag, field.wire_type, buf);
+            if WireType::LengthDelimited == field.wire_type {
+                encode_varint(field.bytes.len() as u64, buf);
+            }
+            buf.put(&field.bytes[..]);
+        }
     }
-    fn merge_field<B>(
+    pub fn merge_next_field<B: Buf>(
         &mut self,
-        tag: u32,
         wire_type: WireType,
+        tag: u32,
         buf: &mut B,
-        ctx: DecodeContext,
+        // ctx: DecodeContext,
     ) -> Result<(), DecodeError> {
+        // let (tag, wire_type) = decode_     key(buf)?;
+        let bytes = match wire_type {
+            WireType::Varint => {
+                let v = decode_varint(buf)?;
+                // I want to know how long it was, lol.
+                let mut bytes = Vec::new();
+                encode_varint(v, &mut bytes);
+                bytes
+            }
+            WireType::ThirtyTwoBit => {
+                let mut bytes = Vec::with_capacity(4);
+                let mut take = buf.take(4);
+                bytes.put(&mut take);
+                // buf.advance(4);
+                bytes
+            }
+            WireType::SixtyFourBit => {
+                let mut bytes = Vec::with_capacity(8);
+                let mut take = buf.take(8);
+                bytes.put(&mut take);
+                // buf.advance(4);
+                bytes
+            }
+            WireType::LengthDelimited => {
+                let len = decode_varint(buf)? as usize;
+                let mut bytes = Vec::with_capacity(len);
+                let mut take = buf.take(len);
+                bytes.put(&mut take);
+                // buf.advance(4);
+                bytes
+            }
+            // TODO(jason)
+            WireType::StartGroup => unimplemented!(),
+            WireType::EndGroup => unimplemented!(),
+        };
+
+        self.fields.push(UnknownField {
+            tag,
+            wire_type,
+            bytes,
+        });
         // TODO(jason)
         // (**self).merge_field(tag, wire_type, buf, ctx)
+
         Ok(())
     }
-    fn encoded_len(&self) -> usize {
-        // (**self).encoded_len()
-        // TODO(jason)
-        0
+    pub fn encoded_len(&self) -> usize {
+        self.fields.iter().map(|f| f.encoded_len()).sum()
     }
-    fn clear(&mut self) {
-        // TODO(jason)
-        // (**self).clear()
+    pub fn clear(&mut self) {
+        self.fields.clear()
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const _MESSAGE_IS_OBJECT_SAFE: Option<&dyn Message> = None;
 }

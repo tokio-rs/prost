@@ -8,14 +8,18 @@ mod test {
 
     #[test]
     fn test_hello() {
-        let msg = super::hello_world::HelloWorld {
-            foo: 32,
-            unknown_fields: ::prost::unknown::UnknownFields::default(),
-        };
+        let mut msg = super::hello_world::NewHelloWorld::default();
+        msg.foo = 32;
+        msg.new_field = 45;
         let mut buf = Vec::new();
         msg.encode_raw(&mut buf);
 
-        let decoded = super::hello_world::HelloWorld::decode(buf.as_slice()).unwrap();
+        let decoded = super::hello_world::OldHelloWorld::decode(buf.as_slice()).unwrap();
+        println!("{:?}", decoded);
+        let mut buf = Vec::new();
+        decoded.encode_raw(&mut buf);
+
+        let decoded = super::hello_world::NewHelloWorld::decode(buf.as_slice()).unwrap();
         assert_eq!(msg, decoded);
     }
 }

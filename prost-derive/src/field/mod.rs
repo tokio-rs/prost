@@ -130,6 +130,13 @@ impl Field {
         }
     }
 
+    pub fn is_unknown_fields(&self) -> bool {
+        match self {
+            Field::UnknownFields => true,
+            _ => false,
+        }
+    }
+
     /// Returns a statement which clears the field.
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match *self {

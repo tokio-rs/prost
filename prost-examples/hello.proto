@@ -2,6 +2,17 @@ syntax = "proto3";
 
 package hello;
 
-message HelloWorld {
+message OldHelloWorld {
   uint32 foo = 1;
+  Inner inner = 2;
+}
+
+message Inner {
+
+}
+
+message NewHelloWorld {
+  uint32 foo = 1;
+  Inner inner = 2;
+  uint32 new_field = 3;
 }

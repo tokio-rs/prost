@@ -117,6 +117,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                     error
                 })
             },
+            // n => self.unknown_fields.merge_next_field(buf),
         }
     });
 
@@ -185,6 +186,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(f.debug_tuple(stringify!(#ident)))
     };
 
+    let skip_or_merge_unknown = if fields.iter().find(|f| f.1.is_unknown_fields()).is_some() {
+        quote!(_ => self.unknown_fields.merge_next_field(wire_type, tag, buf),)
+    } else {
+        quote!(_ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),)
+    };
+
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
@@ -205,7 +212,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+                //     t => {
+                //         let (tag, wire_type) = decode_key(buf).expect("TODO(jason): handle");
+                //         // TODO: handle when not using unknown fields
+                //         self.
+                //     // .map_err(
+                //     //     |mut error| {
+                //     //         error.push(STRUCT_NAME, "unknown_fields");
+                //     //         error
+                //     //     },
+                //     // )
+                // }
+                    // n => #ident.unknown_fields.merge_next_field(buf),
+                    // _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+                    #skip_or_merge_unknown
                 }
             }
 
