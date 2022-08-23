@@ -264,7 +264,7 @@ pub fn encoded_len_varint(value: u64) -> usize {
     ((((value | 1).leading_zeros() ^ 63) * 9 + 73) / 64) as usize
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
 pub enum WireType {
     Varint = 0,

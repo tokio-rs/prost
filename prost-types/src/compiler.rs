@@ -1,5 +1,5 @@
 /// The version number of protocol compiler.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Version {
     #[prost(int32, optional, tag="1")]
     pub major: ::core::option::Option<i32>,
@@ -13,7 +13,7 @@ pub struct Version {
     pub suffix: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
     /// code generator should generate code only for these files.  Each file's
@@ -44,7 +44,7 @@ pub struct CodeGeneratorRequest {
     pub compiler_version: ::core::option::Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct CodeGeneratorResponse {
     /// Error message.  If non-empty, code generation failed.  The plugin process
     /// should exit with status code zero even if it reports an error in this way.
@@ -66,7 +66,7 @@ pub struct CodeGeneratorResponse {
 /// Nested message and enum types in `CodeGeneratorResponse`.
 pub mod code_generator_response {
     /// Represents a single generated file.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct File {
         /// The file name, relative to the output directory.  The name must not
         /// contain "." or ".." components and must be relative, not be absolute (so,

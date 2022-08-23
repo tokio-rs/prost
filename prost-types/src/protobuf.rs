@@ -1,12 +1,12 @@
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct FileDescriptorSet {
     #[prost(message, repeated, tag="1")]
     pub file: ::prost::alloc::vec::Vec<FileDescriptorProto>,
 }
 /// Describes a complete .proto file.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
     #[prost(string, optional, tag="1")]
@@ -47,7 +47,7 @@ pub struct FileDescriptorProto {
     pub syntax: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Describes a message type.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct DescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -74,7 +74,7 @@ pub struct DescriptorProto {
 }
 /// Nested message and enum types in `DescriptorProto`.
 pub mod descriptor_proto {
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct ExtensionRange {
         /// Inclusive.
         #[prost(int32, optional, tag="1")]
@@ -88,7 +88,7 @@ pub mod descriptor_proto {
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
     /// fields or extension ranges in the same message. Reserved ranges may
     /// not overlap.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct ReservedRange {
         /// Inclusive.
         #[prost(int32, optional, tag="1")]
@@ -98,14 +98,14 @@ pub mod descriptor_proto {
         pub end: ::core::option::Option<i32>,
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct ExtensionRangeOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 /// Describes a field within a message.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct FieldDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -260,7 +260,7 @@ pub mod field_descriptor_proto {
     }
 }
 /// Describes a oneof.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct OneofDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -268,7 +268,7 @@ pub struct OneofDescriptorProto {
     pub options: ::core::option::Option<OneofOptions>,
 }
 /// Describes an enum type.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct EnumDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -294,7 +294,7 @@ pub mod enum_descriptor_proto {
     /// Note that this is distinct from DescriptorProto.ReservedRange in that it
     /// is inclusive such that it can appropriately represent the entire int32
     /// domain.
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct EnumReservedRange {
         /// Inclusive.
         #[prost(int32, optional, tag="1")]
@@ -305,7 +305,7 @@ pub mod enum_descriptor_proto {
     }
 }
 /// Describes a value within an enum.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct EnumValueDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -315,7 +315,7 @@ pub struct EnumValueDescriptorProto {
     pub options: ::core::option::Option<EnumValueOptions>,
 }
 /// Describes a service.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct ServiceDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -325,7 +325,7 @@ pub struct ServiceDescriptorProto {
     pub options: ::core::option::Option<ServiceOptions>,
 }
 /// Describes a method of a service.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct MethodDescriptorProto {
     #[prost(string, optional, tag="1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
@@ -377,7 +377,7 @@ pub struct MethodDescriptorProto {
 //   If this turns out to be popular, a web service will be set up
 //   to automatically assign option numbers.
 
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct FileOptions {
     /// Sets the Java package where classes generated from this .proto will be
     /// placed.  By default, the proto package is used, but this is often
@@ -516,7 +516,7 @@ pub mod file_options {
         }
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct MessageOptions {
     /// Set true to use the old proto1 MessageSet wire format for extensions.
     /// This is provided for backwards-compatibility with the MessageSet wire
@@ -576,7 +576,7 @@ pub struct MessageOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
     /// representation of the field than it normally would.  See the specific
@@ -693,13 +693,13 @@ pub mod field_options {
         }
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct EnumOptions {
     /// Set this option to true to allow mapping different tag names to the same
     /// value.
@@ -715,7 +715,7 @@ pub struct EnumOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct EnumValueOptions {
     /// Is this enum value deprecated?
     /// Depending on the target platform, this can emit Deprecated annotations
@@ -727,7 +727,7 @@ pub struct EnumValueOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct ServiceOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     // framework.  We apologize for hoarding these numbers to ourselves, but
@@ -744,7 +744,7 @@ pub struct ServiceOptions {
     #[prost(message, repeated, tag="999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct MethodOptions {
     // Note:  Field numbers 1 through 32 are reserved for Google's internal RPC
     // framework.  We apologize for hoarding these numbers to ourselves, but
@@ -797,7 +797,7 @@ pub mod method_options {
 /// options protos in descriptor objects (e.g. returned by Descriptor::options(),
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct UninterpretedOption {
     #[prost(message, repeated, tag="2")]
     pub name: ::prost::alloc::vec::Vec<uninterpreted_option::NamePart>,
@@ -823,7 +823,7 @@ pub mod uninterpreted_option {
     /// extension (denoted with parentheses in options specs in .proto files).
     /// E.g.,{ \["foo", false\], \["bar.baz", true\], \["qux", false\] } represents
     /// "foo.(bar.baz).qux".
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct NamePart {
         #[prost(string, required, tag="1")]
         pub name_part: ::prost::alloc::string::String,
@@ -836,7 +836,7 @@ pub mod uninterpreted_option {
 
 /// Encapsulates information about the original source file from which a
 /// FileDescriptorProto was generated.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct SourceCodeInfo {
     /// A Location identifies a piece of source code in a .proto file which
     /// corresponds to a particular definition.  This information is intended
@@ -887,7 +887,7 @@ pub struct SourceCodeInfo {
 }
 /// Nested message and enum types in `SourceCodeInfo`.
 pub mod source_code_info {
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct Location {
         /// Identifies which part of the FileDescriptorProto was defined at this
         /// location.
@@ -979,7 +979,7 @@ pub mod source_code_info {
 /// Describes the relationship between generated code and its original source
 /// file. A GeneratedCodeInfo message is associated with only one generated
 /// source file, but may contain references to different source .proto files.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct GeneratedCodeInfo {
     /// An Annotation connects some span of text in generated code to an element
     /// of its generating .proto file.
@@ -988,7 +988,7 @@ pub struct GeneratedCodeInfo {
 }
 /// Nested message and enum types in `GeneratedCodeInfo`.
 pub mod generated_code_info {
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct Annotation {
         /// Identifies the element in the original source .proto file. This field
         /// is formatted the same as SourceCodeInfo.Location.path.
@@ -1101,7 +1101,7 @@ pub mod generated_code_info {
 ///    "value": "1.212s"
 /// }
 /// ```
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Any {
     /// A URL/resource name that uniquely identifies the type of the serialized
     /// protocol buffer message. This string must contain at least
@@ -1138,7 +1138,7 @@ pub struct Any {
 }
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct SourceContext {
     /// The path-qualified name of the .proto file that contained the associated
     /// protobuf element.  For example: `"google/protobuf/source_context.proto"`.
@@ -1146,7 +1146,7 @@ pub struct SourceContext {
     pub file_name: ::prost::alloc::string::String,
 }
 /// A protocol buffer message type.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Type {
     /// The fully qualified message name.
     #[prost(string, tag="1")]
@@ -1168,7 +1168,7 @@ pub struct Type {
     pub syntax: i32,
 }
 /// A single field of a message type.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Field {
     /// The field type.
     #[prost(enumeration="field::Kind", tag="1")]
@@ -1306,7 +1306,7 @@ pub mod field {
     }
 }
 /// Enum type definition.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Enum {
     /// Enum type name.
     #[prost(string, tag="1")]
@@ -1325,7 +1325,7 @@ pub struct Enum {
     pub syntax: i32,
 }
 /// Enum value definition.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct EnumValue {
     /// Enum value name.
     #[prost(string, tag="1")]
@@ -1339,7 +1339,7 @@ pub struct EnumValue {
 }
 /// A protocol buffer option, which can be attached to a message, field,
 /// enumeration, etc.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Option {
     /// The option's name. For protobuf built-in options (options defined in
     /// descriptor.proto), this is the short name. For example, `"map_entry"`.
@@ -1384,7 +1384,7 @@ impl Syntax {
 /// sometimes simply referred to as "APIs" in other contexts, such as the name of
 /// this message itself. See <https://cloud.google.com/apis/design/glossary> for
 /// detailed terminology.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Api {
     /// The fully qualified name of this interface, including package name
     /// followed by the interface's simple name.
@@ -1429,7 +1429,7 @@ pub struct Api {
     pub syntax: i32,
 }
 /// Method represents a method of an API interface.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Method {
     /// The simple name of this method.
     #[prost(string, tag="1")]
@@ -1541,7 +1541,7 @@ pub struct Method {
 ///    ...
 /// }
 /// ```
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
     #[prost(string, tag="1")]
@@ -1615,7 +1615,7 @@ pub struct Mixin {
 /// encoded in JSON format as "3s", while 3 seconds and 1 nanosecond should
 /// be expressed in JSON format as "3.000000001s", and 3 seconds and 1
 /// microsecond should be expressed in JSON format as "3.000001s".
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
     /// to +315,576,000,000 inclusive. Note: these bounds are computed from:
@@ -1853,7 +1853,7 @@ pub struct Duration {
 /// The implementation of any API method which has a FieldMask type field in the
 /// request should verify the included field paths, and return an
 /// `INVALID_ARGUMENT` error if any path is unmappable.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct FieldMask {
     /// The set of field mask paths.
     #[prost(string, repeated, tag="1")]
@@ -1867,7 +1867,7 @@ pub struct FieldMask {
 /// with the proto support for the language.
 ///
 /// The JSON representation for `Struct` is JSON object.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Struct {
     /// Unordered map of dynamically typed values.
     #[prost(btree_map="string, message", tag="1")]
@@ -1879,7 +1879,7 @@ pub struct Struct {
 /// variants. Absence of any variant indicates an error.
 ///
 /// The JSON representation for `Value` is JSON value.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Value {
     /// The kind of value.
     #[prost(oneof="value::Kind", tags="1, 2, 3, 4, 5, 6")]
@@ -1913,7 +1913,7 @@ pub mod value {
 /// `ListValue` is a wrapper around a repeated field of values.
 ///
 /// The JSON representation for `ListValue` is JSON array.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct ListValue {
     /// Repeated field of dynamically typed values.
     #[prost(message, repeated, tag="1")]
@@ -2039,7 +2039,7 @@ impl NullValue {
 /// \[`strftime`\](<https://docs.python.org/2/library/time.html#time.strftime>) with
 /// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
 /// the Joda Time's \[`ISODateTimeFormat.dateTime()`\](<http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D>) to obtain a formatter capable of generating timestamps in this format.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch
     /// 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to

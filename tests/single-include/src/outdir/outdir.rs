@@ -1,4 +1,4 @@
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct OutdirRequest {
     #[prost(string, tag="1")]
     pub query: ::prost::alloc::string::String,

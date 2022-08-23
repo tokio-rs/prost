@@ -323,7 +323,7 @@ message AddressBook {
 and the generated Rust code (`tutorial.rs`):
 
 ```rust,ignore
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct Person {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
@@ -337,7 +337,7 @@ pub struct Person {
 }
 /// Nested message and enum types in `Person`.
 pub mod person {
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, Eq, PartialEq, ::prost::Message)]
     pub struct PhoneNumber {
         #[prost(string, tag="1")]
         pub number: ::prost::alloc::string::String,
@@ -353,7 +353,7 @@ pub mod person {
     }
 }
 /// Our address book file is just one of these.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Eq, PartialEq, ::prost::Message)]
 pub struct AddressBook {
     #[prost(message, repeated, tag="1")]
     pub people: ::prost::alloc::vec::Vec<Person>,
