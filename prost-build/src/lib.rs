@@ -1212,19 +1212,30 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 
 /// Returns the path to the `protoc` binary.
 pub fn protoc_from_env() -> PathBuf {
-    let msg = "
-Could not find `protoc` installation and this build crate cannot proceed without
-this knowledge. If `protoc` is installed and this crate had trouble finding
-it, you can set the `PROTOC` environment variable with the specific path to your
-installed `protoc` binary.
+    let os_specific_hint = if cfg!(target_os = "macos") {
+        "You could try running `brew install protobuf` or downloading it from https://github.com/protocolbuffers/protobuf/releases"
+    } else if cfg!(target_os = "linux") {
+        "If you're on debian, try `apt-get install protobuf3-compiler` or download it from https://github.com/protocolbuffers/protobuf/releases"
+    } else {
+        "You can download it from https://github.com/protocolbuffers/protobuf/releases or from your package manager."
+    };
+    let error_msg =
+        "Could not find `protoc` installation and this build crate cannot proceed without
+    this knowledge. If `protoc` is installed and this crate had trouble finding
+    it, you can set the `PROTOC` environment variable with the specific path to your
+    installed `protoc` binary.";
+    let msg = format!(
+        "{}{}
 
 For more information: https://docs.rs/prost-build/#sourcing-protoc
-";
+",
+        error_msg, os_specific_hint
+    );
 
     env::var_os("PROTOC")
         .map(PathBuf::from)
         .or_else(|| which::which("protoc").ok())
-        .expect(msg)
+        .expect(&msg)
 }
 
 /// Returns the path to the Protobuf include directory.
