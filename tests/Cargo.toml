@@ -12,6 +12,7 @@ build = "src/build.rs"
 
 [features]
 default = ["std"]
+heapless = [ "dep:heapless", "prost/heapless" ]
 std = []
 
 [dependencies]
@@ -21,6 +22,7 @@ cfg-if = "1"
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
+heapless = { version = "0.7.16", optional = true }
 
 [dev-dependencies]
 diff = "0.1"
