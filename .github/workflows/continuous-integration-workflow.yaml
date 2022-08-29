@@ -18,6 +18,10 @@ jobs:
             default: true
             profile: minimal
             components: rustfmt
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: build b_tests
         run: cargo build --package b_tests
       - name: rustfmt
