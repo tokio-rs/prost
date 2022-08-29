@@ -5,7 +5,7 @@ use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use regex::Regex;
 
 /// Comments on a Protobuf item.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Comments {
     /// Leading detached blocks of comments.
     pub leading_detached: Vec<Vec<String>>,
@@ -178,7 +178,7 @@ impl Comments {
 }
 
 /// A service descriptor.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Service {
     /// The service name in Rust style.
     pub name: String,
@@ -195,7 +195,7 @@ pub struct Service {
 }
 
 /// A service method descriptor.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Method {
     /// The name of the method in Rust style.
     pub name: String,
