@@ -12,7 +12,7 @@ use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::{
     encoding::{
-        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
+        bool, bytes, double, float, int32, int64, skip_field, string, uint128, uint32, uint64,
         DecodeContext, WireType,
     },
     DecodeError, Message,
@@ -123,6 +123,44 @@ impl Message for u64 {
     fn encoded_len(&self) -> usize {
         if *self != 0 {
             uint64::encoded_len(1, self)
+        } else {
+            0
+        }
+    }
+    fn clear(&mut self) {
+        *self = 0;
+    }
+}
+
+/// `google.protobuf.UInt128Value`
+impl Message for u128 {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        if *self != 0 {
+            uint128::encode(1, self, buf)
+        }
+    }
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if tag == 1 {
+            uint128::merge(wire_type, self, buf, ctx)
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+    fn encoded_len(&self) -> usize {
+        if *self != 0 {
+            uint128::encoded_len(1, self)
         } else {
             0
         }

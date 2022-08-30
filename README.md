@@ -114,6 +114,7 @@ Scalar value types are converted as follows:
 | `int64` | `i64` |
 | `uint32` | `u32` |
 | `uint64` | `u64` |
+| `uint128` | `u128` |
 | `sint32` | `i32` |
 | `sint64` | `i64` |
 | `fixed32` | `u32` |
