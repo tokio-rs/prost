@@ -944,6 +944,8 @@ impl Config {
         basepath: Option<&PathBuf>,
     ) -> Result<usize> {
         let mut written = 0;
+        entries.sort();
+
         while !entries.is_empty() {
             let modident = entries[0].part(depth);
             let matching: Vec<&Module> = entries
@@ -1262,6 +1264,9 @@ pub fn protoc_include_from_env() -> Option<PathBuf> {
 mod tests {
     use super::*;
     use std::cell::RefCell;
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::Path;
     use std::rc::Rc;
 
     /// An example service generator that generates a trait with methods corresponding to the
@@ -1355,5 +1360,43 @@ mod tests {
         assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
         assert_eq!(&state.package_names, &["helloworld"]);
         assert_eq!(state.finalized, 3);
+    }
+        
+    #[test]
+    fn deterministic_include_file() {
+        let _ = env_logger::try_init();
+        
+        for _ in 1..10 {
+            let state = Rc::new(RefCell::new(MockState::default()));
+            let gen = MockServiceGenerator::new(Rc::clone(&state));
+            let include_file = "_include.rs";
+            let tmp_dir = std::env::temp_dir();
+
+            Config::new()
+                .service_generator(Box::new(gen))
+                .include_file(include_file)
+                .out_dir(std::env::temp_dir())
+                .compile_protos(&[
+                    "src/fixtures/alphabet/a.proto",
+                    "src/fixtures/alphabet/b.proto",
+                    "src/fixtures/alphabet/c.proto",
+                    "src/fixtures/alphabet/d.proto",
+                    "src/fixtures/alphabet/e.proto",
+                    "src/fixtures/alphabet/f.proto",
+                    ], &["src/fixtures/alphabet"])
+                .unwrap();
+
+            let expected = read_all_content("src/fixtures/alphabet/_expected_include.rs");
+            let actual = read_all_content(tmp_dir.as_path().join(Path::new(include_file)).display().to_string().as_str());
+            assert_eq!(expected, actual);
+        }
+
+    }
+
+    fn read_all_content(filepath: &str) -> String {
+        let mut f = File::open(filepath).unwrap();
+        let mut content = String::new();
+        f.read_to_string(&mut content).unwrap();
+        return content
     }
 }
