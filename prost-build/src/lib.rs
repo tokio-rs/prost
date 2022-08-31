@@ -1404,6 +1404,10 @@ mod tests {
                     .to_string()
                     .as_str(),
             );
+            // Normalizes windows and Linux-style EOL
+            let expected = expected.replace("\r\n", "\n");
+            let actual = actual.replace("\r\n", "\n");
+
             assert_eq!(expected, actual);
         }
     }
