@@ -1353,7 +1353,13 @@ mod tests {
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
             .out_dir(std::env::temp_dir())
-            .compile_protos(&["src/fixtures/helloworld/hello.proto", "src/fixtures/helloworld/goodbye.proto"], &["src/fixtures/helloworld"])
+            .compile_protos(
+                &[
+                    "src/fixtures/helloworld/hello.proto",
+                    "src/fixtures/helloworld/goodbye.proto",
+                ],
+                &["src/fixtures/helloworld"],
+            )
             .unwrap();
 
         let state = state.borrow();
@@ -1361,11 +1367,11 @@ mod tests {
         assert_eq!(&state.package_names, &["helloworld"]);
         assert_eq!(state.finalized, 3);
     }
-        
+
     #[test]
     fn deterministic_include_file() {
         let _ = env_logger::try_init();
-        
+
         for _ in 1..10 {
             let state = Rc::new(RefCell::new(MockState::default()));
             let gen = MockServiceGenerator::new(Rc::clone(&state));
@@ -1376,27 +1382,36 @@ mod tests {
                 .service_generator(Box::new(gen))
                 .include_file(include_file)
                 .out_dir(std::env::temp_dir())
-                .compile_protos(&[
-                    "src/fixtures/alphabet/a.proto",
-                    "src/fixtures/alphabet/b.proto",
-                    "src/fixtures/alphabet/c.proto",
-                    "src/fixtures/alphabet/d.proto",
-                    "src/fixtures/alphabet/e.proto",
-                    "src/fixtures/alphabet/f.proto",
-                    ], &["src/fixtures/alphabet"])
+                .compile_protos(
+                    &[
+                        "src/fixtures/alphabet/a.proto",
+                        "src/fixtures/alphabet/b.proto",
+                        "src/fixtures/alphabet/c.proto",
+                        "src/fixtures/alphabet/d.proto",
+                        "src/fixtures/alphabet/e.proto",
+                        "src/fixtures/alphabet/f.proto",
+                    ],
+                    &["src/fixtures/alphabet"],
+                )
                 .unwrap();
 
             let expected = read_all_content("src/fixtures/alphabet/_expected_include.rs");
-            let actual = read_all_content(tmp_dir.as_path().join(Path::new(include_file)).display().to_string().as_str());
+            let actual = read_all_content(
+                tmp_dir
+                    .as_path()
+                    .join(Path::new(include_file))
+                    .display()
+                    .to_string()
+                    .as_str(),
+            );
             assert_eq!(expected, actual);
         }
-
     }
 
     fn read_all_content(filepath: &str) -> String {
         let mut f = File::open(filepath).unwrap();
         let mut content = String::new();
         f.read_to_string(&mut content).unwrap();
-        return content
+        return content;
     }
 }
