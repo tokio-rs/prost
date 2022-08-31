@@ -1333,7 +1333,7 @@ mod tests {
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .out_dir(std::env::temp_dir())
-            .compile_protos(&["src/smoke_test.proto"], &["src"])
+            .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
             .unwrap();
     }
 
@@ -1348,7 +1348,7 @@ mod tests {
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
             .out_dir(std::env::temp_dir())
-            .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
+            .compile_protos(&["src/fixtures/helloworld/hello.proto", "src/fixtures/helloworld/goodbye.proto"], &["src/fixtures/helloworld"])
             .unwrap();
 
         let state = state.borrow();
