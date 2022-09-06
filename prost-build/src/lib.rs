@@ -125,6 +125,7 @@
 mod ast;
 mod code_generator;
 mod extern_paths;
+mod filters;
 mod ident;
 mod message_graph;
 mod path;
@@ -147,6 +148,9 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 pub use crate::ast::{Comments, Method, Service};
 use crate::code_generator::CodeGenerator;
 use crate::extern_paths::ExternPaths;
+pub use crate::filters::{
+    FieldFilter, FieldSelector, LabelFilter, LabelSelector, TypeFilter, TypeSelector,
+};
 use crate::ident::to_snake;
 use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
@@ -236,8 +240,8 @@ pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     map_type: PathMap<MapType>,
     bytes_type: PathMap<BytesType>,
-    type_attributes: PathMap<String>,
-    field_attributes: PathMap<String>,
+    type_attributes: PathMap<(String, TypeFilter)>,
+    field_attributes: PathMap<(String, TypeFilter, LabelFilter, FieldFilter)>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
@@ -405,8 +409,57 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.field_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self.field_attribute_with_filter(
+            path,
+            attribute,
+            TypeSelector::Everything,
+            LabelSelector::Everything,
+            FieldSelector::Everything,
+        )
+    }
+
+    /// Add additional attribute to matched fields if ALL filters match. Each
+    /// filter value is a bitset - Selectors can be combined with bit operations
+    /// `&` or `|` or negated with `!` to create more complex filters.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Serde should flatten all non-optional fields that
+    /// // are named payload and contain a struct.
+    /// config.field_attribute_with_filter(
+    ///     "payload",
+    ///     "#[serde(flatten)]",
+    ///     prost_build::TypeSelector::RustStruct,
+    ///     prost_build::LabelSelector::Required,
+    ///     prost_build::FieldSelector::Message,
+    /// );
+    /// ```
+    pub fn field_attribute_with_filter<P, A, TF, LF, FF>(
+        &mut self,
+        path: P,
+        attribute: A,
+        type_filter: TF,
+        label_filter: LF,
+        field_filter: FF,
+    ) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+        TF: Into<TypeFilter>,
+        LF: Into<LabelFilter>,
+        FF: Into<FieldFilter>,
+    {
+        self.field_attributes.insert(
+            path.as_ref().to_string(),
+            (
+                attribute.as_ref().to_string(),
+                type_filter.into(),
+                label_filter.into(),
+                field_filter.into(),
+            ),
+        );
         self
     }
 
@@ -454,8 +507,36 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.type_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self.type_attribute_with_filter(path, attribute, TypeSelector::Everything)
+    }
+
+    /// Add additional attribute to matched messages, enums and one-ofs IF filter
+    /// matches. Usage is similar to [`type_attribute`](#method.type_attribute).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Derive serde::Serialize on all enums
+    /// config.type_attribute_with_filter(".", "#[derive(Serialize)]", prost_build::TypeSelector::RustEnum);
+    /// // Use serde's adjacently tagged enum representation for all rust enums, that are not c-like.
+    /// config.type_attribute_with_filter(".", "#[serde(tag = \"kind\", content = \"data\")]", prost_build::TypeSelector::RustEnumWithData);
+    /// ```
+    pub fn type_attribute_with_filter<P, A, F>(
+        &mut self,
+        path: P,
+        attribute: A,
+        filter: F,
+    ) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+        F: Into<TypeFilter>,
+    {
+        self.type_attributes.insert(
+            path.as_ref().to_string(),
+            (attribute.as_ref().to_string(), filter.into()),
+        );
         self
     }
 
