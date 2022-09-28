@@ -1018,14 +1018,17 @@ impl Config {
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
-        for request in requests {
+        for (request_module, request_fd) in requests {
             // Only record packages that have services
-            if !request.1.service.is_empty() {
-                packages.insert(request.0.clone(), request.1.package().to_string());
+            if !request_fd.service.is_empty() {
+                packages.insert(request_module.clone(), request_fd.package().to_string());
             }
-
-            let buf = modules.entry(request.0).or_insert_with(String::new);
-            CodeGenerator::generate(self, &message_graph, &extern_paths, request.1, buf);
+            let buf = modules.entry(request_module.clone()).or_insert_with(String::new);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, request_fd, buf);
+            if buf.is_empty() {
+                // Did not generate any code, remove from list to avoid inclusion in include file or output file list
+                modules.remove(&request_module);
+            }
         }
 
         if let Some(ref mut service_generator) = self.service_generator {
