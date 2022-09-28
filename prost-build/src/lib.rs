@@ -1023,7 +1023,10 @@ impl Config {
             if !request_fd.service.is_empty() {
                 packages.insert(request_module.clone(), request_fd.package().to_string());
             }
-            let buf = modules.entry(request_module.clone()).or_insert_with(String::new);
+            let buf = modules
+                .entry(request_module.clone())
+                .or_insert_with(String::new);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, request_fd, buf);
             CodeGenerator::generate(self, &message_graph, &extern_paths, request_fd, buf);
             if buf.is_empty() {
                 // Did not generate any code, remove from list to avoid inclusion in include file or output file list
