@@ -35,7 +35,6 @@ pub struct CodeGenerator<'a> {
     extern_paths: &'a ExternPaths,
     depth: u8,
     path: Vec<i32>,
-    default_derive: String,
     buf: &'a mut String,
 }
 
@@ -69,10 +68,6 @@ impl<'a> CodeGenerator<'a> {
             Some(s) => panic!("unknown syntax: {}", s),
         };
 
-        let default_derive = format!(
-            "#[derive(Clone, PartialEq, {}::Message)]\n",
-            config.prost_path.as_deref().unwrap_or("::prost")
-        );
         let mut code_gen = CodeGenerator {
             config,
             package: file.package.unwrap_or_default(),
@@ -82,7 +77,6 @@ impl<'a> CodeGenerator<'a> {
             extern_paths,
             depth: 0,
             path: Vec::new(),
-            default_derive,
             buf,
         };
 
@@ -189,7 +183,10 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
-        self.buf.push_str(&self.default_derive);
+        self.buf.push_str(&format!(
+            "#[derive(Clone, PartialEq, {}::Message)]\n",
+            self.config.prost_path.as_deref().unwrap_or("::prost")
+        ));
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -503,8 +500,10 @@ impl<'a> CodeGenerator<'a> {
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
-        self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
+        self.buf.push_str(&format!(
+            "#[derive(Clone, PartialEq, {}::Oneof)]\n",
+            self.config.prost_path.as_deref().unwrap_or("::prost")
+        ));
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -610,7 +609,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&fq_proto_enum_name);
         self.push_indent();
         self.buf.push_str(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",
+            &format!("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",self.config.prost_path.as_deref().unwrap_or("::prost")),
         );
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
