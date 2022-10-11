@@ -35,6 +35,7 @@ pub struct CodeGenerator<'a> {
     extern_paths: &'a ExternPaths,
     depth: u8,
     path: Vec<i32>,
+    default_derive: String,
     buf: &'a mut String,
 }
 
@@ -68,6 +69,10 @@ impl<'a> CodeGenerator<'a> {
             Some(s) => panic!("unknown syntax: {}", s),
         };
 
+        let default_derive = format!(
+            "#[derive(Clone, PartialEq, {}::Message)]\n",
+            config.prost_path.as_deref().unwrap_or("::prost")
+        );
         let mut code_gen = CodeGenerator {
             config,
             package: file.package.unwrap_or_default(),
@@ -77,6 +82,7 @@ impl<'a> CodeGenerator<'a> {
             extern_paths,
             depth: 0,
             path: Vec::new(),
+            default_derive,
             buf,
         };
 
@@ -183,8 +189,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
-        self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
+        self.buf.push_str(&self.default_derive);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
