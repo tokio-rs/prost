@@ -1,12 +1,9 @@
-
 use core::fmt::Debug;
+use heapless::{String, Vec};
 use prost::Message;
-use heapless::{Vec, String};
-
 
 // Helper for encode/decode tests
 fn encode_decode<T: Debug + PartialEq + Default + Message>(a: T) {
-
     let buff = a.encode_to_vec();
 
     let b = T::decode(&*buff).unwrap();
@@ -23,7 +20,9 @@ pub struct TestString {
 
 #[test]
 fn encode_decode_string() {
-    encode_decode(TestString{ s: String::from("abc1234") });
+    encode_decode(TestString {
+        s: String::from("abc1234"),
+    });
 }
 
 /// [`heapless::Vec`] container
@@ -35,5 +34,7 @@ pub struct TestVec {
 
 #[test]
 fn encode_decode_bytes() {
-    encode_decode(TestVec{ s: Vec::from_slice(&[0xaa, 0xbb, 0xcc]).unwrap() });
+    encode_decode(TestVec {
+        s: Vec::from_slice(&[0xaa, 0xbb, 0xcc]).unwrap(),
+    });
 }

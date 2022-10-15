@@ -12,7 +12,6 @@ build = "src/build.rs"
 
 [features]
 default = ["std"]
-heapless = [ "dep:heapless", "prost/heapless" ]
 std = []
 
 [dependencies]

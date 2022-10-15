@@ -324,7 +324,7 @@ impl Message for String {
 
 /// `google.protobuf.StringValue`
 #[cfg(feature = "heapless")]
-impl <const N: usize> Message for heapless::String<N> {
+impl<const N: usize> Message for heapless::String<N> {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,
@@ -401,7 +401,7 @@ impl Message for Vec<u8> {
 
 #[cfg(feature = "heapless")]
 /// `google.protobuf.BytesValue`
-impl <const N: usize> Message for heapless::Vec<u8, N> {
+impl<const N: usize> Message for heapless::Vec<u8, N> {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,
