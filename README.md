@@ -2,6 +2,7 @@
 [![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
 [![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
 [![Dependency Status](https://deps.rs/repo/github/tokio-rs/prost/status.svg)](https://deps.rs/repo/github/tokio-rs/prost)
+[![Discord](https://img.shields.io/discord/500028886025895936)](https://discord.gg/tokio)
 
 # *PROST!*
 
