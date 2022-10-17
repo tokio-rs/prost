@@ -127,13 +127,6 @@
 //!
 //! [`protobuf-src`]: https://docs.rs/protobuf-src
 
-mod ast;
-mod code_generator;
-mod extern_paths;
-mod ident;
-mod message_graph;
-mod path;
-
 use std::collections::HashMap;
 use std::default;
 use std::env;
@@ -146,6 +139,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use log::trace;
+
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -155,6 +149,13 @@ use crate::extern_paths::ExternPaths;
 use crate::ident::to_snake;
 use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
+
+mod ast;
+mod code_generator;
+mod extern_paths;
+mod ident;
+mod message_graph;
+mod path;
 
 /// A service generator takes a service descriptor and generates Rust code.
 ///
@@ -855,11 +856,11 @@ impl Config {
             println!("Running: {:?}", cmd);
 
             let output = cmd.output().map_err(|error| {
-            Error::new(
-                error.kind(),
-                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
-            )
-        })?;
+                Error::new(
+                    error.kind(),
+                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
+                )
+            })?;
 
             if !output.status.success() {
                 return Err(Error::new(
@@ -1023,14 +1024,19 @@ impl Config {
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
-        for request in requests {
+        for (request_module, request_fd) in requests {
             // Only record packages that have services
-            if !request.1.service.is_empty() {
-                packages.insert(request.0.clone(), request.1.package().to_string());
+            if !request_fd.service.is_empty() {
+                packages.insert(request_module.clone(), request_fd.package().to_string());
             }
-
-            let buf = modules.entry(request.0).or_insert_with(String::new);
-            CodeGenerator::generate(self, &message_graph, &extern_paths, request.1, buf);
+            let buf = modules
+                .entry(request_module.clone())
+                .or_insert_with(String::new);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, request_fd, buf);
+            if buf.is_empty() {
+                // Did not generate any code, remove from list to avoid inclusion in include file or output file list
+                modules.remove(&request_module);
+            }
         }
 
         if let Some(ref mut service_generator) = self.service_generator {
@@ -1267,16 +1273,18 @@ pub fn protoc_include_from_env() -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::cell::RefCell;
     use std::fs::File;
     use std::io::Read;
     use std::path::Path;
     use std::rc::Rc;
 
+    use super::*;
+
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
     struct ServiceTraitGenerator;
+
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
@@ -1371,6 +1379,55 @@ mod tests {
         assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
         assert_eq!(&state.package_names, &["helloworld"]);
         assert_eq!(state.finalized, 3);
+    }
+
+    #[test]
+    fn test_generate_no_empty_outputs() {
+        let _ = env_logger::try_init();
+        let state = Rc::new(RefCell::new(MockState::default()));
+        let gen = MockServiceGenerator::new(Rc::clone(&state));
+        let include_file = "_include.rs";
+        let out_dir = std::env::temp_dir()
+            .as_path()
+            .join("test_generate_no_empty_outputs");
+        let previously_empty_proto_path = out_dir.as_path().join(Path::new("google.protobuf.rs"));
+        // For reproducibility, ensure we start with the out directory created and empty
+        let _ = fs::remove_dir_all(&out_dir);
+        let _ = fs::create_dir(&out_dir);
+
+        Config::new()
+            .service_generator(Box::new(gen))
+            .include_file(include_file)
+            .out_dir(&out_dir)
+            .compile_protos(
+                &["src/fixtures/imports_empty/imports_empty.proto"],
+                &["src/fixtures/imports_empty"],
+            )
+            .unwrap();
+
+        // Prior to PR introducing this test, the generated include file would have the file
+        // google.protobuf.rs which was an empty file. Now that file should only exist if it has content
+        if let Ok(mut f) = File::open(&previously_empty_proto_path) {
+            // Since this file was generated, it should not be empty.
+            let mut contents = String::new();
+            f.read_to_string(&mut contents).unwrap();
+            assert!(!contents.is_empty());
+        } else {
+            // The file wasn't generated so the result include file should not reference it
+            let expected = read_all_content("src/fixtures/imports_empty/_expected_include.rs");
+            let actual = read_all_content(
+                out_dir
+                    .as_path()
+                    .join(Path::new(include_file))
+                    .display()
+                    .to_string()
+                    .as_str(),
+            );
+            // Normalizes windows and Linux-style EOL
+            let expected = expected.replace("\r\n", "\n");
+            let actual = actual.replace("\r\n", "\n");
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
