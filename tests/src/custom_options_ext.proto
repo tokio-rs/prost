@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+package custom_options.ext;
+
+extend google.protobuf.MessageOptions {
+    string message_opt_from_ext = 50010;
+}
+
+message NestedOptions {
+    extend google.protobuf.MessageOptions {
+        string nested_opt_from_ext = 50011;
+    }
+}

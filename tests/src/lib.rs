@@ -8,6 +8,9 @@
 #[macro_use]
 extern crate cfg_if;
 
+// Macro use for vec!
+#[allow(unused_imports)]
+#[macro_use]
 extern crate alloc;
 
 cfg_if! {
@@ -33,9 +36,13 @@ pub mod unittest;
 #[cfg(test)]
 mod bootstrap;
 #[cfg(test)]
+mod custom_options;
+#[cfg(test)]
 mod debug;
 #[cfg(test)]
 mod deprecated_field;
+#[cfg(test)]
+mod extensions;
 #[cfg(test)]
 mod generic_derive;
 #[cfg(test)]

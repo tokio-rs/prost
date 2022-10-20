@@ -9,8 +9,8 @@ use bytes::{Buf, BufMut};
 use crate::encoding::{
     decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
 };
-use crate::DecodeError;
 use crate::EncodeError;
+use crate::{DecodeError, ExtensionRegistry};
 
 /// A Protocol Buffers message.
 pub trait Message: Debug + Send + Sync {
@@ -116,6 +116,23 @@ pub trait Message: Debug + Send + Sync {
         Self::merge(&mut message, &mut buf).map(|_| message)
     }
 
+    /// Decodes an instance of the message from a buffer. Any extension data that matches an
+    /// Extension in the `extension_registry` will be decoded and accessible through the message
+    /// instance's Extendable interface.
+    ///
+    /// The entire buffer will be consumed.
+    fn decode_with_extensions<B>(
+        mut buf: B,
+        extension_registry: ExtensionRegistry,
+    ) -> Result<Self, DecodeError>
+    where
+        B: Buf,
+        Self: Default,
+    {
+        let mut message = Self::default();
+        Self::merge_with_extensions(&mut message, &mut buf, extension_registry).map(|_| message)
+    }
+
     /// Decodes a length-delimited instance of the message from the buffer.
     fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
     where
@@ -130,12 +147,36 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge<B>(&mut self, buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
         Self: Sized,
     {
-        let ctx = DecodeContext::default();
+        self.merge_with_context(buf, DecodeContext::default())
+    }
+
+    /// Decodes an instance of the message from a buffer, and merges it into `self`. Any extension
+    /// data that matches an Extension in the `extension_registry` will be decoded and accessible
+    /// through the message instance's Extendable interface.
+    ///
+    /// The entire buffer will be consumed.
+    fn merge_with_extensions<B>(
+        &mut self,
+        buf: B,
+        extension_registry: ExtensionRegistry,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        self.merge_with_context(buf, DecodeContext::with_extensions(extension_registry))
+    }
+
+    fn merge_with_context<B>(&mut self, mut buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
             self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
