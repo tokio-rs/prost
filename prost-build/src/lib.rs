@@ -253,6 +253,7 @@ pub struct Config {
     disable_comments: PathMap<()>,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
+    prost_path: Option<String>,
 }
 
 impl Config {
@@ -707,6 +708,17 @@ impl Config {
         self
     }
 
+    /// Configures the path that's used for deriving `Message` for generated messages.
+    /// This is mainly useful for generating crates that wish to re-export prost.
+    /// Defaults to `::prost::Message` if not specified.
+    pub fn prost_path<S>(&mut self, path: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.prost_path = Some(path.into());
+        self
+    }
+
     /// Add an argument to the `protoc` protobuf compilation invocation.
     ///
     /// # Example `build.rs`
@@ -1068,6 +1080,7 @@ impl default::Default for Config {
             disable_comments: PathMap::default(),
             skip_protoc_run: false,
             include_file: None,
+            prost_path: None,
         }
     }
 }
@@ -1088,6 +1101,7 @@ impl fmt::Debug for Config {
             .field("default_package_filename", &self.default_package_filename)
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
+            .field("prost_path", &self.prost_path)
             .finish()
     }
 }

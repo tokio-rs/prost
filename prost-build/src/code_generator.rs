@@ -183,8 +183,10 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
-        self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Message)]\n");
+        self.buf.push_str(&format!(
+            "#[derive(Clone, PartialEq, {}::Message)]\n",
+            self.config.prost_path.as_deref().unwrap_or("::prost")
+        ));
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -498,8 +500,10 @@ impl<'a> CodeGenerator<'a> {
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
-        self.buf
-            .push_str("#[derive(Clone, PartialEq, ::prost::Oneof)]\n");
+        self.buf.push_str(&format!(
+            "#[derive(Clone, PartialEq, {}::Oneof)]\n",
+            self.config.prost_path.as_deref().unwrap_or("::prost")
+        ));
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -605,7 +609,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&fq_proto_enum_name);
         self.push_indent();
         self.buf.push_str(
-            "#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]\n",
+            &format!("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",self.config.prost_path.as_deref().unwrap_or("::prost")),
         );
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
