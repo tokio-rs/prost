@@ -490,7 +490,7 @@ impl Config {
     ///
     /// ```rust,ignore
     /// let mut config = prost_build::Config::new();
-    /// config.disable_comments(".");
+    /// config.disable_comments(&["."]);
     /// config.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
     /// ```
     ///
