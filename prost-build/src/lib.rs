@@ -488,10 +488,13 @@ impl Config {
     /// disable doctests for the crate with a [Cargo.toml entry][2]. If neither of these options
     /// are possible, then omit comments on generated code during doctest builds:
     ///
-    /// ```rust,ignore
+    /// ```rust,no_run
+    /// # fn main() -> std::io::Result<()> {
     /// let mut config = prost_build::Config::new();
     /// config.disable_comments(&["."]);
     /// config.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    /// #     Ok(())
+    /// # }
     /// ```
     ///
     /// As with other options which take a set of paths, comments can be disabled on a per-package
