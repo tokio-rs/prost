@@ -15,7 +15,8 @@ edition = "2021"
 rust-version = "1.56"
 
 [features]
-default = []
+default = ["format"]
+format = ["prettyplease", "syn"]
 # When MSRV moves to 1.60, these can change to dep:
 cleanup-markdown = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
 
@@ -32,6 +33,9 @@ tempfile = "3"
 lazy_static = "1.4.0"
 regex = { version = "1.5.5", default-features = false, features = ["std", "unicode-bool"] }
 which = "4"
+
+prettyplease = { version = "0.1", optional = true }
+syn = { version = "1", features = ["full"], optional = true }
 
 # These two must be kept in sync, used for `cleanup-markdown` feature.
 pulldown-cmark = { version = "0.9.1", optional = true, default-features = false }
