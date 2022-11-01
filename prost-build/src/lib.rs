@@ -1079,6 +1079,7 @@ impl Config {
     #[cfg(feature = "format")]
     fn fmt_modules(&mut self, modules: &mut HashMap<Module, String>) {
         for (_, buf) in modules {
+            println!("{}", buf);
             let file = syn::parse_file(&buf).unwrap();
             let formatted = prettyplease::unparse(&file);
             *buf = formatted;
@@ -1337,7 +1338,7 @@ mod tests {
             for method in service.methods {
                 method.comments.append_with_indent(1, buf);
                 buf.push_str(&format!(
-                    "    fn {}({}) -> {};\n",
+                    "    fn {}(_: {}) -> {};\n",
                     method.name, method.input_type, method.output_type
                 ));
             }
