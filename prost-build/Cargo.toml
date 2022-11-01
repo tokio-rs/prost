@@ -15,7 +15,7 @@ edition = "2021"
 rust-version = "1.56"
 
 [features]
-default = []
+default = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
 # When MSRV moves to 1.60, these can change to dep:
 cleanup-markdown = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
 
