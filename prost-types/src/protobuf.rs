@@ -366,6 +366,35 @@ pub struct MethodDescriptorProto {
     #[prost(bool, optional, tag = "6", default = "false")]
     pub server_streaming: ::core::option::Option<bool>,
 }
+/// Each of the definitions above may have "options" attached.  These are
+/// just annotations which may cause code to be generated slightly differently
+/// or may contain hints for code that manipulates protocol messages.
+///
+/// Clients may define custom options as extensions of the \*Options messages.
+/// These extensions may not yet be known at parsing time, so the parser cannot
+/// store the values in them.  Instead it stores them in a field in the \*Options
+/// message called uninterpreted_option. This field must have the same name
+/// across all \*Options messages. We then use this field to populate the
+/// extensions when we build a descriptor, at which point all protos have been
+/// parsed and so all extensions are known.
+///
+/// Extension numbers for custom options may be chosen as follows:
+///
+/// * For options which will only be used within a single application or
+///   organization, or for experimental options, use field numbers 50000
+///   through 99999.  It is up to you to ensure that you do not use the
+///   same number for multiple options.
+/// * For options which will be published and used publicly by multiple
+///   independent entities, e-mail protobuf-global-extension-registry@google.com
+///   to reserve extension numbers. Simply provide your project name (e.g.
+///   Objective-C plugin) and your project website (if available) -- there's no
+///   need to explain how you intend to use them. Usually you only need one
+///   extension number. You can declare multiple options with only one extension
+///   number by putting them in a sub-message. See the Custom Options section of
+///   the docs for examples:
+///   <https://developers.google.com/protocol-buffers/docs/proto#options>
+///   If this turns out to be popular, a web service will be set up
+///   to automatically assign option numbers.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileOptions {
     /// Sets the Java package where classes generated from this .proto will be
