@@ -388,13 +388,18 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
+
+        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
+
         if repeated {
-            self.buf.push_str("::prost::alloc::vec::Vec<");
+            self.buf
+                .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf.push_str("::prost::alloc::boxed::Box<");
+            self.buf
+                .push_str(&format!("{}::alloc::boxed::Box<", prost_path));
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -784,6 +789,8 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
+
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -792,7 +799,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => String::from("::prost::alloc::string::String"),
+            Type::String => format!("{}::alloc::string::String", prost_path),
             Type::Bytes => self
                 .config
                 .bytes_type
