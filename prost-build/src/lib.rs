@@ -1071,7 +1071,9 @@ impl Config {
             }
         }
 
-        self.fmt_modules(&mut modules);
+        if self.fmt {
+            self.fmt_modules(&mut modules);
+        }
 
         Ok(modules)
     }
@@ -1079,7 +1081,6 @@ impl Config {
     #[cfg(feature = "format")]
     fn fmt_modules(&mut self, modules: &mut HashMap<Module, String>) {
         for (_, buf) in modules {
-            println!("{}", buf);
             let file = syn::parse_file(&buf).unwrap();
             let formatted = prettyplease::unparse(&file);
             *buf = formatted;
