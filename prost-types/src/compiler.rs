@@ -1,15 +1,15 @@
 /// The version number of protocol compiler.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Version {
-    #[prost(int32, optional, tag="1")]
+    #[prost(int32, optional, tag = "1")]
     pub major: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag="2")]
+    #[prost(int32, optional, tag = "2")]
     pub minor: ::core::option::Option<i32>,
-    #[prost(int32, optional, tag="3")]
+    #[prost(int32, optional, tag = "3")]
     pub patch: ::core::option::Option<i32>,
     /// A suffix for alpha, beta or rc release, e.g., "alpha-1", "rc2". It should
     /// be empty for mainline stable releases.
-    #[prost(string, optional, tag="4")]
+    #[prost(string, optional, tag = "4")]
     pub suffix: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
@@ -18,10 +18,10 @@ pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
     /// code generator should generate code only for these files.  Each file's
     /// descriptor will be included in proto_file, below.
-    #[prost(string, repeated, tag="1")]
+    #[prost(string, repeated, tag = "1")]
     pub file_to_generate: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The generator parameter passed on the command-line.
-    #[prost(string, optional, tag="2")]
+    #[prost(string, optional, tag = "2")]
     pub parameter: ::core::option::Option<::prost::alloc::string::String>,
     /// FileDescriptorProtos for all files in files_to_generate and everything
     /// they import.  The files will appear in topological order, so each file
@@ -37,10 +37,10 @@ pub struct CodeGeneratorRequest {
     ///
     /// Type names of fields and extensions in the FileDescriptorProto are always
     /// fully qualified.
-    #[prost(message, repeated, tag="15")]
+    #[prost(message, repeated, tag = "15")]
     pub proto_file: ::prost::alloc::vec::Vec<super::FileDescriptorProto>,
     /// The version number of protocol compiler.
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub compiler_version: ::core::option::Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
@@ -54,13 +54,13 @@ pub struct CodeGeneratorResponse {
     /// problem in protoc itself -- such as the input CodeGeneratorRequest being
     /// unparseable -- should be reported by writing a message to stderr and
     /// exiting with a non-zero status code.
-    #[prost(string, optional, tag="1")]
+    #[prost(string, optional, tag = "1")]
     pub error: ::core::option::Option<::prost::alloc::string::String>,
     /// A bitmask of supported features that the code generator supports.
     /// This is a bitwise "or" of values from the Feature enum.
-    #[prost(uint64, optional, tag="2")]
+    #[prost(uint64, optional, tag = "2")]
     pub supported_features: ::core::option::Option<u64>,
-    #[prost(message, repeated, tag="15")]
+    #[prost(message, repeated, tag = "15")]
     pub file: ::prost::alloc::vec::Vec<code_generator_response::File>,
 }
 /// Nested message and enum types in `CodeGeneratorResponse`.
@@ -79,7 +79,7 @@ pub mod code_generator_response {
         /// files need not reside completely in memory at one time.  Note that as of
         /// this writing protoc does not optimize for this -- it will read the entire
         /// CodeGeneratorResponse before writing files to disk.
-        #[prost(string, optional, tag="1")]
+        #[prost(string, optional, tag = "1")]
         pub name: ::core::option::Option<::prost::alloc::string::String>,
         /// If non-empty, indicates that the named file should already exist, and the
         /// content here is to be inserted into that file at a defined insertion
@@ -118,19 +118,29 @@ pub mod code_generator_response {
         /// command line.
         ///
         /// If |insertion_point| is present, |name| must also be present.
-        #[prost(string, optional, tag="2")]
+        #[prost(string, optional, tag = "2")]
         pub insertion_point: ::core::option::Option<::prost::alloc::string::String>,
         /// The file contents.
-        #[prost(string, optional, tag="15")]
+        #[prost(string, optional, tag = "15")]
         pub content: ::core::option::Option<::prost::alloc::string::String>,
         /// Information describing the file content being inserted. If an insertion
         /// point is used, this information will be appropriately offset and inserted
         /// into the code generation metadata for the generated files.
-        #[prost(message, optional, tag="16")]
+        #[prost(message, optional, tag = "16")]
         pub generated_code_info: ::core::option::Option<super::super::GeneratedCodeInfo>,
     }
     /// Sync with code_generator.h.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum Feature {
         None = 0,

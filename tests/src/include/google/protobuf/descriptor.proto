@@ -338,7 +338,6 @@ message MethodDescriptorProto {
 //   https://developers.google.com/protocol-buffers/docs/proto#options
 //   If this turns out to be popular, a web service will be set up
 //   to automatically assign option numbers.
-
 message FileOptions {
 
   // Sets the Java package where classes generated from this .proto will be

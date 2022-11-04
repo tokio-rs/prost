@@ -254,6 +254,7 @@ pub struct Config {
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
     prost_path: Option<String>,
+    fmt: bool,
 }
 
 impl Config {
@@ -777,6 +778,15 @@ impl Config {
         self
     }
 
+    /// Configures the code generator to format the output code via `prettyplease`.
+    ///
+    /// By default, this is enabled but if the `format` feature is not enabled this does
+    /// nothing.
+    pub fn format(&mut self, enabled: bool) -> &mut Self {
+        self.fmt = enabled;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -1061,8 +1071,24 @@ impl Config {
             }
         }
 
+        if self.fmt {
+            self.fmt_modules(&mut modules);
+        }
+
         Ok(modules)
     }
+
+    #[cfg(feature = "format")]
+    fn fmt_modules(&mut self, modules: &mut HashMap<Module, String>) {
+        for (_, buf) in modules {
+            let file = syn::parse_file(&buf).unwrap();
+            let formatted = prettyplease::unparse(&file);
+            *buf = formatted;
+        }
+    }
+
+    #[cfg(not(feature = "format"))]
+    fn fmt_modules(&mut self, _: &mut HashMap<Module, String>) {}
 }
 
 impl default::Default for Config {
@@ -1084,6 +1110,7 @@ impl default::Default for Config {
             skip_protoc_run: false,
             include_file: None,
             prost_path: None,
+            fmt: true,
         }
     }
 }
@@ -1312,7 +1339,7 @@ mod tests {
             for method in service.methods {
                 method.comments.append_with_indent(1, buf);
                 buf.push_str(&format!(
-                    "    fn {}({}) -> {};\n",
+                    "    fn {}(_: {}) -> {};\n",
                     method.name, method.input_type, method.output_type
                 ));
             }
