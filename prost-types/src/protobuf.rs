@@ -246,6 +246,33 @@ pub mod field_descriptor_proto {
                 Type::Sint64 => "TYPE_SINT64",
             }
         }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "TYPE_DOUBLE" => Some(Type::Double),
+                "TYPE_FLOAT" => Some(Type::Float),
+                "TYPE_INT64" => Some(Type::Int64),
+                "TYPE_UINT64" => Some(Type::Uint64),
+                "TYPE_INT32" => Some(Type::Int32),
+                "TYPE_FIXED64" => Some(Type::Fixed64),
+                "TYPE_FIXED32" => Some(Type::Fixed32),
+                "TYPE_BOOL" => Some(Type::Bool),
+                "TYPE_STRING" => Some(Type::String),
+                "TYPE_GROUP" => Some(Type::Group),
+                "TYPE_MESSAGE" => Some(Type::Message),
+                "TYPE_BYTES" => Some(Type::Bytes),
+                "TYPE_UINT32" => Some(Type::Uint32),
+                "TYPE_ENUM" => Some(Type::Enum),
+                "TYPE_SFIXED32" => Some(Type::Sfixed32),
+                "TYPE_SFIXED64" => Some(Type::Sfixed64),
+                "TYPE_SINT32" => Some(Type::Sint32),
+                "TYPE_SINT64" => Some(Type::Sint64),
+                _ => None,
+            }
+        }
     }
     #[derive(
         Clone,
@@ -275,6 +302,18 @@ pub mod field_descriptor_proto {
                 Label::Optional => "LABEL_OPTIONAL",
                 Label::Required => "LABEL_REQUIRED",
                 Label::Repeated => "LABEL_REPEATED",
+            }
+        }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "LABEL_OPTIONAL" => Some(Label::Optional),
+                "LABEL_REQUIRED" => Some(Label::Required),
+                "LABEL_REPEATED" => Some(Label::Repeated),
+                _ => None,
             }
         }
     }
@@ -547,6 +586,18 @@ pub mod file_options {
                 OptimizeMode::LiteRuntime => "LITE_RUNTIME",
             }
         }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "SPEED" => Some(OptimizeMode::Speed),
+                "CODE_SIZE" => Some(OptimizeMode::CodeSize),
+                "LITE_RUNTIME" => Some(OptimizeMode::LiteRuntime),
+                _ => None,
+            }
+        }
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -721,6 +772,18 @@ pub mod field_options {
                 CType::StringPiece => "STRING_PIECE",
             }
         }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "STRING" => Some(CType::String),
+                "CORD" => Some(CType::Cord),
+                "STRING_PIECE" => Some(CType::StringPiece),
+                _ => None,
+            }
+        }
     }
     #[derive(
         Clone,
@@ -752,6 +815,18 @@ pub mod field_options {
                 JsType::JsNormal => "JS_NORMAL",
                 JsType::JsString => "JS_STRING",
                 JsType::JsNumber => "JS_NUMBER",
+            }
+        }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "JS_NORMAL" => Some(JsType::JsNormal),
+                "JS_STRING" => Some(JsType::JsString),
+                "JS_NUMBER" => Some(JsType::JsNumber),
+                _ => None,
             }
         }
     }
@@ -855,6 +930,18 @@ pub mod method_options {
                 IdempotencyLevel::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
                 IdempotencyLevel::NoSideEffects => "NO_SIDE_EFFECTS",
                 IdempotencyLevel::Idempotent => "IDEMPOTENT",
+            }
+        }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "IDEMPOTENCY_UNKNOWN" => Some(IdempotencyLevel::IdempotencyUnknown),
+                "NO_SIDE_EFFECTS" => Some(IdempotencyLevel::NoSideEffects),
+                "IDEMPOTENT" => Some(IdempotencyLevel::Idempotent),
+                _ => None,
             }
         }
     }
@@ -1353,6 +1440,34 @@ pub mod field {
                 Kind::TypeSint64 => "TYPE_SINT64",
             }
         }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "TYPE_UNKNOWN" => Some(Kind::TypeUnknown),
+                "TYPE_DOUBLE" => Some(Kind::TypeDouble),
+                "TYPE_FLOAT" => Some(Kind::TypeFloat),
+                "TYPE_INT64" => Some(Kind::TypeInt64),
+                "TYPE_UINT64" => Some(Kind::TypeUint64),
+                "TYPE_INT32" => Some(Kind::TypeInt32),
+                "TYPE_FIXED64" => Some(Kind::TypeFixed64),
+                "TYPE_FIXED32" => Some(Kind::TypeFixed32),
+                "TYPE_BOOL" => Some(Kind::TypeBool),
+                "TYPE_STRING" => Some(Kind::TypeString),
+                "TYPE_GROUP" => Some(Kind::TypeGroup),
+                "TYPE_MESSAGE" => Some(Kind::TypeMessage),
+                "TYPE_BYTES" => Some(Kind::TypeBytes),
+                "TYPE_UINT32" => Some(Kind::TypeUint32),
+                "TYPE_ENUM" => Some(Kind::TypeEnum),
+                "TYPE_SFIXED32" => Some(Kind::TypeSfixed32),
+                "TYPE_SFIXED64" => Some(Kind::TypeSfixed64),
+                "TYPE_SINT32" => Some(Kind::TypeSint32),
+                "TYPE_SINT64" => Some(Kind::TypeSint64),
+                _ => None,
+            }
+        }
     }
     /// Whether a field is optional, required, or repeated.
     #[derive(
@@ -1388,6 +1503,19 @@ pub mod field {
                 Cardinality::Optional => "CARDINALITY_OPTIONAL",
                 Cardinality::Required => "CARDINALITY_REQUIRED",
                 Cardinality::Repeated => "CARDINALITY_REPEATED",
+            }
+        }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "CARDINALITY_UNKNOWN" => Some(Cardinality::Unknown),
+                "CARDINALITY_OPTIONAL" => Some(Cardinality::Optional),
+                "CARDINALITY_REQUIRED" => Some(Cardinality::Required),
+                "CARDINALITY_REPEATED" => Some(Cardinality::Repeated),
+                _ => None,
             }
         }
     }
@@ -1459,6 +1587,17 @@ impl Syntax {
         match self {
             Syntax::Proto2 => "SYNTAX_PROTO2",
             Syntax::Proto3 => "SYNTAX_PROTO3",
+        }
+    }
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+        match name {
+            "SYNTAX_PROTO2" => Some(Syntax::Proto2),
+            "SYNTAX_PROTO3" => Some(Syntax::Proto3),
+            _ => None,
         }
     }
 }
@@ -2027,6 +2166,16 @@ impl NullValue {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             NullValue::NullValue => "NULL_VALUE",
+        }
+    }
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+        match name {
+            "NULL_VALUE" => Some(NullValue::NullValue),
+            _ => None,
         }
     }
 }

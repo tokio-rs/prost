@@ -157,5 +157,16 @@ pub mod code_generator_response {
                 Feature::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
             }
         }
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {
+            match name {
+                "FEATURE_NONE" => Some(Feature::None),
+                "FEATURE_PROTO3_OPTIONAL" => Some(Feature::Proto3Optional),
+                _ => None,
+            }
+        }
     }
 }

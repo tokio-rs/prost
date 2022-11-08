@@ -696,6 +696,50 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str("}\n"); // End of as_str_name()
 
+        self.push_indent();
+        self.buf.push_str(
+            "/// String value of the enum field names used in the ProtoBuf definition.\n",
+        );
+        self.push_indent();
+        self.buf.push_str("///\n");
+        self.push_indent();
+        self.buf.push_str(
+            "/// The values are not transformed in any way and thus are considered stable\n",
+        );
+        self.push_indent();
+        self.buf.push_str(
+            "/// (if the ProtoBuf definition does not change) and safe for programmatic use.\n",
+        );
+        self.push_indent();
+        self.buf
+            .push_str("pub fn from_str_name(name: &str) -> ::core::option::Option<Self> {\n");
+        self.depth += 1;
+
+        self.push_indent();
+        self.buf.push_str("match name {\n");
+        self.depth += 1;
+
+        for variant in variant_mappings.iter() {
+            self.push_indent();
+            self.buf.push_str("\"");
+            self.buf.push_str(variant.proto_name);
+            self.buf.push_str("\" => Some(");
+            self.buf.push_str(&enum_name);
+            self.buf.push_str("::");
+            self.buf.push_str(&variant.generated_variant_name);
+            self.buf.push_str("),\n");
+        }
+        self.push_indent();
+        self.buf.push_str("_ => None\n");
+
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n"); // End of match
+
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n"); // End of from_str_name()
+
         self.path.pop();
         self.depth -= 1;
         self.push_indent();
