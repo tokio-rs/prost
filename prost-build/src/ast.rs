@@ -110,7 +110,6 @@ impl Comments {
     ///     - escape urls as <http://foo.com>
     ///     - escape `[` & `]`
     fn sanitize_line(line: &str) -> String {
-        println!("prost: {:?}", line);
         lazy_static! {
             static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
             static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\S+)(])").unwrap();
