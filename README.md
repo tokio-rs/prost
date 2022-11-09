@@ -452,6 +452,13 @@ pub enum Gender {
 }
 ```
 
+## Nix
+
+The prost project maintains flakes support for local development. Once you have
+nix and nix flakes setup you can just run `nix develop` to get a shell
+configured with the required dependencies to compile the whole project.
+
+
 ## FAQ
 
 1. **Could `prost` be implemented as a serializer for [Serde](https://serde.rs/)?**
