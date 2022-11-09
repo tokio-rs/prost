@@ -1066,8 +1066,9 @@ impl Config {
 
         if let Some(ref mut service_generator) = self.service_generator {
             for (module, package) in packages {
-                let buf = modules.get_mut(&module).unwrap();
-                service_generator.finalize_package(&package, buf);
+                if let Some(buf) = modules.get_mut(&module) {
+                    service_generator.finalize_package(&package, buf);
+                }
             }
         }
 
