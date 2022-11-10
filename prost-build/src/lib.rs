@@ -233,6 +233,21 @@ impl Default for BytesType {
         BytesType::Vec
     }
 }
+/// The bytes collection type to output for Protobuf `bytes` fields.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum StringType {
+    /// The [`alloc::collections::Vec::<u8>`] type.
+    String,
+    /// The [`bytes::Bytes`] type.
+    ByteString,
+}
+
+impl Default for StringType {
+    fn default() -> StringType {
+        StringType::String
+    }
+}
 
 /// Configuration options for Protobuf code generation.
 ///
@@ -242,6 +257,7 @@ pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     map_type: PathMap<MapType>,
     bytes_type: PathMap<BytesType>,
+    string_type: PathMap<StringType>,
     type_attributes: PathMap<String>,
     field_attributes: PathMap<String>,
     prost_types: bool,
@@ -385,6 +401,18 @@ impl Config {
         self
     }
 
+    pub fn bytestrings<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.string_type.clear();
+        for matcher in paths {
+            self.string_type
+                .insert(matcher.as_ref().to_string(), StringType::ByteString);
+        }
+        self
+    }
     /// Add additional attribute to matched fields.
     ///
     /// # Arguments
@@ -1098,6 +1126,7 @@ impl default::Default for Config {
             service_generator: None,
             map_type: PathMap::default(),
             bytes_type: PathMap::default(),
+            string_type: PathMap::default(),
             type_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
             prost_types: true,
@@ -1122,6 +1151,7 @@ impl fmt::Debug for Config {
             .field("service_generator", &self.service_generator.is_some())
             .field("map_type", &self.map_type)
             .field("bytes_type", &self.bytes_type)
+            .field("string_type", &self.bytes_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)

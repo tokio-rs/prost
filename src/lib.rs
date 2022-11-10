@@ -9,6 +9,9 @@ pub extern crate alloc;
 // Re-export the bytes crate for use within derived code.
 pub use bytes;
 
+// Re-export the bytestring crate for use within derived code.
+pub use bytestring;
+
 mod error;
 mod message;
 mod types;

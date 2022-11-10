@@ -1,5 +1,6 @@
 use prost::alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
 use prost::bytes::Bytes;
+use prost::bytestring::ByteString;
 use prost::{Enumeration, Message, Oneof};
 
 use crate::check_message;
@@ -59,12 +60,14 @@ pub struct ScalarTypes {
     pub double: f64,
     #[prost(bool, tag = "013")]
     pub _bool: bool,
-    #[prost(string, tag = "014")]
+    #[prost(string = "stdstring", tag = "014")]
     pub string: String,
     #[prost(bytes = "vec", tag = "015")]
     pub bytes_vec: Vec<u8>,
     #[prost(bytes = "bytes", tag = "016")]
     pub bytes_buf: Bytes,
+    #[prost(string = "bytestring", tag = "017")]
+    pub bytestring: ByteString,
 
     #[prost(int32, required, tag = "101")]
     pub required_int32: i32,
@@ -92,12 +95,14 @@ pub struct ScalarTypes {
     pub required_double: f64,
     #[prost(bool, required, tag = "113")]
     pub required_bool: bool,
-    #[prost(string, required, tag = "114")]
+    #[prost(string = "stdstring", required, tag = "114")]
     pub required_string: String,
     #[prost(bytes = "vec", required, tag = "115")]
     pub required_bytes_vec: Vec<u8>,
     #[prost(bytes = "bytes", required, tag = "116")]
     pub required_bytes_buf: Bytes,
+    #[prost(string = "bytestring", required, tag = "117")]
+    pub required_bytestring: ByteString,
 
     #[prost(int32, optional, tag = "201")]
     pub optional_int32: Option<i32>,
@@ -126,13 +131,14 @@ pub struct ScalarTypes {
     pub optional_double: Option<f64>,
     #[prost(bool, optional, tag = "213")]
     pub optional_bool: Option<bool>,
-    #[prost(string, optional, tag = "214")]
+    #[prost(string = "stdstring", optional, tag = "214")]
     pub optional_string: Option<String>,
     #[prost(bytes = "vec", optional, tag = "215")]
     pub optional_bytes_vec: Option<Vec<u8>>,
     #[prost(bytes = "bytes", optional, tag = "216")]
     pub optional_bytes_buf: Option<Bytes>,
-
+    #[prost(string = "bytestring", optional, tag = "217")]
+    pub optional_bytestring: Option<ByteString>,
     #[prost(int32, repeated, packed = "false", tag = "301")]
     pub repeated_int32: Vec<i32>,
     #[prost(int64, repeated, packed = "false", tag = "302")]
@@ -159,12 +165,14 @@ pub struct ScalarTypes {
     pub repeated_double: Vec<f64>,
     #[prost(bool, repeated, packed = "false", tag = "313")]
     pub repeated_bool: Vec<bool>,
-    #[prost(string, repeated, packed = "false", tag = "315")]
+    #[prost(string = "stdstring", repeated, packed = "false", tag = "315")]
     pub repeated_string: Vec<String>,
     #[prost(bytes = "vec", repeated, packed = "false", tag = "316")]
     pub repeated_bytes_vec: Vec<Vec<u8>>,
     #[prost(bytes = "bytes", repeated, packed = "false", tag = "317")]
     pub repeated_bytes_buf: Vec<Bytes>,
+    #[prost(string = "bytestring", repeated, packed = "false", tag = "318")]
+    pub repeated_bytestring: Vec<ByteString>,
 
     #[prost(int32, repeated, tag = "401")]
     pub packed_int32: Vec<i32>,
@@ -193,12 +201,14 @@ pub struct ScalarTypes {
     pub packed_double: Vec<f64>,
     #[prost(bool, repeated, tag = "413")]
     pub packed_bool: Vec<bool>,
-    #[prost(string, repeated, tag = "415")]
+    #[prost(string = "stdstring", repeated, tag = "415")]
     pub packed_string: Vec<String>,
     #[prost(bytes = "vec", repeated, tag = "416")]
     pub packed_bytes_vec: Vec<Vec<u8>>,
     #[prost(bytes = "bytes", repeated, tag = "417")]
     pub packed_bytes_buf: Vec<Bytes>,
+    #[prost(string = "stdstring", repeated, tag = "418")]
+    pub packed_bytestring: Vec<String>,
 }
 
 #[test]

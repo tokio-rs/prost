@@ -15,10 +15,10 @@ use core::str;
 use core::u32;
 use core::usize;
 
-use ::bytes::{Buf, BufMut, Bytes};
-
 use crate::DecodeError;
 use crate::Message;
+use ::bytes::{Buf, BufMut, Bytes};
+use ::bytestring::ByteString;
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -791,6 +791,73 @@ macro_rules! length_delimited {
     };
 }
 
+pub mod bytestring {
+    use super::{sealed::BytesAdapter, *};
+
+    pub fn encode<B>(tag: u32, value: &ByteString, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        self::bytes::encode(tag, value, buf);
+    }
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut ByteString,
+        buf: &mut B,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        {
+            check_wire_type(WireType::LengthDelimited, wire_type)?;
+            let len = decode_varint(buf)?;
+            if len > buf.remaining() as u64 {
+                return Err(DecodeError::new("buffer underflow"));
+            }
+            let len = len as usize;
+            // put the default value in in case we panic while appending.
+            let mut maybe = core::mem::take(value);
+
+            maybe.replace_with(buf.copy_to_bytes(len));
+
+            match core::str::from_utf8(maybe.as_bytes()) {
+                Ok(_) => {
+                    let _ = core::mem::replace(value, maybe);
+                }
+                Err(_) => return Err(DecodeError::new("buffer underflow")),
+            }
+
+            Ok(())
+        }
+    }
+
+    length_delimited!(ByteString);
+
+    #[cfg(test)]
+    mod test {
+        use proptest::prelude::*;
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        proptest! {
+            #[test]
+            fn check(value: String, tag in MIN_TAG..=MAX_TAG) {
+                let value = ByteString::from(value);
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)?;
+            }
+            #[test]
+            fn check_repeated(value: Vec<String>, tag in MIN_TAG..=MAX_TAG) {
+                let value = value.into_iter().map(ByteString::from).collect();
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)?;
+            }
+        }
+    }
+}
 pub mod string {
     use super::*;
 
@@ -897,7 +964,28 @@ mod sealed {
     }
 }
 
+impl BytesAdapter for ByteString {}
 impl BytesAdapter for Bytes {}
+
+impl sealed::BytesAdapter for ByteString {
+    fn len(&self) -> usize {
+        Buf::remaining(self.as_bytes())
+    }
+
+    fn replace_with<B>(&mut self, mut buf: B)
+    where
+        B: Buf,
+    {
+        *self = unsafe { ByteString::from_bytes_unchecked(buf.copy_to_bytes(buf.remaining())) };
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.as_bytes().clone())
+    }
+}
 
 impl sealed::BytesAdapter for Bytes {
     fn len(&self) -> usize {
