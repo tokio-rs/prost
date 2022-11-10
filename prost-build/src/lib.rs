@@ -233,13 +233,13 @@ impl Default for BytesType {
         BytesType::Vec
     }
 }
-/// The bytes collection type to output for Protobuf `bytes` fields.
+/// The collection type to output for Protobuf `string` fields.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum StringType {
-    /// The [`alloc::collections::Vec::<u8>`] type.
+    /// The [`alloc::string::String`] type.
     String,
-    /// The [`bytes::Bytes`] type.
+    /// The [`bytesstring::ByteString`] type.
     ByteString,
 }
 
