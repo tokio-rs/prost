@@ -12,6 +12,7 @@ use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Attribute, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
+use syn::__private::TokenStream2;
 
 #[derive(Clone)]
 pub enum Field {
@@ -54,7 +55,7 @@ impl Field {
         Ok(Some(field))
     }
 
-    pub fn validate(&self, ident: &Ident) -> TokenStream {
+    pub fn validate(&self, ident: &TokenStream2) -> TokenStream {
         let empty = quote! {};
         let expect_non_nil = quote! {
             if self.#ident.is_none() {
