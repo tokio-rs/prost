@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.10.1")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.10.2")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -12,7 +12,7 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Variant,
+    FieldsUnnamed, Ident, Index, Variant,
 };
 
 mod field;
@@ -31,32 +31,36 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let fields = match variant_data {
+    let (is_struct, fields) = match variant_data {
         DataStruct {
             fields: Fields::Named(FieldsNamed { named: fields, .. }),
             ..
-        }
-        | DataStruct {
+        } => (true, fields.into_iter().collect()),
+        DataStruct {
             fields:
                 Fields::Unnamed(FieldsUnnamed {
                     unnamed: fields, ..
                 }),
             ..
-        } => fields.into_iter().collect(),
+        } => (false, fields.into_iter().collect()),
         DataStruct {
             fields: Fields::Unit,
             ..
-        } => Vec::new(),
+        } => (false, Vec::new()),
     };
 
     let mut next_tag: u32 = 1;
     let mut fields = fields
         .into_iter()
         .enumerate()
-        .flat_map(|(idx, field)| {
-            let field_ident = field
-                .ident
-                .unwrap_or_else(|| Ident::new(&idx.to_string(), Span::call_site()));
+        .flat_map(|(i, field)| {
+            let field_ident = field.ident.map(|x| quote!(#x)).unwrap_or_else(|| {
+                let index = Index {
+                    index: i as u32,
+                    span: Span::call_site(),
+                };
+                quote!(#index)
+            });
             match Field::new(field.attrs, Some(next_tag)) {
                 Ok(Some(field)) => {
                     next_tag = field.tags().iter().max().map(|t| t + 1).unwrap_or(next_tag);
@@ -184,17 +188,27 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         )
     };
 
-    // TODO
-    let is_struct = true;
-
     let clear = fields
         .iter()
         .map(|&(ref field_ident, ref field)| field.clear(quote!(self.#field_ident)));
 
-    let default = fields.iter().map(|&(ref field_ident, ref field)| {
-        let value = field.default();
-        quote!(#field_ident: #value,)
-    });
+    let default = if is_struct {
+        let default = fields.iter().map(|(field_ident, field)| {
+            let value = field.default();
+            quote!(#field_ident: #value,)
+        });
+        quote! {#ident {
+            #(#default)*
+        }}
+    } else {
+        let default = fields.iter().map(|(_, field)| {
+            let value = field.default();
+            quote!(#value,)
+        });
+        quote! {#ident (
+            #(#default)*
+        )}
+    };
 
     let methods = fields
         .iter()
@@ -277,9 +291,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
         impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> Self {
-                #ident {
-                    #(#default)*
-                }
+                #default
             }
         }
 

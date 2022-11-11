@@ -1687,9 +1687,6 @@ mod test {
     #[test]
     fn varint() {
         fn check(value: u64, mut encoded: &[u8]) {
-            // TODO(rust-lang/rust-clippy#5494)
-            #![allow(clippy::clone_double_ref)]
-
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);

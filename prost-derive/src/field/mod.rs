@@ -11,7 +11,7 @@ pub use crate::field::scalar::{Kind, Ty};
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
+use syn::{Attribute, Lit, LitBool, Meta, MetaList, MetaNameValue, NestedMeta};
 
 #[derive(Clone)]
 pub enum Field {
@@ -219,7 +219,7 @@ impl Field {
         }
     }
 
-    pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
+    pub fn methods(&self, ident: &TokenStream) -> Option<TokenStream> {
         match *self {
             Field::Scalar(ref scalar) => scalar.methods(ident),
             Field::Map(ref map) => map.methods(ident),

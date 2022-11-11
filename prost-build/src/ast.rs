@@ -5,7 +5,7 @@ use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use regex::Regex;
 
 /// Comments on a Protobuf item.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Comments {
     /// Leading detached blocks of comments.
     pub leading_detached: Vec<Vec<String>>,
@@ -19,59 +19,6 @@ pub struct Comments {
 
 impl Comments {
     pub(crate) fn from_location(location: &Location) -> Comments {
-        #[cfg(not(feature = "cleanup-markdown"))]
-        fn get_lines<S>(comments: S) -> Vec<String>
-        where
-            S: AsRef<str>,
-        {
-            comments.as_ref().lines().map(str::to_owned).collect()
-        }
-
-        #[cfg(feature = "cleanup-markdown")]
-        fn get_lines<S>(comments: S) -> Vec<String>
-        where
-            S: AsRef<str>,
-        {
-            let comments = comments.as_ref();
-            let mut buffer = String::with_capacity(comments.len() + 256);
-            let opts = pulldown_cmark_to_cmark::Options {
-                code_block_token_count: 3,
-                ..Default::default()
-            };
-            match pulldown_cmark_to_cmark::cmark_with_options(
-                Parser::new_ext(comments, Options::all() - Options::ENABLE_SMART_PUNCTUATION).map(
-                    |event| {
-                        fn map_codeblock(kind: CodeBlockKind) -> CodeBlockKind {
-                            match kind {
-                                CodeBlockKind::Fenced(s) => {
-                                    if &*s == "rust" {
-                                        CodeBlockKind::Fenced("compile_fail".into())
-                                    } else {
-                                        CodeBlockKind::Fenced(format!("text,{}", s).into())
-                                    }
-                                }
-                                CodeBlockKind::Indented => CodeBlockKind::Fenced("text".into()),
-                            }
-                        }
-                        match event {
-                            Event::Start(Tag::CodeBlock(kind)) => {
-                                Event::Start(Tag::CodeBlock(map_codeblock(kind)))
-                            }
-                            Event::End(Tag::CodeBlock(kind)) => {
-                                Event::End(Tag::CodeBlock(map_codeblock(kind)))
-                            }
-                            e => e,
-                        }
-                    },
-                ),
-                &mut buffer,
-                opts,
-            ) {
-                Ok(_) => buffer.lines().map(str::to_owned).collect(),
-                Err(_) => comments.lines().map(str::to_owned).collect(),
-            }
-        }
-
         let leading_detached = location
             .leading_detached_comments
             .iter()
@@ -178,7 +125,7 @@ impl Comments {
 }
 
 /// A service descriptor.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Service {
     /// The service name in Rust style.
     pub name: String,
@@ -195,7 +142,7 @@ pub struct Service {
 }
 
 /// A service method descriptor.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Method {
     /// The name of the method in Rust style.
     pub name: String,
@@ -217,6 +164,59 @@ pub struct Method {
     pub client_streaming: bool,
     /// Identifies if server streams multiple server messages.
     pub server_streaming: bool,
+}
+
+#[cfg(not(feature = "cleanup-markdown"))]
+fn get_lines<S>(comments: S) -> Vec<String>
+where
+    S: AsRef<str>,
+{
+    comments.as_ref().lines().map(str::to_owned).collect()
+}
+
+#[cfg(feature = "cleanup-markdown")]
+fn get_lines<S>(comments: S) -> Vec<String>
+where
+    S: AsRef<str>,
+{
+    let comments = comments.as_ref();
+    let mut buffer = String::with_capacity(comments.len() + 256);
+    let opts = pulldown_cmark_to_cmark::Options {
+        code_block_token_count: 3,
+        ..Default::default()
+    };
+    match pulldown_cmark_to_cmark::cmark_with_options(
+        Parser::new_ext(comments, Options::all() - Options::ENABLE_SMART_PUNCTUATION).map(
+            |event| {
+                fn map_codeblock(kind: CodeBlockKind) -> CodeBlockKind {
+                    match kind {
+                        CodeBlockKind::Fenced(s) => {
+                            if &*s == "rust" {
+                                CodeBlockKind::Fenced("compile_fail".into())
+                            } else {
+                                CodeBlockKind::Fenced(format!("text,{}", s).into())
+                            }
+                        }
+                        CodeBlockKind::Indented => CodeBlockKind::Fenced("text".into()),
+                    }
+                }
+                match event {
+                    Event::Start(Tag::CodeBlock(kind)) => {
+                        Event::Start(Tag::CodeBlock(map_codeblock(kind)))
+                    }
+                    Event::End(Tag::CodeBlock(kind)) => {
+                        Event::End(Tag::CodeBlock(map_codeblock(kind)))
+                    }
+                    e => e,
+                }
+            },
+        ),
+        &mut buffer,
+        opts,
+    ) {
+        Ok(_) => buffer.lines().map(str::to_owned).collect(),
+        Err(_) => comments.lines().map(str::to_owned).collect(),
+    }
 }
 
 #[cfg(test)]

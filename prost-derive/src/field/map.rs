@@ -258,7 +258,7 @@ impl Field {
     }
 
     /// Returns methods to embed in the message.
-    pub fn methods(&self, ident: &Ident) -> Option<TokenStream> {
+    pub fn methods(&self, ident: &TokenStream) -> Option<TokenStream> {
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ty)) = &self.value_ty {
             let key_ty = self.key_ty.rust_type();
             let key_ref_ty = self.key_ty.rust_ref_type();

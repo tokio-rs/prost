@@ -77,8 +77,7 @@ mod tests {
         assert_eq!("field_name9", &to_snake("field_Name9"));
         assert_eq!("field_name10", &to_snake("Field_Name10"));
 
-        // TODO(withoutboats/heck#3)
-        //assert_eq!("field_name11", &to_snake("FIELD_NAME11"));
+        assert_eq!("field_name11", &to_snake("FIELD_NAME11"));
         assert_eq!("field_name12", &to_snake("FIELD_name12"));
         assert_eq!("field_name13", &to_snake("__field_name13"));
         assert_eq!("field_name14", &to_snake("__Field_name14"));

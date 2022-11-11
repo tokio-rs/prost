@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.11.1")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.11.2")]
 #![allow(clippy::option_as_ref_deref, clippy::format_push_string)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -62,9 +62,14 @@
 //!
 //! ```rust,ignore
 //! // Include the `items` module, which is generated from items.proto.
-//! pub mod items {
-//!     include!(concat!(env!("OUT_DIR"), "/snazzy.items.rs"));
+//! // It is important to maintain the same structure as in the proto.
+//! pub mod snazzy {
+//!     pub mod items {
+//!         include!(concat!(env!("OUT_DIR"), "/snazzy.items.rs"));
+//!     }
 //! }
+//!
+//! use snazzy::items;
 //!
 //! pub fn create_large_shirt(color: String) -> items::Shirt {
 //!     let mut shirt = items::Shirt::default();
@@ -122,13 +127,6 @@
 //!
 //! [`protobuf-src`]: https://docs.rs/protobuf-src
 
-mod ast;
-mod code_generator;
-mod extern_paths;
-mod ident;
-mod message_graph;
-mod path;
-
 use std::collections::HashMap;
 use std::default;
 use std::env;
@@ -141,6 +139,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use log::trace;
+
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -150,6 +149,13 @@ use crate::extern_paths::ExternPaths;
 use crate::ident::to_snake;
 use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
+
+mod ast;
+mod code_generator;
+mod extern_paths;
+mod ident;
+mod message_graph;
+mod path;
 
 /// A service generator takes a service descriptor and generates Rust code.
 ///
@@ -256,6 +262,8 @@ pub struct Config {
     inline_enums: bool,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
+    prost_path: Option<String>,
+    fmt: bool,
 }
 
 impl Config {
@@ -521,10 +529,13 @@ impl Config {
     /// disable doctests for the crate with a [Cargo.toml entry][2]. If neither of these options
     /// are possible, then omit comments on generated code during doctest builds:
     ///
-    /// ```rust,ignore
+    /// ```rust,no_run
+    /// # fn main() -> std::io::Result<()> {
     /// let mut config = prost_build::Config::new();
-    /// config.disable_comments(".");
+    /// config.disable_comments(&["."]);
     /// config.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    /// #     Ok(())
+    /// # }
     /// ```
     ///
     /// As with other options which take a set of paths, comments can be disabled on a per-package
@@ -741,6 +752,17 @@ impl Config {
         self
     }
 
+    /// Configures the path that's used for deriving `Message` for generated messages.
+    /// This is mainly useful for generating crates that wish to re-export prost.
+    /// Defaults to `::prost::Message` if not specified.
+    pub fn prost_path<S>(&mut self, path: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.prost_path = Some(path.into());
+        self
+    }
+
     /// Add an argument to the `protoc` protobuf compilation invocation.
     ///
     /// # Example `build.rs`
@@ -793,6 +815,15 @@ impl Config {
         P: Into<PathBuf>,
     {
         self.include_file = Some(path.into());
+        self
+    }
+
+    /// Configures the code generator to format the output code via `prettyplease`.
+    ///
+    /// By default, this is enabled but if the `format` feature is not enabled this does
+    /// nothing.
+    pub fn format(&mut self, enabled: bool) -> &mut Self {
+        self.fmt = enabled;
         self
     }
 
@@ -920,11 +951,11 @@ impl Config {
             println!("Running: {:?}", cmd);
 
             let output = cmd.output().map_err(|error| {
-            Error::new(
-                error.kind(),
-                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
-            )
-        })?;
+                Error::new(
+                    error.kind(),
+                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
+                )
+            })?;
 
             if !output.status.success() {
                 return Err(Error::new(
@@ -1021,6 +1052,8 @@ impl Config {
         basepath: Option<&PathBuf>,
     ) -> Result<usize> {
         let mut written = 0;
+        entries.sort();
+
         while !entries.is_empty() {
             let modident = entries[0].part(depth);
             let matching: Vec<&Module> = entries
@@ -1093,14 +1126,19 @@ impl Config {
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
-        for request in requests {
+        for (request_module, request_fd) in requests {
             // Only record packages that have services
-            if !request.1.service.is_empty() {
-                packages.insert(request.0.clone(), request.1.package().to_string());
+            if !request_fd.service.is_empty() {
+                packages.insert(request_module.clone(), request_fd.package().to_string());
             }
-
-            let buf = modules.entry(request.0).or_insert_with(String::new);
-            CodeGenerator::generate(self, &message_graph, &extern_paths, request.1, buf);
+            let buf = modules
+                .entry(request_module.clone())
+                .or_insert_with(String::new);
+            CodeGenerator::generate(self, &message_graph, &extern_paths, request_fd, buf);
+            if buf.is_empty() {
+                // Did not generate any code, remove from list to avoid inclusion in include file or output file list
+                modules.remove(&request_module);
+            }
         }
 
         if let Some(ref mut service_generator) = self.service_generator {
@@ -1110,8 +1148,24 @@ impl Config {
             }
         }
 
+        if self.fmt {
+            self.fmt_modules(&mut modules);
+        }
+
         Ok(modules)
     }
+
+    #[cfg(feature = "format")]
+    fn fmt_modules(&mut self, modules: &mut HashMap<Module, String>) {
+        for (_, buf) in modules {
+            let file = syn::parse_file(&buf).unwrap();
+            let formatted = prettyplease::unparse(&file);
+            *buf = formatted;
+        }
+    }
+
+    #[cfg(not(feature = "format"))]
+    fn fmt_modules(&mut self, _: &mut HashMap<Module, String>) {}
 }
 
 impl default::Default for Config {
@@ -1136,6 +1190,8 @@ impl default::Default for Config {
             inline_enums: false,
             skip_protoc_run: false,
             include_file: None,
+            prost_path: None,
+            fmt: true,
         }
     }
 }
@@ -1156,6 +1212,7 @@ impl fmt::Debug for Config {
             .field("default_package_filename", &self.default_package_filename)
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
+            .field("prost_path", &self.prost_path)
             .finish()
     }
 }
@@ -1341,13 +1398,18 @@ pub fn protoc_include_from_env() -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::cell::RefCell;
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::Path;
     use std::rc::Rc;
+
+    use super::*;
 
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
     struct ServiceTraitGenerator;
+
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
@@ -1358,7 +1420,7 @@ mod tests {
             for method in service.methods {
                 method.comments.append_with_indent(1, buf);
                 buf.push_str(&format!(
-                    "    fn {}({}) -> {};\n",
+                    "    fn {}(_: {}) -> {};\n",
                     method.name, method.input_type, method.output_type
                 ));
             }
@@ -1414,7 +1476,7 @@ mod tests {
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
             .out_dir(std::env::temp_dir())
-            .compile_protos(&["src/smoke_test.proto"], &["src"])
+            .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
             .unwrap();
     }
 
@@ -1429,12 +1491,118 @@ mod tests {
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
             .out_dir(std::env::temp_dir())
-            .compile_protos(&["src/hello.proto", "src/goodbye.proto"], &["src"])
+            .compile_protos(
+                &[
+                    "src/fixtures/helloworld/hello.proto",
+                    "src/fixtures/helloworld/goodbye.proto",
+                ],
+                &["src/fixtures/helloworld"],
+            )
             .unwrap();
 
         let state = state.borrow();
         assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
         assert_eq!(&state.package_names, &["helloworld"]);
         assert_eq!(state.finalized, 3);
+    }
+
+    #[test]
+    fn test_generate_no_empty_outputs() {
+        let _ = env_logger::try_init();
+        let state = Rc::new(RefCell::new(MockState::default()));
+        let gen = MockServiceGenerator::new(Rc::clone(&state));
+        let include_file = "_include.rs";
+        let out_dir = std::env::temp_dir()
+            .as_path()
+            .join("test_generate_no_empty_outputs");
+        let previously_empty_proto_path = out_dir.as_path().join(Path::new("google.protobuf.rs"));
+        // For reproducibility, ensure we start with the out directory created and empty
+        let _ = fs::remove_dir_all(&out_dir);
+        let _ = fs::create_dir(&out_dir);
+
+        Config::new()
+            .service_generator(Box::new(gen))
+            .include_file(include_file)
+            .out_dir(&out_dir)
+            .compile_protos(
+                &["src/fixtures/imports_empty/imports_empty.proto"],
+                &["src/fixtures/imports_empty"],
+            )
+            .unwrap();
+
+        // Prior to PR introducing this test, the generated include file would have the file
+        // google.protobuf.rs which was an empty file. Now that file should only exist if it has content
+        if let Ok(mut f) = File::open(&previously_empty_proto_path) {
+            // Since this file was generated, it should not be empty.
+            let mut contents = String::new();
+            f.read_to_string(&mut contents).unwrap();
+            assert!(!contents.is_empty());
+        } else {
+            // The file wasn't generated so the result include file should not reference it
+            let expected = read_all_content("src/fixtures/imports_empty/_expected_include.rs");
+            let actual = read_all_content(
+                out_dir
+                    .as_path()
+                    .join(Path::new(include_file))
+                    .display()
+                    .to_string()
+                    .as_str(),
+            );
+            // Normalizes windows and Linux-style EOL
+            let expected = expected.replace("\r\n", "\n");
+            let actual = actual.replace("\r\n", "\n");
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn deterministic_include_file() {
+        let _ = env_logger::try_init();
+
+        for _ in 1..10 {
+            let state = Rc::new(RefCell::new(MockState::default()));
+            let gen = MockServiceGenerator::new(Rc::clone(&state));
+            let include_file = "_include.rs";
+            let tmp_dir = std::env::temp_dir();
+
+            Config::new()
+                .service_generator(Box::new(gen))
+                .include_file(include_file)
+                .out_dir(std::env::temp_dir())
+                .compile_protos(
+                    &[
+                        "src/fixtures/alphabet/a.proto",
+                        "src/fixtures/alphabet/b.proto",
+                        "src/fixtures/alphabet/c.proto",
+                        "src/fixtures/alphabet/d.proto",
+                        "src/fixtures/alphabet/e.proto",
+                        "src/fixtures/alphabet/f.proto",
+                    ],
+                    &["src/fixtures/alphabet"],
+                )
+                .unwrap();
+
+            let expected = read_all_content("src/fixtures/alphabet/_expected_include.rs");
+            let actual = read_all_content(
+                tmp_dir
+                    .as_path()
+                    .join(Path::new(include_file))
+                    .display()
+                    .to_string()
+                    .as_str(),
+            );
+            // Normalizes windows and Linux-style EOL
+            let expected = expected.replace("\r\n", "\n");
+            let actual = actual.replace("\r\n", "\n");
+
+            assert_eq!(expected, actual);
+        }
+    }
+
+    fn read_all_content(filepath: &str) -> String {
+        let mut f = File::open(filepath).unwrap();
+        let mut content = String::new();
+        f.read_to_string(&mut content).unwrap();
+        return content;
     }
 }
