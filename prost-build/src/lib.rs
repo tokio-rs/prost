@@ -1272,7 +1272,7 @@ pub fn protoc_from_env() -> PathBuf {
     let os_specific_hint = if cfg!(target_os = "macos") {
         "You could try running `brew install protobuf` or downloading it from https://github.com/protocolbuffers/protobuf/releases"
     } else if cfg!(target_os = "linux") {
-        "If you're on debian, try `apt-get install protobuf3-compiler` or download it from https://github.com/protocolbuffers/protobuf/releases"
+        "If you're on debian, try `apt-get install protobuf-compiler` or download it from https://github.com/protocolbuffers/protobuf/releases"
     } else {
         "You can download it from https://github.com/protocolbuffers/protobuf/releases or from your package manager."
     };
