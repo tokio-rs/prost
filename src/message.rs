@@ -116,6 +116,20 @@ pub trait Message: Debug + Send + Sync {
         Self::merge(&mut message, &mut buf).map(|_| message)
     }
 
+    /// Decodes an instance of the message from a buffer.
+    ///
+    /// The entire buffer will be consumed.
+    ///
+    /// This is an alternative to `decode`, which allows users to specify a `DecodeContext`.
+    fn decode_with_context<B>(mut buf: B, ctx: DecodeContext) -> Result<Self, DecodeError>
+    where
+        B: Buf,
+        Self: Default,
+    {
+        let mut message = Self::default();
+        Self::merge_with_context(&mut message, &mut buf, ctx).map(|_| message)
+    }
+
     /// Decodes a length-delimited instance of the message from the buffer.
     fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
     where
@@ -130,12 +144,22 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge<B>(&mut self, buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
         Self: Sized,
     {
-        let ctx = DecodeContext::default();
+        self.merge_with_context(buf, DecodeContext::default())
+    }
+
+    /// Decodes an instance of the message from a buffer, and merges it into `self`.
+    ///
+    /// The entire buffer will be consumed.
+    fn merge_with_context<B>(&mut self, mut buf: B, ctx: DecodeContext) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
             self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
