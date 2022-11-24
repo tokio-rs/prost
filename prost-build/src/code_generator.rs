@@ -994,11 +994,11 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     p += 1;
                 }
                 b'0'..=b'7' => {
-                    eprintln!("another octal: {}, offset: {}", s, &s[p..]);
+                    debug!("another octal: {}, offset: {}", s, &s[p..]);
                     let mut octal = 0;
                     for _ in 0..3 {
                         if p < len && src[p] >= b'0' && src[p] <= b'7' {
-                            eprintln!("\toctal: {}", octal);
+                            debug!("\toctal: {}", octal);
                             octal = octal * 8 + (src[p] - b'0');
                             p += 1;
                         } else {
