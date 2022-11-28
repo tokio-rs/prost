@@ -138,6 +138,7 @@ use std::ops::RangeToInclusive;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use log::debug;
 use log::trace;
 
 use prost::Message;
@@ -857,7 +858,7 @@ impl Config {
                 if include.as_ref().exists() {
                     cmd.arg("-I").arg(include.as_ref());
                 } else {
-                    println!(
+                    debug!(
                         "ignoring {} since it does not exist.",
                         include.as_ref().display()
                     )
@@ -878,7 +879,7 @@ impl Config {
                 cmd.arg(proto.as_ref());
             }
 
-            println!("Running: {:?}", cmd);
+            debug!("Running: {:?}", cmd);
 
             let output = cmd.output().map_err(|error| {
                 Error::new(
