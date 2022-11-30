@@ -1,12 +1,9 @@
-use std::convert::TryFrom;
-use std::fmt;
+use anyhow::{bail, Error};
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::Meta;
 
-use anyhow::{anyhow, bail, Error};
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{parse_str, Ident, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path};
-
-use crate::field::{set_bool, tag_attr, word_attr, Label};
+use crate::field::{set_bool, word_attr};
 
 pub fn encode_unknown(_ident: TokenStream) -> TokenStream {
     // TODO(jason): handle differently named `unknown_fields` structs (since users may want to name them something different)
@@ -22,7 +19,7 @@ pub fn merge_unknown(_ident: TokenStream) -> TokenStream {
     }
 }
 
-pub fn encoding_len_unknown(ident: TokenStream) -> TokenStream {
+pub fn encoding_len_unknown(_ident: TokenStream) -> TokenStream {
     quote! {
         self.unknown_fields.encoded_len()
     }

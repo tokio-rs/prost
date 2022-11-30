@@ -6,11 +6,9 @@ use core::usize;
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{
-    decode_key, decode_varint, encode_key, encode_varint, encoded_len_varint, key_len, message,
-    DecodeContext, WireType,
+    decode_varint, encode_key, encode_varint, key_len, WireType,
 };
 use crate::DecodeError;
-use crate::Message;
 
 pub struct UnknownField {
     tag: u32,
