@@ -5,9 +5,7 @@ use core::usize;
 
 use bytes::{Buf, BufMut};
 
-use crate::encoding::{
-    decode_varint, encode_key, encode_varint, key_len, WireType,
-};
+use crate::encoding::{decode_varint, encode_key, encode_varint, key_len, WireType};
 use crate::DecodeError;
 
 pub struct UnknownField {
