@@ -706,7 +706,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf
-            .push_str("pub fn from_str_name(value: &str) -> Option<Self> {\n");
+            .push_str("pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {\n");
         self.depth += 1;
 
         self.push_indent();
