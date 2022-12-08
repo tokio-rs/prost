@@ -183,6 +183,8 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
+        self.buf
+            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Message)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
@@ -505,6 +507,8 @@ impl<'a> CodeGenerator<'a> {
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
+        self.buf
+            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
