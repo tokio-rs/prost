@@ -67,13 +67,13 @@ instructions for `protoc` please check out the [protobuf install] instructions.
 
 ### Packages
 
-Prost can now generate code for `.proto` files that don't have a package spec. 
+Prost can now generate code for `.proto` files that don't have a package spec.
 `prost` will translate the Protobuf package into
 a Rust module. For example, given the `package` specifier:
 
 [package]: https://developers.google.com/protocol-buffers/docs/proto#packages
 
-```proto,ignore
+```protobuf,ignore
 package foo.bar;
 ```
 
@@ -83,7 +83,7 @@ All Rust types generated from the file will be in the `foo::bar` module.
 
 Given a simple message declaration:
 
-```proto,ignore
+```protobuf,ignore
 // Sample message.
 message Foo {
 }
@@ -131,7 +131,7 @@ All `.proto` enumeration types convert to the Rust `i32` type. Additionally,
 each enumeration type gets a corresponding Rust `enum` type. For example, this
 `proto` enum:
 
-```proto,ignore
+```protobuf,ignore
 enum PhoneType {
   MOBILE = 0;
   HOME = 1;
@@ -184,7 +184,7 @@ message will have 'accessor' methods to get/set the value of the field as the
 Rust enum type. For instance, this proto `PhoneNumber` message that has a field
 named `type` of type `PhoneType`:
 
-```proto,ignore
+```protobuf,ignore
 message PhoneNumber {
   string number = 1;
   PhoneType type = 2;
@@ -255,7 +255,7 @@ Oneof fields convert to a Rust enum. Protobuf `oneof`s types are not named, so
 defines the enum in a module under the struct. For example, a `proto3` message
 such as:
 
-```proto,ignore
+```protobuf,ignore
 message Foo {
   oneof widget {
     int32 quux = 1;
@@ -292,7 +292,7 @@ application's specific needs.
 
 Example `.proto` file:
 
-```proto,ignore
+```protobuf,ignore
 syntax = "proto3";
 package tutorial;
 
