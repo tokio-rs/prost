@@ -575,7 +575,7 @@ macro_rules! varint {
     );
 }
 varint!(bool, bool,
-        to_uint64(value) if *value { 1u64 } else { 0u64 },
+        to_uint64(value) u64::from(*value),
         from_uint64(value) value != 0);
 varint!(i32, int32);
 varint!(i64, int64);

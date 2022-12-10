@@ -25,7 +25,7 @@ fn main() {
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
     let mut config = prost_build::Config::new();
-    config.btree_map(&["."]);
+    config.btree_map(["."]);
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
     config.type_attribute(
@@ -97,7 +97,7 @@ fn main() {
 
     {
         let mut config = prost_build::Config::new();
-        config.disable_comments(&["."]);
+        config.disable_comments(["."]);
 
         config
             .compile_protos(&[src.join("invalid_doctest.proto")], includes)
@@ -105,7 +105,7 @@ fn main() {
     }
 
     config
-        .bytes(&["."])
+        .bytes(["."])
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
@@ -115,7 +115,7 @@ fn main() {
     std::fs::create_dir_all(&out_path).unwrap();
 
     prost_build::Config::new()
-        .bytes(&["."])
+        .bytes(["."])
         .out_dir(out_path)
         .include_file("wellknown_include.rs")
         .compile_protos(&[src.join("well_known_types.proto")], includes)
