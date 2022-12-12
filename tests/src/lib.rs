@@ -43,6 +43,8 @@ mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
+mod unknown_fields;
+#[cfg(test)]
 mod well_known_types;
 
 pub mod foo {

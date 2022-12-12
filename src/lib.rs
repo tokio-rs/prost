@@ -12,12 +12,14 @@ pub use bytes;
 mod error;
 mod message;
 mod types;
+mod unknown;
 
 #[doc(hidden)]
 pub mod encoding;
 
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
+pub use crate::unknown::{UnknownField, UnknownFieldIter, UnknownFieldSet};
 
 use bytes::{Buf, BufMut};
 

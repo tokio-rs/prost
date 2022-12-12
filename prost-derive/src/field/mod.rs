@@ -3,6 +3,7 @@ mod map;
 mod message;
 mod oneof;
 mod scalar;
+mod unknown;
 
 use std::fmt;
 use std::slice;
@@ -24,6 +25,8 @@ pub enum Field {
     Oneof(oneof::Field),
     /// A group field.
     Group(group::Field),
+    /// A set of unknown message fields.
+    Unknown(unknown::Field),
 }
 
 impl Field {
@@ -46,6 +49,8 @@ impl Field {
             Field::Oneof(field)
         } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
             Field::Group(field)
+        } else if let Some(field) = unknown::Field::new(&attrs)? {
+            Field::Unknown(field)
         } else {
             bail!("no type attribute");
         };
@@ -84,6 +89,7 @@ impl Field {
             Field::Map(ref map) => vec![map.tag],
             Field::Oneof(ref oneof) => oneof.tags.clone(),
             Field::Group(ref group) => vec![group.tag],
+            Field::Unknown(_) => vec![],
         }
     }
 
@@ -95,6 +101,7 @@ impl Field {
             Field::Map(ref map) => map.encode(ident),
             Field::Oneof(ref oneof) => oneof.encode(ident),
             Field::Group(ref group) => group.encode(ident),
+            Field::Unknown(ref unknown) => unknown.encode(ident),
         }
     }
 
@@ -107,6 +114,7 @@ impl Field {
             Field::Map(ref map) => map.merge(ident),
             Field::Oneof(ref oneof) => oneof.merge(ident),
             Field::Group(ref group) => group.merge(ident),
+            Field::Unknown(ref unknown) => unknown.merge(ident),
         }
     }
 
@@ -118,6 +126,7 @@ impl Field {
             Field::Message(ref msg) => msg.encoded_len(ident),
             Field::Oneof(ref oneof) => oneof.encoded_len(ident),
             Field::Group(ref group) => group.encoded_len(ident),
+            Field::Unknown(ref unknown) => unknown.encoded_len(ident),
         }
     }
 
@@ -129,6 +138,7 @@ impl Field {
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),
             Field::Group(ref group) => group.clear(ident),
+            Field::Unknown(ref unknown) => unknown.clear(ident),
         }
     }
 
@@ -170,6 +180,10 @@ impl Field {
             Field::Map(ref map) => map.methods(ident),
             _ => None,
         }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Field::Unknown(_))
     }
 }
 

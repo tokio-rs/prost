@@ -210,6 +210,14 @@ impl<'a> CodeGenerator<'a> {
             }
             self.path.pop();
         }
+        if let Some(field_name) = self
+            .config
+            .include_unknown_fields
+            .get_first(&fq_message_name)
+            .cloned()
+        {
+            self.append_unknown_field_set(&fq_message_name, &field_name);
+        }
         self.path.pop();
 
         self.path.push(8);
@@ -458,6 +466,14 @@ impl<'a> CodeGenerator<'a> {
             key_ty,
             value_ty
         ));
+    }
+
+    fn append_unknown_field_set(&mut self, fq_message_name: &str, field_name: &str) {
+        self.buf.push_str("#[prost(unknown)]\n");
+        self.append_field_attributes(fq_message_name, field_name);
+        self.push_indent();
+        self.buf
+            .push_str(&format!("pub {}: ::prost::UnknownFieldSet,\n", field_name,));
     }
 
     fn append_oneof_field(

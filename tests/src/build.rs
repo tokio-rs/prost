@@ -26,6 +26,9 @@ fn main() {
     // values.
     let mut config = prost_build::Config::new();
     config.btree_map(&["."]);
+
+    config.include_unknown_fields(".unknown_fields", "unknown_fields");
+
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
     config.type_attribute(
@@ -131,6 +134,10 @@ fn main() {
     // Check that attempting to compile a .proto without a package declaration does not result in an error.
     config
         .compile_protos(&[src.join("no_package.proto")], includes)
+        .unwrap();
+
+    config
+        .compile_protos(&[src.join("unknown_fields.proto")], includes)
         .unwrap();
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
