@@ -161,5 +161,13 @@ pub mod code_generator_response {
                 Feature::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "FEATURE_NONE" => Some(Self::None),
+                "FEATURE_PROTO3_OPTIONAL" => Some(Self::Proto3Optional),
+                _ => None,
+            }
+        }
     }
 }
