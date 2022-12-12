@@ -253,6 +253,30 @@ pub mod field_descriptor_proto {
                 Type::Sint64 => "TYPE_SINT64",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_DOUBLE" => Some(Self::Double),
+                "TYPE_FLOAT" => Some(Self::Float),
+                "TYPE_INT64" => Some(Self::Int64),
+                "TYPE_UINT64" => Some(Self::Uint64),
+                "TYPE_INT32" => Some(Self::Int32),
+                "TYPE_FIXED64" => Some(Self::Fixed64),
+                "TYPE_FIXED32" => Some(Self::Fixed32),
+                "TYPE_BOOL" => Some(Self::Bool),
+                "TYPE_STRING" => Some(Self::String),
+                "TYPE_GROUP" => Some(Self::Group),
+                "TYPE_MESSAGE" => Some(Self::Message),
+                "TYPE_BYTES" => Some(Self::Bytes),
+                "TYPE_UINT32" => Some(Self::Uint32),
+                "TYPE_ENUM" => Some(Self::Enum),
+                "TYPE_SFIXED32" => Some(Self::Sfixed32),
+                "TYPE_SFIXED64" => Some(Self::Sfixed64),
+                "TYPE_SINT32" => Some(Self::Sint32),
+                "TYPE_SINT64" => Some(Self::Sint64),
+                _ => None,
+            }
+        }
     }
     #[derive(
         Clone,
@@ -282,6 +306,15 @@ pub mod field_descriptor_proto {
                 Label::Optional => "LABEL_OPTIONAL",
                 Label::Required => "LABEL_REQUIRED",
                 Label::Repeated => "LABEL_REPEATED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "LABEL_OPTIONAL" => Some(Self::Optional),
+                "LABEL_REQUIRED" => Some(Self::Required),
+                "LABEL_REPEATED" => Some(Self::Repeated),
+                _ => None,
             }
         }
     }
@@ -561,6 +594,15 @@ pub mod file_options {
                 OptimizeMode::LiteRuntime => "LITE_RUNTIME",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "SPEED" => Some(Self::Speed),
+                "CODE_SIZE" => Some(Self::CodeSize),
+                "LITE_RUNTIME" => Some(Self::LiteRuntime),
+                _ => None,
+            }
+        }
     }
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -737,6 +779,15 @@ pub mod field_options {
                 CType::StringPiece => "STRING_PIECE",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "STRING" => Some(Self::String),
+                "CORD" => Some(Self::Cord),
+                "STRING_PIECE" => Some(Self::StringPiece),
+                _ => None,
+            }
+        }
     }
     #[derive(
         Clone,
@@ -768,6 +819,15 @@ pub mod field_options {
                 JsType::JsNormal => "JS_NORMAL",
                 JsType::JsString => "JS_STRING",
                 JsType::JsNumber => "JS_NUMBER",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "JS_NORMAL" => Some(Self::JsNormal),
+                "JS_STRING" => Some(Self::JsString),
+                "JS_NUMBER" => Some(Self::JsNumber),
+                _ => None,
             }
         }
     }
@@ -876,6 +936,15 @@ pub mod method_options {
                 IdempotencyLevel::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
                 IdempotencyLevel::NoSideEffects => "NO_SIDE_EFFECTS",
                 IdempotencyLevel::Idempotent => "IDEMPOTENT",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "IDEMPOTENCY_UNKNOWN" => Some(Self::IdempotencyUnknown),
+                "NO_SIDE_EFFECTS" => Some(Self::NoSideEffects),
+                "IDEMPOTENT" => Some(Self::Idempotent),
+                _ => None,
             }
         }
     }
@@ -1384,6 +1453,31 @@ pub mod field {
                 Kind::TypeSint64 => "TYPE_SINT64",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNKNOWN" => Some(Self::TypeUnknown),
+                "TYPE_DOUBLE" => Some(Self::TypeDouble),
+                "TYPE_FLOAT" => Some(Self::TypeFloat),
+                "TYPE_INT64" => Some(Self::TypeInt64),
+                "TYPE_UINT64" => Some(Self::TypeUint64),
+                "TYPE_INT32" => Some(Self::TypeInt32),
+                "TYPE_FIXED64" => Some(Self::TypeFixed64),
+                "TYPE_FIXED32" => Some(Self::TypeFixed32),
+                "TYPE_BOOL" => Some(Self::TypeBool),
+                "TYPE_STRING" => Some(Self::TypeString),
+                "TYPE_GROUP" => Some(Self::TypeGroup),
+                "TYPE_MESSAGE" => Some(Self::TypeMessage),
+                "TYPE_BYTES" => Some(Self::TypeBytes),
+                "TYPE_UINT32" => Some(Self::TypeUint32),
+                "TYPE_ENUM" => Some(Self::TypeEnum),
+                "TYPE_SFIXED32" => Some(Self::TypeSfixed32),
+                "TYPE_SFIXED64" => Some(Self::TypeSfixed64),
+                "TYPE_SINT32" => Some(Self::TypeSint32),
+                "TYPE_SINT64" => Some(Self::TypeSint64),
+                _ => None,
+            }
+        }
     }
     /// Whether a field is optional, required, or repeated.
     #[derive(
@@ -1419,6 +1513,16 @@ pub mod field {
                 Cardinality::Optional => "CARDINALITY_OPTIONAL",
                 Cardinality::Required => "CARDINALITY_REQUIRED",
                 Cardinality::Repeated => "CARDINALITY_REPEATED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "CARDINALITY_UNKNOWN" => Some(Self::Unknown),
+                "CARDINALITY_OPTIONAL" => Some(Self::Optional),
+                "CARDINALITY_REQUIRED" => Some(Self::Required),
+                "CARDINALITY_REPEATED" => Some(Self::Repeated),
+                _ => None,
             }
         }
     }
@@ -1493,6 +1597,14 @@ impl Syntax {
         match self {
             Syntax::Proto2 => "SYNTAX_PROTO2",
             Syntax::Proto3 => "SYNTAX_PROTO3",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SYNTAX_PROTO2" => Some(Self::Proto2),
+            "SYNTAX_PROTO3" => Some(Self::Proto3),
+            _ => None,
         }
     }
 }
@@ -2070,6 +2182,13 @@ impl NullValue {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             NullValue::NullValue => "NULL_VALUE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "NULL_VALUE" => Some(Self::NullValue),
+            _ => None,
         }
     }
 }
