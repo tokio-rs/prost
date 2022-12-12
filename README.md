@@ -67,7 +67,7 @@ instructions for `protoc` please check out the [protobuf install] instructions.
 
 ### Packages
 
-Prost can now generate code for `.proto` files that don't have a package spec. 
+Prost can now generate code for `.proto` files that don't have a package spec.
 `prost` will translate the Protobuf package into
 a Rust module. For example, given the `package` specifier:
 
@@ -139,7 +139,7 @@ enum PhoneType {
 }
 ```
 
-gets this corresponding Rust enum [1]:
+gets this corresponding Rust enum [^1]:
 
 ```rust,ignore
 pub enum PhoneType {
@@ -148,6 +148,8 @@ pub enum PhoneType {
     Work = 2,
 }
 ```
+
+[^1]: Annotations have been elided for clarity. See below for a full example.
 
 You can convert a `PhoneType` value to an `i32` by doing:
 
@@ -191,7 +193,7 @@ message PhoneNumber {
 }
 ```
 
-will become the following Rust type [1] with methods `type` and `set_type`:
+will become the following Rust type [^2] with methods `type` and `set_type`:
 
 ```rust,ignore
 pub struct PhoneNumber {
@@ -212,7 +214,7 @@ The `enum` type isn't used directly as a field, because the Protobuf spec
 mandates that enumerations values are 'open', and decoding unrecognized
 enumeration values must be possible.
 
-[1] Annotations have been elided for clarity. See below for a full example.
+[^2]: Annotations have been elided for clarity. See below for a full example.
 
 #### Field Modifiers
 
@@ -264,7 +266,7 @@ message Foo {
 }
 ```
 
-generates the following Rust[1]:
+generates the following Rust[^3]:
 
 ```rust,ignore
 pub struct Foo {
@@ -280,7 +282,7 @@ pub mod foo {
 
 `oneof` fields are always wrapped in an `Option`.
 
-[1] Annotations have been elided for clarity. See below for a full example.
+[^3]: Annotations have been elided for clarity. See below for a full example.
 
 ### Services
 
@@ -492,6 +494,6 @@ configured with the required dependencies to compile the whole project.
 
 `prost` is distributed under the terms of the Apache License (Version 2.0).
 
-See [LICENSE](LICENSE) for details.
+See [LICENSE](https://github.com/tokio-rs/prost/blob/master/LICENSE) for details.
 
 Copyright 2022 Dan Burkert & Tokio Contributors
