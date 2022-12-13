@@ -1,11 +1,13 @@
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileDescriptorSet {
     #[prost(message, repeated, tag = "1")]
     pub file: ::prost::alloc::vec::Vec<FileDescriptorProto>,
 }
 /// Describes a complete .proto file.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
@@ -47,6 +49,7 @@ pub struct FileDescriptorProto {
     pub syntax: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Describes a message type.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -74,6 +77,7 @@ pub struct DescriptorProto {
 }
 /// Nested message and enum types in `DescriptorProto`.
 pub mod descriptor_proto {
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ExtensionRange {
         /// Inclusive.
@@ -88,6 +92,7 @@ pub mod descriptor_proto {
     /// Range of reserved tag numbers. Reserved tag numbers may not be used by
     /// fields or extension ranges in the same message. Reserved ranges may
     /// not overlap.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ReservedRange {
         /// Inclusive.
@@ -98,6 +103,7 @@ pub mod descriptor_proto {
         pub end: ::core::option::Option<i32>,
     }
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExtensionRangeOptions {
     /// The parser stores options it doesn't recognize here. See above.
@@ -105,6 +111,7 @@ pub struct ExtensionRangeOptions {
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 /// Describes a field within a message.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldDescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -246,6 +253,30 @@ pub mod field_descriptor_proto {
                 Type::Sint64 => "TYPE_SINT64",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_DOUBLE" => Some(Self::Double),
+                "TYPE_FLOAT" => Some(Self::Float),
+                "TYPE_INT64" => Some(Self::Int64),
+                "TYPE_UINT64" => Some(Self::Uint64),
+                "TYPE_INT32" => Some(Self::Int32),
+                "TYPE_FIXED64" => Some(Self::Fixed64),
+                "TYPE_FIXED32" => Some(Self::Fixed32),
+                "TYPE_BOOL" => Some(Self::Bool),
+                "TYPE_STRING" => Some(Self::String),
+                "TYPE_GROUP" => Some(Self::Group),
+                "TYPE_MESSAGE" => Some(Self::Message),
+                "TYPE_BYTES" => Some(Self::Bytes),
+                "TYPE_UINT32" => Some(Self::Uint32),
+                "TYPE_ENUM" => Some(Self::Enum),
+                "TYPE_SFIXED32" => Some(Self::Sfixed32),
+                "TYPE_SFIXED64" => Some(Self::Sfixed64),
+                "TYPE_SINT32" => Some(Self::Sint32),
+                "TYPE_SINT64" => Some(Self::Sint64),
+                _ => None,
+            }
+        }
     }
     #[derive(
         Clone,
@@ -277,9 +308,19 @@ pub mod field_descriptor_proto {
                 Label::Repeated => "LABEL_REPEATED",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "LABEL_OPTIONAL" => Some(Self::Optional),
+                "LABEL_REQUIRED" => Some(Self::Required),
+                "LABEL_REPEATED" => Some(Self::Repeated),
+                _ => None,
+            }
+        }
     }
 }
 /// Describes a oneof.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OneofDescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -288,6 +329,7 @@ pub struct OneofDescriptorProto {
     pub options: ::core::option::Option<OneofOptions>,
 }
 /// Describes an enum type.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumDescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -316,6 +358,7 @@ pub mod enum_descriptor_proto {
     /// Note that this is distinct from DescriptorProto.ReservedRange in that it
     /// is inclusive such that it can appropriately represent the entire int32
     /// domain.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct EnumReservedRange {
         /// Inclusive.
@@ -327,6 +370,7 @@ pub mod enum_descriptor_proto {
     }
 }
 /// Describes a value within an enum.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValueDescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -337,6 +381,7 @@ pub struct EnumValueDescriptorProto {
     pub options: ::core::option::Option<EnumValueOptions>,
 }
 /// Describes a service.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceDescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -347,6 +392,7 @@ pub struct ServiceDescriptorProto {
     pub options: ::core::option::Option<ServiceOptions>,
 }
 /// Describes a method of a service.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MethodDescriptorProto {
     #[prost(string = "stdstring", optional, tag = "1")]
@@ -395,6 +441,7 @@ pub struct MethodDescriptorProto {
 ///   <https://developers.google.com/protocol-buffers/docs/proto#options>
 ///   If this turns out to be popular, a web service will be set up
 ///   to automatically assign option numbers.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileOptions {
     /// Sets the Java package where classes generated from this .proto will be
@@ -547,8 +594,18 @@ pub mod file_options {
                 OptimizeMode::LiteRuntime => "LITE_RUNTIME",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "SPEED" => Some(Self::Speed),
+                "CODE_SIZE" => Some(Self::CodeSize),
+                "LITE_RUNTIME" => Some(Self::LiteRuntime),
+                _ => None,
+            }
+        }
     }
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessageOptions {
     /// Set true to use the old proto1 MessageSet wire format for extensions.
@@ -609,6 +666,7 @@ pub struct MessageOptions {
     #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
@@ -721,6 +779,15 @@ pub mod field_options {
                 CType::StringPiece => "STRING_PIECE",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "STRING" => Some(Self::String),
+                "CORD" => Some(Self::Cord),
+                "STRING_PIECE" => Some(Self::StringPiece),
+                _ => None,
+            }
+        }
     }
     #[derive(
         Clone,
@@ -754,14 +821,25 @@ pub mod field_options {
                 JsType::JsNumber => "JS_NUMBER",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "JS_NORMAL" => Some(Self::JsNormal),
+                "JS_STRING" => Some(Self::JsString),
+                "JS_NUMBER" => Some(Self::JsNumber),
+                _ => None,
+            }
+        }
     }
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
     #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumOptions {
     /// Set this option to true to allow mapping different tag names to the same
@@ -778,6 +856,7 @@ pub struct EnumOptions {
     #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValueOptions {
     /// Is this enum value deprecated?
@@ -790,6 +869,7 @@ pub struct EnumValueOptions {
     #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceOptions {
     /// Is this service deprecated?
@@ -802,6 +882,7 @@ pub struct ServiceOptions {
     #[prost(message, repeated, tag = "999")]
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MethodOptions {
     /// Is this method deprecated?
@@ -857,6 +938,15 @@ pub mod method_options {
                 IdempotencyLevel::Idempotent => "IDEMPOTENT",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "IDEMPOTENCY_UNKNOWN" => Some(Self::IdempotencyUnknown),
+                "NO_SIDE_EFFECTS" => Some(Self::NoSideEffects),
+                "IDEMPOTENT" => Some(Self::Idempotent),
+                _ => None,
+            }
+        }
     }
 }
 /// A message representing a option the parser does not recognize. This only
@@ -865,6 +955,7 @@ pub mod method_options {
 /// options protos in descriptor objects (e.g. returned by Descriptor::options(),
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UninterpretedOption {
     #[prost(message, repeated, tag = "2")]
@@ -891,6 +982,7 @@ pub mod uninterpreted_option {
     /// extension (denoted with parentheses in options specs in .proto files).
     /// E.g.,{ \["foo", false\], \["bar.baz", true\], \["qux", false\] } represents
     /// "foo.(bar.baz).qux".
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct NamePart {
         #[prost(string = "stdstring", required, tag = "1")]
@@ -901,6 +993,7 @@ pub mod uninterpreted_option {
 }
 /// Encapsulates information about the original source file from which a
 /// FileDescriptorProto was generated.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SourceCodeInfo {
     /// A Location identifies a piece of source code in a .proto file which
@@ -952,6 +1045,7 @@ pub struct SourceCodeInfo {
 }
 /// Nested message and enum types in `SourceCodeInfo`.
 pub mod source_code_info {
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Location {
         /// Identifies which part of the FileDescriptorProto was defined at this
@@ -1046,6 +1140,7 @@ pub mod source_code_info {
 /// Describes the relationship between generated code and its original source
 /// file. A GeneratedCodeInfo message is associated with only one generated
 /// source file, but may contain references to different source .proto files.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GeneratedCodeInfo {
     /// An Annotation connects some span of text in generated code to an element
@@ -1055,6 +1150,7 @@ pub struct GeneratedCodeInfo {
 }
 /// Nested message and enum types in `GeneratedCodeInfo`.
 pub mod generated_code_info {
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Annotation {
         /// Identifies the element in the original source .proto file. This field
@@ -1168,6 +1264,7 @@ pub mod generated_code_info {
 ///    "value": "1.212s"
 /// }
 /// ```
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Any {
     /// A URL/resource name that uniquely identifies the type of the serialized
@@ -1205,6 +1302,7 @@ pub struct Any {
 }
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SourceContext {
     /// The path-qualified name of the .proto file that contained the associated
@@ -1213,6 +1311,7 @@ pub struct SourceContext {
     pub file_name: ::prost::alloc::string::String,
 }
 /// A protocol buffer message type.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Type {
     /// The fully qualified message name.
@@ -1235,6 +1334,7 @@ pub struct Type {
     pub syntax: i32,
 }
 /// A single field of a message type.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Field {
     /// The field type.
@@ -1353,6 +1453,31 @@ pub mod field {
                 Kind::TypeSint64 => "TYPE_SINT64",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNKNOWN" => Some(Self::TypeUnknown),
+                "TYPE_DOUBLE" => Some(Self::TypeDouble),
+                "TYPE_FLOAT" => Some(Self::TypeFloat),
+                "TYPE_INT64" => Some(Self::TypeInt64),
+                "TYPE_UINT64" => Some(Self::TypeUint64),
+                "TYPE_INT32" => Some(Self::TypeInt32),
+                "TYPE_FIXED64" => Some(Self::TypeFixed64),
+                "TYPE_FIXED32" => Some(Self::TypeFixed32),
+                "TYPE_BOOL" => Some(Self::TypeBool),
+                "TYPE_STRING" => Some(Self::TypeString),
+                "TYPE_GROUP" => Some(Self::TypeGroup),
+                "TYPE_MESSAGE" => Some(Self::TypeMessage),
+                "TYPE_BYTES" => Some(Self::TypeBytes),
+                "TYPE_UINT32" => Some(Self::TypeUint32),
+                "TYPE_ENUM" => Some(Self::TypeEnum),
+                "TYPE_SFIXED32" => Some(Self::TypeSfixed32),
+                "TYPE_SFIXED64" => Some(Self::TypeSfixed64),
+                "TYPE_SINT32" => Some(Self::TypeSint32),
+                "TYPE_SINT64" => Some(Self::TypeSint64),
+                _ => None,
+            }
+        }
     }
     /// Whether a field is optional, required, or repeated.
     #[derive(
@@ -1390,9 +1515,20 @@ pub mod field {
                 Cardinality::Repeated => "CARDINALITY_REPEATED",
             }
         }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "CARDINALITY_UNKNOWN" => Some(Self::Unknown),
+                "CARDINALITY_OPTIONAL" => Some(Self::Optional),
+                "CARDINALITY_REQUIRED" => Some(Self::Required),
+                "CARDINALITY_REPEATED" => Some(Self::Repeated),
+                _ => None,
+            }
+        }
     }
 }
 /// Enum type definition.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Enum {
     /// Enum type name.
@@ -1412,6 +1548,7 @@ pub struct Enum {
     pub syntax: i32,
 }
 /// Enum value definition.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValue {
     /// Enum value name.
@@ -1426,6 +1563,7 @@ pub struct EnumValue {
 }
 /// A protocol buffer option, which can be attached to a message, field,
 /// enumeration, etc.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Option {
     /// The option's name. For protobuf built-in options (options defined in
@@ -1461,6 +1599,14 @@ impl Syntax {
             Syntax::Proto3 => "SYNTAX_PROTO3",
         }
     }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SYNTAX_PROTO2" => Some(Self::Proto2),
+            "SYNTAX_PROTO3" => Some(Self::Proto3),
+            _ => None,
+        }
+    }
 }
 /// Api is a light-weight descriptor for an API Interface.
 ///
@@ -1471,6 +1617,7 @@ impl Syntax {
 /// sometimes simply referred to as "APIs" in other contexts, such as the name of
 /// this message itself. See <https://cloud.google.com/apis/design/glossary> for
 /// detailed terminology.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Api {
     /// The fully qualified name of this interface, including package name
@@ -1516,6 +1663,7 @@ pub struct Api {
     pub syntax: i32,
 }
 /// Method represents a method of an API interface.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Method {
     /// The simple name of this method.
@@ -1628,6 +1776,7 @@ pub struct Method {
 ///    ...
 /// }
 /// ```
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
@@ -1702,6 +1851,7 @@ pub struct Mixin {
 /// encoded in JSON format as "3s", while 3 seconds and 1 nanosecond should
 /// be expressed in JSON format as "3.000000001s", and 3 seconds and 1
 /// microsecond should be expressed in JSON format as "3.000001s".
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
@@ -1940,6 +2090,7 @@ pub struct Duration {
 /// The implementation of any API method which has a FieldMask type field in the
 /// request should verify the included field paths, and return an
 /// `INVALID_ARGUMENT` error if any path is unmappable.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldMask {
     /// The set of field mask paths.
@@ -1954,6 +2105,7 @@ pub struct FieldMask {
 /// with the proto support for the language.
 ///
 /// The JSON representation for `Struct` is JSON object.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Struct {
     /// Unordered map of dynamically typed values.
@@ -1969,6 +2121,7 @@ pub struct Struct {
 /// variants. Absence of any variant indicates an error.
 ///
 /// The JSON representation for `Value` is JSON value.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Value {
     /// The kind of value.
@@ -1978,6 +2131,7 @@ pub struct Value {
 /// Nested message and enum types in `Value`.
 pub mod value {
     /// The kind of value.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Kind {
         /// Represents a null value.
@@ -2003,6 +2157,7 @@ pub mod value {
 /// `ListValue` is a wrapper around a repeated field of values.
 ///
 /// The JSON representation for `ListValue` is JSON array.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListValue {
     /// Repeated field of dynamically typed values.
@@ -2027,6 +2182,13 @@ impl NullValue {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             NullValue::NullValue => "NULL_VALUE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "NULL_VALUE" => Some(Self::NullValue),
+            _ => None,
         }
     }
 }
@@ -2129,6 +2291,7 @@ impl NullValue {
 /// \[`strftime`\](<https://docs.python.org/2/library/time.html#time.strftime>) with
 /// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
 /// the Joda Time's \[`ISODateTimeFormat.dateTime()`\](<http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D>) to obtain a formatter capable of generating timestamps in this format.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch

@@ -1,4 +1,5 @@
 /// The version number of protocol compiler.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Version {
     #[prost(int32, optional, tag = "1")]
@@ -13,6 +14,7 @@ pub struct Version {
     pub suffix: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
@@ -44,6 +46,7 @@ pub struct CodeGeneratorRequest {
     pub compiler_version: ::core::option::Option<Version>,
 }
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CodeGeneratorResponse {
     /// Error message.  If non-empty, code generation failed.  The plugin process
@@ -66,6 +69,7 @@ pub struct CodeGeneratorResponse {
 /// Nested message and enum types in `CodeGeneratorResponse`.
 pub mod code_generator_response {
     /// Represents a single generated file.
+    #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct File {
         /// The file name, relative to the output directory.  The name must not
@@ -155,6 +159,14 @@ pub mod code_generator_response {
             match self {
                 Feature::None => "FEATURE_NONE",
                 Feature::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "FEATURE_NONE" => Some(Self::None),
+                "FEATURE_PROTO3_OPTIONAL" => Some(Self::Proto3Optional),
+                _ => None,
             }
         }
     }
