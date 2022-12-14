@@ -769,7 +769,7 @@ macro_rules! length_delimited {
             B: Buf,
         {
             check_wire_type(WireType::LengthDelimited, wire_type)?;
-            let mut value = Default::default();
+            let mut value = crate::encoding::sealed::Newable::new();
             merge(wire_type, &mut value, buf, ctx)?;
             values.push(value);
             Ok(())
@@ -873,12 +873,13 @@ pub mod string {
     }
 }
 
-pub trait BytesAdapter: sealed::BytesAdapter {}
+pub trait BytesAdapter: sealed::BytesAdapter + sealed::Newable {}
+
 
 mod sealed {
     use super::{Buf, BufMut};
 
-    pub trait BytesAdapter: Default + Sized + 'static {
+    pub trait BytesAdapter: Sized + 'static {
         fn len(&self) -> usize;
 
         /// Replace contents of this buffer with the contents of another buffer.
@@ -895,9 +896,22 @@ mod sealed {
             self.len() == 0
         }
     }
+
+    /// Alternate to `Default` as this is not (yet?) implemented over [T; N]
+    /// (and cannot be automatic as `Default` _is_ implemented for N < 32)
+    pub trait Newable: Sized {
+        fn new() -> Self;
+    }
+
 }
 
 impl BytesAdapter for Bytes {}
+
+impl sealed::Newable for Bytes {
+    fn new() -> Self {
+        Default::default()
+    }
+}
 
 impl sealed::BytesAdapter for Bytes {
     fn len(&self) -> usize {
@@ -921,7 +935,14 @@ impl sealed::BytesAdapter for Bytes {
 
 impl BytesAdapter for Vec<u8> {}
 
+impl sealed::Newable for Vec<u8>  {
+    fn new() -> Self {
+        Default::default()
+    }
+}
+
 impl sealed::BytesAdapter for Vec<u8> {
+
     fn len(&self) -> usize {
         Vec::len(self)
     }
@@ -940,6 +961,41 @@ impl sealed::BytesAdapter for Vec<u8> {
         B: BufMut,
     {
         buf.put(self.as_slice())
+    }
+}
+
+impl <const N: usize> BytesAdapter for [u8; N] {}
+
+impl <const N: usize> sealed::Newable for [u8; N]  {
+    fn new() -> Self {
+        [0u8; N]
+    }
+}
+
+impl <const N: usize> sealed::BytesAdapter for [u8; N]  {
+
+    fn len(&self) -> usize {
+        N
+    }
+
+    fn replace_with<B>(&mut self, buf: B)
+    where
+        B: Buf,
+    {
+        self.copy_from_slice(buf.chunk())
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(&self[..])
+    }
+}
+
+impl sealed::Newable for String {
+    fn new() -> Self {
+        Default::default()
     }
 }
 
