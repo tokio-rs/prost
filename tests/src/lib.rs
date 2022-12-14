@@ -37,6 +37,8 @@ mod debug;
 #[cfg(test)]
 mod deprecated_field;
 #[cfg(test)]
+mod derive_const;
+#[cfg(test)]
 mod generic_derive;
 #[cfg(test)]
 mod message_encoding;
@@ -44,8 +46,6 @@ mod message_encoding;
 mod no_unused_results;
 #[cfg(test)]
 mod well_known_types;
-#[cfg(test)]
-mod derive_const;
 
 pub mod foo {
     pub mod bar_baz {

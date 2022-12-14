@@ -875,7 +875,6 @@ pub mod string {
 
 pub trait BytesAdapter: sealed::BytesAdapter + sealed::Newable {}
 
-
 mod sealed {
     use super::{Buf, BufMut};
 
@@ -902,7 +901,6 @@ mod sealed {
     pub trait Newable: Sized {
         fn new() -> Self;
     }
-
 }
 
 impl BytesAdapter for Bytes {}
@@ -935,14 +933,13 @@ impl sealed::BytesAdapter for Bytes {
 
 impl BytesAdapter for Vec<u8> {}
 
-impl sealed::Newable for Vec<u8>  {
+impl sealed::Newable for Vec<u8> {
     fn new() -> Self {
         Default::default()
     }
 }
 
 impl sealed::BytesAdapter for Vec<u8> {
-
     fn len(&self) -> usize {
         Vec::len(self)
     }
@@ -964,16 +961,15 @@ impl sealed::BytesAdapter for Vec<u8> {
     }
 }
 
-impl <const N: usize> BytesAdapter for [u8; N] {}
+impl<const N: usize> BytesAdapter for [u8; N] {}
 
-impl <const N: usize> sealed::Newable for [u8; N]  {
+impl<const N: usize> sealed::Newable for [u8; N] {
     fn new() -> Self {
         [0u8; N]
     }
 }
 
-impl <const N: usize> sealed::BytesAdapter for [u8; N]  {
-
+impl<const N: usize> sealed::BytesAdapter for [u8; N] {
     fn len(&self) -> usize {
         N
     }

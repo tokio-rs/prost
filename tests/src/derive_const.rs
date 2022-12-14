@@ -10,9 +10,7 @@ pub struct TestArray {
 
 #[test]
 fn encode_decode_const_array() {
-    let t = TestArray {
-        b: [1, 2, 3],
-    };
+    let t = TestArray { b: [1, 2, 3] };
 
     let buff = t.encode_to_vec();
 
