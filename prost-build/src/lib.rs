@@ -1529,17 +1529,23 @@ mod tests {
             .message_attribute(".", "#[derive(derive_builder::Builder)]")
             .enum_attribute(".", "#[some_enum_attr(u8)]")
             .compile_protos(
-                &[
-                    "src/fixtures/helloworld/hello.proto",
-                ],
+                &["src/fixtures/helloworld/hello.proto"],
                 &["src/fixtures/helloworld"],
             )
             .unwrap();
 
-        let out_file = out_dir.join("helloworld.rs").as_path().display().to_string();
+        let out_file = out_dir
+            .join("helloworld.rs")
+            .as_path()
+            .display()
+            .to_string();
         let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs");
         let content = read_all_content(&out_file);
-        assert_eq!(expected_content, content, "Unexpected content: \n{}", content);
+        assert_eq!(
+            expected_content, content,
+            "Unexpected content: \n{}",
+            content
+        );
     }
 
     #[test]
