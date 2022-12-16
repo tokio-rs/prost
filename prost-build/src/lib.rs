@@ -1539,7 +1539,8 @@ mod tests {
             .as_path()
             .display()
             .to_string();
-        let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs").replace("\r\n", "\n");
+        let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
+            .replace("\r\n", "\n");
         let content = read_all_content(&out_file).replace("\r\n", "\n");
         assert_eq!(
             expected_content, content,
