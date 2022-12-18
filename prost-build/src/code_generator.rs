@@ -183,6 +183,8 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
         self.push_indent();
+        self.buf
+            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Message)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
@@ -535,6 +537,8 @@ impl<'a> CodeGenerator<'a> {
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
         self.push_indent();
+        self.buf
+            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
@@ -725,6 +729,38 @@ impl<'a> CodeGenerator<'a> {
         self.depth -= 1;
         self.push_indent();
         self.buf.push_str("}\n"); // End of as_str_name()
+
+        self.push_indent();
+        self.buf
+            .push_str("/// Creates an enum from field names used in the ProtoBuf definition.\n");
+
+        self.push_indent();
+        self.buf
+            .push_str("pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {\n");
+        self.depth += 1;
+
+        self.push_indent();
+        self.buf.push_str("match value {\n");
+        self.depth += 1;
+
+        for variant in variant_mappings.iter() {
+            self.push_indent();
+            self.buf.push_str("\"");
+            self.buf.push_str(variant.proto_name);
+            self.buf.push_str("\" => Some(Self::");
+            self.buf.push_str(&variant.generated_variant_name);
+            self.buf.push_str("),\n");
+        }
+        self.push_indent();
+        self.buf.push_str("_ => None,\n");
+
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n"); // End of match
+
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n"); // End of from_str_name()
 
         self.path.pop();
         self.depth -= 1;
@@ -1059,11 +1095,11 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     p += 1;
                 }
                 b'0'..=b'7' => {
-                    eprintln!("another octal: {}, offset: {}", s, &s[p..]);
+                    debug!("another octal: {}, offset: {}", s, &s[p..]);
                     let mut octal = 0;
                     for _ in 0..3 {
                         if p < len && src[p] >= b'0' && src[p] <= b'7' {
-                            eprintln!("\toctal: {}", octal);
+                            debug!("\toctal: {}", octal);
                             octal = octal * 8 + (src[p] - b'0');
                             p += 1;
                         } else {

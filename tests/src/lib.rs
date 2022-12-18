@@ -551,6 +551,34 @@ mod tests {
     }
 
     #[test]
+    fn test_enum_from_string() {
+        use default_enum_value::{ERemoteClientBroadcastMsg, PrivacyLevel};
+
+        assert_eq!(
+            Some(PrivacyLevel::One),
+            PrivacyLevel::from_str_name("PRIVACY_LEVEL_ONE")
+        );
+        assert_eq!(
+            Some(PrivacyLevel::Two),
+            PrivacyLevel::from_str_name("PRIVACY_LEVEL_TWO")
+        );
+        assert_eq!(
+            Some(PrivacyLevel::PrivacyLevelThree),
+            PrivacyLevel::from_str_name("PRIVACY_LEVEL_PRIVACY_LEVEL_THREE")
+        );
+        assert_eq!(
+            Some(PrivacyLevel::PrivacyLevelprivacyLevelFour),
+            PrivacyLevel::from_str_name("PRIVACY_LEVELPRIVACY_LEVEL_FOUR")
+        );
+        assert_eq!(None, PrivacyLevel::from_str_name("PRIVACY_LEVEL_FIVE"));
+
+        assert_eq!(
+            Some(ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery),
+            ERemoteClientBroadcastMsg::from_str_name("k_ERemoteClientBroadcastMsgDiscovery")
+        );
+    }
+
+    #[test]
     fn test_default_string_escape() {
         let msg = default_string_escape::Person::default();
         assert_eq!(msg.name, r#"["unknown"]"#);

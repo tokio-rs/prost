@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.11.2")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.11.4")]
 #![allow(clippy::option_as_ref_deref, clippy::format_push_string)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -138,6 +138,7 @@ use std::ops::RangeToInclusive;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use log::debug;
 use log::trace;
 
 use prost::Message;
@@ -927,7 +928,7 @@ impl Config {
                 if include.as_ref().exists() {
                     cmd.arg("-I").arg(include.as_ref());
                 } else {
-                    println!(
+                    debug!(
                         "ignoring {} since it does not exist.",
                         include.as_ref().display()
                     )
@@ -948,7 +949,7 @@ impl Config {
                 cmd.arg(proto.as_ref());
             }
 
-            println!("Running: {:?}", cmd);
+            debug!("Running: {:?}", cmd);
 
             let output = cmd.output().map_err(|error| {
                 Error::new(
@@ -1157,8 +1158,8 @@ impl Config {
 
     #[cfg(feature = "format")]
     fn fmt_modules(&mut self, modules: &mut HashMap<Module, String>) {
-        for (_, buf) in modules {
-            let file = syn::parse_file(&buf).unwrap();
+        for buf in modules.values_mut() {
+            let file = syn::parse_file(buf).unwrap();
             let formatted = prettyplease::unparse(&file);
             *buf = formatted;
         }
@@ -1353,7 +1354,7 @@ pub fn protoc_from_env() -> PathBuf {
     let os_specific_hint = if cfg!(target_os = "macos") {
         "You could try running `brew install protobuf` or downloading it from https://github.com/protocolbuffers/protobuf/releases"
     } else if cfg!(target_os = "linux") {
-        "If you're on debian, try `apt-get install protobuf3-compiler` or download it from https://github.com/protocolbuffers/protobuf/releases"
+        "If you're on debian, try `apt-get install protobuf-compiler` or download it from https://github.com/protocolbuffers/protobuf/releases"
     } else {
         "You can download it from https://github.com/protocolbuffers/protobuf/releases or from your package manager."
     };
@@ -1603,6 +1604,6 @@ mod tests {
         let mut f = File::open(filepath).unwrap();
         let mut content = String::new();
         f.read_to_string(&mut content).unwrap();
-        return content;
+        content
     }
 }

@@ -29,39 +29,39 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-  minversions:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v3
-      - name: cargo update -Zminimal-versions
-        uses: actions-rs/cargo@v1
-        with:
-          command: update
-          toolchain: nightly
-          args: -Zminimal-versions
-      - name: cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --workspace --all-targets
-          toolchain: stable
+# Disabled because downstream crates don't check this as well
+#   minversions:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions-rs/toolchain@v1
+#         with:
+#           profile: minimal
+#           toolchain: nightly
+#       - uses: actions-rs/toolchain@v1
+#         with:
+#           profile: minimal
+#           toolchain: stable
+#       - uses: actions/checkout@v3
+#         with:
+#           submodules: recursive
+#       - name: Install Protoc
+#         uses: arduino/setup-protoc@v1
+#         with:
+#           repo-token: ${{ secrets.GITHUB_TOKEN }}
+#       - name: install ninja
+#         uses: seanmiddleditch/gha-setup-ninja@v3
+#       - name: cargo update -Zminimal-versions
+#         uses: actions-rs/cargo@v1
+#         with:
+#           command: update
+#           toolchain: nightly
+#           args: -Zminimal-versions
+#       - name: cargo check
+#         uses: actions-rs/cargo@v1
+#         with:
+#           command: check
+#           args: --workspace --all-targets
+#           toolchain: stable
 
   test:
     runs-on: ${{ matrix.os }}
