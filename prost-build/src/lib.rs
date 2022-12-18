@@ -664,8 +664,7 @@ impl Config {
 
     /// In combination with with `file_descriptor_set_path`, this can be used to provide a file
     /// descriptor set as an input file, rather than having prost-build generate the file by calling
-    /// protoc.  Prost-build does require that the descriptor set was generated with
-    /// --include_source_info.
+    /// protoc.
     ///
     /// In `build.rs`:
     ///
@@ -1333,12 +1332,16 @@ mod tests {
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
-            service.comments.append_with_indent(0, buf);
+            if let Some(comments) = service.comments {
+                comments.append_with_indent(0, buf);
+            }
             buf.push_str(&format!("trait {} {{\n", &service.name));
 
             // Generate the service methods.
             for method in service.methods {
-                method.comments.append_with_indent(1, buf);
+                if let Some(comments) = method.comments {
+                    comments.append_with_indent(1, buf);
+                }
                 buf.push_str(&format!(
                     "    fn {}(_: {}) -> {};\n",
                     method.name, method.input_type, method.output_type

@@ -134,7 +134,7 @@ pub struct Service {
     /// The package name as it appears in the .proto file.
     pub package: String,
     /// The service comments.
-    pub comments: Comments,
+    pub comments: Option<Comments>,
     /// The service methods.
     pub methods: Vec<Method>,
     /// The service options.
@@ -149,7 +149,7 @@ pub struct Method {
     /// The name of the method as it appears in the .proto file.
     pub proto_name: String,
     /// The method comments.
-    pub comments: Comments,
+    pub comments: Option<Comments>,
     /// The input Rust type.
     pub input_type: String,
     /// The output Rust type.
