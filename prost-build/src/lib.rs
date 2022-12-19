@@ -1332,16 +1332,12 @@ mod tests {
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
-            if let Some(comments) = service.comments {
-                comments.append_with_indent(0, buf);
-            }
+            service.comments.append_with_indent(0, buf);
             buf.push_str(&format!("trait {} {{\n", &service.name));
 
             // Generate the service methods.
             for method in service.methods {
-                if let Some(comments) = method.comments {
-                    comments.append_with_indent(1, buf);
-                }
+                method.comments.append_with_indent(1, buf);
                 buf.push_str(&format!(
                     "    fn {}(_: {}) -> {};\n",
                     method.name, method.input_type, method.output_type

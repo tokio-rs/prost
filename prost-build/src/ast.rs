@@ -5,7 +5,7 @@ use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use regex::Regex;
 
 /// Comments on a Protobuf item.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Comments {
     /// Leading detached blocks of comments.
     pub leading_detached: Vec<Vec<String>>,
@@ -134,7 +134,7 @@ pub struct Service {
     /// The package name as it appears in the .proto file.
     pub package: String,
     /// The service comments.
-    pub comments: Option<Comments>,
+    pub comments: Comments,
     /// The service methods.
     pub methods: Vec<Method>,
     /// The service options.
@@ -149,7 +149,7 @@ pub struct Method {
     /// The name of the method as it appears in the .proto file.
     pub proto_name: String,
     /// The method comments.
-    pub comments: Option<Comments>,
+    pub comments: Comments,
     /// The input Rust type.
     pub input_type: String,
     /// The output Rust type.

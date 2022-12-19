@@ -741,7 +741,10 @@ impl<'a> CodeGenerator<'a> {
         let name = service.name().to_owned();
         debug!("  service: {:?}", name);
 
-        let comments = self.location().map(Comments::from_location);
+        let comments = self
+            .location()
+            .map(Comments::from_location)
+            .unwrap_or_default();
 
         self.path.push(2);
         let methods = service
@@ -752,7 +755,10 @@ impl<'a> CodeGenerator<'a> {
                 debug!("  method: {:?}", method.name());
 
                 self.path.push(idx as i32);
-                let comments = self.location().map(Comments::from_location);
+                let comments = self
+                    .location()
+                    .map(Comments::from_location)
+                    .unwrap_or_default();
                 self.path.pop();
 
                 let name = method.name.take().unwrap();
