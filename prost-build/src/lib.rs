@@ -844,72 +844,93 @@ impl Config {
             tmp.path().join("prost-descriptor-set")
         };
 
-        if !self.skip_protoc_run {
-            let protoc = protoc_from_env();
+        // if !self.skip_protoc_run {
+        //     let protoc = protoc_from_env();
 
-            let mut cmd = Command::new(protoc.clone());
-            cmd.arg("--include_imports")
-                .arg("--include_source_info")
-                .arg("-o")
-                .arg(&file_descriptor_set_path);
+        //     let mut cmd = Command::new(protoc.clone());
+        //     cmd.arg("--include_imports")
+        //         .arg("--include_source_info")
+        //         .arg("-o")
+        //         .arg(&file_descriptor_set_path);
 
-            for include in includes {
-                if include.as_ref().exists() {
-                    cmd.arg("-I").arg(include.as_ref());
-                } else {
-                    debug!(
-                        "ignoring {} since it does not exist.",
-                        include.as_ref().display()
-                    )
-                }
-            }
+        //     for include in includes {
+        //         if include.as_ref().exists() {
+        //             cmd.arg("-I").arg(include.as_ref());
+        //         } else {
+        //             debug!(
+        //                 "ignoring {} since it does not exist.",
+        //                 include.as_ref().display()
+        //             )
+        //         }
+        //     }
 
-            // Set the protoc include after the user includes in case the user wants to
-            // override one of the built-in .protos.
-            if let Some(protoc_include) = protoc_include_from_env() {
-                cmd.arg("-I").arg(protoc_include);
-            }
+        //     // Set the protoc include after the user includes in case the user wants to
+        //     // override one of the built-in .protos.
+        //     if let Some(protoc_include) = protoc_include_from_env() {
+        //         cmd.arg("-I").arg(protoc_include);
+        //     }
 
-            for arg in &self.protoc_args {
-                cmd.arg(arg);
-            }
+        //     for arg in &self.protoc_args {
+        //         cmd.arg(arg);
+        //     }
 
-            for proto in protos {
-                cmd.arg(proto.as_ref());
-            }
+        //     for proto in protos {
+        //         cmd.arg(proto.as_ref());
+        //     }
 
-            debug!("Running: {:?}", cmd);
+        //     debug!("Running: {:?}", cmd);
 
-            let output = cmd.output().map_err(|error| {
-                Error::new(
-                    error.kind(),
-                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
-                )
-            })?;
+        //     let output = cmd.output().map_err(|error| {
+        //         Error::new(
+        //             error.kind(),
+        //             format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
+        //         )
+        //     })?;
 
-            if !output.status.success() {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("protoc failed: {}", String::from_utf8_lossy(&output.stderr)),
-                ));
-            }
-        }
+        //     if !output.status.success() {
+        //         return Err(Error::new(
+        //             ErrorKind::Other,
+        //             format!("protoc failed: {}", String::from_utf8_lossy(&output.stderr)),
+        //         ));
+        //     }
+        // }
+        //
 
-        let buf = fs::read(&file_descriptor_set_path).map_err(|e| {
-            Error::new(
-                e.kind(),
-                format!(
-                    "unable to open file_descriptor_set_path: {:?}, OS: {}",
-                    &file_descriptor_set_path, e
-                ),
-            )
-        })?;
-        let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
-            Error::new(
-                ErrorKind::InvalidInput,
-                format!("invalid FileDescriptorSet: {}", error),
-            )
-        })?;
+        let t = protobuf_parse::Parser::new()
+            .pure()
+            .includes(includes)
+            .inputs(protos)
+            .parse_and_typecheck()
+            .expect("parse_and_typecheck");
+
+        // let buf = fs::read(&file_descriptor_set_path).map_err(|e| {
+        //     Error::new(
+        //         e.kind(),
+        //         format!(
+        //             "unable to open file_descriptor_set_path: {:?}, OS: {}",
+        //             &file_descriptor_set_path, e
+        //         ),
+        //     )
+        // })?;
+        //
+        let file_descriptor_set = FileDescriptorSet {
+            file: t
+                .file_descriptors
+                .into_iter()
+                .map(|fds| {
+                    use protobuf::Message as _;
+                    fds.write_to_bytes().unwrap()
+                })
+                .map(|b| FileDescriptorProto::decode(&*b).unwrap())
+                .collect(),
+        };
+
+        // let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
+        //     Error::new(
+        //         ErrorKind::InvalidInput,
+        //         format!("invalid FileDescriptorSet: {}", error),
+        //     )
+        // })?;
 
         let requests = file_descriptor_set
             .file
