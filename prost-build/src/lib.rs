@@ -664,8 +664,7 @@ impl Config {
 
     /// In combination with with `file_descriptor_set_path`, this can be used to provide a file
     /// descriptor set as an input file, rather than having prost-build generate the file by calling
-    /// protoc.  Prost-build does require that the descriptor set was generated with
-    /// --include_source_info.
+    /// protoc.
     ///
     /// In `build.rs`:
     ///
