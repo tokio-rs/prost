@@ -180,6 +180,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
+        self.append_message_attributes(&fq_message_name);
         self.push_indent();
         self.buf
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
@@ -264,6 +265,24 @@ impl<'a> CodeGenerator<'a> {
     fn append_type_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         for attribute in self.config.type_attributes.get(fq_message_name) {
+            push_indent(self.buf, self.depth);
+            self.buf.push_str(attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_message_attributes(&mut self, fq_message_name: &str) {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        for attribute in self.config.message_attributes.get(fq_message_name) {
+            push_indent(self.buf, self.depth);
+            self.buf.push_str(attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_enum_attributes(&mut self, fq_message_name: &str) {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        for attribute in self.config.enum_attributes.get(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str(attribute);
             self.buf.push('\n');
@@ -504,6 +523,7 @@ impl<'a> CodeGenerator<'a> {
 
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_type_attributes(&oneof_name);
+        self.append_enum_attributes(&oneof_name);
         self.push_indent();
         self.buf
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
@@ -615,6 +635,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_proto_enum_name, None);
         self.append_type_attributes(&fq_proto_enum_name);
+        self.append_enum_attributes(&fq_proto_enum_name);
         self.push_indent();
         self.buf.push_str(
             &format!("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",self.config.prost_path.as_deref().unwrap_or("::prost")),
