@@ -873,54 +873,63 @@ pub mod string {
     }
 }
 
-pub trait BytesAdapter: sealed::BytesAdapter + sealed::Newable {}
+pub trait BytesAdapter: Sized + 'static {
+    /// Create a new instance (required as `Default` is not available for all types)
+    fn new() -> Self;
 
-mod sealed {
-    use super::{Buf, BufMut};
+    fn len(&self) -> usize;
 
-    pub trait BytesAdapter: Sized + 'static {
-        fn len(&self) -> usize;
+    /// Replace contents of this buffer with the contents of another buffer.
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    where
+        B: Buf;
 
-        /// Replace contents of this buffer with the contents of another buffer.
-        fn replace_with<B>(&mut self, buf: B)
-        where
-            B: Buf;
+    /// Appends this buffer to the (contents of) other buffer.
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut;
 
-        /// Appends this buffer to the (contents of) other buffer.
-        fn append_to<B>(&self, buf: &mut B)
-        where
-            B: BufMut;
-
-        fn is_empty(&self) -> bool {
-            self.len() == 0
-        }
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
-    /// Alternate to `Default` as this is not (yet?) implemented over [T; N]
-    /// (and cannot be automatic as `Default` _is_ implemented for N < 32)
+    fn clear(&mut self);
+}
+
+mod sealed {
     pub trait Newable: Sized {
         fn new() -> Self;
     }
-}
 
-impl BytesAdapter for Bytes {}
+    impl<T: super::BytesAdapter> Newable for T {
+        fn new() -> Self {
+            super::BytesAdapter::new()
+        }
+    }
 
-impl sealed::Newable for Bytes {
-    fn new() -> Self {
-        Default::default()
+    impl Newable for String {
+        fn new() -> Self {
+            Default::default()
+        }
     }
 }
 
-impl sealed::BytesAdapter for Bytes {
+impl BytesAdapter for Bytes {
+    fn new() -> Self {
+        Default::default()
+    }
+
     fn len(&self) -> usize {
         Buf::remaining(self)
     }
 
-    fn replace_with<B>(&mut self, mut buf: B)
+    fn replace_with<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
     {
         *self = buf.copy_to_bytes(buf.remaining());
+
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -929,28 +938,30 @@ impl sealed::BytesAdapter for Bytes {
     {
         buf.put(self.clone())
     }
-}
 
-impl BytesAdapter for Vec<u8> {}
-
-impl sealed::Newable for Vec<u8> {
-    fn new() -> Self {
-        Default::default()
+    fn clear(&mut self) {
+        Bytes::clear(self)
     }
 }
 
-impl sealed::BytesAdapter for Vec<u8> {
+impl BytesAdapter for Vec<u8> {
+    fn new() -> Self {
+        Default::default()
+    }
+
     fn len(&self) -> usize {
         Vec::len(self)
     }
 
-    fn replace_with<B>(&mut self, buf: B)
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        self.clear();
+        Vec::clear(self);
         self.reserve(buf.remaining());
         self.put(buf);
+
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -959,26 +970,32 @@ impl sealed::BytesAdapter for Vec<u8> {
     {
         buf.put(self.as_slice())
     }
-}
 
-impl<const N: usize> BytesAdapter for [u8; N] {}
-
-impl<const N: usize> sealed::Newable for [u8; N] {
-    fn new() -> Self {
-        [0u8; N]
+    fn clear(&mut self) {
+        Vec::clear(self)
     }
 }
 
-impl<const N: usize> sealed::BytesAdapter for [u8; N] {
+impl<const N: usize> BytesAdapter for [u8; N] {
+    fn new() -> Self {
+        [0u8; N]
+    }
+
     fn len(&self) -> usize {
         N
     }
 
-    fn replace_with<B>(&mut self, buf: B)
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        self.copy_from_slice(buf.chunk())
+        if buf.remaining() != N {
+            return Err(DecodeError::new("invalid byte array length"));
+        }
+
+        self.copy_from_slice(buf.chunk());
+
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -987,11 +1004,11 @@ impl<const N: usize> sealed::BytesAdapter for [u8; N] {
     {
         buf.put(&self[..])
     }
-}
 
-impl sealed::Newable for String {
-    fn new() -> Self {
-        Default::default()
+    fn clear(&mut self) {
+        for b in &mut self[..] {
+            *b = 0;
+        }
     }
 }
 
@@ -1037,7 +1054,8 @@ pub mod bytes {
         // This is intended for A and B both being Bytes so it is zero-copy.
         // Some combinations of A and B types may cause a double-copy,
         // in which case merge_one_copy() should be used instead.
-        value.replace_with(buf.copy_to_bytes(len));
+        value.replace_with(buf.copy_to_bytes(len))?;
+
         Ok(())
     }
 
@@ -1059,7 +1077,8 @@ pub mod bytes {
         let len = len as usize;
 
         // If we must copy, make sure to copy only once.
-        value.replace_with(buf.take(len));
+        value.replace_with(buf.take(len))?;
+
         Ok(())
     }
 
