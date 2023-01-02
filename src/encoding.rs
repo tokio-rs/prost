@@ -907,7 +907,7 @@ mod sealed {
         }
     }
 
-    impl Newable for String {
+    impl Newable for alloc::string::String {
         fn new() -> Self {
             Default::default()
         }
