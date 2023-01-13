@@ -188,6 +188,7 @@ impl<'a> CodeGenerator<'a> {
             "#[derive(Clone, PartialEq, {}::Message)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
         ));
+        self.append_skip_debug(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -276,6 +277,21 @@ impl<'a> CodeGenerator<'a> {
         for attribute in self.config.message_attributes.get(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str(attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_skip_debug(&mut self, fq_message_name: &str) {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        if self
+            .config
+            .skip_message_debug
+            .get(fq_message_name)
+            .next()
+            .is_some()
+        {
+            push_indent(self.buf, self.depth);
+            self.buf.push_str("#[prost(skip_debug)]");
             self.buf.push('\n');
         }
     }
