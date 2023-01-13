@@ -210,28 +210,28 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
     };
-    let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
-        let wrapper = field.debug(quote!(self.#field_ident));
-        let call = if is_struct {
-            quote!(builder.field(stringify!(#field_ident), &wrapper))
-        } else {
-            quote!(builder.field(&wrapper))
-        };
-        quote! {
-             let builder = {
-                 let wrapper = #wrapper;
-                 #call
-             };
-        }
-    });
-    let debug_builder = if is_struct {
-        quote!(f.debug_struct(stringify!(#ident)))
-    } else {
-        quote!(f.debug_tuple(stringify!(#ident)))
-    };
     let expanded = if skip_debug {
         expanded
     } else {
+        let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
+            let wrapper = field.debug(quote!(self.#field_ident));
+            let call = if is_struct {
+                quote!(builder.field(stringify!(#field_ident), &wrapper))
+            } else {
+                quote!(builder.field(&wrapper))
+            };
+            quote! {
+                 let builder = {
+                     let wrapper = #wrapper;
+                     #call
+                 };
+            }
+        });
+        let debug_builder = if is_struct {
+            quote!(f.debug_struct(stringify!(#ident)))
+        } else {
+            quote!(f.debug_tuple(stringify!(#ident)))
+        };
         quote! {
             #expanded
 
