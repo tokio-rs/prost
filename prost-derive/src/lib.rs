@@ -11,17 +11,28 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Index, Variant,
+    punctuated::Punctuated, Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields,
+    FieldsNamed, FieldsUnnamed, Ident, Index, Variant,
 };
 
 mod field;
 use crate::field::Field;
 
+fn read_skip_debug(attrs: Vec<Attribute>) -> bool {
+    syn::custom_keyword!(skip_debug);
+    attrs.into_iter().any(|a| {
+        let is_prost = a.path.is_ident("prost");
+        let skip = a.parse_args::<skip_debug>();
+        is_prost && skip.is_ok()
+    })
+}
+
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
     let ident = input.ident;
+
+    let skip_debug = read_skip_debug(input.attrs);
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -165,26 +176,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
-        let wrapper = field.debug(quote!(self.#field_ident));
-        let call = if is_struct {
-            quote!(builder.field(stringify!(#field_ident), &wrapper))
-        } else {
-            quote!(builder.field(&wrapper))
-        };
-        quote! {
-             let builder = {
-                 let wrapper = #wrapper;
-                 #call
-             };
-        }
-    });
-    let debug_builder = if is_struct {
-        quote!(f.debug_struct(stringify!(#ident)))
-    } else {
-        quote!(f.debug_tuple(stringify!(#ident)))
-    };
-
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
@@ -223,14 +214,44 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #default
             }
         }
+    };
+    let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
+        let wrapper = field.debug(quote!(self.#field_ident));
+        let call = if is_struct {
+            quote!(builder.field(stringify!(#field_ident), &wrapper))
+        } else {
+            quote!(builder.field(&wrapper))
+        };
+        quote! {
+             let builder = {
+                 let wrapper = #wrapper;
+                 #call
+             };
+        }
+    });
+    let debug_builder = if is_struct {
+        quote!(f.debug_struct(stringify!(#ident)))
+    } else {
+        quote!(f.debug_tuple(stringify!(#ident)))
+    };
+    let expanded = if skip_debug {
+        expanded
+    } else {
+        quote! {
+            #expanded
 
-        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                let mut builder = #debug_builder;
-                #(#debugs;)*
-                builder.finish()
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    let mut builder = #debug_builder;
+                    #(#debugs;)*
+                    builder.finish()
+                }
             }
         }
+    };
+
+    let expanded = quote! {
+        #expanded
 
         #methods
     };
