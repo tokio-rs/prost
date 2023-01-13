@@ -659,8 +659,9 @@ impl<'a> CodeGenerator<'a> {
             "Debug, "
         };
         self.buf.push_str(&format!(
-            "#[derive(Clone, Copy, {dbg}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
-            self.config.prost_path.as_deref().unwrap_or("::prost")
+            "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
+            dbg,
+            self.config.prost_path.as_deref().unwrap_or("::prost"),
         ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
