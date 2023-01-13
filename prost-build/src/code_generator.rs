@@ -281,15 +281,13 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_skip_debug(&mut self, fq_message_name: &str) {
+    fn should_skip_debug(&self, fq_message_name: &str) -> bool {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        if self
-            .config
-            .skip_message_debug
-            .get(fq_message_name)
-            .next()
-            .is_some()
-        {
+        self.config.skip_debug.get(fq_message_name).next().is_some()
+    }
+
+    fn append_skip_debug(&mut self, fq_message_name: &str) {
+        if self.should_skip_debug(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str("#[prost(skip_debug)]");
             self.buf.push('\n');
@@ -548,6 +546,8 @@ impl<'a> CodeGenerator<'a> {
             self.config.prost_path.as_deref().unwrap_or("::prost")
         ));
         self.push_indent();
+        self.append_skip_debug(&fq_message_name);
+        self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
         self.buf.push_str(" {\n");
@@ -653,9 +653,15 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&fq_proto_enum_name);
         self.append_enum_attributes(&fq_proto_enum_name);
         self.push_indent();
-        self.buf.push_str(
-            &format!("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",self.config.prost_path.as_deref().unwrap_or("::prost")),
-        );
+        let dbg = if self.should_skip_debug(&fq_proto_enum_name) {
+            ""
+        } else {
+            "Debug, "
+        };
+        self.buf.push_str(&format!(
+            "#[derive(Clone, Copy, {dbg}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
+            self.config.prost_path.as_deref().unwrap_or("::prost")
+        ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
         self.push_indent();
