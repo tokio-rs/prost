@@ -11,28 +11,23 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields,
-    FieldsNamed, FieldsUnnamed, Ident, Index, Variant,
+    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
+    FieldsUnnamed, Ident, Index, Variant,
 };
 
 mod field;
 use crate::field::Field;
-
-fn read_skip_debug(attrs: Vec<Attribute>) -> bool {
-    syn::custom_keyword!(skip_debug);
-    attrs.into_iter().any(|a| {
-        let is_prost = a.path.is_ident("prost");
-        let skip = a.parse_args::<skip_debug>();
-        is_prost && skip.is_ok()
-    })
-}
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
     let ident = input.ident;
 
-    let skip_debug = read_skip_debug(input.attrs);
+    syn::custom_keyword!(skip_debug);
+    let skip_debug = input
+        .attrs
+        .into_iter()
+        .any(|a| a.path.is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
