@@ -247,6 +247,7 @@ pub struct Config {
     message_attributes: PathMap<String>,
     enum_attributes: PathMap<String>,
     field_attributes: PathMap<String>,
+    boxed: PathMap<()>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
@@ -555,6 +556,27 @@ impl Config {
     {
         self.enum_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    /// Wrap matched fields in a `Box`.
+    ///
+    /// # Arguments
+    ///
+    /// **`path`** - a path matching any number of fields. These fields get the attribute.
+    /// For details about matching fields see [`btree_map`](#method.btree_map).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.boxed(".my_messages.MyMessageType.my_field");
+    /// ```
+    pub fn boxed<P>(&mut self, path: P) -> &mut Self
+    where
+        P: AsRef<str>,
+    {
+        self.boxed.insert(path.as_ref().to_string(), ());
         self
     }
 
@@ -1215,6 +1237,7 @@ impl default::Default for Config {
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
+            boxed: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
@@ -1649,6 +1672,47 @@ mod tests {
             let actual = actual.replace("\r\n", "\n");
             assert_eq!(expected, actual);
         }
+    }
+
+    #[test]
+    fn test_generate_field_attributes() {
+        let _ = env_logger::try_init();
+
+        let out_dir = std::env::temp_dir();
+
+        Config::new()
+            .out_dir(out_dir.clone())
+            .boxed("Container.data.foo")
+            .boxed("Bar.qux")
+            .compile_protos(
+                &["src/fixtures/field_attributes/field_attributes.proto"],
+                &["src/fixtures/field_attributes"],
+            )
+            .unwrap();
+
+        let out_file = out_dir
+            .join("field_attributes.rs")
+            .as_path()
+            .display()
+            .to_string();
+
+        let content = read_all_content(&out_file).replace("\r\n", "\n");
+
+        #[cfg(feature = "format")]
+        let expected_content = read_all_content(
+            "src/fixtures/field_attributes/_expected_field_attributes_formatted.rs",
+        )
+        .replace("\r\n", "\n");
+        #[cfg(not(feature = "format"))]
+        let expected_content =
+            read_all_content("src/fixtures/field_attributes/_expected_field_attributes.rs")
+                .replace("\r\n", "\n");
+
+        assert_eq!(
+            expected_content, content,
+            "Unexpected content: \n{}",
+            content
+        );
     }
 
     #[test]
