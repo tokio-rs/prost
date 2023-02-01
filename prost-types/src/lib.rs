@@ -104,7 +104,7 @@ impl TryFrom<Duration> for time::Duration {
     /// Converts a `Duration` to a `std::time::Duration`, failing if the duration is negative.
     fn try_from(mut duration: Duration) -> Result<time::Duration, DurationError> {
         duration.normalize();
-        if duration.seconds >= 0 {
+        if duration.seconds >= 0 && duration.nanos >= 0 {
             Ok(time::Duration::new(
                 duration.seconds as u64,
                 duration.nanos as u32,
@@ -454,6 +454,24 @@ mod tests {
                 )
             }
         }
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_duration_try_from_negative_nanos() {
+        let seconds: u64 = 0;
+        let nanos: u32 = 1;
+        let std_duration = std::time::Duration::new(seconds, nanos);
+
+        let neg_prost_duration = Duration {
+            seconds: 0,
+            nanos: -1,
+        };
+
+        assert!(matches!(
+           dbg!(time::Duration::try_from(neg_prost_duration)),
+           Err(DurationError::NegativeDuration(d)) if d == std_duration,
+        ))
     }
 
     #[cfg(feature = "std")]
