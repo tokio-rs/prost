@@ -496,7 +496,7 @@ mod tests {
         };
 
         assert!(matches!(
-           dbg!(time::Duration::try_from(neg_prost_duration)),
+           time::Duration::try_from(neg_prost_duration),
            Err(DurationError::NegativeDuration(d)) if d == std_duration,
         ))
     }
