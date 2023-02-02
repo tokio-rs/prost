@@ -432,8 +432,10 @@ mod tests {
 
         #[test]
         fn check_duration_roundtrip(
-            std_duration in time::Duration::arbitrary(),
+            seconds in u64::arbitrary(),
+            nanos in 0u32..1_000_000_000u32,
         ) {
+            let std_duration = time::Duration::new(seconds, nanos);
             let prost_duration = match Duration::try_from(std_duration) {
                 Ok(duration) => duration,
                 Err(_) => return Err(TestCaseError::reject("duration out of range")),
