@@ -454,6 +454,33 @@ mod tests {
                 )
             }
         }
+
+        #[test]
+        fn check_duration_roundtrip_nanos(
+            nanos in u32::arbitrary(),
+        ) {
+            let seconds = 0;
+            let std_duration = std::time::Duration::new(seconds, nanos);
+            let prost_duration = match Duration::try_from(std_duration) {
+                Ok(duration) => duration,
+                Err(_) => return Err(TestCaseError::reject("duration out of range")),
+            };
+            prop_assert_eq!(time::Duration::try_from(prost_duration.clone()).unwrap(), std_duration);
+
+            if std_duration != time::Duration::default() {
+                let neg_prost_duration = Duration {
+                    seconds: -prost_duration.seconds,
+                    nanos: -prost_duration.nanos,
+                };
+
+                prop_assert!(
+                    matches!(
+                        time::Duration::try_from(neg_prost_duration),
+                        Err(DurationError::NegativeDuration(d)) if d == std_duration,
+                    )
+                )
+            }
+        }
     }
 
     #[cfg(feature = "std")]
