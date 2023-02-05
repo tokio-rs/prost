@@ -91,7 +91,6 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
-        .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)
         .unwrap();
 
