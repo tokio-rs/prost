@@ -1,5 +1,5 @@
 name: continuous integration
-on: pull_request
+on: push, pull_request
 
 jobs:
 
@@ -62,7 +62,7 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - 1.56.1
+          - 1.60
         os:
           - ubuntu-latest
           - macos-latest
