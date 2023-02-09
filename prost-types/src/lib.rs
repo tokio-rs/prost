@@ -11,6 +11,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[rustfmt::skip]
+mod compiler;
+mod datetime;
+#[rustfmt::skip]
+mod protobuf;
+
 use core::convert::TryFrom;
 use core::fmt;
 use core::i32;
@@ -18,12 +24,7 @@ use core::i64;
 use core::str::FromStr;
 use core::time;
 
-include!("protobuf.rs");
-pub mod compiler {
-    include!("compiler.rs");
-}
-
-mod datetime;
+pub use protobuf::*;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
