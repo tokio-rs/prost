@@ -50,6 +50,22 @@ jobs:
 #           args: --workspace --all-targets
 #           toolchain: stable
 
+  machete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: install toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-machete
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-machete
+      - name: Check unused dependencies
+        run: cargo machete
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
