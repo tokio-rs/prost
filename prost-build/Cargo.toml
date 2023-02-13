@@ -12,7 +12,7 @@ documentation = "https://docs.rs/prost-build"
 readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.60"
 
 [features]
 default = ["format"]
@@ -43,4 +43,3 @@ pulldown-cmark-to-cmark = { version = "10.0.1", optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.8", default-features = false }
-
