@@ -234,6 +234,25 @@ impl Timestamp {
         //               "invalid timestamp: {:?}", self);
     }
 
+    /// Normalizes the timestamp to a canonical format, returning the original value if it cannot be
+    /// normalized.
+    ///
+    /// Normalization is based on [`google::protobuf::util::CreateNormalized`][1].
+    ///
+    /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+    pub fn try_normalize(mut self) -> Result<Timestamp, Timestamp> {
+        let before = self.clone();
+        self.normalize();
+        // If the seconds value has changed, and is either i64::MIN or i64::MAX, then the timestamp
+        // normalization overflowed.
+        if (self.seconds == i64::MAX || self.seconds == i64::MIN) && self.seconds != before.seconds
+        {
+            Err(before)
+        } else {
+            Ok(self)
+        }
+    }
+
     /// Creates a new `Timestamp` at the start of the provided UTC date.
     pub fn date(year: i64, month: u8, day: u8) -> Result<Timestamp, TimestampError> {
         Timestamp::date_time_nanos(year, month, day, 0, 0, 0, 0)
