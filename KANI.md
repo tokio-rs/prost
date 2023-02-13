@@ -19,6 +19,7 @@ capabilities and limitations.
   from the Kani repository.
   ```bash
   git clone https://github.com/model-checking/kani.git --branch features/proptest propproof
+  cd propproof; git submodule update --init --recursive
   ```
 
   Then, use `.cargo/config.toml` enable it in the local directory you
