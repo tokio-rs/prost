@@ -11,6 +11,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[rustfmt::skip]
+mod compiler;
+mod datetime;
+#[rustfmt::skip]
+mod protobuf;
+
 use core::convert::TryFrom;
 use core::fmt;
 use core::i32;
@@ -18,12 +24,7 @@ use core::i64;
 use core::str::FromStr;
 use core::time;
 
-include!("protobuf.rs");
-pub mod compiler {
-    include!("compiler.rs");
-}
-
-mod datetime;
+pub use protobuf::*;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
@@ -231,6 +232,25 @@ impl Timestamp {
         // TODO: should this be checked?
         // debug_assert!(self.seconds >= -62_135_596_800 && self.seconds <= 253_402_300_799,
         //               "invalid timestamp: {:?}", self);
+    }
+
+    /// Normalizes the timestamp to a canonical format, returning the original value if it cannot be
+    /// normalized.
+    ///
+    /// Normalization is based on [`google::protobuf::util::CreateNormalized`][1].
+    ///
+    /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+    pub fn try_normalize(mut self) -> Result<Timestamp, Timestamp> {
+        let before = self.clone();
+        self.normalize();
+        // If the seconds value has changed, and is either i64::MIN or i64::MAX, then the timestamp
+        // normalization overflowed.
+        if (self.seconds == i64::MAX || self.seconds == i64::MIN) && self.seconds != before.seconds
+        {
+            Err(before)
+        } else {
+            Ok(self)
+        }
     }
 
     /// Creates a new `Timestamp` at the start of the provided UTC date.

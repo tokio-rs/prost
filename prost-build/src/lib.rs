@@ -808,6 +808,7 @@ impl Config {
     }
 
     /// Configures what filename protobufs with no package definition are written to.
+    /// The filename will be appended with the `.rs` extension.
     pub fn default_package_filename<S>(&mut self, filename: S) -> &mut Self
     where
         S: Into<String>,
