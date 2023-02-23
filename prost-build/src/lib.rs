@@ -115,6 +115,18 @@
 //! current path for `protoc` or `protoc.exe`. If `prost-build` can not find `protoc`
 //! via these methods the `compile_protos` method will fail.
 //!
+//! ### Use `protoc` pre-built binaries
+//!
+//! Protobuf team provide `protoc` pre-built binaries, you can use the `protoc-prebuilt` crate to
+//! install compiled `protoc` required version in your project directory and
+//! set the correct environment variables.
+//! ```no_run,ignore,rust
+//! let (protoc_bin, _) = protoc_prebuilt::init("22.0").unwrap();
+//! std::env::set_var("PROTOC", protoc_bin);
+//!
+//! // Now compile your proto files via prost-build
+//! ```
+//!
 //! ### Compiling `protoc` from source
 //!
 //! To compile `protoc` from source you can use the `protobuf-src` crate and
