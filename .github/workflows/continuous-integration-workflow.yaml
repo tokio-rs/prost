@@ -104,7 +104,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
       - name: Verify with Kani
-        uses: model-checking/kani-github-action@v0.23
+        uses: model-checking/kani-github-action@0.23
         with:
           enable-propproof: true
           args: |
