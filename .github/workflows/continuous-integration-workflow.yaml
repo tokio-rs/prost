@@ -96,7 +96,12 @@ jobs:
       - name: test
         run: cargo test --workspace --all-targets
       - name: test no-default-features
-        run: cargo test --no-default-features
+        run: cargo test -p prost-build -p prost-derive -p prost-types --all-targets --no-default-features
+      # Run doc tests separately: https://github.com/rust-lang/cargo/issues/6669
+      - name: test doc
+        run: cargo test --workspace --doc
+      - name: test doc
+        run: cargo test -p prost-build -p prost-derive -p prost-types --doc --no-default-features
 
   kani:
     runs-on: ubuntu-latest

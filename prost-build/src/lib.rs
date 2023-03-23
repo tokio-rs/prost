@@ -887,12 +887,13 @@ impl Config {
     /// # Example `build.rs`
     ///
     /// ```rust,no_run
+    /// # use prost_types::FileDescriptorSet;
     /// # fn fds() -> FileDescriptorSet { todo!() }
     /// fn main() -> std::io::Result<()> {
     ///   let file_descriptor_set = fds();
     ///
     ///   prost_build::Config::new()
-    ///     .compile_fds(file_descriptor_set)?;
+    ///     .compile_fds(file_descriptor_set)
     /// }
     /// ```
     pub fn compile_fds(&mut self, fds: FileDescriptorSet) -> Result<()> {
@@ -1395,11 +1396,12 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 ///
 /// # Example
 /// ```rust,no_run
+/// # use prost_types::FileDescriptorSet;
 /// # fn fds() -> FileDescriptorSet { todo!() }
 /// fn main() -> std::io::Result<()> {
 ///   let file_descriptor_set = fds();
 ///
-///   prost_build::compile_fds(file_descriptor_set)?;
+///   prost_build::compile_fds(file_descriptor_set)
 /// }
 /// ```
 pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
@@ -1585,6 +1587,11 @@ mod tests {
             .as_path()
             .display()
             .to_string();
+        #[cfg(feature = "format")]
+        let expected_content =
+            read_all_content("src/fixtures/helloworld/_expected_helloworld_formatted.rs")
+                .replace("\r\n", "\n");
+        #[cfg(not(feature = "format"))]
         let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
             .replace("\r\n", "\n");
         let content = read_all_content(&out_file).replace("\r\n", "\n");

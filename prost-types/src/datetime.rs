@@ -586,12 +586,8 @@ impl From<DateTime> for Timestamp {
 
 #[cfg(test)]
 mod tests {
-
-    use std::convert::TryFrom;
-
-    use proptest::prelude::*;
-
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_min_max() {
@@ -611,6 +607,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_datetime_from_timestamp() {
         let case = |expected: &str, secs: i64, nanos: i32| {
@@ -850,6 +847,7 @@ mod tests {
             )
         }
 
+        #[cfg(feature = "std")]
         #[test]
         fn check_duration_parse_to_string_roundtrip(
             duration in core::time::Duration::arbitrary(),
