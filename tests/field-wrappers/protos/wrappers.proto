@@ -1,0 +1,53 @@
+syntax = "proto2";
+
+message Payload {
+    repeated int32 stuff = 1;
+}
+
+enum MyEnum {
+    Bar = 1;
+    Foo = 2;
+    Baz = 3;
+}
+
+message MyMessage {
+    required int32 int = 20;
+    optional int32 optional_int = 21;
+    repeated int32 repeated_int = 22;
+    repeated int32 packed_int = 23 [packed = true];
+
+    required string str = 1;
+    optional string optional_str = 2;
+    repeated string repeated_str = 16;
+
+    required Payload payload = 3;
+    optional Payload optional_payload = 4;
+    repeated Payload repeated_payload= 17;
+
+    map<int32, Payload> map_payload = 5;
+
+    required group Group = 6 {
+        optional int32 i2 = 7;
+    }
+    optional group Optional_Group = 8 {
+        optional int32 i2 = 9;
+    }
+    repeated group Repeated_Group = 18 {
+        optional int32 i2 = 19;
+    }
+
+    oneof oneof_field {
+        string a = 10;
+        bytes b = 11;
+    }
+
+    required MyEnum my_enum = 12;
+    optional MyEnum optional_my_enum = 13;
+    repeated MyEnum repeated_my_enum = 14;
+    repeated MyEnum packed_my_enum = 15 [packed = true];
+
+    // default tests:
+    optional int32 default_int = 24 [default = 42];
+    optional float default_float = 25 [default = 1.0];
+    optional string default_string = 26 [default = "foobar"];
+}

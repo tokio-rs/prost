@@ -121,21 +121,46 @@ impl Field {
         }
     }
 
+    /// Returns wrapper of the field.
+    pub fn wrapper(&self) -> Option<Wrapper> {
+        match self {
+            Field::Scalar(scalar) => scalar.wrapper,
+            Field::Message(message) => message.wrapper,
+            Field::Map(map) => map.wrapper,
+            Field::Oneof(oneof) => oneof.wrapper,
+            Field::Group(group) => group.wrapper,
+        }
+    }
+
     /// Returns a statement which clears the field.
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.clear(ident),
-            Field::Message(ref message) => message.clear(ident),
-            Field::Map(ref map) => map.clear(ident),
-            Field::Oneof(ref oneof) => oneof.clear(ident),
-            Field::Group(ref group) => group.clear(ident),
+        // TODO: make `#ident.clear()` == `#ident = #default`.
+        match self.wrapper() {
+            Some(Wrapper::Arc) => {
+                // `Arc` could fail when getting mutable reference, assign the
+                // field with the default value to workaround this.
+                let default = self.default();
+                quote!(#ident = #default)
+            }
+            Some(Wrapper::Box) | None => match self {
+                Field::Scalar(scalar) => scalar.clear(ident),
+                Field::Message(message) => message.clear(ident),
+                Field::Map(map) => map.clear(ident),
+                Field::Oneof(oneof) => oneof.clear(ident),
+                Field::Group(group) => group.clear(ident),
+            },
         }
     }
 
     pub fn default(&self) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.default(),
+        let default = match self {
+            Field::Scalar(scalar) => scalar.default(),
             _ => quote!(::core::default::Default::default()),
+        };
+        if let Some(wrapper) = self.wrapper() {
+            wrapper.wrap_type(default)
+        } else {
+            default
         }
     }
 
@@ -169,6 +194,20 @@ impl Field {
             Field::Scalar(ref scalar) => scalar.methods(ident),
             Field::Map(ref map) => map.methods(ident),
             _ => None,
+        }
+    }
+
+    /// Returns mutable reference to the field.
+    pub fn mut_field(&self, ident: &TokenStream) -> TokenStream {
+        let wrapper = self.wrapper();
+        match wrapper {
+            Some(Wrapper::Arc) => {
+                quote!(::prost::alloc::sync::Arc::get_mut(&mut self.#ident).ok_or_else(|| {
+                    ::prost::DecodeError::new("Cannot get mutable reference to a Arc field")
+                })?)
+            }
+            Some(Wrapper::Box) => quote!(&mut *self.#ident),
+            None => quote!(&mut self.#ident),
         }
     }
 }
@@ -309,7 +348,37 @@ fn word_attr(key: &str, attr: &Meta) -> bool {
     }
 }
 
-pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
+// TODO pub(crate)?
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Wrapper {
+    Arc,
+    Box,
+}
+
+impl Wrapper {
+    pub(crate) fn wrap_type(&self, ty: TokenStream) -> TokenStream {
+        match *self {
+            Wrapper::Arc => quote!(::prost::alloc::sync::Arc::new(#ty)),
+            Wrapper::Box => quote!(::prost::alloc::boxed::Box::new(#ty)),
+        }
+    }
+}
+
+fn wrapper_attr(attr: &Meta) -> Option<Wrapper> {
+    if let Meta::Path(path) = attr {
+        if path.is_ident("arc") {
+            Some(Wrapper::Arc)
+        } else if path.is_ident("box") {
+            Some(Wrapper::Box)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
     if !attr.path().is_ident("tag") {
         return Ok(None);
     }
@@ -362,5 +431,14 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .collect::<Result<Vec<u32>, _>>()
             .map(Some),
         _ => bail!("invalid tag attribute: {:?}", attr),
+    }
+}
+
+/// Get reference of a field.
+fn field_ref(wrapper: &Option<Wrapper>, ident: TokenStream) -> TokenStream {
+    if wrapper.is_some() {
+        quote!(&*#ident)
+    } else {
+        quote!(&#ident)
     }
 }
