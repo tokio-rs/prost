@@ -60,7 +60,7 @@ jobs:
       - name: install toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-machete
-        uses: baptiste0928/cargo-install@v1
+        uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-machete
       - name: Check unused dependencies
@@ -138,7 +138,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - name: install cargo-no-std-check
-        uses: baptiste0928/cargo-install@v1
+        uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-no-std-check
       - name: prost cargo-no-std-check
