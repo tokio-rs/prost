@@ -95,6 +95,10 @@ fn main() {
         .compile_protos(&[src.join("custom_debug.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("issue_843.proto")], includes)
+        .unwrap();
+
     prost_build::Config::new()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)

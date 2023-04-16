@@ -120,6 +120,10 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
+pub mod issue_843 {
+    include!(concat!(env!("OUT_DIR"), "/_.rs"));
+}
+
 use alloc::vec::Vec;
 
 use anyhow::anyhow;
@@ -622,6 +626,11 @@ mod tests {
     fn test_default_string_escape() {
         let msg = default_string_escape::Person::default();
         assert_eq!(msg.name, r#"["unknown"]"#);
+    }
+
+    #[test]
+    fn test_issue_843() {
+        let _msg = issue_843::M::default();
     }
 
     #[test]

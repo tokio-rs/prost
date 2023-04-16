@@ -2,6 +2,7 @@ use std::ascii;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::iter;
+use std::ops::Deref;
 
 use itertools::{Either, Itertools};
 use log::debug;
@@ -28,7 +29,7 @@ enum Syntax {
 
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
-    package: String,
+    package: Vec<String>,
     source_info: Option<SourceCodeInfo>,
     syntax: Syntax,
     message_graph: &'a MessageGraph,
@@ -68,7 +69,10 @@ impl<'a> CodeGenerator<'a> {
 
         let mut code_gen = CodeGenerator {
             config,
-            package: file.package.unwrap_or_default(),
+            package: file
+                .package
+                .map(|s| s.split('.').map(ToString::to_string).collect())
+                .unwrap_or_default(),
             source_info,
             syntax,
             message_graph,
@@ -120,12 +124,10 @@ impl<'a> CodeGenerator<'a> {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
-        let fq_message_name = format!(
-            "{}{}.{}",
-            if self.package.is_empty() { "" } else { "." },
-            self.package,
-            message.name()
-        );
+        let fq_message_name = iter::once("")
+            .chain(self.package.iter().map(Deref::deref))
+            .chain(iter::once(message.name()))
+            .join(".");
 
         // Skip external types.
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
@@ -644,12 +646,11 @@ impl<'a> CodeGenerator<'a> {
         let enum_name = to_upper_camel(proto_enum_name);
 
         let enum_values = &desc.value;
-        let fq_proto_enum_name = format!(
-            "{}{}.{}",
-            if self.package.is_empty() { "" } else { "." },
-            self.package,
-            proto_enum_name
-        );
+        let fq_proto_enum_name = iter::once("")
+            .chain(self.package.iter().map(|x| x.deref()))
+            .chain(iter::once(proto_enum_name))
+            .join(".");
+
         if self
             .extern_paths
             .resolve_ident(&fq_proto_enum_name)
@@ -841,7 +842,7 @@ impl<'a> CodeGenerator<'a> {
         let service = Service {
             name: to_upper_camel(&name),
             proto_name: name,
-            package: self.package.clone(),
+            package: self.package.join("."),
             comments,
             methods,
             options: service.options.unwrap_or_default(),
@@ -867,8 +868,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(module));
         self.buf.push_str(" {\n");
 
-        self.package.push('.');
-        self.package.push_str(module);
+        self.package.push(module.to_string());
 
         self.depth += 1;
     }
@@ -876,8 +876,7 @@ impl<'a> CodeGenerator<'a> {
     fn pop_mod(&mut self) {
         self.depth -= 1;
 
-        let idx = self.package.rfind('.').unwrap();
-        self.package.truncate(idx);
+        self.package.pop();
 
         self.push_indent();
         self.buf.push_str("}\n");
@@ -915,15 +914,7 @@ impl<'a> CodeGenerator<'a> {
             return proto_ident;
         }
 
-        let mut local_path = self.package.split('.').peekable();
-
-        // If no package is specified the start of the package name will be '.'
-        // and split will return an empty string ("") which breaks resolution
-        // The fix to this is to ignore the first item if it is empty.
-        if local_path.peek().map_or(false, |s| s.is_empty()) {
-            local_path.next();
-        }
-
+        let mut local_path = self.package.iter().map(Deref::deref).peekable();
         let mut ident_path = pb_ident[1..].split('.');
         let ident_type = ident_path.next_back().unwrap();
         let mut ident_path = ident_path.peekable();
