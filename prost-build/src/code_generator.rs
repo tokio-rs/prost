@@ -706,7 +706,7 @@ impl<'a> CodeGenerator<'a> {
         // Add must_use
         self.push_indent();
         self.buf.push_str("#[must_use]\n");
-        
+
         self.push_indent();
         self.buf
             .push_str("pub fn as_str_name(&self) -> &'static str {\n");
