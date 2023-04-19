@@ -274,7 +274,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
         match discriminant {
             Some((_, expr)) => variants.push((ident, expr)),
-            None => bail!("Enumeration variants must have a disriminant"),
+            None => bail!("Enumeration variants must have a discriminant"),
         }
     }
 
