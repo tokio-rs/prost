@@ -151,17 +151,19 @@ pub mod code_generator_response {
         Proto3Optional = 1,
     }
     impl Feature {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Feature::None => "FEATURE_NONE",
                 Feature::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "FEATURE_NONE" => Some(Self::None),

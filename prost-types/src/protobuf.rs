@@ -227,10 +227,11 @@ pub mod field_descriptor_proto {
         Sint64 = 18,
     }
     impl Type {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Type::Double => "TYPE_DOUBLE",
@@ -253,7 +254,8 @@ pub mod field_descriptor_proto {
                 Type::Sint64 => "TYPE_SINT64",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "TYPE_DOUBLE" => Some(Self::Double),
@@ -297,10 +299,11 @@ pub mod field_descriptor_proto {
         Repeated = 3,
     }
     impl Label {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Label::Optional => "LABEL_OPTIONAL",
@@ -308,7 +311,8 @@ pub mod field_descriptor_proto {
                 Label::Repeated => "LABEL_REPEATED",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "LABEL_OPTIONAL" => Some(Self::Optional),
@@ -583,10 +587,11 @@ pub mod file_options {
         LiteRuntime = 3,
     }
     impl OptimizeMode {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 OptimizeMode::Speed => "SPEED",
@@ -594,7 +599,8 @@ pub mod file_options {
                 OptimizeMode::LiteRuntime => "LITE_RUNTIME",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "SPEED" => Some(Self::Speed),
@@ -768,10 +774,11 @@ pub mod field_options {
         StringPiece = 2,
     }
     impl CType {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 CType::String => "STRING",
@@ -779,7 +786,8 @@ pub mod field_options {
                 CType::StringPiece => "STRING_PIECE",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "STRING" => Some(Self::String),
@@ -810,10 +818,11 @@ pub mod field_options {
         JsNumber = 2,
     }
     impl JsType {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 JsType::JsNormal => "JS_NORMAL",
@@ -821,7 +830,8 @@ pub mod field_options {
                 JsType::JsNumber => "JS_NUMBER",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "JS_NORMAL" => Some(Self::JsNormal),
@@ -927,10 +937,11 @@ pub mod method_options {
         Idempotent = 2,
     }
     impl IdempotencyLevel {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 IdempotencyLevel::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
@@ -938,7 +949,8 @@ pub mod method_options {
                 IdempotencyLevel::Idempotent => "IDEMPOTENT",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "IDEMPOTENCY_UNKNOWN" => Some(Self::IdempotencyUnknown),
@@ -1426,10 +1438,11 @@ pub mod field {
         TypeSint64 = 18,
     }
     impl Kind {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Kind::TypeUnknown => "TYPE_UNKNOWN",
@@ -1453,7 +1466,8 @@ pub mod field {
                 Kind::TypeSint64 => "TYPE_SINT64",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "TYPE_UNKNOWN" => Some(Self::TypeUnknown),
@@ -1503,10 +1517,11 @@ pub mod field {
         Repeated = 3,
     }
     impl Cardinality {
-        /// String value of the enum field names used in the ProtoBuf definition.
+        /// String value of the enum field names used in the `ProtoBuf` definition.
         ///
         /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+        #[must_use]
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Cardinality::Unknown => "CARDINALITY_UNKNOWN",
@@ -1515,7 +1530,8 @@ pub mod field {
                 Cardinality::Repeated => "CARDINALITY_REPEATED",
             }
         }
-        /// Creates an enum from field names used in the ProtoBuf definition.
+        /// Creates an enum from field names used in the `ProtoBuf` definition.
+        #[must_use]
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "CARDINALITY_UNKNOWN" => Some(Self::Unknown),
@@ -1589,17 +1605,19 @@ pub enum Syntax {
     Proto3 = 1,
 }
 impl Syntax {
-    /// String value of the enum field names used in the ProtoBuf definition.
+    /// String value of the enum field names used in the `ProtoBuf` definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+    #[must_use]
     pub fn as_str_name(&self) -> &'static str {
         match self {
             Syntax::Proto2 => "SYNTAX_PROTO2",
             Syntax::Proto3 => "SYNTAX_PROTO3",
         }
     }
-    /// Creates an enum from field names used in the ProtoBuf definition.
+    /// Creates an enum from field names used in the `ProtoBuf` definition.
+    #[must_use]
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "SYNTAX_PROTO2" => Some(Self::Proto2),
@@ -2175,16 +2193,18 @@ pub enum NullValue {
     NullValue = 0,
 }
 impl NullValue {
-    /// String value of the enum field names used in the ProtoBuf definition.
+    /// String value of the enum field names used in the `ProtoBuf` definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    /// (if the `ProtoBuf` definition does not change) and safe for programmatic use.
+    #[must_use]
     pub fn as_str_name(&self) -> &'static str {
         match self {
             NullValue::NullValue => "NULL_VALUE",
         }
     }
-    /// Creates an enum from field names used in the ProtoBuf definition.
+    /// Creates an enum from field names used in the `ProtoBuf` definition.
+    #[must_use]
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "NULL_VALUE" => Some(Self::NullValue),
