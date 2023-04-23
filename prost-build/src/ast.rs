@@ -108,15 +108,16 @@ impl Comments {
 
     /// Sanitizes the line for rustdoc by performing the following operations:
     ///     - escape urls as <http://foo.com>
-    ///     - escape `[` & `]`
+    ///     - escape `[` & `]` if not followed by a parenthesis or bracket
     fn sanitize_line(line: &str) -> String {
         lazy_static! {
             static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
-            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\S+)(])").unwrap();
+            static ref RULE_BRACKETS: Regex =
+                Regex::new(r"(^|[^\]])\[([^\]]*)\]([^(\[]|$)").unwrap();
         }
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
-        s = RULE_BRACKETS.replace_all(&s, r"\$1$2\$3").to_string();
+        s = RULE_BRACKETS.replace_all(&s, r"$1\[$2\]$3").to_string();
         if Self::should_indent(&s) {
             s.insert(0, ' ');
         }
@@ -341,6 +342,46 @@ mod tests {
                 name: "invalid_bracket_combination",
                 input: "[0, 9)".to_string(),
                 expected: "/// [0, 9)\n".to_string(),
+            },
+            TestCases {
+                name: "valid_brackets_parenthesis",
+                input: "foo [bar](bar) baz".to_string(),
+                expected: "/// foo [bar](bar) baz\n".to_string(),
+            },
+            TestCases {
+                name: "valid_brackets_end",
+                input: "foo [bar]".to_string(),
+                expected: "/// foo \\[bar\\]\n".to_string(),
+            },
+            TestCases {
+                name: "valid_brackets_no_parenthesis",
+                input: "foo [bar]baz".to_string(),
+                expected: "/// foo \\[bar\\]baz\n".to_string(),
+            },
+            TestCases {
+                name: "valid_empty_brackets",
+                input: "foo []".to_string(),
+                expected: "/// foo \\[\\]\n".to_string(),
+            },
+            TestCases {
+                name: "valid_empty_brackets_parenthesis",
+                input: "foo []()".to_string(),
+                expected: "/// foo []()\n".to_string(),
+            },
+            TestCases {
+                name: "valid_brackets_brackets",
+                input: "foo [bar][bar] baz".to_string(),
+                expected: "/// foo [bar][bar] baz\n".to_string(),
+            },
+            TestCases {
+                name: "valid_brackets_brackets_end",
+                input: "foo [bar][baz]".to_string(),
+                expected: "/// foo [bar][baz]\n".to_string(),
+            },
+            TestCases {
+                name: "valid_brackets_brackets_all",
+                input: "[bar][baz]".to_string(),
+                expected: "/// [bar][baz]\n".to_string(),
             },
         ];
         for t in tests {
