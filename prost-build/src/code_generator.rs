@@ -693,8 +693,10 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(" {\n");
         self.depth += 1;
         self.path.push(2);
-        self.push_indent();
-        self.buf.push_str("/// Aliases.\n");
+        if aliases.len() > 0 {
+            self.push_indent();
+            self.buf.push_str("/// Aliases.\n");
+        }
         for variant in &aliases {
             self.push_indent();
             self.buf.push_str("#[allow(non_upper_case_globals)]");
