@@ -357,7 +357,14 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     let is_valid = variants
         .iter()
-        .map(|&(_, ref value)| quote!(#value => true));
+        .enumerate()
+        .map(|(index, &(_, ref value))| {
+            if index == 0 {
+                quote!(#value => false)
+            } else {
+                quote!(#value => true)
+            }
+        });
     let from = variants.iter().map(
         |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
     );
