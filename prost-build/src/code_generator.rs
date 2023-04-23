@@ -664,7 +664,7 @@ impl<'a> CodeGenerator<'a> {
         self.path.push(2);
         let mut aliases = vec![];
         for variant in variant_mappings.iter() {
-            if variant.alias_of.is_some(){
+            if variant.alias_of.is_some() {
                 aliases.push(variant);
                 continue;
             }
@@ -694,19 +694,18 @@ impl<'a> CodeGenerator<'a> {
         self.depth += 1;
         self.path.push(2);
         self.push_indent();
-        self.buf.push_str(
-            "/// Aliases.\n",
-        );
+        self.buf.push_str("/// Aliases.\n");
         for variant in &aliases {
             self.push_indent();
             self.buf.push_str("#[allow(non_upper_case_globals)]");
             self.push_indent();
-            self.buf.push_str(&format!("pub const {}: {} = {}::{};\n",
-                                       variant.generated_variant_name,
-                                       enum_name,
-                                       enum_name,
-                                       variant.alias_of.as_ref().unwrap())
-                              );
+            self.buf.push_str(&format!(
+                "pub const {}: {} = {}::{};\n",
+                variant.generated_variant_name,
+                enum_name,
+                enum_name,
+                variant.alias_of.as_ref().unwrap()
+            ));
         }
         self.push_indent();
         self.buf.push_str(
@@ -732,7 +731,9 @@ impl<'a> CodeGenerator<'a> {
         self.depth += 1;
 
         for variant in variant_mappings.iter() {
-            if variant.alias_of.is_some() {continue;}
+            if variant.alias_of.is_some() {
+                continue;
+            }
             self.push_indent();
             self.buf.push_str(&enum_name);
             self.buf.push_str("::");
@@ -1166,10 +1167,10 @@ fn build_enum_value_mappings<'a>(
 ) -> Vec<EnumVariantMapping<'a>> {
     let mut numbers = HashSet::new();
     let mut generated_names = HashMap::new();
-    let mut mappings:Vec<EnumVariantMapping<'a>> = Vec::new();
+    let mut mappings: Vec<EnumVariantMapping<'a>> = Vec::new();
 
     for (idx, value) in enum_values.iter().enumerate() {
-        // Skip duplicate enum values. Protobuf allows this when the
+        // Remember name for duplicate enum values. Protobuf allows this when the
         // 'allow_alias' option is set.
         let mut alias_of = None;
         if !numbers.insert(value.number()) {
@@ -1187,8 +1188,14 @@ fn build_enum_value_mappings<'a>(
 
         if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), value.name())
         {
-            panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
-                generated_variant_name, old_v, value.name());
+            // if alias ends up being a duplicate, we don't need it, and can skip it.
+            // TODO: check if enum values are actually the same
+            if alias_of.is_some() {
+                continue;
+            } else {
+                panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
+                    generated_variant_name, old_v, value.name());
+            }
         }
 
         mappings.push(EnumVariantMapping {
