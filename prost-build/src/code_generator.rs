@@ -1178,7 +1178,8 @@ fn build_enum_value_mappings<'a>(
         if !numbers.insert(value.number()) {
             for m in &mappings {
                 if m.proto_number == value.number() {
-                    alias_of = Some(m.generated_variant_name.clone())
+                    alias_of = Some(m.generated_variant_name.clone());
+                    break;
                 }
             }
         }
