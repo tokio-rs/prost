@@ -108,16 +108,16 @@ impl Comments {
 
     /// Sanitizes the line for rustdoc by performing the following operations:
     ///     - escape urls as <http://foo.com>
-    ///     - escape `[` & `]` if not followed by a parenthesis or bracket
+    ///     - escape `[` & `]` if not already escaped and not followed by a parenthesis or bracket
     fn sanitize_line(line: &str) -> String {
         lazy_static! {
             static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
             static ref RULE_BRACKETS: Regex =
-                Regex::new(r"(^|[^\]])\[([^\]]*)\]([^(\[]|$)").unwrap();
+                Regex::new(r"(^|[^\]\\])\[(([^\]]*[^\\])?)\]([^(\[]|$)").unwrap();
         }
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
-        s = RULE_BRACKETS.replace_all(&s, r"$1\[$2\]$3").to_string();
+        s = RULE_BRACKETS.replace_all(&s, r"$1\[$2\]$4").to_string();
         if Self::should_indent(&s) {
             s.insert(0, ' ');
         }
@@ -382,6 +382,16 @@ mod tests {
                 name: "valid_brackets_brackets_all",
                 input: "[bar][baz]".to_string(),
                 expected: "/// [bar][baz]\n".to_string(),
+            },
+            TestCases {
+                name: "escaped_brackets",
+                input: "\\[bar\\]\\[baz\\]".to_string(),
+                expected: "/// \\[bar\\]\\[baz\\]\n".to_string(),
+            },
+            TestCases {
+                name: "escaped_empty_brackets",
+                input: "\\[\\]\\[\\]".to_string(),
+                expected: "/// \\[\\]\\[\\]\n".to_string(),
             },
         ];
         for t in tests {
