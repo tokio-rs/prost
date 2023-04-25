@@ -291,6 +291,10 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
     );
 
+    let try_from = variants.iter().map(
+        |&(ref variant, ref value)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)),
+    );
+
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!(
         "Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.",
@@ -307,6 +311,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
                 }
             }
 
+            #[deprecated = "Use the TryFrom<i32> implementation instead"]
             #[doc=#from_i32_doc]
             pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
                 match value {
@@ -325,6 +330,17 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         impl #impl_generics ::core::convert::From::<#ident> for i32 #ty_generics #where_clause {
             fn from(value: #ident) -> i32 {
                 value as i32
+            }
+        }
+
+        impl #impl_generics ::core::convert::TryFrom::<i32> for #ident #ty_generics #where_clause {
+            type Error = ::prost::DecodeError;
+
+            fn try_from(value: i32) -> ::core::result::Result<#ident, ::prost::DecodeError> {
+                match value {
+                    #(#try_from,)*
+                    _ => ::core::result::Result::Err(::prost::DecodeError::new("invalid enumeration value")),
+                }
             }
         }
     };

@@ -579,6 +579,32 @@ mod tests {
     }
 
     #[test]
+    fn test_enum_try_from_i32() {
+        use core::convert::TryFrom;
+        use default_enum_value::{ERemoteClientBroadcastMsg, PrivacyLevel};
+
+        assert_eq!(Ok(PrivacyLevel::One), PrivacyLevel::try_from(1));
+        assert_eq!(Ok(PrivacyLevel::Two), PrivacyLevel::try_from(2));
+        assert_eq!(
+            Ok(PrivacyLevel::PrivacyLevelThree),
+            PrivacyLevel::try_from(3)
+        );
+        assert_eq!(
+            Ok(PrivacyLevel::PrivacyLevelprivacyLevelFour),
+            PrivacyLevel::try_from(4)
+        );
+        assert_eq!(
+            Err(prost::DecodeError::new("invalid enumeration value")),
+            PrivacyLevel::try_from(5)
+        );
+
+        assert_eq!(
+            Ok(ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery),
+            ERemoteClientBroadcastMsg::try_from(0)
+        );
+    }
+
+    #[test]
     fn test_default_string_escape() {
         let msg = default_string_escape::Person::default();
         assert_eq!(msg.name, r#"["unknown"]"#);
