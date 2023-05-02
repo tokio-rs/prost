@@ -1,6 +1,9 @@
 name: continuous integration
 on: pull_request
 
+env:
+  PROTOC_VERSION: 3.20.3
+
 jobs:
 
   rustfmt:
@@ -86,10 +89,10 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+      - name: install protoc
+        uses: taiki-e/install-action@v2
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tool: protoc@${{ env.PROTOC_VERSION }}
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
       - uses: Swatinem/rust-cache@v2
@@ -133,10 +136,10 @@ jobs:
           submodules: recursive
       - name: install toolchain
         uses: dtolnay/rust-toolchain@nightly
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+      - name: install protoc
+        uses: taiki-e/install-action@v2
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tool: protoc@${{ env.PROTOC_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: install cargo-no-std-check
         uses: baptiste0928/cargo-install@v2
