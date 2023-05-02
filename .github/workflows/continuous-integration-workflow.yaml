@@ -13,7 +13,7 @@ jobs:
       - name: install toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-            components: rustfmt
+          components: rustfmt
       - name: rustfmt
         run: cargo fmt --all --check
 # Disabled because downstream crates don't check this as well
@@ -85,7 +85,7 @@ jobs:
       - name: install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-            toolchain: ${{ matrix.toolchain }}
+          toolchain: ${{ matrix.toolchain }}
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
