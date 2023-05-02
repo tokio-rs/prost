@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: install toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -58,8 +56,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: install toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-machete
@@ -83,8 +79,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -132,8 +126,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: install toolchain
         uses: dtolnay/rust-toolchain@nightly
       - name: install protoc
