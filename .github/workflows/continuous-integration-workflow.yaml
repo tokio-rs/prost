@@ -48,7 +48,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
-      - uses: seanmiddleditch/gha-setup-ninja@v3
+      - name: install ninja
+        uses: ./.github/actions/setup-ninja
       - uses: Swatinem/rust-cache@v2
       - name: test
         run: cargo test --workspace --all-targets
