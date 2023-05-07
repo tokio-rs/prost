@@ -42,4 +42,4 @@ pulldown-cmark = { version = "0.9.1", optional = true, default-features = false 
 pulldown-cmark-to-cmark = { version = "10.0.1", optional = true }
 
 [dev-dependencies]
-env_logger = { version = "0.8", default-features = false }
+env_logger = { version = "0.10", default-features = false }
