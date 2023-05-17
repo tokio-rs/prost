@@ -11,6 +11,7 @@ pub use bytes;
 
 mod error;
 mod message;
+mod type_url;
 mod types;
 
 #[doc(hidden)]
@@ -18,6 +19,7 @@ pub mod encoding;
 
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
+pub use crate::type_url::TypeUrl;
 
 use bytes::{Buf, BufMut};
 
