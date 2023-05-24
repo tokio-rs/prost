@@ -117,7 +117,7 @@ pub trait Message: Debug + Send + Sync {
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
-    fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
+    fn decode_length_delimited<B>(buf: &mut B) -> Result<Self, DecodeError>
     where
         B: Buf,
         Self: Default,
@@ -145,7 +145,7 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge_length_delimited<B>(&mut self, buf: &mut B) -> Result<(), DecodeError>
     where
         B: Buf,
         Self: Sized,
@@ -153,7 +153,7 @@ pub trait Message: Debug + Send + Sync {
         message::merge(
             WireType::LengthDelimited,
             self,
-            &mut buf,
+            buf,
             DecodeContext::default(),
         )
     }
