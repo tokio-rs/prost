@@ -32,7 +32,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
-        let attrs = prost_attrs(attrs);
+        let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
@@ -58,7 +58,7 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
-        let attrs = prost_attrs(attrs);
+        let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
@@ -224,27 +224,21 @@ impl fmt::Display for Label {
 }
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
-fn prost_attrs(attrs: Vec<Attribute>) -> Vec<Meta> {
-    attrs
-        .iter()
-        .flat_map(Attribute::parse_meta)
-        .flat_map(|meta| match meta {
-            Meta::List(MetaList { path, nested, .. }) => {
-                if path.is_ident("prost") {
-                    nested.into_iter().collect()
-                } else {
-                    Vec::new()
+fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
+    let mut result = Vec::new();
+    for attr in attrs {
+        if let Meta::List(MetaList { path, nested, .. }) = attr.parse_meta()? {
+            if path.is_ident("prost") {
+                for item in nested {
+                    match item {
+                        NestedMeta::Meta(attr) => result.push(attr),
+                        NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
+                    }
                 }
             }
-            _ => Vec::new(),
-        })
-        .flat_map(|attr| -> Result<_, _> {
-            match attr {
-                NestedMeta::Meta(attr) => Ok(attr),
-                NestedMeta::Lit(lit) => bail!("invalid prost attribute: {:?}", lit),
-            }
-        })
-        .collect()
+        }
+    }
+    Ok(result)
 }
 
 pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<(), Error>
