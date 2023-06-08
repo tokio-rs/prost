@@ -1,6 +1,6 @@
 [package]
 name = "prost"
-version = "0.11.3"
+version = "0.11.8"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com",
@@ -14,7 +14,7 @@ description = "A Protocol Buffers implementation for the Rust Language."
 keywords = ["protobuf", "serialization"]
 categories = ["encoding"]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.60"
 
 [workspace]
 members = [
@@ -49,11 +49,11 @@ std = []
 
 [dependencies]
 bytes = { version = "1", default-features = false }
-prost-derive = { version = "0.11.0", path = "prost-derive", optional = true }
+prost-derive = { version = "0.11.8", path = "prost-derive", optional = true }
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { version = "0.4", default-features = false }
 env_logger = { version = "0.8", default-features = false }
 log = "0.4"
 proptest = "1"

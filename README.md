@@ -30,9 +30,9 @@ First, add `prost` and its public dependencies to your `Cargo.toml`:
 
 ```ignore
 [dependencies]
-prost = "0.10"
+prost = "0.11"
 # Only necessary if using Protobuf well-known types:
-prost-types = "0.10"
+prost-types = "0.11"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
@@ -44,7 +44,7 @@ start-to-finish example.
 
 ### MSRV
 
-`prost` follows the `tokio-rs` projects MSRV model and supports 1.56+. For more
+`prost` follows the `tokio-rs` projects MSRV model and supports 1.60. For more
 information on the tokio msrv policy you can check it out [here][tokio msrv]
 
 [tokio msrv]: https://github.com/tokio-rs/tokio/#supported-rust-versions
