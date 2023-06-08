@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.11.8")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.11.4")]
 #![allow(clippy::option_as_ref_deref, clippy::format_push_string)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -250,10 +250,7 @@ pub struct Config {
     map_type: PathMap<MapType>,
     bytes_type: PathMap<BytesType>,
     type_attributes: PathMap<String>,
-    message_attributes: PathMap<String>,
-    enum_attributes: PathMap<String>,
     field_attributes: PathMap<String>,
-    boxed: PathMap<()>,
     prost_types: bool,
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
@@ -498,112 +495,16 @@ impl Config {
         self
     }
 
-    /// Add additional attribute to matched messages.
-    ///
-    /// # Arguments
-    ///
-    /// **`paths`** - a path matching any number of types. It works the same way as in
-    /// [`btree_map`](#method.btree_map), just with the field name omitted.
-    ///
-    /// **`attribute`** - an arbitrary string to be placed before each matched type. The
-    /// expected usage are additional attributes, but anything is allowed.
-    ///
-    /// The calls to this method are cumulative. They don't overwrite previous calls and if a
-    /// type is matched by multiple calls of the method, all relevant attributes are added to
-    /// it.
-    ///
-    /// For things like serde it might be needed to combine with [field
-    /// attributes](#method.field_attribute).
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # let mut config = prost_build::Config::new();
-    /// // Nothing around uses floats, so we can derive real `Eq` in addition to `PartialEq`.
-    /// config.message_attribute(".", "#[derive(Eq)]");
-    /// // Some messages want to be serializable with serde as well.
-    /// config.message_attribute("my_messages.MyMessageType",
-    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
-    /// config.message_attribute("my_messages.MyMessageType.MyNestedMessageType",
-    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
-    /// ```
-    pub fn message_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
+    pub fn types_attribute<P, A>(&mut self, paths: &[P], attribute: A) -> &mut Self
     where
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.message_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
-        self
-    }
+        for path in paths.iter() {
+            self.type_attributes
+                .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        }
 
-    /// Add additional attribute to matched enums and one-ofs.
-    ///
-    /// # Arguments
-    ///
-    /// **`paths`** - a path matching any number of types. It works the same way as in
-    /// [`btree_map`](#method.btree_map), just with the field name omitted.
-    ///
-    /// **`attribute`** - an arbitrary string to be placed before each matched type. The
-    /// expected usage are additional attributes, but anything is allowed.
-    ///
-    /// The calls to this method are cumulative. They don't overwrite previous calls and if a
-    /// type is matched by multiple calls of the method, all relevant attributes are added to
-    /// it.
-    ///
-    /// For things like serde it might be needed to combine with [field
-    /// attributes](#method.field_attribute).
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # let mut config = prost_build::Config::new();
-    /// // Nothing around uses floats, so we can derive real `Eq` in addition to `PartialEq`.
-    /// config.enum_attribute(".", "#[derive(Eq)]");
-    /// // Some messages want to be serializable with serde as well.
-    /// config.enum_attribute("my_messages.MyEnumType",
-    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
-    /// config.enum_attribute("my_messages.MyMessageType.MyNestedEnumType",
-    ///                       "#[derive(Serialize)] #[serde(rename_all = \"snake_case\")]");
-    /// ```
-    ///
-    /// # Oneof fields
-    ///
-    /// The `oneof` fields don't have a type name of their own inside Protobuf. Therefore, the
-    /// field name can be used both with `enum_attribute` and `field_attribute` ‒ the first is
-    /// placed before the `enum` type definition, the other before the field inside corresponding
-    /// message `struct`.
-    ///
-    /// In other words, to place an attribute on the `enum` implementing the `oneof`, the match
-    /// would look like `my_messages.MyNestedMessageType.oneofname`.
-    pub fn enum_attribute<P, A>(&mut self, path: P, attribute: A) -> &mut Self
-    where
-        P: AsRef<str>,
-        A: AsRef<str>,
-    {
-        self.enum_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
-        self
-    }
-
-    /// Wrap matched fields in a `Box`.
-    ///
-    /// # Arguments
-    ///
-    /// **`path`** - a path matching any number of fields. These fields get the attribute.
-    /// For details about matching fields see [`btree_map`](#method.btree_map).
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # let mut config = prost_build::Config::new();
-    /// config.boxed(".my_messages.MyMessageType.my_field");
-    /// ```
-    pub fn boxed<P>(&mut self, path: P) -> &mut Self
-    where
-        P: AsRef<str>,
-    {
-        self.boxed.insert(path.as_ref().to_string(), ());
         self
     }
 
@@ -803,7 +704,8 @@ impl Config {
 
     /// In combination with with `file_descriptor_set_path`, this can be used to provide a file
     /// descriptor set as an input file, rather than having prost-build generate the file by calling
-    /// protoc.
+    /// protoc.  Prost-build does require that the descriptor set was generated with
+    /// --include_source_info.
     ///
     /// In `build.rs`:
     ///
@@ -843,7 +745,6 @@ impl Config {
     }
 
     /// Configures what filename protobufs with no package definition are written to.
-    /// The filename will be appended with the `.rs` extension.
     pub fn default_package_filename<S>(&mut self, filename: S) -> &mut Self
     where
         S: Into<String>,
@@ -957,99 +858,6 @@ impl Config {
         self
     }
 
-    /// Compile a [`FileDescriptorSet`] into Rust files during a Cargo build with
-    /// additional code generator configuration options.
-    ///
-    /// This method is like `compile_protos` function except it does not invoke `protoc`
-    /// and instead requires the user to supply a [`FileDescriptorSet`].
-    ///
-    /// # Example `build.rs`
-    ///
-    /// ```rust,no_run
-    /// # use prost_types::FileDescriptorSet;
-    /// # fn fds() -> FileDescriptorSet { todo!() }
-    /// fn main() -> std::io::Result<()> {
-    ///   let file_descriptor_set = fds();
-    ///
-    ///   prost_build::Config::new()
-    ///     .compile_fds(file_descriptor_set)
-    /// }
-    /// ```
-    pub fn compile_fds(&mut self, fds: FileDescriptorSet) -> Result<()> {
-        let mut target_is_env = false;
-        let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
-            env::var_os("OUT_DIR")
-                .ok_or_else(|| {
-                    Error::new(ErrorKind::Other, "OUT_DIR environment variable is not set")
-                })
-                .map(|val| {
-                    target_is_env = true;
-                    Into::into(val)
-                })
-        })?;
-
-        let requests = fds
-            .file
-            .into_iter()
-            .map(|descriptor| {
-                (
-                    Module::from_protobuf_package_name(descriptor.package()),
-                    descriptor,
-                )
-            })
-            .collect::<Vec<_>>();
-
-        let file_names = requests
-            .iter()
-            .map(|req| {
-                (
-                    req.0.clone(),
-                    req.0.to_file_name_or(&self.default_package_filename),
-                )
-            })
-            .collect::<HashMap<Module, String>>();
-
-        let modules = self.generate(requests)?;
-        for (module, content) in &modules {
-            let file_name = file_names
-                .get(module)
-                .expect("every module should have a filename");
-            let output_path = target.join(file_name);
-
-            let previous_content = fs::read(&output_path);
-
-            if previous_content
-                .map(|previous_content| previous_content == content.as_bytes())
-                .unwrap_or(false)
-            {
-                trace!("unchanged: {:?}", file_name);
-            } else {
-                trace!("writing: {:?}", file_name);
-                let mut file = std::fs::File::create(output_path)?;
-
-                for i in &self.start_file_with {
-                    writeln!(file, "{}", i)?;
-                }
-
-                writeln!(file, "{}", content)?;
-            }
-        }
-
-        if let Some(ref include_file) = self.include_file {
-            trace!("Writing include file: {:?}", target.join(include_file));
-            let mut file = fs::File::create(target.join(include_file))?;
-            self.write_includes(
-                modules.keys().collect(),
-                &mut file,
-                0,
-                if target_is_env { None } else { Some(&target) },
-            )?;
-            file.flush()?;
-        }
-
-        Ok(())
-    }
-
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -1075,6 +883,18 @@ impl Config {
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
     ) -> Result<()> {
+        let mut target_is_env = false;
+        let target: PathBuf = self.out_dir.clone().map(Ok).unwrap_or_else(|| {
+            env::var_os("OUT_DIR")
+                .ok_or_else(|| {
+                    Error::new(ErrorKind::Other, "OUT_DIR environment variable is not set")
+                })
+                .map(|val| {
+                    target_is_env = true;
+                    Into::into(val)
+                })
+        })?;
+
         // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
         // according to [1] if any are output then those paths replace the default crate root,
         // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
@@ -1162,7 +982,67 @@ impl Config {
             )
         })?;
 
-        self.compile_fds(file_descriptor_set)
+        let requests = file_descriptor_set
+            .file
+            .into_iter()
+            .map(|descriptor| {
+                (
+                    Module::from_protobuf_package_name(descriptor.package()),
+                    descriptor,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let file_names = requests
+            .iter()
+            .map(|req| {
+                (
+                    req.0.clone(),
+                    req.0.to_file_name_or(&self.default_package_filename),
+                )
+            })
+            .collect::<HashMap<Module, String>>();
+
+        let modules = self.generate(requests)?;
+        for (module, content) in &modules {
+            let file_name = file_names
+                .get(module)
+                .expect("every module should have a filename");
+            let output_path = target.join(file_name);
+
+            let previous_content = fs::read(&output_path);
+
+            if previous_content
+                .map(|previous_content| previous_content == content.as_bytes())
+                .unwrap_or(false)
+            {
+                trace!("unchanged: {:?}", file_name);
+            } else {
+                trace!("writing: {:?}", file_name);
+
+                let mut file = std::fs::File::create(output_path)?;
+
+                for i in &self.start_file_with {
+                    writeln!(file, "{}", i)?;
+                }
+
+                writeln!(file, "{}", content)?;
+            }
+        }
+
+        if let Some(ref include_file) = self.include_file {
+            trace!("Writing include file: {:?}", target.join(include_file));
+            let mut file = fs::File::create(target.join(include_file))?;
+            self.write_includes(
+                modules.keys().collect(),
+                &mut file,
+                0,
+                if target_is_env { None } else { Some(&target) },
+            )?;
+            file.flush()?;
+        }
+
+        Ok(())
     }
 
     fn write_includes(
@@ -1298,10 +1178,7 @@ impl default::Default for Config {
             map_type: PathMap::default(),
             bytes_type: PathMap::default(),
             type_attributes: PathMap::default(),
-            message_attributes: PathMap::default(),
-            enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
-            boxed: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
@@ -1472,32 +1349,6 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
     Config::new().compile_protos(protos, includes)
 }
 
-/// Compile a [`FileDescriptorSet`] into Rust files during a Cargo build.
-///
-/// The generated `.rs` files are written to the Cargo `OUT_DIR` directory, suitable for use with
-/// the [include!][1] macro. See the [Cargo `build.rs` code generation][2] example for more info.
-///
-/// This function should be called in a project's `build.rs`.
-///
-/// This function can be combined with a crate like [`protox`] which outputs a
-/// [`FileDescriptorSet`] and is a pure Rust implementation of `protoc`.
-///
-/// [`protox`]: https://github.com/andrewhickman/protox
-///
-/// # Example
-/// ```rust,no_run
-/// # use prost_types::FileDescriptorSet;
-/// # fn fds() -> FileDescriptorSet { todo!() }
-/// fn main() -> std::io::Result<()> {
-///   let file_descriptor_set = fds();
-///
-///   prost_build::compile_fds(file_descriptor_set)
-/// }
-/// ```
-pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
-    Config::new().compile_fds(fds)
-}
-
 /// Returns the path to the `protoc` binary.
 pub fn protoc_from_env() -> PathBuf {
     let os_specific_hint = if cfg!(target_os = "macos") {
@@ -1657,42 +1508,6 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_message_attributes() {
-        let _ = env_logger::try_init();
-
-        let out_dir = std::env::temp_dir();
-
-        Config::new()
-            .out_dir(out_dir.clone())
-            .message_attribute(".", "#[derive(derive_builder::Builder)]")
-            .enum_attribute(".", "#[some_enum_attr(u8)]")
-            .compile_protos(
-                &["src/fixtures/helloworld/hello.proto"],
-                &["src/fixtures/helloworld"],
-            )
-            .unwrap();
-
-        let out_file = out_dir
-            .join("helloworld.rs")
-            .as_path()
-            .display()
-            .to_string();
-        #[cfg(feature = "format")]
-        let expected_content =
-            read_all_content("src/fixtures/helloworld/_expected_helloworld_formatted.rs")
-                .replace("\r\n", "\n");
-        #[cfg(not(feature = "format"))]
-        let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
-            .replace("\r\n", "\n");
-        let content = read_all_content(&out_file).replace("\r\n", "\n");
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
-        );
-    }
-
-    #[test]
     fn test_generate_no_empty_outputs() {
         let _ = env_logger::try_init();
         let state = Rc::new(RefCell::new(MockState::default()));
@@ -1739,47 +1554,6 @@ mod tests {
             let actual = actual.replace("\r\n", "\n");
             assert_eq!(expected, actual);
         }
-    }
-
-    #[test]
-    fn test_generate_field_attributes() {
-        let _ = env_logger::try_init();
-
-        let out_dir = std::env::temp_dir();
-
-        Config::new()
-            .out_dir(out_dir.clone())
-            .boxed("Container.data.foo")
-            .boxed("Bar.qux")
-            .compile_protos(
-                &["src/fixtures/field_attributes/field_attributes.proto"],
-                &["src/fixtures/field_attributes"],
-            )
-            .unwrap();
-
-        let out_file = out_dir
-            .join("field_attributes.rs")
-            .as_path()
-            .display()
-            .to_string();
-
-        let content = read_all_content(&out_file).replace("\r\n", "\n");
-
-        #[cfg(feature = "format")]
-        let expected_content = read_all_content(
-            "src/fixtures/field_attributes/_expected_field_attributes_formatted.rs",
-        )
-        .replace("\r\n", "\n");
-        #[cfg(not(feature = "format"))]
-        let expected_content =
-            read_all_content("src/fixtures/field_attributes/_expected_field_attributes.rs")
-                .replace("\r\n", "\n");
-
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
-        );
     }
 
     #[test]

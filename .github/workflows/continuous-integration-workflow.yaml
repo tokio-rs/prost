@@ -12,8 +12,11 @@ jobs:
         with:
           submodules: recursive
       - name: install toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rs/toolchain@v1
         with:
+            toolchain: stable
+            default: true
+            profile: minimal
             components: rustfmt
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -22,7 +25,10 @@ jobs:
       - name: build b_tests
         run: cargo build --package b_tests
       - name: rustfmt
-        run: cargo fmt --all --check
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
 # Disabled because downstream crates don't check this as well
 #   minversions:
 #     runs-on: ubuntu-latest
@@ -57,29 +63,13 @@ jobs:
 #           args: --workspace --all-targets
 #           toolchain: stable
 
-  machete:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: install toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-machete
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: cargo-machete
-      - name: Check unused dependencies
-        run: cargo machete
-
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         toolchain:
           - stable
-          - "1.60"
+          - 1.56.1
         os:
           - ubuntu-latest
           - macos-latest
@@ -90,55 +80,29 @@ jobs:
         with:
           submodules: recursive
       - name: install toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: actions-rs/toolchain@v1
         with:
             toolchain: ${{ matrix.toolchain }}
+            default: true
+            profile: minimal
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v1
       - name: test
-        run: cargo test --workspace --all-targets
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --all-targets
       - name: test no-default-features
-        run: cargo test -p prost-build -p prost-derive -p prost-types --all-targets --no-default-features
-      # Run doc tests separately: https://github.com/rust-lang/cargo/issues/6669
-      - name: test doc
-        run: cargo test --workspace --doc
-      - name: test doc
-        run: cargo test -p prost-build -p prost-derive -p prost-types --doc --no-default-features
-
-  kani:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-      - name: Verify with Kani
-        uses: model-checking/kani-github-action@0.23
+        uses: actions-rs/cargo@v1
         with:
-          enable-propproof: true
-          args: |
-            --tests -p prost-types --default-unwind 3 \
-            --harness "tests::check_timestamp_roundtrip_via_system_time" \
-            --harness "tests::check_duration_roundtrip_nanos"
-        # --default-unwind N roughly corresponds to how much effort
-        # Kani will spend trying to prove correctness of the
-        # program. Higher the number, more programs can be proven
-        # correct. However, Kani will require more time and memory. If
-        # Kani fails with "Failed Checks: unwinding assertion," this
-        # number may need to be raised for Kani to succeed.
+          command: test
+          args: --no-default-features
 
-  no-std:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: install toolchain
-        uses: dtolnay/rust-toolchain@nightly
 #  no-std:
 #    runs-on: ubuntu-latest
 #    steps:
@@ -156,22 +120,6 @@ jobs:
         uses: arduino/setup-protoc@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: Swatinem/rust-cache@v2
-      - name: install cargo-no-std-check
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: cargo-no-std-check
-      - name: prost cargo-no-std-check
-        run: cargo no-std-check --manifest-path Cargo.toml --no-default-features
-      - name: prost-types cargo-no-std-check
-        run: cargo no-std-check --manifest-path prost-types/Cargo.toml --no-default-features
-      # prost-build depends on prost with --no-default-features, but when
-      # prost-build is built through the workspace, prost typically has default
-      # features enabled due to vagaries in Cargo workspace feature resolution.
-      # This additional check ensures that prost-build does not rely on any of
-      # prost's default features to compile.
-      - name: prost-build check
-        run: cargo check --manifest-path prost-build/Cargo.toml
 #      - uses: Swatinem/rust-cache@v1
 #      - name: install cargo-no-std-check
 #        uses: actions-rs/cargo@v1

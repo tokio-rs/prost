@@ -9,6 +9,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
+bytes = { version = "1", default-features = false }
 prost = { path = ".." }
 prost-types = { path = "../prost-types" }
 
@@ -28,7 +29,7 @@ tempfile = "3"
 libz-sys = { version = "1.1, < 1.1.7", optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.4", default-features = false }
+criterion = "0.3"
 cfg-if = "1"
 
 [lib]
@@ -38,6 +39,3 @@ bench = false
 [[bench]]
 name = "dataset"
 harness = false
-
-[package.metadata.cargo-machete]
-ignored = ["prost-types"]
