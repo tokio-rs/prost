@@ -19,10 +19,12 @@ doctest = false
 
 [features]
 default = ["std"]
-std = ["prost/std"]
+std = ["prost/std", "serde/std"]
+serde = []
 
 [dependencies]
 prost = { version = "0.11.8", path = "..", default-features = false, features = ["prost-derive"] }
+serde = { version = "1", default-features = false, features = ["derive"], optional = true}
 
 [dev-dependencies]
 proptest = "1"
