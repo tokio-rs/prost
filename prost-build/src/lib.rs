@@ -382,10 +382,29 @@ impl Config {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.bytes_type.clear();
+        self.add_bytes_type(paths, BytesType::Bytes)
+    }
+
+    fn add_bytes_type<I, S>(&mut self, paths: I, bt: BytesType) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        // First remove all items that are of type `bt`
+        for i in (0..self.bytes_type.matchers.len()).rev() {
+            if self.bytes_type.matchers[i].1 == bt {
+                self.bytes_type.matchers.swap_remove(i);
+            }
+        }
+
         for matcher in paths {
-            self.bytes_type
-                .insert(matcher.as_ref().to_string(), BytesType::Bytes);
+            let matcher = matcher.as_ref();
+            match self.bytes_type.matchers.iter_mut().find(|p| p.0 == matcher) {
+                // Then, for each matcher, either update the type if present but not of correct type
+                Some(item) => item.1 = bt,
+                // Or insert it if new
+                None => self.bytes_type.insert(matcher.to_string(), bt),
+            }
         }
         self
     }
