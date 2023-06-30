@@ -130,6 +130,11 @@ fn main() {
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
+    config
+        .bytes([".bytes_types.BytesTypes.is_bytes"])
+        .compile_protos(&[src.join("bytes_types.proto")], includes)
+        .unwrap();
+
     let out = std::env::var("OUT_DIR").unwrap();
     let out_path = PathBuf::from(out).join("wellknown_include");
 

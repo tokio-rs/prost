@@ -33,6 +33,8 @@ pub mod unittest;
 #[cfg(test)]
 mod bootstrap;
 #[cfg(test)]
+mod bytes_types;
+#[cfg(test)]
 mod debug;
 #[cfg(test)]
 mod deprecated_field;

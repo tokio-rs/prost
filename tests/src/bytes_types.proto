@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package bytes_types;
+
+message BytesTypes {
+    bytes is_vec = 1;
+    bytes is_bytes = 2;
+}
