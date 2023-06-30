@@ -237,6 +237,20 @@ impl Default for BytesType {
     }
 }
 
+/// The string type to output for Protobuf `string` fields.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum StringType {
+    /// The [`alloc::string::String`] type.
+    String,
+}
+
+impl Default for StringType {
+    fn default() -> StringType {
+        StringType::String
+    }
+}
+
 /// Configuration options for Protobuf code generation.
 ///
 /// This configuration builder can be used to set non-default code generation options.
@@ -245,6 +259,7 @@ pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     map_type: PathMap<MapType>,
     bytes_type: PathMap<BytesType>,
+    string_type: PathMap<StringType>,
     type_attributes: PathMap<String>,
     message_attributes: PathMap<String>,
     enum_attributes: PathMap<String>,
@@ -1345,6 +1360,7 @@ impl default::Default for Config {
             service_generator: None,
             map_type: PathMap::default(),
             bytes_type: PathMap::default(),
+            string_type: PathMap::default(),
             type_attributes: PathMap::default(),
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
@@ -1373,6 +1389,7 @@ impl fmt::Debug for Config {
             .field("service_generator", &self.service_generator.is_some())
             .field("map_type", &self.map_type)
             .field("bytes_type", &self.bytes_type)
+            .field("string_type", &self.string_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)
