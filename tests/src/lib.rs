@@ -47,6 +47,8 @@ mod no_unused_results;
 #[cfg(test)]
 #[cfg(feature = "std")]
 mod skip_debug;
+#[cfg(test)]
+mod string_types;
 
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));

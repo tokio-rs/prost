@@ -136,6 +136,9 @@ fn main() {
         .compile_protos(&[src.join("bytes_types.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("string_types.proto")], includes)
+        .unwrap();
     let out = std::env::var("OUT_DIR").unwrap();
     let out_path = PathBuf::from(out).join("wellknown_include");
 

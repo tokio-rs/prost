@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package string_types;
+
+message StringTypes {
+    string is_string = 1;
+}
