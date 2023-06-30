@@ -13,7 +13,7 @@ use ::bytes::{Buf, BufMut, Bytes};
 
 use crate::{
     encoding::{
-        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
+        bool, boxed_str, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
         DecodeContext, WireType,
     },
     DecodeError, Message,
@@ -320,6 +320,44 @@ impl Message for String {
     }
     fn clear(&mut self) {
         self.clear();
+    }
+}
+
+/// `google.protobuf.StringValue`
+impl Message for Box<str> {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        if !self.is_empty() {
+            boxed_str::encode(1, self, buf)
+        }
+    }
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if tag == 1 {
+            boxed_str::merge(wire_type, self, buf, ctx)
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+    fn encoded_len(&self) -> usize {
+        if !self.is_empty() {
+            boxed_str::encoded_len(1, self)
+        } else {
+            0
+        }
+    }
+    fn clear(&mut self) {
+        *self = Self::default();
     }
 }
 

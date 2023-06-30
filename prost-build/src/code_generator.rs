@@ -1271,6 +1271,7 @@ impl StringType {
     fn annotation(&self) -> &'static str {
         match self {
             Self::String => "string",
+            Self::BoxedStr => "boxed_str",
         }
     }
 
@@ -1278,6 +1279,7 @@ impl StringType {
     fn rust_type(&self) -> &'static str {
         match self {
             Self::String => "::prost::alloc::string::String",
+            Self::BoxedStr => "::prost::alloc::boxed::Box<str>",
         }
     }
 }

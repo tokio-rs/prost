@@ -243,6 +243,8 @@ impl Default for BytesType {
 enum StringType {
     /// The [`alloc::string::String`] type.
     String,
+    /// The [`alloc::boxed::Box`]`<`[`str`][primitive@str]`>` type.
+    BoxedStr,
 }
 
 impl Default for StringType {
@@ -499,6 +501,67 @@ impl Config {
                 // Or insert it if new
                 None => self.bytes_type.insert(matcher.to_string(), bt),
             }
+        }
+        self
+    }
+
+    /// Configure the code generator to generate Rust [`Box<str>`][1] fields for Protobuf
+    /// [`string`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Box<str>` for Protobuf `string` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `Box<Str>` field is generated instead of the default [`String`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.boxed_str(&[".my_messages.MyMessageType.my_string_field"]);
+    ///
+    /// // Match all string fields in a message type.
+    /// config.boxed_str(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all string fields in a package.
+    /// config.boxed_str(&[".my_messages"]);
+    ///
+    /// // Match all string fields. Specially useful in `no_std` contexts.
+    /// config.boxed_str(&["."]);
+    ///
+    /// // Match all string fields in a nested message.
+    /// config.boxed_str(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_string_field'.
+    /// config.boxed_str(&["my_string_field"]);
+    ///
+    /// // Match all fields named 'my_string_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.boxed_str(&["MyMessageType.my_string_field"]);
+    ///
+    /// // Match all fields named 'my_string_field', and all fields in the 'foo.bar' package.
+    /// config.boxed_str(&["my_string_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// [1]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [3]: https://doc.rust-lang.org/std/string/struct.String.html
+    pub fn boxed_str<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.string_type.clear();
+        for matcher in paths {
+            self.string_type
+                .insert(matcher.as_ref().to_string(), StringType::BoxedStr);
         }
         self
     }

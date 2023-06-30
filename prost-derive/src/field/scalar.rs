@@ -119,7 +119,9 @@ impl Field {
             Kind::Plain(ref default) => {
                 let default = default.typed();
                 let maybe_as_ref = match self.ty {
-                    Ty::Bytes(BytesTy::BoxedSlice) => quote! { .as_ref() },
+                    Ty::Bytes(BytesTy::BoxedSlice) | Ty::String(StringTy::BoxedStr) => {
+                        quote! { .as_ref() }
+                    }
                     _ => Default::default(),
                 };
 
@@ -178,7 +180,9 @@ impl Field {
             Kind::Plain(ref default) => {
                 let default = default.typed();
                 let maybe_as_ref = match self.ty {
-                    Ty::Bytes(BytesTy::BoxedSlice) => quote! { .as_ref() },
+                    Ty::Bytes(BytesTy::BoxedSlice) | Ty::String(StringTy::BoxedStr) => {
+                        quote! { .as_ref() }
+                    }
                     _ => Default::default(),
                 };
 
@@ -422,6 +426,7 @@ pub enum BytesTy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StringTy {
     String,
+    BoxedStr,
 }
 
 impl BytesTy {
@@ -447,6 +452,7 @@ impl StringTy {
     fn try_from_str(s: &str) -> Result<Self, Error> {
         match s {
             "string" => Ok(StringTy::String),
+            "boxed_str" => Ok(StringTy::BoxedStr),
             _ => bail!("Invalid string type: {}", s),
         }
     }
@@ -454,6 +460,7 @@ impl StringTy {
     fn rust_type(&self) -> TokenStream {
         match self {
             StringTy::String => quote! { ::prost::alloc::string::String },
+            StringTy::BoxedStr => quote! { ::prost::alloc::boxed::Box<str> },
         }
     }
 }
@@ -600,6 +607,7 @@ impl Ty {
     pub fn module(&self) -> Ident {
         match *self {
             Ty::Enumeration(..) => Ident::new("int32", Span::call_site()),
+            Ty::String(StringTy::BoxedStr) => Ident::new("boxed_str", Span::call_site()),
             _ => Ident::new(self.as_str(), Span::call_site()),
         }
     }
