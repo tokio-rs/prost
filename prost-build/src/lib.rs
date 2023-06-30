@@ -227,6 +227,8 @@ enum BytesType {
     Vec,
     /// The [`bytes::Bytes`] type.
     Bytes,
+    /// The [`alloc::boxed::Box`]`<`[`[u8]`][primitive@slice]`>` type.
+    BoxedSlice,
 }
 
 impl Default for BytesType {
@@ -374,6 +376,16 @@ impl Config {
     /// config.bytes(&["my_bytes_field", ".foo.bar"]);
     /// ```
     ///
+    /// For the same path, the last called of this method and [`Self::boxed_slice()`] will be the
+    /// one that is applied during code generation:
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Overridden by the next line
+    /// config.bytes(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// config.boxed_slice(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// ```
+    ///
     /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
     /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
     /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
@@ -383,6 +395,73 @@ impl Config {
         S: AsRef<str>,
     {
         self.add_bytes_type(paths, BytesType::Bytes)
+    }
+
+    /// Configure the code generator to generate Rust [`Box<[u8]>`][4] fields for Protobuf
+    /// [`bytes`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Box<[u8]>` for Protobuf `bytes` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `Box<[u8]>` field is generated instead of the default [`Vec<u8>`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.boxed_slice(&[".my_messages.MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all bytes fields in a message type.
+    /// config.boxed_slice(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all bytes fields in a package.
+    /// config.boxed_slice(&[".my_messages"]);
+    ///
+    /// // Match all bytes fields. Specially useful in `no_std` contexts.
+    /// config.boxed_slice(&["."]);
+    ///
+    /// // Match all bytes fields in a nested message.
+    /// config.boxed_slice(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_bytes_field'.
+    /// config.boxed_slice(&["my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.boxed_slice(&["MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field', and all fields in the 'foo.bar' package.
+    /// config.boxed_slice(&["my_bytes_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// For the same path, the last called of this method and [`Self::bytes()`] will be the
+    /// one that is applied during code generation:
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Overridden by the next line
+    /// config.boxed_slice(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// config.bytes(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// ```
+    ///
+    /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
+    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
+    /// [3]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+    pub fn boxed_slice<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.add_bytes_type(paths, BytesType::BoxedSlice)
     }
 
     fn add_bytes_type<I, S>(&mut self, paths: I, bt: BytesType) -> &mut Self
@@ -1822,12 +1901,24 @@ mod tests {
             ]
         );
 
+        cfg.boxed_slice([a, b]);
+
+        assert_eq!(
+            &cfg.bytes_type.matchers,
+            &[
+                (a.to_string(), BytesType::BoxedSlice),
+                (b.to_string(), BytesType::BoxedSlice),
+                (c.to_string(), BytesType::Bytes),
+            ]
+        );
+
         cfg.bytes([a]);
 
         assert_eq!(
             &cfg.bytes_type.matchers,
             &[
                 (a.to_string(), BytesType::Bytes),
+                (b.to_string(), BytesType::BoxedSlice),
             ]
         );
     }

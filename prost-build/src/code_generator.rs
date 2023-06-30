@@ -1222,6 +1222,7 @@ impl BytesType {
         match self {
             BytesType::Vec => "vec",
             BytesType::Bytes => "bytes",
+            BytesType::BoxedSlice => "boxed_slice",
         }
     }
 
@@ -1230,6 +1231,7 @@ impl BytesType {
         match self {
             BytesType::Vec => "::prost::alloc::vec::Vec<u8>",
             BytesType::Bytes => "::prost::bytes::Bytes",
+            BytesType::BoxedSlice => "::prost::alloc::boxed::Box<[u8]>",
         }
     }
 }

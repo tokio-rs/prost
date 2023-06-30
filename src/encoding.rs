@@ -4,6 +4,7 @@
 
 #![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
@@ -940,6 +941,32 @@ impl sealed::BytesAdapter for Vec<u8> {
         B: BufMut,
     {
         buf.put(self.as_slice())
+    }
+}
+
+impl BytesAdapter for Box<[u8]> {}
+
+impl sealed::BytesAdapter for Box<[u8]> {
+    fn len(&self) -> usize {
+        <[u8]>::len(self)
+    }
+
+    fn replace_with<B>(&mut self, buf: B)
+    where
+        B: Buf,
+    {
+        let mut current = core::mem::take(self).into_vec();
+        current.clear();
+        current.reserve(buf.remaining());
+        current.put(buf);
+        *self = current.into_boxed_slice();
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.as_ref())
     }
 }
 

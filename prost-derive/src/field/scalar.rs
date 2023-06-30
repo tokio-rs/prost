@@ -118,8 +118,13 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
+                let maybe_as_ref = match self.ty {
+                    Ty::Bytes(BytesTy::BoxedSlice) => quote! { .as_ref() },
+                    _ => Default::default(),
+                };
+
                 quote! {
-                    if #ident != #default {
+                    if #ident #maybe_as_ref != #default {
                         #encode_fn(#tag, &#ident, buf);
                     }
                 }
@@ -172,8 +177,13 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
+                let maybe_as_ref = match self.ty {
+                    Ty::Bytes(BytesTy::BoxedSlice) => quote! { .as_ref() },
+                    _ => Default::default(),
+                };
+
                 quote! {
-                    if #ident != #default {
+                    if #ident #maybe_as_ref != #default {
                         #encoded_len_fn(#tag, &#ident)
                     } else {
                         0
@@ -406,6 +416,7 @@ pub enum Ty {
 pub enum BytesTy {
     Vec,
     Bytes,
+    BoxedSlice,
 }
 
 impl BytesTy {
@@ -413,6 +424,7 @@ impl BytesTy {
         match s {
             "vec" => Ok(BytesTy::Vec),
             "bytes" => Ok(BytesTy::Bytes),
+            "boxed_slice" => Ok(BytesTy::BoxedSlice),
             _ => bail!("Invalid bytes type: {}", s),
         }
     }
@@ -421,6 +433,7 @@ impl BytesTy {
         match self {
             BytesTy::Vec => quote! { ::prost::alloc::vec::Vec<u8> },
             BytesTy::Bytes => quote! { ::prost::bytes::Bytes },
+            BytesTy::BoxedSlice => quote! { ::prost::alloc::boxed::Boxed<[u8]> },
         }
     }
 }
@@ -665,12 +678,7 @@ impl DefaultValue {
 
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
             Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value()),
-            Lit::ByteStr(ref lit)
-                if *ty == Ty::Bytes(BytesTy::Bytes) || *ty == Ty::Bytes(BytesTy::Vec) =>
-            {
-                DefaultValue::Bytes(lit.value())
-            }
-
+            Lit::ByteStr(ref lit) if matches!(ty, Ty::Bytes(_)) => DefaultValue::Bytes(lit.value()),
             Lit::Str(ref lit) => {
                 let value = lit.value();
                 let value = value.trim();
