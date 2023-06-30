@@ -6,5 +6,6 @@ fn test_bytes_types() {
     let _ = BytesTypes {
         is_vec: ::prost::alloc::vec::Vec::<u8>::default(),
         is_bytes: ::prost::bytes::Bytes::default(),
+        is_boxed_slice: ::prost::alloc::boxed::Box::<[u8]>::default(),
     };
 }

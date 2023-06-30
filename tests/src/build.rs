@@ -132,6 +132,7 @@ fn main() {
 
     config
         .bytes([".bytes_types.BytesTypes.is_bytes"])
+        .boxed_slice([".bytes_types.BytesTypes.is_boxed_slice"])
         .compile_protos(&[src.join("bytes_types.proto")], includes)
         .unwrap();
 
