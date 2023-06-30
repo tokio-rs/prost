@@ -815,7 +815,7 @@ impl DefaultValue {
     pub fn owned(&self) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::prost::alloc::string::String::new())
+                quote!(::core::default::Default::default())
             }
             DefaultValue::String(ref value) => quote!(#value.into()),
             DefaultValue::Bytes(ref value) if value.is_empty() => {
