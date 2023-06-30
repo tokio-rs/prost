@@ -364,6 +364,17 @@ impl<'a> CodeGenerator<'a> {
                 .push_str(&format!("={:?}", bytes_type.annotation()));
         }
 
+        if type_ == Type::String {
+            let string_type = self
+                .config
+                .string_type
+                .get_first_field(fq_message_name, field.name())
+                .copied()
+                .unwrap_or_default();
+            self.buf
+                .push_str(&format!("={:?}", string_type.annotation()));
+        }
+
         match field.label() {
             Label::Optional => {
                 if optional {

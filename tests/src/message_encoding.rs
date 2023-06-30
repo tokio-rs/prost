@@ -61,7 +61,7 @@ pub struct ScalarTypes {
     pub double: f64,
     #[prost(bool, tag = "013")]
     pub _bool: bool,
-    #[prost(string, tag = "014")]
+    #[prost(string = "string", tag = "014")]
     pub string: String,
     #[prost(bytes = "vec", tag = "015")]
     pub bytes_vec: Vec<u8>,
@@ -94,7 +94,7 @@ pub struct ScalarTypes {
     pub required_double: f64,
     #[prost(bool, required, tag = "113")]
     pub required_bool: bool,
-    #[prost(string, required, tag = "114")]
+    #[prost(string = "string", required, tag = "114")]
     pub required_string: String,
     #[prost(bytes = "vec", required, tag = "115")]
     pub required_bytes_vec: Vec<u8>,
@@ -128,7 +128,7 @@ pub struct ScalarTypes {
     pub optional_double: Option<f64>,
     #[prost(bool, optional, tag = "213")]
     pub optional_bool: Option<bool>,
-    #[prost(string, optional, tag = "214")]
+    #[prost(string = "string", optional, tag = "214")]
     pub optional_string: Option<String>,
     #[prost(bytes = "vec", optional, tag = "215")]
     pub optional_bytes_vec: Option<Vec<u8>>,
@@ -161,7 +161,7 @@ pub struct ScalarTypes {
     pub repeated_double: Vec<f64>,
     #[prost(bool, repeated, packed = "false", tag = "313")]
     pub repeated_bool: Vec<bool>,
-    #[prost(string, repeated, packed = "false", tag = "315")]
+    #[prost(string = "string", repeated, packed = "false", tag = "315")]
     pub repeated_string: Vec<String>,
     #[prost(bytes = "vec", repeated, packed = "false", tag = "316")]
     pub repeated_bytes_vec: Vec<Vec<u8>>,
@@ -195,7 +195,7 @@ pub struct ScalarTypes {
     pub packed_double: Vec<f64>,
     #[prost(bool, repeated, tag = "413")]
     pub packed_bool: Vec<bool>,
-    #[prost(string, repeated, tag = "415")]
+    #[prost(string = "string", repeated, tag = "415")]
     pub packed_string: Vec<String>,
     #[prost(bytes = "vec", repeated, tag = "416")]
     pub packed_bytes_vec: Vec<Vec<u8>>,
@@ -289,7 +289,7 @@ pub struct DefaultValues {
     #[prost(int32, optional, tag = "2", default = "88")]
     pub optional_int32: Option<i32>,
 
-    #[prost(string, tag = "3", default = "forty two")]
+    #[prost(string = "string", tag = "3", default = "forty two")]
     pub string: String,
 
     #[prost(bytes = "vec", tag = "7", default = "b\"foo\\x00bar\"")]
@@ -341,10 +341,10 @@ pub struct Basic {
     #[prost(bool, repeated, packed = "false", tag = "2")]
     pub bools: Vec<bool>,
 
-    #[prost(string, tag = "3")]
+    #[prost(string = "string", tag = "3")]
     pub string: String,
 
-    #[prost(string, optional, tag = "4")]
+    #[prost(string = "string", optional, tag = "4")]
     pub optional_string: Option<String>,
 
     #[prost(enumeration = "BasicEnumeration", tag = "5")]
@@ -397,6 +397,6 @@ pub struct Compound {
 pub enum BasicOneof {
     #[prost(int32, tag = "8")]
     Int(i32),
-    #[prost(string, tag = "9")]
+    #[prost(string = "string", tag = "9")]
     String(String),
 }
