@@ -1781,4 +1781,35 @@ mod tests {
         f.read_to_string(&mut content).unwrap();
         content
     }
+
+    #[test]
+    fn bytes_and_boxed_slice() {
+        let mut cfg = Config::new();
+
+        assert_eq!(&cfg.bytes_type.matchers, &[]);
+
+        let a = ".a.A.a1";
+        let b = "B.b2";
+        let c = "3";
+
+        cfg.bytes([a, b, c]);
+
+        assert_eq!(
+            &cfg.bytes_type.matchers,
+            &[
+                (a.to_string(), BytesType::Bytes),
+                (b.to_string(), BytesType::Bytes),
+                (c.to_string(), BytesType::Bytes),
+            ]
+        );
+
+        cfg.bytes([a]);
+
+        assert_eq!(
+            &cfg.bytes_type.matchers,
+            &[
+                (a.to_string(), BytesType::Bytes),
+            ]
+        );
+    }
 }
