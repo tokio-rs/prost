@@ -137,8 +137,10 @@ fn main() {
         .unwrap();
 
     config
+        .boxed_str([".string_types.StringTypes.is_boxed_str"])
         .compile_protos(&[src.join("string_types.proto")], includes)
         .unwrap();
+
     let out = std::env::var("OUT_DIR").unwrap();
     let out_path = PathBuf::from(out).join("wellknown_include");
 
