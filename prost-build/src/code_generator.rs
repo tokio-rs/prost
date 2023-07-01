@@ -350,30 +350,8 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field);
+        let type_tag = self.field_type_tag_detailed(fq_message_name, &field);
         self.buf.push_str(&type_tag);
-
-        if type_ == Type::Bytes {
-            let bytes_type = self
-                .config
-                .bytes_type
-                .get_first_field(fq_message_name, field.name())
-                .copied()
-                .unwrap_or_default();
-            self.buf
-                .push_str(&format!("={:?}", bytes_type.annotation()));
-        }
-
-        if type_ == Type::String {
-            let string_type = self
-                .config
-                .string_type
-                .get_first_field(fq_message_name, field.name())
-                .copied()
-                .unwrap_or_default();
-            self.buf
-                .push_str(&format!("={:?}", string_type.annotation()));
-        }
 
         match field.label() {
             Label::Optional => {
@@ -957,6 +935,42 @@ impl<'a> CodeGenerator<'a> {
             .join("::")
     }
 
+    /// Use this method instead of [`Self::field_type_tag()`] when you need `string="string"`
+    /// instead of just `string` as the tag indication in the `#[prost]` attribute.
+    ///
+    /// This applies only to [`Type::String`] and [`Type::Bytes`], other types are not concerned.
+    fn field_type_tag_detailed(
+        &self,
+        fq_message_name: &str,
+        field: &FieldDescriptorProto,
+    ) -> Cow<'static, str> {
+        match field.r#type() {
+            Type::String => {
+                let string_type = self
+                    .config
+                    .string_type
+                    .get_first_field(fq_message_name, field.name())
+                    .copied()
+                    .unwrap_or_default();
+                Cow::Owned(format!("string={:?}", string_type.annotation()))
+            }
+            Type::Bytes => {
+                let bytes_type = self
+                    .config
+                    .bytes_type
+                    .get_first_field(fq_message_name, field.name())
+                    .copied()
+                    .unwrap_or_default();
+                Cow::Owned(format!("bytes={:?}", bytes_type.annotation()))
+            }
+            _ => self.field_type_tag(field),
+        }
+    }
+
+    /// Use this method instead of [`Self::field_type_tag_detailed()`] when you need `string`
+    /// instead of `string="string"` as the tag indication in the `#[prost]` attribute.
+    ///
+    /// This applies only to [`Type::String`] and [`Type::Bytes`], other types are not concerned.
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
