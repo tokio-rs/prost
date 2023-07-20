@@ -115,6 +115,7 @@ jobs:
           args: |
             --tests -p prost-types --default-unwind 3 \
             --harness "tests::check_timestamp_roundtrip_via_system_time" \
+            --harness "tests::check_duration_roundtrip" \
             --harness "tests::check_duration_roundtrip_nanos"
         # --default-unwind N roughly corresponds to how much effort
         # Kani will spend trying to prove correctness of the
