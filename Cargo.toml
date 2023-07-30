@@ -45,10 +45,12 @@ bench = false
 default = ["prost-derive", "std"]
 no-recursion-limit = []
 std = []
+simdutf8 = ["dep:simdutf8"]
 
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.11.8", path = "prost-derive", optional = true }
+simdutf8 = { version = "0.1.4", optional = true, features = ["aarch64_neon"] }
 
 [dev-dependencies]
 criterion = { version = "0.4", default-features = false }
