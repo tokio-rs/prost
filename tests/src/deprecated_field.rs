@@ -11,7 +11,12 @@ fn test_warns_when_using_fields_with_deprecated_field() {
     let message = deprecated_field::Test {
         not_outdated: ".ogg".to_string(),
         outdated: ".wav".to_string(),
+        test3: Some(deprecated_field::test::Test3::OneofOutdated(
+            ".mp3".to_string(),
+        )),
     };
+    #[allow(deprecated)]
+    let enum_ = deprecated_field::Test2::Outdated;
     // This test relies on the `#[allow(deprecated)]` attribute to ignore the warning that should
     // be raised by the compiler.
     // This test has a shortcoming since it doesn't explicitly check for the presence of the
@@ -26,4 +31,5 @@ fn test_warns_when_using_fields_with_deprecated_field() {
     //       |
     //       = note: `#[warn(deprecated)]` on by default
     drop(message);
+    drop(enum_);
 }

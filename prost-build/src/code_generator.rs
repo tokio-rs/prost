@@ -9,9 +9,9 @@ use multimap::MultiMap;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-    SourceCodeInfo,
+    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, EnumValueOptions,
+    FieldDescriptorProto, FieldOptions, FileDescriptorProto, OneofDescriptorProto,
+    ServiceDescriptorProto, SourceCodeInfo,
 };
 
 use crate::ast::{Comments, Method, Service};
@@ -550,6 +550,11 @@ impl<'a> CodeGenerator<'a> {
             self.append_doc(fq_message_name, Some(field.name()));
             self.path.pop();
 
+            if self.deprecated(&field) {
+                self.push_indent();
+                self.buf.push_str("#[deprecated]\n");
+            }
+
             self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!(
@@ -667,6 +672,10 @@ impl<'a> CodeGenerator<'a> {
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
+            if variant.deprecated {
+                self.push_indent();
+                self.buf.push_str("#[deprecated]\n");
+            }
             self.push_indent();
             self.buf.push_str(&variant.generated_variant_name);
             self.buf.push_str(" = ");
@@ -713,6 +722,10 @@ impl<'a> CodeGenerator<'a> {
         self.depth += 1;
 
         for variant in variant_mappings.iter() {
+            if variant.deprecated {
+                self.push_indent();
+                self.buf.push_str("#[allow(deprecated)]\n");
+            }
             self.push_indent();
             self.buf.push_str(&enum_name);
             self.buf.push_str("::");
@@ -1136,6 +1149,7 @@ struct EnumVariantMapping<'a> {
     proto_name: &'a str,
     proto_number: i32,
     generated_variant_name: String,
+    deprecated: bool,
 }
 
 fn build_enum_value_mappings<'a>(
@@ -1171,9 +1185,17 @@ fn build_enum_value_mappings<'a>(
             proto_name: value.name(),
             proto_number: value.number(),
             generated_variant_name,
+            deprecated: enum_field_deprecated(value),
         })
     }
     mappings
+}
+
+fn enum_field_deprecated(value: &EnumValueDescriptorProto) -> bool {
+    value
+        .options
+        .as_ref()
+        .map_or(false, EnumValueOptions::deprecated)
 }
 
 impl MapType {

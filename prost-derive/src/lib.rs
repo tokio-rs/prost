@@ -308,6 +308,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             #[doc=#from_i32_doc]
+            #[allow(deprecated)]
             pub fn from_i32(value: i32) -> ::core::option::Option<#ident> {
                 match value {
                     #(#from,)*
@@ -316,6 +317,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
+        #[allow(deprecated)]
         impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> #ident {
                 #ident::#default
@@ -435,6 +437,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     });
 
     let expanded = quote! {
+        #[allow(deprecated)]
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
             pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
@@ -467,6 +470,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
+        #[allow(deprecated)]
         impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
             fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 match *self {
