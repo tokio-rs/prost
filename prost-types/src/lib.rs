@@ -421,6 +421,7 @@ impl fmt::Display for Timestamp {
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use std::time::{self, SystemTime, UNIX_EPOCH};
@@ -429,7 +430,6 @@ mod tests {
 
     use super::*;
 
-    #[cfg(feature = "std")]
     proptest! {
         #[test]
         fn check_system_time_roundtrip(
