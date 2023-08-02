@@ -230,6 +230,7 @@ impl Field {
             }
         } else {
             quote! {
+                #[allow(non_snake_case)]
                 fn #wrap_name<T>(v: T) -> T { v }
             }
         }
