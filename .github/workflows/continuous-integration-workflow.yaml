@@ -72,7 +72,7 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - "1.60"
+          - "1.63"
         os:
           - ubuntu-latest
           - macos-latest
