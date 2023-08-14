@@ -1,6 +1,6 @@
 [package]
 name = "prost"
-version = "0.11.8"
+version = "0.11.9"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com",
@@ -48,11 +48,11 @@ std = []
 
 [dependencies]
 bytes = { version = "1", default-features = false }
-prost-derive = { version = "0.11.8", path = "prost-derive", optional = true }
+prost-derive = { version = "0.11.9", path = "prost-derive", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.4", default-features = false }
-env_logger = { version = "0.8", default-features = false }
+env_logger = { version = "0.10", default-features = false }
 log = "0.4"
 proptest = "1"
 rand = "0.8"
