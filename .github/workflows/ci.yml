@@ -1,65 +1,26 @@
-name: continuous integration
+name: CI
 on: pull_request
+
+env:
+  PROTOC_VERSION: 3.20.3
 
 jobs:
 
   rustfmt:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          submodules: recursive
-      - name: install toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-            components: rustfmt
-      - name: rustfmt
-        run: cargo fmt --all --check
-# Disabled because downstream crates don't check this as well
-#   minversions:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#           profile: minimal
-#           toolchain: nightly
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#           profile: minimal
-#           toolchain: stable
-#       - uses: actions/checkout@v3
-#         with:
-#           submodules: recursive
-#       - name: Install Protoc
-#         uses: arduino/setup-protoc@v1
-#         with:
-#           repo-token: ${{ secrets.GITHUB_TOKEN }}
-#       - name: install ninja
-#         uses: seanmiddleditch/gha-setup-ninja@v3
-#       - name: cargo update -Zminimal-versions
-#         uses: actions-rs/cargo@v1
-#         with:
-#           command: update
-#           toolchain: nightly
-#           args: -Zminimal-versions
-#       - name: cargo check
-#         uses: actions-rs/cargo@v1
-#         with:
-#           command: check
-#           args: --workspace --all-targets
-#           toolchain: stable
+          components: rustfmt
+      - run: cargo fmt --all --check
 
   machete:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: install toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-machete
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: install cargo-machete
         uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-machete
@@ -78,20 +39,17 @@ jobs:
           - macos-latest
           - windows-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: install toolchain
+      - uses: actions/checkout@v3
+      - name: install toolchain (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@master
         with:
-            toolchain: ${{ matrix.toolchain }}
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+          toolchain: ${{ matrix.toolchain }}
+      - name: install protoc
+        uses: taiki-e/install-action@v2
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tool: protoc@${{ env.PROTOC_VERSION }}
       - name: install ninja
-        uses: seanmiddleditch/gha-setup-ninja@v3
+        uses: ./.github/actions/setup-ninja
       - uses: Swatinem/rust-cache@v2
       - name: test
         run: cargo test --workspace --all-targets
@@ -100,14 +58,13 @@ jobs:
       # Run doc tests separately: https://github.com/rust-lang/cargo/issues/6669
       - name: test doc
         run: cargo test --workspace --doc
-      - name: test doc
+      - name: test doc no-default-features
         run: cargo test -p prost-build -p prost-derive -p prost-types --doc --no-default-features
 
   kani:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - name: Verify with Kani
         uses: model-checking/kani-github-action@v0.32
         with:
@@ -127,16 +84,12 @@ jobs:
   no-std:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: install protoc
+        uses: taiki-e/install-action@v2
         with:
-          submodules: recursive
-      - name: install toolchain
-        uses: dtolnay/rust-toolchain@nightly
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tool: protoc@${{ env.PROTOC_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: install cargo-no-std-check
         uses: baptiste0928/cargo-install@v2
