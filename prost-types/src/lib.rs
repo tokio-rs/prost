@@ -24,6 +24,10 @@ use core::i64;
 use core::str::FromStr;
 use core::time;
 
+use prost::alloc::format;
+use prost::alloc::vec::Vec;
+use prost::{DecodeError, EncodeError, Message, Name};
+
 pub use protobuf::*;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
@@ -32,6 +36,39 @@ pub use protobuf::*;
 
 const NANOS_PER_SECOND: i32 = 1_000_000_000;
 const NANOS_MAX: i32 = NANOS_PER_SECOND - 1;
+
+impl Any {
+    /// Serialize the given message type `M` as [`Any`].
+    pub fn from_msg<M>(msg: &M) -> Result<Self, EncodeError>
+    where
+        M: Name,
+    {
+        let type_url = M::type_url();
+        let mut value = Vec::new();
+        Message::encode(msg, &mut value)?;
+        Ok(Any { type_url, value })
+    }
+
+    /// Decode the given message type `M` from [`Any`], validating that it has
+    /// the expected type URL.
+    pub fn to_msg<M>(&self) -> Result<M, DecodeError>
+    where
+        M: Default + Name + Sized,
+    {
+        let expected_type_url = M::type_url();
+
+        if self.type_url == expected_type_url {
+            Ok(M::decode(&*self.value)?)
+        } else {
+            let mut err = DecodeError::new(format!(
+                "expected type URL: \"{}\" (got: \"{}\")",
+                expected_type_url, &self.type_url
+            ));
+            err.push("unexpected type URL", "type_url");
+            Err(err)
+        }
+    }
+}
 
 impl Duration {
     /// Normalizes the duration to a canonical format.
