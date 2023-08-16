@@ -206,7 +206,7 @@ where
     RoundtripResult::Ok(buf1)
 }
 
-/// Generic rountrip serialization check for messages.
+/// Generic roundtrip serialization check for messages.
 pub fn check_message<M>(msg: &M)
 where
     M: Message + Default + PartialEq,

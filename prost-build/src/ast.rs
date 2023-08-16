@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use prost_types::source_code_info::Location;
 #[cfg(feature = "cleanup-markdown")]
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
@@ -110,10 +110,8 @@ impl Comments {
     ///     - escape urls as <http://foo.com>
     ///     - escape `[` & `]`
     fn sanitize_line(line: &str) -> String {
-        lazy_static! {
-            static ref RULE_URL: Regex = Regex::new(r"https?://[^\s)]+").unwrap();
-            static ref RULE_BRACKETS: Regex = Regex::new(r"(\[)(\S+)(])").unwrap();
-        }
+        static RULE_URL: Lazy<Regex> = Lazy::new(|| Regex::new(r"https?://[^\s)]+").unwrap());
+        static RULE_BRACKETS: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\[)(\S+)(])").unwrap());
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
         s = RULE_BRACKETS.replace_all(&s, r"\$1$2\$3").to_string();
