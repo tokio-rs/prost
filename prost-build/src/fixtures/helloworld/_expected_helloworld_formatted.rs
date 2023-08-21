@@ -2,14 +2,14 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Message {
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub say: ::prost::alloc::string::String,
 }
 #[derive(derive_builder::Builder)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub say: ::prost::alloc::string::String,
 }
 #[some_enum_attr(u8)]

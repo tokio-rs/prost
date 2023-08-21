@@ -298,7 +298,7 @@ fn parse_offset(s: &str) -> Option<(i8, i8, &str)> {
         let (hour, s) = parse_two_digit_numeric(s)?;
 
         let (minute, s) = if s.is_empty() {
-            // No offset minutes are sepcified, e.g. +00 or +07.
+            // No offset minutes are specified, e.g. +00 or +07.
             (0, s)
         } else {
             // Optional colon separator between the hour and minute digits.
@@ -586,12 +586,8 @@ impl From<DateTime> for Timestamp {
 
 #[cfg(test)]
 mod tests {
-
-    use std::convert::TryFrom;
-
-    use proptest::prelude::*;
-
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_min_max() {
@@ -611,6 +607,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_datetime_from_timestamp() {
         let case = |expected: &str, secs: i64, nanos: i32| {
@@ -660,7 +657,7 @@ mod tests {
         case("1901-12-13T20:45:52Z", i32::MIN as i64, 0);
         case("1901-12-13T20:45:51Z", i32::MIN as i64 - 1, 0);
 
-        // Skipping these tests on windows as std::time::SysteTime range is low
+        // Skipping these tests on windows as std::time::SystemTime range is low
         // on Windows compared with that of Unix which can cause the following
         // high date value tests to panic
         #[cfg(not(target_os = "windows"))]
@@ -850,6 +847,7 @@ mod tests {
             )
         }
 
+        #[cfg(feature = "std")]
         #[test]
         fn check_duration_parse_to_string_roundtrip(
             duration in core::time::Duration::arbitrary(),

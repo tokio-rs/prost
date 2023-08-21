@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-types/0.11.8")]
+#![doc(html_root_url = "https://docs.rs/prost-types/0.11.9")]
 
 //! Protocol Buffers well-known types.
 //!
@@ -423,11 +423,12 @@ impl fmt::Display for Timestamp {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{self, SystemTime, UNIX_EPOCH};
-
-    use proptest::prelude::*;
-
     use super::*;
+
+    #[cfg(feature = "std")]
+    use proptest::prelude::*;
+    #[cfg(feature = "std")]
+    use std::time::{self, SystemTime, UNIX_EPOCH};
 
     #[cfg(feature = "std")]
     proptest! {

@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.11.8")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.11.9")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -290,7 +290,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
         match discriminant {
             Some((_, expr)) => variants.push((ident, expr)),
-            None => bail!("Enumeration variants must have a disriminant"),
+            None => bail!("Enumeration variants must have a discriminant"),
         }
     }
 

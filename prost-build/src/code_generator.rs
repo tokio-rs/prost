@@ -324,10 +324,15 @@ impl<'a> CodeGenerator<'a> {
         let ty = self.resolve_type(&field, fq_message_name);
 
         let boxed = !repeated
-            && (type_ == Type::Message || type_ == Type::Group)
-            && self
-                .message_graph
-                .is_nested(field.type_name(), fq_message_name);
+            && ((type_ == Type::Message || type_ == Type::Group)
+                && self
+                    .message_graph
+                    .is_nested(field.type_name(), fq_message_name))
+            || (self
+                .config
+                .boxed
+                .get_first_field(&fq_message_name, field.name())
+                .is_some());
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -573,10 +578,15 @@ impl<'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field, fq_message_name);
 
-            let boxed = (type_ == Type::Message || type_ == Type::Group)
+            let boxed = ((type_ == Type::Message || type_ == Type::Group)
                 && self
                     .message_graph
-                    .is_nested(field.type_name(), fq_message_name);
+                    .is_nested(field.type_name(), fq_message_name))
+                || (self
+                    .config
+                    .boxed
+                    .get_first_field(&oneof_name, field.name())
+                    .is_some());
 
             debug!(
                 "    oneof: {:?}, type: {:?}, boxed: {}",
