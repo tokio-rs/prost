@@ -550,7 +550,6 @@ impl<'a> CodeGenerator<'a> {
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
         ));
-        self.push_indent();
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
