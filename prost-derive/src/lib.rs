@@ -27,7 +27,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let skip_debug = input
         .attrs
         .into_iter()
-        .any(|a| a.path.is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -362,7 +362,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let skip_debug = input
         .attrs
         .into_iter()
-        .any(|a| a.path.is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
 
     let variants = match input.data {
         Data::Enum(DataEnum { variants, .. }) => variants,
