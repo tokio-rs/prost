@@ -252,6 +252,7 @@ pub struct Config {
     include_file: Option<PathBuf>,
     prost_path: Option<String>,
     fmt: bool,
+    builders: PathMap<String>,
 }
 
 impl Config {
@@ -809,6 +810,41 @@ impl Config {
         self
     }
 
+    /// Generate the [builder pattern] API for matched message types.
+    ///
+    /// [builder pattern]: https://rust-lang.github.io/api-guidelines/type-safety.html#c-builder
+    ///
+    /// # Arguments
+    ///
+    /// **`path`** - a path matching any number of types. It works the same way as in
+    /// [`btree_map`](#method.btree_map), just with the field name omitted.
+    ///
+    /// **`builder_name`** - A name for the builder type. The struct with this name
+    /// will be generated in the same module as message's nested types.
+    /// The same name, converted to snake case, will be used for the associated
+    /// function to the message type that creates the builder.
+    ///
+    /// # Example
+    ///
+    /// Builder API can be used to enable forward compatibility in the face of
+    /// new fields added to the Protobuf message definition, when combined with
+    /// the `#[non_exhaustive]` attribute on the message structs.
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.builder(".my_messages", "Builder");
+    /// config.message_attribute(".my_messages", "#[non_exhaustive]");
+    /// ```
+    pub fn builder<P, B>(&mut self, path: P, builder_name: B) -> &mut Self
+    where
+        P: AsRef<str>,
+        B: AsRef<str>,
+    {
+        self.builders
+            .insert(path.as_ref().to_owned(), builder_name.as_ref().to_owned());
+        self
+    }
+
     /// Configures the output directory where generated Rust files will be written.
     ///
     /// If unset, defaults to the `OUT_DIR` environment variable. `OUT_DIR` is set by Cargo when
@@ -1313,6 +1349,7 @@ impl default::Default for Config {
             include_file: None,
             prost_path: None,
             fmt: true,
+            builders: PathMap::default(),
         }
     }
 }
@@ -1337,6 +1374,7 @@ impl fmt::Debug for Config {
             .field("disable_comments", &self.disable_comments)
             .field("skip_debug", &self.skip_debug)
             .field("prost_path", &self.prost_path)
+            .field("builders", &self.builders)
             .finish()
     }
 }
