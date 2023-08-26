@@ -37,6 +37,8 @@ pub use protobuf::*;
 const NANOS_PER_SECOND: i32 = 1_000_000_000;
 const NANOS_MAX: i32 = NANOS_PER_SECOND - 1;
 
+const PACKAGE: &str = "google.protobuf";
+
 impl Any {
     /// Serialize the given message type `M` as [`Any`].
     pub fn from_msg<M>(msg: &M) -> Result<Self, EncodeError>
@@ -75,6 +77,15 @@ impl Any {
         ));
         err.push("unexpected type URL", "type_url");
         Err(err)
+    }
+}
+
+impl Name for Any {
+    const PACKAGE: &'static str = PACKAGE;
+    const NAME: &'static str = "Any";
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -127,6 +138,15 @@ impl Duration {
         // TODO: should this be checked?
         // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
         //               "invalid duration: {:?}", self);
+    }
+}
+
+impl Name for Duration {
+    const PACKAGE: &'static str = PACKAGE;
+    const NAME: &'static str = "Duration";
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -343,6 +363,15 @@ impl Timestamp {
     }
 }
 
+impl Name for Timestamp {
+    const PACKAGE: &'static str = PACKAGE;
+    const NAME: &'static str = "Timestamp";
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// Implements the unstable/naive version of `Eq`: a basic equality check on the internal fields of the `Timestamp`.
 /// This implies that `normalized_ts != non_normalized_ts` even if `normalized_ts == non_normalized_ts.normalized()`.
 #[cfg(feature = "std")]
@@ -501,6 +530,12 @@ impl<'a> TypeUrl<'a> {
 
         Some(Self { full_name })
     }
+}
+
+/// Compute the type URL for the given `google.protobuf` type, using `type.googleapis.com` as the
+/// authority for the URL.
+fn type_url_for<T: Name>() -> String {
+    format!("type.googleapis.com/{}.{}", T::PACKAGE, T::NAME)
 }
 
 #[cfg(test)]
@@ -825,6 +860,22 @@ mod tests {
                 case.0,
             );
         }
+    }
+
+    #[test]
+    fn check_any_serialization() {
+        let message = Timestamp::from(UNIX_EPOCH);
+        let any = Any::from_msg(&message).unwrap();
+        assert_eq!(
+            &any.type_url,
+            "type.googleapis.com/google.protobuf.Timestamp"
+        );
+
+        let message2 = any.to_msg::<Timestamp>().unwrap();
+        assert_eq!(message, message2);
+
+        // Wrong type URL
+        assert!(any.to_msg::<Duration>().is_err());
     }
 
     #[test]
