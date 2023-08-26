@@ -4,9 +4,7 @@ use std::fmt;
 use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{
-    parse_str, Ident, Index, Lit, LitByteStr, Meta, MetaList, MetaNameValue, NestedMeta, Path,
-};
+use syn::{parse_str, Expr, ExprLit, Ident, Index, Lit, LitByteStr, Meta, MetaNameValue, Path};
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
 
@@ -221,15 +219,17 @@ impl Field {
                 struct #wrap_name<'a>(&'a i32);
                 impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
                     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                        match #ty::from_i32(*self.0) {
-                            None => ::core::fmt::Debug::fmt(&self.0, f),
-                            Some(en) => ::core::fmt::Debug::fmt(&en, f),
+                        let res: Result<#ty, _> = ::core::convert::TryFrom::try_from(*self.0);
+                        match res {
+                            Err(_) => ::core::fmt::Debug::fmt(&self.0, f),
+                            Ok(en) => ::core::fmt::Debug::fmt(&en, f),
                         }
                     }
                 }
             }
         } else {
             quote! {
+                #[allow(non_snake_case)]
                 fn #wrap_name<T>(v: T) -> T { v }
             }
         }
@@ -297,7 +297,7 @@ impl Field {
                     quote! {
                         #[doc=#get_doc]
                         pub fn #get(&self) -> #ty {
-                            #ty::from_i32(self.#ident).unwrap_or(#default)
+                            ::core::convert::TryFrom::try_from(self.#ident).unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]
@@ -315,7 +315,10 @@ impl Field {
                     quote! {
                         #[doc=#get_doc]
                         pub fn #get(&self) -> #ty {
-                            self.#ident.and_then(#ty::from_i32).unwrap_or(#default)
+                            self.#ident.and_then(|x| {
+                                let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                result.ok()
+                            }).unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]
@@ -337,7 +340,10 @@ impl Field {
                             ::core::iter::Cloned<::core::slice::Iter<i32>>,
                             fn(i32) -> ::core::option::Option<#ty>,
                         > {
-                            self.#ident.iter().cloned().filter_map(#ty::from_i32)
+                            self.#ident.iter().cloned().filter_map(|x| {
+                                let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                result.ok()
+                            })
                         }
                         #[doc=#push_doc]
                         pub fn #push(&mut self, value: #ty) {
@@ -439,29 +445,24 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
             Meta::NameValue(MetaNameValue {
                 ref path,
-                lit: Lit::Str(ref l),
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(ref l),
+                        ..
+                    }),
                 ..
             }) if path.is_ident("bytes") => Ty::Bytes(BytesTy::try_from_str(&l.value())?),
             Meta::NameValue(MetaNameValue {
                 ref path,
-                lit: Lit::Str(ref l),
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(ref l),
+                        ..
+                    }),
                 ..
             }) if path.is_ident("enumeration") => Ty::Enumeration(parse_str::<Path>(&l.value())?),
-            Meta::List(MetaList {
-                ref path,
-                ref nested,
-                ..
-            }) if path.is_ident("enumeration") => {
-                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                if nested.len() == 1 {
-                    if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
-                        Ty::Enumeration(path.clone())
-                    } else {
-                        bail!("invalid enumeration attribute: item must be an identifier");
-                    }
-                } else {
-                    bail!("invalid enumeration attribute: only a single identifier is supported");
-                }
+            Meta::List(ref meta_list) if meta_list.path.is_ident("enumeration") => {
+                Ty::Enumeration(meta_list.parse_args::<Path>()?)
             }
             _ => return Ok(None),
         };
@@ -618,8 +619,12 @@ impl DefaultValue {
     pub fn from_attr(attr: &Meta) -> Result<Option<Lit>, Error> {
         if !attr.path().is_ident("default") {
             Ok(None)
-        } else if let Meta::NameValue(ref name_value) = *attr {
-            Ok(Some(name_value.lit.clone()))
+        } else if let Meta::NameValue(MetaNameValue {
+            value: Expr::Lit(ExprLit { ref lit, .. }),
+            ..
+        }) = *attr
+        {
+            Ok(Some(lit.clone()))
         } else {
             bail!("invalid default value attribute: {:?}", attr)
         }
