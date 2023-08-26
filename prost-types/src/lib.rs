@@ -25,6 +25,7 @@ use core::str::FromStr;
 use core::time;
 
 use prost::alloc::format;
+use prost::alloc::string::String;
 use prost::alloc::vec::Vec;
 use prost::{DecodeError, EncodeError, Message, Name};
 
@@ -864,7 +865,7 @@ mod tests {
 
     #[test]
     fn check_any_serialization() {
-        let message = Timestamp::from(UNIX_EPOCH);
+        let message = Timestamp::date(2000, 01, 01).unwrap();
         let any = Any::from_msg(&message).unwrap();
         assert_eq!(
             &any.type_url,
