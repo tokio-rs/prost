@@ -25,6 +25,7 @@ cfg_if! {
     }
 }
 
+pub mod builders;
 pub mod extern_paths;
 pub mod no_root_packages;
 pub mod packages;
