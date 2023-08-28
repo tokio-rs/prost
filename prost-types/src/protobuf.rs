@@ -1256,7 +1256,7 @@ pub mod generated_code_info {
 /// If the embedded message type is well-known and has a custom JSON
 /// representation, that representation will be embedded adding a field
 /// `value` which holds the custom JSON in addition to the `@type`
-/// field. Example (for message \\[google.protobuf.Duration\]\[\\]):
+/// field. Example (for message \[google.protobuf.Duration\]\[\]):
 ///
 /// ```text
 /// {
@@ -1280,7 +1280,7 @@ pub struct Any {
     /// server that maps type URLs to message definitions as follows:
     ///
     /// * If no scheme is provided, `https` is assumed.
-    /// * An HTTP GET on the URL must yield a \\[google.protobuf.Type\]\[\\]
+    /// * An HTTP GET on the URL must yield a \[google.protobuf.Type\]\[\]
     ///   value in binary format, or produce an error.
     /// * Applications are allowed to cache lookup results based on the
     ///   URL, or have them precompiled into a binary to avoid any
@@ -1655,7 +1655,7 @@ pub struct Api {
     /// message.
     #[prost(message, optional, tag = "5")]
     pub source_context: ::core::option::Option<SourceContext>,
-    /// Included interfaces. See \\[Mixin\]\[\\].
+    /// Included interfaces. See \[Mixin\]\[\].
     #[prost(message, repeated, tag = "6")]
     pub mixins: ::prost::alloc::vec::Vec<Mixin>,
     /// The source syntax of the service.
@@ -1702,7 +1702,7 @@ pub struct Method {
 ///
 /// * If an http annotation is inherited, the path pattern will be
 ///   modified as follows. Any version prefix will be replaced by the
-///   version of the including interface plus the \\[root\]\[\\] path if
+///   version of the including interface plus the \[root\]\[\] path if
 ///   specified.
 ///
 /// Example of a simple mixin:
@@ -1984,7 +1984,7 @@ pub struct Duration {
 ///      d: 10
 ///      x: 2
 ///    }
-///    c: [1, 2]
+///    c: \[1, 2\]
 /// }
 /// ```
 ///
@@ -2271,7 +2271,7 @@ impl NullValue {
 ///
 /// In JSON format, the Timestamp type is encoded as a string in the
 /// [RFC 3339](<https://www.ietf.org/rfc/rfc3339.txt>) format. That is, the
-/// format is "{year}-{month}-{day}T{hour}:{min}:{sec}\\[.{frac_sec}\\]Z"
+/// format is "{year}-{month}-{day}T{hour}:{min}:{sec}\[.{frac_sec}\]Z"
 /// where {year} is always expressed using four digits while {month}, {day},
 /// {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
 /// seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
@@ -2285,12 +2285,12 @@ impl NullValue {
 ///
 /// In JavaScript, one can convert a Date object to this format using the
 /// standard
-/// \[toISOString()\](<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString>)
+/// [toISOString()](<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString>)
 /// method. In Python, a standard `datetime.datetime` object can be converted
 /// to this format using
-/// \[`strftime`\](<https://docs.python.org/2/library/time.html#time.strftime>) with
+/// [`strftime`](<https://docs.python.org/2/library/time.html#time.strftime>) with
 /// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
-/// the Joda Time's \[`ISODateTimeFormat.dateTime()`\](<http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D>) to obtain a formatter capable of generating timestamps in this format.
+/// the Joda Time's [`ISODateTimeFormat.dateTime()`](<http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D>) to obtain a formatter capable of generating timestamps in this format.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Timestamp {
