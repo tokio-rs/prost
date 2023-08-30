@@ -1,5 +1,6 @@
 //! Tests for skipping the default Debug implementation.
 
+use crate::message_encoding::BasicEnumeration;
 use prost::alloc::{format, string::String};
 use std::fmt;
 
@@ -11,20 +12,20 @@ fn tuple_struct_custom_debug() {
     struct NewType(#[prost(enumeration = "BasicEnumeration", tag = "5")] i32);
     impl fmt::Debug for NewType {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.write_str(f, "NewType(custom_debug)")?;
+            f.write_str("NewType(custom_debug)")
         }
     }
     assert_eq!(
         format!("{:?}", NewType(BasicEnumeration::TWO as i32)),
         "NewType(custom_debug)"
     );
-    assert_eq!(format!("{:?}", NewType(42)), "NewType(42)");
+    assert_eq!(format!("{:?}", NewType(42)), "NewType(custom_debug)");
 }
 
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, prost::Oneof)]
 #[prost(skip_debug)]
-pub enum OneofWithEnumNoDebug {
+pub enum OneofWithEnumCustomDebug {
     #[prost(int32, tag = "8")]
     Int(i32),
     #[prost(string, tag = "9")]
@@ -42,13 +43,13 @@ struct MessageWithOneofCustomDebug {
 
 impl fmt::Debug for MessageWithOneofCustomDebug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("MessageWithOneOfCustomDebug {..}")
+        f.write_str("MessageWithOneofCustomDebug {..}")
     }
 }
 
 /// Enumerations inside oneofs
 #[test]
-fn oneof_with_enum_custom_Debug() {
+fn oneof_with_enum_custom_debug() {
     let msg = MessageWithOneofCustomDebug {
         of: Some(OneofWithEnumCustomDebug::Enumeration(
             BasicEnumeration::TWO as i32,

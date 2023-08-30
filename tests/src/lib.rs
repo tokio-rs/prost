@@ -43,6 +43,7 @@ mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
+#[cfg(feature = "std")]
 mod skip_debug;
 #[cfg(test)]
 mod well_known_types;
