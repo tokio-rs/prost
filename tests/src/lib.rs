@@ -62,8 +62,14 @@ pub mod recursive_oneof {
     include!(concat!(env!("OUT_DIR"), "/recursive_oneof.rs"));
 }
 
+#[cfg(feature = "std")]
 pub mod custom_debug {
     include!(concat!(env!("OUT_DIR"), "/custom_debug.rs"));
+    impl fmt::Debug for Msg {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("Msg {..}")
+        }
+    }
 }
 
 /// This tests the custom attributes support by abusing docs.

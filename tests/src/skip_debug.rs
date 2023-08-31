@@ -59,12 +59,6 @@ fn oneof_with_enum_custom_debug() {
     assert_eq!(format!("{:?}", msg), "MessageWithOneofCustomDebug {..}");
 }
 
-impl fmt::Debug for Msg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Msg {..}")
-    }
-}
-
 /// Generated protobufs
 #[test]
 fn test_proto_msg_custom_debug() {
