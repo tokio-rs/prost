@@ -64,6 +64,7 @@ pub mod recursive_oneof {
 
 #[cfg(feature = "std")]
 pub mod custom_debug {
+    use std::fmt;
     include!(concat!(env!("OUT_DIR"), "/custom_debug.rs"));
     impl fmt::Debug for Msg {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
