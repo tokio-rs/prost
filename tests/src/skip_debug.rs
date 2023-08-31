@@ -1,5 +1,6 @@
 //! Tests for skipping the default Debug implementation.
 
+use crate::custom_debug::{msg, AnEnum, Msg};
 use crate::message_encoding::BasicEnumeration;
 use prost::alloc::{format, string::String};
 use std::fmt;
@@ -56,4 +57,21 @@ fn oneof_with_enum_custom_debug() {
         )),
     };
     assert_eq!(format!("{:?}", msg), "MessageWithOneofCustomDebug {..}");
+}
+
+impl fmt::Debug for Msg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Msg {..}")
+    }
+}
+
+/// Generated protobufs
+#[test]
+fn test_proto_msg_custom_debug() {
+    let msg = Msg {
+        a: 0,
+        b: "".to_string(),
+        c: Some(msg::C::D(AnEnum::A as i32)),
+    };
+    assert_eq!(format!("{:?}", msg), "Msg {..}");
 }

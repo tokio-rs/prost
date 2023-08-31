@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package custom_debug;
+
+message Msg {
+  int32 a = 1;
+  string b = 2;
+  oneof c {
+    AnEnum d = 3;
+    string e = 4;
+  };
+}
+
+enum AnEnum {
+    A = 0;
+    B = 1;
+};
