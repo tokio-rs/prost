@@ -62,7 +62,7 @@ With `prost-build` v0.11 release, `protoc` will be required to invoke
 bundled a `protoc` or attempt to compile `protoc` for users. For install
 instructions for `protoc` please check out the [protobuf install] instructions.
 
-[protobuf install]: https://github.com/protocolbuffers/protobuf#protocol-compiler-installation
+[protobuf install]: https://github.com/protocolbuffers/protobuf#protobuf-compiler-installation
 
 
 ### Packages
