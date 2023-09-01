@@ -44,6 +44,7 @@ fn main() {
     config.field_attribute("Foo.Custom.Attrs.AnotherEnum.D", "/// The D docs");
     config.field_attribute("Foo.Custom.Attrs.Msg.field.a", "/// Oneof A docs");
     config.field_attribute("Foo.Custom.Attrs.Msg.field.b", "/// Oneof B docs");
+    config.skip_debug(["custom_debug.Msg"]);
 
     config.file_descriptor_set_path(
         PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
@@ -88,6 +89,10 @@ fn main() {
 
     config
         .compile_protos(&[src.join("default_string_escape.proto")], includes)
+        .unwrap();
+
+    config
+        .compile_protos(&[src.join("custom_debug.proto")], includes)
         .unwrap();
 
     prost_build::Config::new()

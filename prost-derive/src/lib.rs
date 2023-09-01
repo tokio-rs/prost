@@ -23,6 +23,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let ident = input.ident;
 
+    syn::custom_keyword!(skip_debug);
+    let skip_debug = input
+        .attrs
+        .into_iter()
+        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
         Data::Enum(..) => bail!("Message can not be derived for an enum"),
@@ -165,26 +171,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
-        let wrapper = field.debug(quote!(self.#field_ident));
-        let call = if is_struct {
-            quote!(builder.field(stringify!(#field_ident), &wrapper))
-        } else {
-            quote!(builder.field(&wrapper))
-        };
-        quote! {
-             let builder = {
-                 let wrapper = #wrapper;
-                 #call
-             };
-        }
-    });
-    let debug_builder = if is_struct {
-        quote!(f.debug_struct(stringify!(#ident)))
-    } else {
-        quote!(f.debug_tuple(stringify!(#ident)))
-    };
-
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
@@ -223,14 +209,44 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #default
             }
         }
+    };
+    let expanded = if skip_debug {
+        expanded
+    } else {
+        let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
+            let wrapper = field.debug(quote!(self.#field_ident));
+            let call = if is_struct {
+                quote!(builder.field(stringify!(#field_ident), &wrapper))
+            } else {
+                quote!(builder.field(&wrapper))
+            };
+            quote! {
+                 let builder = {
+                     let wrapper = #wrapper;
+                     #call
+                 };
+            }
+        });
+        let debug_builder = if is_struct {
+            quote!(f.debug_struct(stringify!(#ident)))
+        } else {
+            quote!(f.debug_tuple(stringify!(#ident)))
+        };
+        quote! {
+            #expanded
 
-        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                let mut builder = #debug_builder;
-                #(#debugs;)*
-                builder.finish()
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    let mut builder = #debug_builder;
+                    #(#debugs;)*
+                    builder.finish()
+                }
             }
         }
+    };
+
+    let expanded = quote! {
+        #expanded
 
         #methods
     };
@@ -358,6 +374,12 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let ident = input.ident;
 
+    syn::custom_keyword!(skip_debug);
+    let skip_debug = input
+        .attrs
+        .into_iter()
+        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+
     let variants = match input.data {
         Data::Enum(DataEnum { variants, .. }) => variants,
         Data::Struct(..) => bail!("Oneof can not be derived for a struct"),
@@ -440,16 +462,6 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(#ident::#variant_ident(ref value) => #encoded_len)
     });
 
-    let debug = fields.iter().map(|&(ref variant_ident, ref field)| {
-        let wrapper = field.debug(quote!(*value));
-        quote!(#ident::#variant_ident(ref value) => {
-            let wrapper = #wrapper;
-            f.debug_tuple(stringify!(#variant_ident))
-                .field(&wrapper)
-                .finish()
-        })
-    });
-
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
@@ -483,10 +495,27 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                match *self {
-                    #(#debug,)*
+    };
+    let expanded = if skip_debug {
+        expanded
+    } else {
+        let debug = fields.iter().map(|&(ref variant_ident, ref field)| {
+            let wrapper = field.debug(quote!(*value));
+            quote!(#ident::#variant_ident(ref value) => {
+                let wrapper = #wrapper;
+                f.debug_tuple(stringify!(#variant_ident))
+                    .field(&wrapper)
+                    .finish()
+            })
+        });
+        quote! {
+            #expanded
+
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    match *self {
+                        #(#debug,)*
+                    }
                 }
             }
         }

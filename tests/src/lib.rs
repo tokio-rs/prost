@@ -43,6 +43,9 @@ mod message_encoding;
 #[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
+#[cfg(feature = "std")]
+mod skip_debug;
+#[cfg(test)]
 mod well_known_types;
 
 pub mod foo {
@@ -57,6 +60,17 @@ pub mod nesting {
 
 pub mod recursive_oneof {
     include!(concat!(env!("OUT_DIR"), "/recursive_oneof.rs"));
+}
+
+#[cfg(feature = "std")]
+pub mod custom_debug {
+    use std::fmt;
+    include!(concat!(env!("OUT_DIR"), "/custom_debug.rs"));
+    impl fmt::Debug for Msg {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("Msg {..}")
+        }
+    }
 }
 
 /// This tests the custom attributes support by abusing docs.
