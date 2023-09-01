@@ -24,6 +24,11 @@ use core::i64;
 use core::str::FromStr;
 use core::time;
 
+use prost::alloc::format;
+use prost::alloc::string::String;
+use prost::alloc::vec::Vec;
+use prost::{DecodeError, EncodeError, Message, Name};
+
 pub use protobuf::*;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
@@ -32,6 +37,58 @@ pub use protobuf::*;
 
 const NANOS_PER_SECOND: i32 = 1_000_000_000;
 const NANOS_MAX: i32 = NANOS_PER_SECOND - 1;
+
+const PACKAGE: &str = "google.protobuf";
+
+impl Any {
+    /// Serialize the given message type `M` as [`Any`].
+    pub fn from_msg<M>(msg: &M) -> Result<Self, EncodeError>
+    where
+        M: Name,
+    {
+        let type_url = M::type_url();
+        let mut value = Vec::new();
+        Message::encode(msg, &mut value)?;
+        Ok(Any { type_url, value })
+    }
+
+    /// Decode the given message type `M` from [`Any`], validating that it has
+    /// the expected type URL.
+    pub fn to_msg<M>(&self) -> Result<M, DecodeError>
+    where
+        M: Default + Name + Sized,
+    {
+        let expected_type_url = M::type_url();
+
+        match (
+            TypeUrl::new(&expected_type_url),
+            TypeUrl::new(&self.type_url),
+        ) {
+            (Some(expected), Some(actual)) => {
+                if expected == actual {
+                    return Ok(M::decode(&*self.value)?);
+                }
+            }
+            _ => (),
+        }
+
+        let mut err = DecodeError::new(format!(
+            "expected type URL: \"{}\" (got: \"{}\")",
+            expected_type_url, &self.type_url
+        ));
+        err.push("unexpected type URL", "type_url");
+        Err(err)
+    }
+}
+
+impl Name for Any {
+    const PACKAGE: &'static str = PACKAGE;
+    const NAME: &'static str = "Any";
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
 
 impl Duration {
     /// Normalizes the duration to a canonical format.
@@ -82,6 +139,15 @@ impl Duration {
         // TODO: should this be checked?
         // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
         //               "invalid duration: {:?}", self);
+    }
+}
+
+impl Name for Duration {
+    const PACKAGE: &'static str = PACKAGE;
+    const NAME: &'static str = "Duration";
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -298,6 +364,15 @@ impl Timestamp {
     }
 }
 
+impl Name for Timestamp {
+    const PACKAGE: &'static str = PACKAGE;
+    const NAME: &'static str = "Timestamp";
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// Implements the unstable/naive version of `Eq`: a basic equality check on the internal fields of the `Timestamp`.
 /// This implies that `normalized_ts != non_normalized_ts` even if `normalized_ts == non_normalized_ts.normalized()`.
 #[cfg(feature = "std")]
@@ -419,6 +494,49 @@ impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         datetime::DateTime::from(self.clone()).fmt(f)
     }
+}
+
+/// URL/resource name that uniquely identifies the type of the serialized protocol buffer message,
+/// e.g. `type.googleapis.com/google.protobuf.Duration`.
+///
+/// This string must contain at least one "/" character.
+///
+/// The last segment of the URL's path must represent the fully qualified name of the type (as in
+/// `path/google.protobuf.Duration`). The name should be in a canonical form (e.g., leading "." is
+/// not accepted).
+///
+/// If no scheme is provided, `https` is assumed.
+///
+/// Schemes other than `http`, `https` (or the empty scheme) might be used with implementation
+/// specific semantics.
+#[derive(Debug, Eq, PartialEq)]
+struct TypeUrl<'a> {
+    /// Fully qualified name of the type, e.g. `google.protobuf.Duration`
+    full_name: &'a str,
+}
+
+impl<'a> TypeUrl<'a> {
+    fn new(s: &'a str) -> core::option::Option<Self> {
+        // Must contain at least one "/" character.
+        let slash_pos = s.rfind('/')?;
+
+        // The last segment of the URL's path must represent the fully qualified name
+        // of the type (as in `path/google.protobuf.Duration`)
+        let full_name = s.get((slash_pos + 1)..)?;
+
+        // The name should be in a canonical form (e.g., leading "." is not accepted).
+        if full_name.starts_with('.') {
+            return None;
+        }
+
+        Some(Self { full_name })
+    }
+}
+
+/// Compute the type URL for the given `google.protobuf` type, using `type.googleapis.com` as the
+/// authority for the URL.
+fn type_url_for<T: Name>() -> String {
+    format!("type.googleapis.com/{}.{}", T::PACKAGE, T::NAME)
 }
 
 #[cfg(test)]
@@ -743,5 +861,42 @@ mod tests {
                 case.0,
             );
         }
+    }
+
+    #[test]
+    fn check_any_serialization() {
+        let message = Timestamp::date(2000, 01, 01).unwrap();
+        let any = Any::from_msg(&message).unwrap();
+        assert_eq!(
+            &any.type_url,
+            "type.googleapis.com/google.protobuf.Timestamp"
+        );
+
+        let message2 = any.to_msg::<Timestamp>().unwrap();
+        assert_eq!(message, message2);
+
+        // Wrong type URL
+        assert!(any.to_msg::<Duration>().is_err());
+    }
+
+    #[test]
+    fn check_type_url_parsing() {
+        let example_type_name = "google.protobuf.Duration";
+
+        let url = TypeUrl::new("type.googleapis.com/google.protobuf.Duration").unwrap();
+        assert_eq!(url.full_name, example_type_name);
+
+        let full_url =
+            TypeUrl::new("https://type.googleapis.com/google.protobuf.Duration").unwrap();
+        assert_eq!(full_url.full_name, example_type_name);
+
+        let relative_url = TypeUrl::new("/google.protobuf.Duration").unwrap();
+        assert_eq!(relative_url.full_name, example_type_name);
+
+        // The name should be in a canonical form (e.g., leading "." is not accepted).
+        assert_eq!(TypeUrl::new("/.google.protobuf.Duration"), None);
+
+        // Must contain at least one "/" character.
+        assert_eq!(TypeUrl::new("google.protobuf.Duration"), None);
     }
 }
