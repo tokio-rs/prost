@@ -219,7 +219,7 @@ impl Field {
                 struct #wrap_name<'a>(&'a i32);
                 impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
                     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                        let res: Result<#ty, _> = ::core::convert::TryFrom::try_from(*self.0);
+                        let res: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(*self.0);
                         match res {
                             Err(_) => ::core::fmt::Debug::fmt(&self.0, f),
                             Ok(en) => ::core::fmt::Debug::fmt(&en, f),
@@ -316,7 +316,7 @@ impl Field {
                         #[doc=#get_doc]
                         pub fn #get(&self) -> #ty {
                             self.#ident.and_then(|x| {
-                                let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
                             }).unwrap_or(#default)
                         }
@@ -341,7 +341,7 @@ impl Field {
                             fn(i32) -> ::core::option::Option<#ty>,
                         > {
                             self.#ident.iter().cloned().filter_map(|x| {
-                                let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
                             })
                         }
