@@ -34,6 +34,6 @@ tempfile = "3"
 
 [build-dependencies]
 cfg-if = "1"
-env_logger = { version = "0.8", default-features = false }
+env_logger = { version = "0.10", default-features = false }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }

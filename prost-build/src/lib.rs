@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.11.8")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.12.0")]
 #![allow(clippy::option_as_ref_deref, clippy::format_push_string)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -264,6 +264,7 @@ pub struct Config {
     custom_type: PathMap<CustomType>,
     strict_messages: bool,
     inline_enums: bool,
+    skip_debug: PathMap<()>,
     skip_protoc_run: bool,
     include_file: Option<PathBuf>,
     prost_path: Option<String>,
@@ -652,6 +653,19 @@ impl Config {
         for matcher in paths {
             self.disable_comments
                 .insert(matcher.as_ref().to_string(), ());
+        }
+        self
+    }
+
+    /// Skips generating `impl Debug` for types
+    pub fn skip_debug<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.skip_debug.clear();
+        for matcher in paths {
+            self.skip_debug.insert(matcher.as_ref().to_string(), ());
         }
         self
     }
@@ -1312,6 +1326,7 @@ impl default::Default for Config {
             custom_type: PathMap::default(),
             strict_messages: false,
             inline_enums: false,
+            skip_debug: PathMap::default(),
             skip_protoc_run: false,
             include_file: None,
             prost_path: None,
@@ -1336,6 +1351,7 @@ impl fmt::Debug for Config {
             .field("default_package_filename", &self.default_package_filename)
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
+            .field("skip_debug", &self.skip_debug)
             .field("prost_path", &self.prost_path)
             .finish()
     }

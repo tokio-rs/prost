@@ -1,6 +1,6 @@
 [package]
 name = "prost-build"
-version = "0.11.8"
+version = "0.12.0"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com>",
@@ -23,15 +23,15 @@ cleanup-markdown = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
 [dependencies]
 bytes = { version = "1", default-features = false }
 heck = "0.4"
-itertools = { version = "0.10", default-features = false, features = ["use_alloc"] }
+itertools = { version = ">=0.10, <0.12", default-features = false, features = ["use_alloc"] }
 log = "0.4"
 multimap = { version = "0.8", default-features = false }
 petgraph = { version = "0.6", default-features = false }
-prost = { version = "0.11.8", path = "..", default-features = false }
-prost-types = { version = "0.11.8", path = "../prost-types", default-features = false }
+prost = { version = "0.12.0", path = "..", default-features = false }
+prost-types = { version = "0.12.0", path = "../prost-types", default-features = false }
 tempfile = "3"
-lazy_static = "1.4.0"
-regex = { version = "1.5.5", default-features = false, features = ["std", "unicode-bool"] }
+once_cell = "1.17.1"
+regex = { version = "1.8.1", default-features = false, features = ["std", "unicode-bool"] }
 which = "4"
 
 prettyplease = { version = "0.2", optional = true }
@@ -42,4 +42,4 @@ pulldown-cmark = { version = "0.9.1", optional = true, default-features = false 
 pulldown-cmark-to-cmark = { version = "10.0.1", optional = true }
 
 [dev-dependencies]
-env_logger = { version = "0.8", default-features = false }
+env_logger = { version = "0.10", default-features = false }
