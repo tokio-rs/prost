@@ -46,11 +46,19 @@ mod no_unused_results;
 #[cfg(feature = "std")]
 mod skip_debug;
 
-mod test_enum_named_value {
+mod test_enum_named_option_value {
+    include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
+}
+
+mod test_enum_named_result_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.result.rs"));
 }
 
-mod test_result_named_value {
+mod test_result_named_option_value {
+    include!(concat!(env!("OUT_DIR"), "/mystruct.optionn.rs"));
+}
+
+mod test_result_named_result_value {
     include!(concat!(env!("OUT_DIR"), "/mystruct.result.rs"));
 }
 
