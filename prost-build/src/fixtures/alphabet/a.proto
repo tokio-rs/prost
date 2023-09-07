@@ -4,5 +4,5 @@ package a;
 
 message Alpha {
   string sign = 1;
-  string pronounciation = 2;
+  string pronunciation = 2;
 }

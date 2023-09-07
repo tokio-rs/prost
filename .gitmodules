@@ -1,3 +1,0 @@
-[submodule "prost-build/third-party/protobuf"]
-	path = prost-build/third-party/protobuf
-	url = git@github.com:protocolbuffers/protobuf

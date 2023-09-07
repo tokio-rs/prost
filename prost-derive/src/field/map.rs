@@ -1,7 +1,8 @@
 use anyhow::{bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
+use syn::punctuated::Punctuated;
+use syn::{Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Token};
 
 use crate::field::{scalar, set_option, tag_attr};
 
@@ -68,7 +69,11 @@ impl Field {
             {
                 let (k, v): (String, String) = match attr {
                     Meta::NameValue(MetaNameValue {
-                        lit: Lit::Str(lit), ..
+                        value:
+                            Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit), ..
+                            }),
+                        ..
                     }) => {
                         let items = lit.value();
                         let mut items = items.split(',').map(ToString::to_string);
@@ -83,23 +88,14 @@ impl Field {
                         (k, v)
                     }
                     Meta::List(meta_list) => {
-                        // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                        if meta_list.nested.len() != 2 {
+                        let nested = meta_list
+                            .parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)?
+                            .into_iter()
+                            .collect::<Vec<_>>();
+                        if nested.len() != 2 {
                             bail!("invalid map attribute: must contain key and value types");
                         }
-                        let k = match &meta_list.nested[0] {
-                            NestedMeta::Meta(Meta::Path(k)) if k.get_ident().is_some() => {
-                                k.get_ident().unwrap().to_string()
-                            }
-                            _ => bail!("invalid map attribute: key must be an identifier"),
-                        };
-                        let v = match &meta_list.nested[1] {
-                            NestedMeta::Meta(Meta::Path(v)) if v.get_ident().is_some() => {
-                                v.get_ident().unwrap().to_string()
-                            }
-                            _ => bail!("invalid map attribute: value must be an identifier"),
-                        };
-                        (k, v)
+                        (nested[0].to_string(), nested[1].to_string())
                     }
                     _ => return Ok(None),
                 };
@@ -280,11 +276,17 @@ impl Field {
             Some(quote! {
                 #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::core::option::Option<#ty> {
-                    self.#ident.get(#take_ref key).cloned().and_then(#ty::from_i32)
+                    self.#ident.get(#take_ref key).cloned().and_then(|x| {
+                        let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                        result.ok()
+                    })
                 }
                 #[doc=#insert_doc]
                 pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::core::option::Option<#ty> {
-                    self.#ident.insert(key, value as i32).and_then(#ty::from_i32)
+                    self.#ident.insert(key, value as i32).and_then(|x| {
+                        let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                        result.ok()
+                    })
                 }
             })
         } else {
