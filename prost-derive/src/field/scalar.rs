@@ -4,7 +4,9 @@ use std::fmt;
 use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{parse_str, Expr, ExprLit, Ident, Index, Lit, LitByteStr, Meta, MetaNameValue, Path};
+use syn::{
+    parse_str, Expr, ExprLit, Ident, Index, Lit, LitByteStr, Meta, MetaList, MetaNameValue, Path,
+};
 
 use crate::field::{bool_attr, set_bool, set_option, tag_attr, word_attr, Label};
 
@@ -528,24 +530,19 @@ impl Ty {
             }
             Meta::NameValue(MetaNameValue {
                 ref path,
-                lit: Lit::Str(ref l),
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(ref l),
+                        ..
+                    }),
                 ..
             }) if path.is_ident("inlined_enum") => Ty::InlinedEnum(parse_str::<Path>(&l.value())?),
             Meta::List(MetaList {
-                ref path,
-                ref nested,
+                path: ref path,
+                tokens: ref nested,
                 ..
             }) if path.is_ident("inlined_enum") => {
-                // TODO(rustlang/rust#23121): slice pattern matching would make this much nicer.
-                if nested.len() == 1 {
-                    if let NestedMeta::Meta(Meta::Path(ref path)) = nested[0] {
-                        Ty::InlinedEnum(path.clone())
-                    } else {
-                        bail!("invalid enumeration attribute: item must be an identifier");
-                    }
-                } else {
-                    bail!("invalid enumeration attribute: only a single identifier is supported");
-                }
+                bail!("Without this line it doesnt compile");
             }
             _ => return Ok(None),
         };

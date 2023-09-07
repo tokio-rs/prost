@@ -11,9 +11,9 @@ pub use crate::field::scalar::{Kind, Ty};
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
 use syn::{Attribute, Expr, ExprLit, Lit, LitBool, LitInt, Meta, MetaNameValue, Token};
-use syn::__private::TokenStream2;
 
 #[derive(Clone)]
 pub enum Field {
