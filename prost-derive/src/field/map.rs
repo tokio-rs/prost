@@ -1,8 +1,7 @@
 use anyhow::{bail, Error};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::punctuated::Punctuated;
-use syn::{Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Token};
+use syn::{punctuated::Punctuated, Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Token};
 
 use crate::field::{scalar, set_option, tag_attr};
 
@@ -298,11 +297,6 @@ impl Field {
     /// The Debug tries to convert any enumerations met into the variants if possible, instead of
     /// outputting the raw numbers.
     pub fn debug(&self, wrapper_name: TokenStream) -> TokenStream {
-        let type_name = match self.map_ty {
-            MapTy::HashMap => Ident::new("HashMap", Span::call_site()),
-            MapTy::BTreeMap => Ident::new("BTreeMap", Span::call_site()),
-        };
-
         // A fake field for generating the debug wrapper
         let key_wrapper = fake_scalar(self.key_ty.clone()).debug(quote!(KeyWrapper));
         let key = self.key_ty.rust_type();
@@ -333,20 +327,51 @@ impl Field {
                 }
 
                 let value = ty.rust_type();
-                quote! {
-                    struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);
-                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
-                        #fmt
+                match self.map_ty {
+                    MapTy::HashMap => {
+                        let map = Ident::new("HashMap", Span::call_site());
+                        quote! {
+                            struct #wrapper_name<'a, S>(&'a ::#libname::collections::#map<#key, #value, S>);
+                            impl<'a, S> ::core::fmt::Debug for #wrapper_name<'a, S> {
+                                #fmt
+                            }
+                        }
+                    }
+                    MapTy::BTreeMap => {
+                        let map = Ident::new("BTreeMap", Span::call_site());
+                        quote! {
+                            struct #wrapper_name<'a>(&'a ::#libname::collections::#map<#key, #value>);
+                            impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                                #fmt
+                            }
+                        }
                     }
                 }
             }
-            ValueTy::Message => quote! {
-                struct #wrapper_name<'a, V: 'a>(&'a ::#libname::collections::#type_name<#key, V>);
-                impl<'a, V> ::core::fmt::Debug for #wrapper_name<'a, V>
-                where
-                    V: ::core::fmt::Debug + 'a,
-                {
-                    #fmt
+            ValueTy::Message => match self.map_ty {
+                MapTy::HashMap => {
+                    let name = Ident::new("HashMap", Span::call_site());
+                    quote! {
+                        struct #wrapper_name<'a, V: 'a, S>(&'a ::#libname::collections::#name<#key, V, S>);
+                        impl<'a, V, S> ::core::fmt::Debug for #wrapper_name<'a, V, S>
+                        where
+                            V: ::core::fmt::Debug + 'a,
+                        {
+                            #fmt
+                        }
+                    }
+                }
+                MapTy::BTreeMap => {
+                    let map = Ident::new("BTreeMap", Span::call_site());
+                    quote! {
+                        struct #wrapper_name<'a, V: 'a>(&'a ::#libname::collections::#map<#key, V>);
+                        impl<'a, V> ::core::fmt::Debug for #wrapper_name<'a, V>
+                        where
+                            V: ::core::fmt::Debug + 'a,
+                        {
+                            #fmt
+                        }
+                    }
                 }
             },
         }
