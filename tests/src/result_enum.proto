@@ -1,0 +1,11 @@
+syntax = "proto3";
+package myenum.result;
+
+
+enum Result {
+  HELLO = 0;
+}
+
+message FailMessage {
+  Result result = 1;
+}
