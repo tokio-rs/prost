@@ -24,7 +24,7 @@ cleanup-markdown = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
 bytes = { version = "1", default-features = false }
 heck = "0.4"
 itertools = { version = ">=0.10, <0.12", default-features = false, features = ["use_alloc"] }
-log = "0.4"
+log = "0.4.4"
 multimap = { version = "0.8", default-features = false }
 petgraph = { version = "0.6", default-features = false }
 prost = { version = "0.12.1", path = "..", default-features = false }
