@@ -16,9 +16,8 @@ rust-version = "1.70"
 
 [features]
 default = ["format"]
-format = ["prettyplease", "syn"]
-# When MSRV moves to 1.60, these can change to dep:
-cleanup-markdown = ["pulldown-cmark", "pulldown-cmark-to-cmark"]
+format = ["dep:prettyplease", "dep:syn"]
+cleanup-markdown = ["dep:pulldown-cmark", "dep:pulldown-cmark-to-cmark"]
 
 [dependencies]
 bytes = { version = "1", default-features = false }
