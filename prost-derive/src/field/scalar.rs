@@ -494,7 +494,11 @@ impl Ty {
             }) if path.is_ident("string") => Ty::String(StringTy::try_from_str(&l.value())?),
             Meta::NameValue(MetaNameValue {
                 ref path,
-                lit: Lit::Str(ref l),
+                value:
+                    syn::Expr::Lit(ExprLit {
+                        lit: Lit::Str(ref l),
+                        ..
+                    }),
                 ..
             }) if path.is_ident("bytes") => Ty::Bytes(BytesTy::try_from_str(&l.value())?),
             Meta::NameValue(MetaNameValue {
