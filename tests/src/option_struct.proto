@@ -1,0 +1,8 @@
+syntax = "proto3";
+package mystruct.optionn;
+
+
+message Option {
+  string msg = 1;
+}
+
