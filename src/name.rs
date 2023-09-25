@@ -16,7 +16,7 @@ pub trait Name: Message {
     /// Full name of this message type containing both the package name and
     /// type name, e.g. `google.protobuf.TypeName`.
     fn full_name() -> String {
-        format!("{}.{}", Self::NAME, Self::PACKAGE)
+        format!("{}.{}", Self::PACKAGE, Self::NAME)
     }
 
     /// Type URL for this message, which by default is the full name with a
