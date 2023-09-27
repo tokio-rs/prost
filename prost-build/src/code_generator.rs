@@ -18,7 +18,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType};
+use crate::{BytesType, Config, MapType, StringType};
 
 #[derive(PartialEq)]
 enum Syntax {
@@ -350,19 +350,8 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field);
+        let type_tag = self.field_type_tag_detailed(fq_message_name, &field);
         self.buf.push_str(&type_tag);
-
-        if type_ == Type::Bytes {
-            let bytes_type = self
-                .config
-                .bytes_type
-                .get_first_field(fq_message_name, field.name())
-                .copied()
-                .unwrap_or_default();
-            self.buf
-                .push_str(&format!("={:?}", bytes_type.annotation()));
-        }
 
         match field.label() {
             Label::Optional => {
@@ -566,7 +555,7 @@ impl<'a> CodeGenerator<'a> {
             self.path.pop();
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field);
+            let ty_tag = self.field_type_tag_detailed(fq_message_name, &field);
             self.buf.push_str(&format!(
                 "#[prost({}, tag=\"{}\")]\n",
                 ty_tag,
@@ -884,8 +873,6 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
-
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -894,7 +881,14 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", prost_path),
+            Type::String => self
+                .config
+                .string_type
+                .get_first_field(fq_message_name, field.name())
+                .copied()
+                .unwrap_or_default()
+                .rust_type()
+                .to_owned(),
             Type::Bytes => self
                 .config
                 .bytes_type
@@ -941,6 +935,42 @@ impl<'a> CodeGenerator<'a> {
             .join("::")
     }
 
+    /// Use this method instead of [`Self::field_type_tag()`] when you need `string="string"`
+    /// instead of just `string` as the tag indication in the `#[prost]` attribute.
+    ///
+    /// This applies only to [`Type::String`] and [`Type::Bytes`], other types are not concerned.
+    fn field_type_tag_detailed(
+        &self,
+        fq_message_name: &str,
+        field: &FieldDescriptorProto,
+    ) -> Cow<'static, str> {
+        match field.r#type() {
+            Type::String => {
+                let string_type = self
+                    .config
+                    .string_type
+                    .get_first_field(fq_message_name, field.name())
+                    .copied()
+                    .unwrap_or_default();
+                Cow::Owned(format!("string={:?}", string_type.annotation()))
+            }
+            Type::Bytes => {
+                let bytes_type = self
+                    .config
+                    .bytes_type
+                    .get_first_field(fq_message_name, field.name())
+                    .copied()
+                    .unwrap_or_default();
+                Cow::Owned(format!("bytes={:?}", bytes_type.annotation()))
+            }
+            _ => self.field_type_tag(field),
+        }
+    }
+
+    /// Use this method instead of [`Self::field_type_tag_detailed()`] when you need `string`
+    /// instead of `string="string"` as the tag indication in the `#[prost]` attribute.
+    ///
+    /// This applies only to [`Type::String`] and [`Type::Bytes`], other types are not concerned.
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
@@ -1222,6 +1252,7 @@ impl BytesType {
         match self {
             BytesType::Vec => "vec",
             BytesType::Bytes => "bytes",
+            BytesType::BoxedSlice => "boxed_slice",
         }
     }
 
@@ -1230,6 +1261,25 @@ impl BytesType {
         match self {
             BytesType::Vec => "::prost::alloc::vec::Vec<u8>",
             BytesType::Bytes => "::prost::bytes::Bytes",
+            BytesType::BoxedSlice => "::prost::alloc::boxed::Box<[u8]>",
+        }
+    }
+}
+
+impl StringType {
+    /// The `prost-derive` annotation type corresponding to the string type.
+    fn annotation(&self) -> &'static str {
+        match self {
+            Self::String => "string",
+            Self::BoxedStr => "boxed_str",
+        }
+    }
+
+    /// The fully-qualified Rust type corresponding to the string type.
+    fn rust_type(&self) -> &'static str {
+        match self {
+            Self::String => "::prost::alloc::string::String",
+            Self::BoxedStr => "::prost::alloc::boxed::Box<str>",
         }
     }
 }

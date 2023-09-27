@@ -11,13 +11,13 @@ pub struct FileDescriptorSet {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// e.g. "foo", "foo.bar", etc.
-    #[prost(string, optional, tag = "2")]
+    #[prost(string = "string", optional, tag = "2")]
     pub package: ::core::option::Option<::prost::alloc::string::String>,
     /// Names of files imported by this file.
-    #[prost(string, repeated, tag = "3")]
+    #[prost(string = "string", repeated, tag = "3")]
     pub dependency: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Indexes of the public imported files in the dependency list above.
     #[prost(int32, repeated, packed = "false", tag = "10")]
@@ -45,14 +45,14 @@ pub struct FileDescriptorProto {
     pub source_code_info: ::core::option::Option<SourceCodeInfo>,
     /// The syntax of the proto file.
     /// The supported values are "proto2" and "proto3".
-    #[prost(string, optional, tag = "12")]
+    #[prost(string = "string", optional, tag = "12")]
     pub syntax: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Describes a message type.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, repeated, tag = "2")]
     pub field: ::prost::alloc::vec::Vec<FieldDescriptorProto>,
@@ -72,7 +72,7 @@ pub struct DescriptorProto {
     pub reserved_range: ::prost::alloc::vec::Vec<descriptor_proto::ReservedRange>,
     /// Reserved field names, which may not be used by fields in the same message.
     /// A given name may only be reserved once.
-    #[prost(string, repeated, tag = "10")]
+    #[prost(string = "string", repeated, tag = "10")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `DescriptorProto`.
@@ -114,7 +114,7 @@ pub struct ExtensionRangeOptions {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldDescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(int32, optional, tag = "3")]
     pub number: ::core::option::Option<i32>,
@@ -129,18 +129,18 @@ pub struct FieldDescriptorProto {
     /// rules are used to find the type (i.e. first the nested types within this
     /// message are searched, then within the parent, on up to the root
     /// namespace).
-    #[prost(string, optional, tag = "6")]
+    #[prost(string = "string", optional, tag = "6")]
     pub type_name: ::core::option::Option<::prost::alloc::string::String>,
     /// For extensions, this is the name of the type being extended.  It is
     /// resolved in the same manner as type_name.
-    #[prost(string, optional, tag = "2")]
+    #[prost(string = "string", optional, tag = "2")]
     pub extendee: ::core::option::Option<::prost::alloc::string::String>,
     /// For numeric types, contains the original text representation of the value.
     /// For booleans, "true" or "false".
     /// For strings, contains the default text contents (not escaped in any way).
     /// For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
     /// TODO(kenton):  Base-64 encode?
-    #[prost(string, optional, tag = "7")]
+    #[prost(string = "string", optional, tag = "7")]
     pub default_value: ::core::option::Option<::prost::alloc::string::String>,
     /// If set, gives the index of a oneof in the containing type's oneof_decl
     /// list.  This field is a member of that oneof.
@@ -150,7 +150,7 @@ pub struct FieldDescriptorProto {
     /// user has set a "json_name" option on this field, that option's value
     /// will be used. Otherwise, it's deduced from the field's name by converting
     /// it to camelCase.
-    #[prost(string, optional, tag = "10")]
+    #[prost(string = "string", optional, tag = "10")]
     pub json_name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, optional, tag = "8")]
     pub options: ::core::option::Option<FieldOptions>,
@@ -323,7 +323,7 @@ pub mod field_descriptor_proto {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OneofDescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, optional, tag = "2")]
     pub options: ::core::option::Option<OneofOptions>,
@@ -332,7 +332,7 @@ pub struct OneofDescriptorProto {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumDescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, repeated, tag = "2")]
     pub value: ::prost::alloc::vec::Vec<EnumValueDescriptorProto>,
@@ -347,7 +347,7 @@ pub struct EnumDescriptorProto {
     >,
     /// Reserved enum value names, which may not be reused. A given name may only
     /// be reserved once.
-    #[prost(string, repeated, tag = "5")]
+    #[prost(string = "string", repeated, tag = "5")]
     pub reserved_name: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `EnumDescriptorProto`.
@@ -373,7 +373,7 @@ pub mod enum_descriptor_proto {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValueDescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(int32, optional, tag = "2")]
     pub number: ::core::option::Option<i32>,
@@ -384,7 +384,7 @@ pub struct EnumValueDescriptorProto {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceDescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, repeated, tag = "2")]
     pub method: ::prost::alloc::vec::Vec<MethodDescriptorProto>,
@@ -395,13 +395,13 @@ pub struct ServiceDescriptorProto {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MethodDescriptorProto {
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// Input and output type names.  These are resolved in the same way as
     /// FieldDescriptorProto.type_name, but must refer to a message type.
-    #[prost(string, optional, tag = "2")]
+    #[prost(string = "string", optional, tag = "2")]
     pub input_type: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(string, optional, tag = "3")]
+    #[prost(string = "string", optional, tag = "3")]
     pub output_type: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, optional, tag = "4")]
     pub options: ::core::option::Option<MethodOptions>,
@@ -448,14 +448,14 @@ pub struct FileOptions {
     /// placed.  By default, the proto package is used, but this is often
     /// inappropriate because proto packages do not normally start with backwards
     /// domain names.
-    #[prost(string, optional, tag = "1")]
+    #[prost(string = "string", optional, tag = "1")]
     pub java_package: ::core::option::Option<::prost::alloc::string::String>,
     /// Controls the name of the wrapper Java class generated for the .proto file.
     /// That class will always contain the .proto file's getDescriptor() method as
     /// well as any top-level extensions defined in the .proto file.
     /// If java_multiple_files is disabled, then all the other classes from the
     /// .proto file will be nested inside the single wrapper outer class.
-    #[prost(string, optional, tag = "8")]
+    #[prost(string = "string", optional, tag = "8")]
     pub java_outer_classname: ::core::option::Option<::prost::alloc::string::String>,
     /// If enabled, then the Java code generator will generate a separate .java
     /// file for each top-level message, enum, and service defined in the .proto
@@ -490,7 +490,7 @@ pub struct FileOptions {
     /// * The basename of the package import path, if provided.
     /// * Otherwise, the package statement in the .proto file, if present.
     /// * Otherwise, the basename of the .proto file, without extension.
-    #[prost(string, optional, tag = "11")]
+    #[prost(string = "string", optional, tag = "11")]
     pub go_package: ::core::option::Option<::prost::alloc::string::String>,
     /// Should generic services be generated in each language?  "Generic" services
     /// are not specific to any particular RPC system.  They are generated by the
@@ -522,35 +522,35 @@ pub struct FileOptions {
     pub cc_enable_arenas: ::core::option::Option<bool>,
     /// Sets the objective c class prefix which is prepended to all objective c
     /// generated classes from this .proto. There is no default.
-    #[prost(string, optional, tag = "36")]
+    #[prost(string = "string", optional, tag = "36")]
     pub objc_class_prefix: ::core::option::Option<::prost::alloc::string::String>,
     /// Namespace for generated classes; defaults to the package.
-    #[prost(string, optional, tag = "37")]
+    #[prost(string = "string", optional, tag = "37")]
     pub csharp_namespace: ::core::option::Option<::prost::alloc::string::String>,
     /// By default Swift generators will take the proto package and CamelCase it
     /// replacing '.' with underscore and use that to prefix the types/symbols
     /// defined. When this options is provided, they will use this value instead
     /// to prefix the types/symbols defined.
-    #[prost(string, optional, tag = "39")]
+    #[prost(string = "string", optional, tag = "39")]
     pub swift_prefix: ::core::option::Option<::prost::alloc::string::String>,
     /// Sets the php class prefix which is prepended to all php generated classes
     /// from this .proto. Default is empty.
-    #[prost(string, optional, tag = "40")]
+    #[prost(string = "string", optional, tag = "40")]
     pub php_class_prefix: ::core::option::Option<::prost::alloc::string::String>,
     /// Use this option to change the namespace of php generated classes. Default
     /// is empty. When this option is empty, the package name will be used for
     /// determining the namespace.
-    #[prost(string, optional, tag = "41")]
+    #[prost(string = "string", optional, tag = "41")]
     pub php_namespace: ::core::option::Option<::prost::alloc::string::String>,
     /// Use this option to change the namespace of php generated metadata classes.
     /// Default is empty. When this option is empty, the proto file name will be
     /// used for determining the namespace.
-    #[prost(string, optional, tag = "44")]
+    #[prost(string = "string", optional, tag = "44")]
     pub php_metadata_namespace: ::core::option::Option<::prost::alloc::string::String>,
     /// Use this option to change the package of ruby generated classes. Default
     /// is empty. When this option is not set, the package name will be used for
     /// determining the ruby package.
-    #[prost(string, optional, tag = "45")]
+    #[prost(string = "string", optional, tag = "45")]
     pub ruby_package: ::core::option::Option<::prost::alloc::string::String>,
     /// The parser stores options it doesn't recognize here.
     /// See the documentation for the "Options" section above.
@@ -962,7 +962,7 @@ pub struct UninterpretedOption {
     pub name: ::prost::alloc::vec::Vec<uninterpreted_option::NamePart>,
     /// The value of the uninterpreted option, in whatever type the tokenizer
     /// identified it as during parsing. Exactly one of these should be set.
-    #[prost(string, optional, tag = "3")]
+    #[prost(string = "string", optional, tag = "3")]
     pub identifier_value: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(uint64, optional, tag = "4")]
     pub positive_int_value: ::core::option::Option<u64>,
@@ -972,7 +972,7 @@ pub struct UninterpretedOption {
     pub double_value: ::core::option::Option<f64>,
     #[prost(bytes = "vec", optional, tag = "7")]
     pub string_value: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
-    #[prost(string, optional, tag = "8")]
+    #[prost(string = "string", optional, tag = "8")]
     pub aggregate_value: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `UninterpretedOption`.
@@ -985,7 +985,7 @@ pub mod uninterpreted_option {
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct NamePart {
-        #[prost(string, required, tag = "1")]
+        #[prost(string = "string", required, tag = "1")]
         pub name_part: ::prost::alloc::string::String,
         #[prost(bool, required, tag = "2")]
         pub is_extension: bool,
@@ -1127,11 +1127,11 @@ pub mod source_code_info {
         /// optional int32 grault = 6;
         ///
         /// // ignored detached comments.
-        #[prost(string, optional, tag = "3")]
+        #[prost(string = "string", optional, tag = "3")]
         pub leading_comments: ::core::option::Option<::prost::alloc::string::String>,
-        #[prost(string, optional, tag = "4")]
+        #[prost(string = "string", optional, tag = "4")]
         pub trailing_comments: ::core::option::Option<::prost::alloc::string::String>,
-        #[prost(string, repeated, tag = "6")]
+        #[prost(string = "string", repeated, tag = "6")]
         pub leading_detached_comments: ::prost::alloc::vec::Vec<
             ::prost::alloc::string::String,
         >,
@@ -1158,7 +1158,7 @@ pub mod generated_code_info {
         #[prost(int32, repeated, tag = "1")]
         pub path: ::prost::alloc::vec::Vec<i32>,
         /// Identifies the filesystem path to the original source .proto.
-        #[prost(string, optional, tag = "2")]
+        #[prost(string = "string", optional, tag = "2")]
         pub source_file: ::core::option::Option<::prost::alloc::string::String>,
         /// Identifies the starting offset in bytes in the generated code
         /// that relates to the identified object.
@@ -1294,7 +1294,7 @@ pub struct Any {
     ///
     /// Schemes other than `http`, `https` (or the empty scheme) might be
     /// used with implementation specific semantics.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub type_url: ::prost::alloc::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
     #[prost(bytes = "vec", tag = "2")]
@@ -1307,7 +1307,7 @@ pub struct Any {
 pub struct SourceContext {
     /// The path-qualified name of the .proto file that contained the associated
     /// protobuf element.  For example: `"google/protobuf/source_context.proto"`.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub file_name: ::prost::alloc::string::String,
 }
 /// A protocol buffer message type.
@@ -1315,13 +1315,13 @@ pub struct SourceContext {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Type {
     /// The fully qualified message name.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The list of fields.
     #[prost(message, repeated, tag = "2")]
     pub fields: ::prost::alloc::vec::Vec<Field>,
     /// The list of types appearing in `oneof` definitions in this type.
-    #[prost(string, repeated, tag = "3")]
+    #[prost(string = "string", repeated, tag = "3")]
     pub oneofs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The protocol buffer options.
     #[prost(message, repeated, tag = "4")]
@@ -1347,11 +1347,11 @@ pub struct Field {
     #[prost(int32, tag = "3")]
     pub number: i32,
     /// The field name.
-    #[prost(string, tag = "4")]
+    #[prost(string = "string", tag = "4")]
     pub name: ::prost::alloc::string::String,
     /// The field type URL, without the scheme, for message or enumeration
     /// types. Example: `"type.googleapis.com/google.protobuf.Timestamp"`.
-    #[prost(string, tag = "6")]
+    #[prost(string = "string", tag = "6")]
     pub type_url: ::prost::alloc::string::String,
     /// The index of the field type in `Type.oneofs`, for message or enumeration
     /// types. The first type has index 1; zero means the type is not in the list.
@@ -1364,10 +1364,10 @@ pub struct Field {
     #[prost(message, repeated, tag = "9")]
     pub options: ::prost::alloc::vec::Vec<Option>,
     /// The field JSON name.
-    #[prost(string, tag = "10")]
+    #[prost(string = "string", tag = "10")]
     pub json_name: ::prost::alloc::string::String,
     /// The string value of the default value of this field. Proto2 syntax only.
-    #[prost(string, tag = "11")]
+    #[prost(string = "string", tag = "11")]
     pub default_value: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `Field`.
@@ -1532,7 +1532,7 @@ pub mod field {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Enum {
     /// Enum type name.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Enum value definitions.
     #[prost(message, repeated, tag = "2")]
@@ -1552,7 +1552,7 @@ pub struct Enum {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValue {
     /// Enum value name.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Enum value number.
     #[prost(int32, tag = "2")]
@@ -1570,7 +1570,7 @@ pub struct Option {
     /// descriptor.proto), this is the short name. For example, `"map_entry"`.
     /// For custom options, it should be the fully-qualified name. For example,
     /// `"google.api.http"`.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The option's value packed in an Any message. If the value is a primitive,
     /// the corresponding wrapper type defined in google/protobuf/wrappers.proto
@@ -1622,7 +1622,7 @@ impl Syntax {
 pub struct Api {
     /// The fully qualified name of this interface, including package name
     /// followed by the interface's simple name.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The methods of this interface, in unspecified order.
     #[prost(message, repeated, tag = "2")]
@@ -1649,7 +1649,7 @@ pub struct Api {
     /// `google.feature.v1`. For major versions 0 and 1, the suffix can
     /// be omitted. Zero major versions must only be used for
     /// experimental, non-GA interfaces.
-    #[prost(string, tag = "4")]
+    #[prost(string = "string", tag = "4")]
     pub version: ::prost::alloc::string::String,
     /// Source context for the protocol buffer service represented by this
     /// message.
@@ -1667,16 +1667,16 @@ pub struct Api {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Method {
     /// The simple name of this method.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// A URL of the input message type.
-    #[prost(string, tag = "2")]
+    #[prost(string = "string", tag = "2")]
     pub request_type_url: ::prost::alloc::string::String,
     /// If true, the request is streamed.
     #[prost(bool, tag = "3")]
     pub request_streaming: bool,
     /// The URL of the output message type.
-    #[prost(string, tag = "4")]
+    #[prost(string = "string", tag = "4")]
     pub response_type_url: ::prost::alloc::string::String,
     /// If true, the response is streamed.
     #[prost(bool, tag = "5")]
@@ -1780,11 +1780,11 @@ pub struct Method {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// If non-empty specifies a path under which inherited HTTP paths
     /// are rooted.
-    #[prost(string, tag = "2")]
+    #[prost(string = "string", tag = "2")]
     pub root: ::prost::alloc::string::String,
 }
 /// A Duration represents a signed, fixed-length span of time represented
@@ -2094,7 +2094,7 @@ pub struct Duration {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldMask {
     /// The set of field mask paths.
-    #[prost(string, repeated, tag = "1")]
+    #[prost(string = "string", repeated, tag = "1")]
     pub paths: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// `Struct` represents a structured data value, consisting of fields
@@ -2141,7 +2141,7 @@ pub mod value {
         #[prost(double, tag = "2")]
         NumberValue(f64),
         /// Represents a string value.
-        #[prost(string, tag = "3")]
+        #[prost(string = "string", tag = "3")]
         StringValue(::prost::alloc::string::String),
         /// Represents a boolean value.
         #[prost(bool, tag = "4")]

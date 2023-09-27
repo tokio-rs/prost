@@ -329,12 +329,12 @@ and the generated Rust code (`tutorial.rs`):
 ```rust,ignore
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Person {
-    #[prost(string, tag="1")]
+    #[prost(string = "string", tag="1")]
     pub name: ::prost::alloc::string::String,
     /// Unique ID number for this person.
     #[prost(int32, tag="2")]
     pub id: i32,
-    #[prost(string, tag="3")]
+    #[prost(string = "string", tag="3")]
     pub email: ::prost::alloc::string::String,
     #[prost(message, repeated, tag="4")]
     pub phones: ::prost::alloc::vec::Vec<person::PhoneNumber>,
@@ -343,7 +343,7 @@ pub struct Person {
 pub mod person {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PhoneNumber {
-        #[prost(string, tag="1")]
+        #[prost(string = "string", tag="1")]
         pub number: ::prost::alloc::string::String,
         #[prost(enumeration="PhoneType", tag="2")]
         pub r#type: i32,
@@ -422,15 +422,15 @@ use prost::{Enumeration, Message};
 
 #[derive(Clone, PartialEq, Message)]
 struct Person {
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub id: String, // tag=1
     // NOTE: Old "name" field has been removed
     // pub name: String, // tag=2 (Removed)
-    #[prost(string, tag = "6")]
+    #[prost(string = "string", tag = "6")]
     pub given_name: String, // tag=6
-    #[prost(string)]
+    #[prost(string = "string")]
     pub family_name: String, // tag=7
-    #[prost(string)]
+    #[prost(string = "string")]
     pub formatted_name: String, // tag=8
     #[prost(uint32, tag = "3")]
     pub age: u32, // tag=3
@@ -439,11 +439,11 @@ struct Person {
     #[prost(enumeration = "Gender")]
     pub gender: i32, // tag=5
     // NOTE: Skip to less commonly occurring fields
-    #[prost(string, tag = "16")]
+    #[prost(string = "string", tag = "16")]
     pub name_prefix: String, // tag=16  (eg. mr/mrs/ms)
-    #[prost(string)]
+    #[prost(string = "string")]
     pub name_suffix: String, // tag=17  (eg. jr/esq)
-    #[prost(string)]
+    #[prost(string = "string")]
     pub maiden_name: String, // tag=18
 }
 

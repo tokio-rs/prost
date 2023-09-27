@@ -73,7 +73,7 @@ fn tuple_struct() {
 pub enum OneofWithEnum {
     #[prost(int32, tag = "8")]
     Int(i32),
-    #[prost(string, tag = "9")]
+    #[prost(string = "string", tag = "9")]
     String(String),
     #[prost(enumeration = "BasicEnumeration", tag = "10")]
     Enumeration(i32),

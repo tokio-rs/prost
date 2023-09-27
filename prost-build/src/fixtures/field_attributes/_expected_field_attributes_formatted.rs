@@ -18,7 +18,7 @@ pub mod container {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Foo {
-    #[prost(string, tag = "1")]
+    #[prost(string = "string", tag = "1")]
     pub foo: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]

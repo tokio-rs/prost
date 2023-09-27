@@ -4,6 +4,7 @@
 
 #![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
@@ -873,6 +874,58 @@ pub mod string {
     }
 }
 
+pub mod boxed_str {
+    use super::*;
+
+    #[allow(clippy::borrowed_box)]
+    pub fn encode<B>(tag: u32, value: &Box<str>, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(value.len() as u64, buf);
+        buf.put_slice(value.as_bytes());
+    }
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut Box<str>,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        let mut current = core::mem::take(value).into_string();
+        super::string::merge(wire_type, &mut current, buf, ctx)?;
+        *value = current.into();
+        Ok(())
+    }
+
+    length_delimited!(Box<str>);
+
+    #[cfg(test)]
+    mod test {
+        use proptest::prelude::*;
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        proptest! {
+            #[test]
+            fn check(value: Box<str>, tag in MIN_TAG..=MAX_TAG) {
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)?;
+            }
+            #[test]
+            fn check_repeated(value: Vec<Box<str>>, tag in MIN_TAG..=MAX_TAG) {
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)?;
+            }
+        }
+    }
+}
+
 pub trait BytesAdapter: sealed::BytesAdapter {}
 
 mod sealed {
@@ -940,6 +993,32 @@ impl sealed::BytesAdapter for Vec<u8> {
         B: BufMut,
     {
         buf.put(self.as_slice())
+    }
+}
+
+impl BytesAdapter for Box<[u8]> {}
+
+impl sealed::BytesAdapter for Box<[u8]> {
+    fn len(&self) -> usize {
+        <[u8]>::len(self)
+    }
+
+    fn replace_with<B>(&mut self, buf: B)
+    where
+        B: Buf,
+    {
+        let mut current = core::mem::take(self).into_vec();
+        current.clear();
+        current.reserve(buf.remaining());
+        current.put(buf);
+        *self = current.into_boxed_slice();
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(self.as_ref())
     }
 }
 

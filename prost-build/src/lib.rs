@@ -227,11 +227,29 @@ enum BytesType {
     Vec,
     /// The [`bytes::Bytes`] type.
     Bytes,
+    /// The [`alloc::boxed::Box`]`<`[`[u8]`][primitive@slice]`>` type.
+    BoxedSlice,
 }
 
 impl Default for BytesType {
     fn default() -> BytesType {
         BytesType::Vec
+    }
+}
+
+/// The string type to output for Protobuf `string` fields.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum StringType {
+    /// The [`alloc::string::String`] type.
+    String,
+    /// The [`alloc::boxed::Box`]`<`[`str`][primitive@str]`>` type.
+    BoxedStr,
+}
+
+impl Default for StringType {
+    fn default() -> StringType {
+        StringType::String
     }
 }
 
@@ -243,6 +261,7 @@ pub struct Config {
     service_generator: Option<Box<dyn ServiceGenerator>>,
     map_type: PathMap<MapType>,
     bytes_type: PathMap<BytesType>,
+    string_type: PathMap<StringType>,
     type_attributes: PathMap<String>,
     message_attributes: PathMap<String>,
     enum_attributes: PathMap<String>,
@@ -374,6 +393,16 @@ impl Config {
     /// config.bytes(&["my_bytes_field", ".foo.bar"]);
     /// ```
     ///
+    /// For the same path, the last called of this method and [`Self::boxed_slice()`] will be the
+    /// one that is applied during code generation:
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Overridden by the next line
+    /// config.bytes(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// config.boxed_slice(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// ```
+    ///
     /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
     /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
     /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
@@ -382,10 +411,157 @@ impl Config {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.bytes_type.clear();
+        self.add_bytes_type(paths, BytesType::Bytes)
+    }
+
+    /// Configure the code generator to generate Rust [`Box<[u8]>`][4] fields for Protobuf
+    /// [`bytes`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Box<[u8]>` for Protobuf `bytes` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `Box<[u8]>` field is generated instead of the default [`Vec<u8>`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.boxed_slice(&[".my_messages.MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all bytes fields in a message type.
+    /// config.boxed_slice(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all bytes fields in a package.
+    /// config.boxed_slice(&[".my_messages"]);
+    ///
+    /// // Match all bytes fields. Specially useful in `no_std` contexts.
+    /// config.boxed_slice(&["."]);
+    ///
+    /// // Match all bytes fields in a nested message.
+    /// config.boxed_slice(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_bytes_field'.
+    /// config.boxed_slice(&["my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.boxed_slice(&["MyMessageType.my_bytes_field"]);
+    ///
+    /// // Match all fields named 'my_bytes_field', and all fields in the 'foo.bar' package.
+    /// config.boxed_slice(&["my_bytes_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// For the same path, the last called of this method and [`Self::bytes()`] will be the
+    /// one that is applied during code generation:
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Overridden by the next line
+    /// config.boxed_slice(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// config.bytes(&[".my_messages.MyMessageType.my_bytes_field"]);
+    /// ```
+    ///
+    /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
+    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
+    /// [3]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+    pub fn boxed_slice<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.add_bytes_type(paths, BytesType::BoxedSlice)
+    }
+
+    fn add_bytes_type<I, S>(&mut self, paths: I, bt: BytesType) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        // First remove all items that are of type `bt`
+        for i in (0..self.bytes_type.matchers.len()).rev() {
+            if self.bytes_type.matchers[i].1 == bt {
+                self.bytes_type.matchers.swap_remove(i);
+            }
+        }
+
         for matcher in paths {
-            self.bytes_type
-                .insert(matcher.as_ref().to_string(), BytesType::Bytes);
+            let matcher = matcher.as_ref();
+            match self.bytes_type.matchers.iter_mut().find(|p| p.0 == matcher) {
+                // Then, for each matcher, either update the type if present but not of correct type
+                Some(item) => item.1 = bt,
+                // Or insert it if new
+                None => self.bytes_type.insert(matcher.to_string(), bt),
+            }
+        }
+        self
+    }
+
+    /// Configure the code generator to generate Rust [`Box<str>`][1] fields for Protobuf
+    /// [`string`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Box<str>` for Protobuf `string` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `Box<Str>` field is generated instead of the default [`String`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.boxed_str(&[".my_messages.MyMessageType.my_string_field"]);
+    ///
+    /// // Match all string fields in a message type.
+    /// config.boxed_str(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all string fields in a package.
+    /// config.boxed_str(&[".my_messages"]);
+    ///
+    /// // Match all string fields. Specially useful in `no_std` contexts.
+    /// config.boxed_str(&["."]);
+    ///
+    /// // Match all string fields in a nested message.
+    /// config.boxed_str(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_string_field'.
+    /// config.boxed_str(&["my_string_field"]);
+    ///
+    /// // Match all fields named 'my_string_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.boxed_str(&["MyMessageType.my_string_field"]);
+    ///
+    /// // Match all fields named 'my_string_field', and all fields in the 'foo.bar' package.
+    /// config.boxed_str(&["my_string_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// [1]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [3]: https://doc.rust-lang.org/std/string/struct.String.html
+    pub fn boxed_str<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.string_type.clear();
+        for matcher in paths {
+            self.string_type
+                .insert(matcher.as_ref().to_string(), StringType::BoxedStr);
         }
         self
     }
@@ -1247,6 +1423,7 @@ impl default::Default for Config {
             service_generator: None,
             map_type: PathMap::default(),
             bytes_type: PathMap::default(),
+            string_type: PathMap::default(),
             type_attributes: PathMap::default(),
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
@@ -1275,6 +1452,7 @@ impl fmt::Debug for Config {
             .field("service_generator", &self.service_generator.is_some())
             .field("map_type", &self.map_type)
             .field("bytes_type", &self.bytes_type)
+            .field("string_type", &self.string_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)
@@ -1780,5 +1958,48 @@ mod tests {
         let mut content = String::new();
         f.read_to_string(&mut content).unwrap();
         content
+    }
+
+    #[test]
+    fn bytes_and_boxed_slice() {
+        let mut cfg = Config::new();
+
+        assert_eq!(&cfg.bytes_type.matchers, &[]);
+
+        let a = ".a.A.a1";
+        let b = "B.b2";
+        let c = "3";
+
+        cfg.bytes([a, b, c]);
+
+        assert_eq!(
+            &cfg.bytes_type.matchers,
+            &[
+                (a.to_string(), BytesType::Bytes),
+                (b.to_string(), BytesType::Bytes),
+                (c.to_string(), BytesType::Bytes),
+            ]
+        );
+
+        cfg.boxed_slice([a, b]);
+
+        assert_eq!(
+            &cfg.bytes_type.matchers,
+            &[
+                (a.to_string(), BytesType::BoxedSlice),
+                (b.to_string(), BytesType::BoxedSlice),
+                (c.to_string(), BytesType::Bytes),
+            ]
+        );
+
+        cfg.bytes([a]);
+
+        assert_eq!(
+            &cfg.bytes_type.matchers,
+            &[
+                (a.to_string(), BytesType::Bytes),
+                (b.to_string(), BytesType::BoxedSlice),
+            ]
+        );
     }
 }
