@@ -1,6 +1,7 @@
 /// The version number of protocol compiler.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[prost(package="google.protobuf.compiler")]
 pub struct Version {
     #[prost(int32, optional, tag = "1")]
     pub major: ::core::option::Option<i32>,
@@ -16,6 +17,7 @@ pub struct Version {
 /// An encoded CodeGeneratorRequest is written to the plugin's stdin.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[prost(package="google.protobuf.compiler")]
 pub struct CodeGeneratorRequest {
     /// The .proto files that were explicitly listed on the command-line.  The
     /// code generator should generate code only for these files.  Each file's
@@ -48,6 +50,7 @@ pub struct CodeGeneratorRequest {
 /// The plugin writes an encoded CodeGeneratorResponse to stdout.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[prost(package="google.protobuf.compiler")]
 pub struct CodeGeneratorResponse {
     /// Error message.  If non-empty, code generation failed.  The plugin process
     /// should exit with status code zero even if it reports an error in this way.
@@ -71,6 +74,7 @@ pub mod code_generator_response {
     /// Represents a single generated file.
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[prost(package="google.protobuf.compiler.CodeGeneratorResponse")]
     pub struct File {
         /// The file name, relative to the output directory.  The name must not
         /// contain "." or ".." components and must be relative, not be absolute (so,

@@ -22,6 +22,24 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse(input)?;
 
     let ident = input.ident;
+    let attrs = input.attrs;
+
+    let mut message_path = ident.to_string();
+    for attr in attrs {
+        if attr.path.is_ident("prost") {
+            if let Ok(arg) = attr.parse_args::<syn::MetaNameValue>() {
+                if arg.path.is_ident("package") {
+                    if let syn::Lit::Str(lit) = arg.lit {
+                        let package = lit.value();
+                        if !package.is_empty() {
+                            message_path = package + "." + &ident.to_string();
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     syn::custom_keyword!(skip_debug);
     let skip_debug = input
@@ -201,6 +219,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
             fn clear(&mut self) {
                 #(#clear;)*
+            }
+
+            fn message_path() -> &'static str {
+                #message_path
             }
         }
 
