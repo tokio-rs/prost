@@ -832,6 +832,76 @@ pub mod string {
     }
 }
 
+#[cfg(feature = "smallstring")]
+pub mod smallstring {
+    use super::*;
+    use core::mem::ManuallyDrop;
+
+    pub fn encode<B>(tag: u32, value: &str, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(value.len() as u64, buf);
+        buf.put_slice(value.as_bytes());
+    }
+    pub fn merge<B>(
+        wire_type: WireType,
+        value: &mut compact_str::CompactString,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        unsafe {
+            let mut fake_vec = ManuallyDrop::new(Vec::from_raw_parts(
+                value.as_mut_ptr(),
+                value.len(),
+                value.capacity(),
+            ));
+
+            bytes::merge_one_copy(wire_type, &mut *fake_vec, buf, ctx)?;
+            match compact_str::CompactString::from_utf8(&*fake_vec) {
+                Ok(s) => {
+                    *value = s;
+                    Ok(())
+                }
+                Err(_) => Err(DecodeError::new(
+                    "invalid string value: data is not UTF-8 encoded",
+                )),
+            }
+        }
+    }
+
+    length_delimited!(compact_str::CompactString);
+
+    #[cfg(test)]
+    mod test {
+        use compact_str::{CompactString, ToCompactString};
+        use proptest::prelude::*;
+
+        use super::super::test::{check_collection_type, check_type};
+        use super::*;
+
+        proptest! {
+            #[test]
+            fn check(value: String, tag in MIN_TAG..=MAX_TAG) {
+                let value = value.to_compact_string();
+                super::test::check_type(value, tag, WireType::LengthDelimited,
+                                        encode, merge, |tag, s| encoded_len(tag, &s.to_compact_string()))?;
+            }
+            #[test]
+            fn check_repeated(value: Vec<String>, tag in MIN_TAG..=MAX_TAG) {
+                let value = value.into_iter().map(CompactString::from).collect();
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)?;
+            }
+        }
+    }
+}
+
 pub trait BytesAdapter: sealed::BytesAdapter {}
 
 mod sealed {
