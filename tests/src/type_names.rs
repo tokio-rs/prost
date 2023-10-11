@@ -1,3 +1,4 @@
+use prost::alloc::{format, string::String};
 use prost::Name;
 
 include!(concat!(env!("OUT_DIR"), "/type_names.rs"));
