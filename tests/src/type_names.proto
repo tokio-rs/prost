@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package type_names;
+
+message Foo {
+}
+
+message Bar {
+}
