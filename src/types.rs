@@ -5,6 +5,7 @@
 //! the `prost-types` crate in order to avoid a cyclic dependency between `prost` and
 //! `prost-build`.
 
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
