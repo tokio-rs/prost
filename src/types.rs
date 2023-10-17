@@ -15,8 +15,10 @@ use crate::{
         bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
         DecodeContext, WireType,
     },
-    DecodeError, Message,
+    DecodeError, Message, Name,
 };
+
+const PACKAGE: &str = "google.protobuf";
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {
@@ -53,6 +55,16 @@ impl Message for bool {
     }
     fn clear(&mut self) {
         *self = false;
+    }
+}
+
+/// `google.protobuf.BoolValue`
+impl Name for bool {
+    const NAME: &'static str = "BoolValue";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -94,6 +106,16 @@ impl Message for u32 {
     }
 }
 
+/// `google.protobuf.UInt32Value`
+impl Name for u32 {
+    const NAME: &'static str = "UInt32Value";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// `google.protobuf.UInt64Value`
 impl Message for u64 {
     fn encode_raw<B>(&self, buf: &mut B)
@@ -129,6 +151,16 @@ impl Message for u64 {
     }
     fn clear(&mut self) {
         *self = 0;
+    }
+}
+
+/// `google.protobuf.UInt64Value`
+impl Name for u64 {
+    const NAME: &'static str = "UInt64Value";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -170,6 +202,16 @@ impl Message for i32 {
     }
 }
 
+/// `google.protobuf.Int32Value`
+impl Name for i32 {
+    const NAME: &'static str = "Int32Value";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// `google.protobuf.Int64Value`
 impl Message for i64 {
     fn encode_raw<B>(&self, buf: &mut B)
@@ -205,6 +247,16 @@ impl Message for i64 {
     }
     fn clear(&mut self) {
         *self = 0;
+    }
+}
+
+/// `google.protobuf.Int64Value`
+impl Name for i64 {
+    const NAME: &'static str = "Int64Value";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -246,6 +298,16 @@ impl Message for f32 {
     }
 }
 
+/// `google.protobuf.FloatValue`
+impl Name for f32 {
+    const NAME: &'static str = "FloatValue";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// `google.protobuf.DoubleValue`
 impl Message for f64 {
     fn encode_raw<B>(&self, buf: &mut B)
@@ -284,6 +346,16 @@ impl Message for f64 {
     }
 }
 
+/// `google.protobuf.DoubleValue`
+impl Name for f64 {
+    const NAME: &'static str = "DoubleValue";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// `google.protobuf.StringValue`
 impl Message for String {
     fn encode_raw<B>(&self, buf: &mut B)
@@ -319,6 +391,16 @@ impl Message for String {
     }
     fn clear(&mut self) {
         self.clear();
+    }
+}
+
+/// `google.protobuf.StringValue`
+impl Name for String {
+    const NAME: &'static str = "StringValue";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
     }
 }
 
@@ -361,6 +443,16 @@ impl Message for Vec<u8> {
 }
 
 /// `google.protobuf.BytesValue`
+impl Name for Vec<u8> {
+    const NAME: &'static str = "BytesValue";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
+/// `google.protobuf.BytesValue`
 impl Message for Bytes {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -398,6 +490,16 @@ impl Message for Bytes {
     }
 }
 
+/// `google.protobuf.BytesValue`
+impl Name for Bytes {
+    const NAME: &'static str = "BytesValue";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
 /// `google.protobuf.Empty`
 impl Message for () {
     fn encode_raw<B>(&self, _buf: &mut B)
@@ -421,4 +523,20 @@ impl Message for () {
         0
     }
     fn clear(&mut self) {}
+}
+
+/// `google.protobuf.Empty`
+impl Name for () {
+    const NAME: &'static str = "Empty";
+    const PACKAGE: &'static str = PACKAGE;
+
+    fn type_url() -> String {
+        type_url_for::<Self>()
+    }
+}
+
+/// Compute the type URL for the given `google.protobuf` type, using `type.googleapis.com` as the
+/// authority for the URL.
+fn type_url_for<T: Name>() -> String {
+    format!("type.googleapis.com/{}.{}", T::PACKAGE, T::NAME)
 }
