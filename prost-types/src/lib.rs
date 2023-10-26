@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-types/0.12.0")]
+#![doc(html_root_url = "https://docs.rs/prost-types/0.12.1")]
 
 //! Protocol Buffers well-known types.
 //!
@@ -87,6 +87,14 @@ impl Name for Any {
 
     fn type_url() -> String {
         type_url_for::<Self>()
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::hash::Hash for Duration {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.seconds.hash(state);
+        self.nanos.hash(state);
     }
 }
 

@@ -45,8 +45,22 @@ mod no_unused_results;
 #[cfg(test)]
 #[cfg(feature = "std")]
 mod skip_debug;
-#[cfg(test)]
-mod well_known_types;
+
+mod test_enum_named_option_value {
+    include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
+}
+
+mod test_enum_named_result_value {
+    include!(concat!(env!("OUT_DIR"), "/myenum.result.rs"));
+}
+
+mod test_result_named_option_value {
+    include!(concat!(env!("OUT_DIR"), "/mystruct.optionn.rs"));
+}
+
+mod test_result_named_result_value {
+    include!(concat!(env!("OUT_DIR"), "/mystruct.result.rs"));
+}
 
 pub mod foo {
     pub mod bar_baz {

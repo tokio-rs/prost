@@ -1,6 +1,6 @@
 [package]
 name = "prost"
-version = "0.12.0"
+version = "0.12.1"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com",
@@ -49,7 +49,7 @@ std = []
 
 [dependencies]
 bytes = { version = "1", default-features = false }
-prost-derive = { version = "0.12.0", path = "prost-derive", optional = true }
+prost-derive = { version = "0.12.1", path = "prost-derive", optional = true }
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]

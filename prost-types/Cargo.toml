@@ -1,6 +1,6 @@
 [package]
 name = "prost-types"
-version = "0.12.0"
+version = "0.12.1"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com",
@@ -22,7 +22,7 @@ default = ["std"]
 std = ["prost/std"]
 
 [dependencies]
-prost = { version = "0.12.0", path = "..", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12.1", path = "..", default-features = false, features = ["prost-derive"] }
 
 [dev-dependencies]
 proptest = "1"
