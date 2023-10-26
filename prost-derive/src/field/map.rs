@@ -277,14 +277,14 @@ impl Field {
                 #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::core::option::Option<#ty> {
                     self.#ident.get(#take_ref key).cloned().and_then(|x| {
-                        let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                        let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                         result.ok()
                     })
                 }
                 #[doc=#insert_doc]
                 pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::core::option::Option<#ty> {
                     self.#ident.insert(key, value as i32).and_then(|x| {
-                        let result: Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                        let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                         result.ok()
                     })
                 }
