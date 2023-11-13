@@ -84,6 +84,13 @@ impl<'a> CodeGenerator<'a> {
             code_gen.package
         );
 
+        if code_gen.config.enable_type_names {
+            code_gen.buf.push_str(&format!(
+                "const PACKAGE: &str = \"{}\";\n",
+                code_gen.package,
+            ));
+        }
+
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
             code_gen.path.push(idx as i32);
@@ -261,6 +268,38 @@ impl<'a> CodeGenerator<'a> {
 
             self.pop_mod();
         }
+
+        if self.config.enable_type_names {
+            self.append_type_name(&message_name, &fq_message_name);
+        }
+    }
+
+    fn append_type_name(&mut self, message_name: &str, fq_message_name: &str) {
+        self.buf.push_str(&format!(
+            "impl {}::Name for {} {{\n",
+            self.config.prost_path.as_deref().unwrap_or("::prost"),
+            to_upper_camel(&message_name)
+        ));
+        self.depth += 1;
+
+        self.buf
+            .push_str("const PACKAGE: &'static str = PACKAGE;\n");
+        self.buf.push_str(&format!(
+            "const NAME: &'static str = \"{}\";\n",
+            message_name
+        ));
+
+        if let Some(domain_name) = self.config.type_name_domains.get_first(fq_message_name) {
+            self.buf.push_str(&format!(
+                r#"fn type_url() -> String {{
+                    format!("{}/{{}}", Self::full_name())
+                }}"#,
+                domain_name
+            ));
+        }
+
+        self.depth -= 1;
+        self.buf.push_str("}\n");
     }
 
     fn append_type_attributes(&mut self, fq_message_name: &str) {
