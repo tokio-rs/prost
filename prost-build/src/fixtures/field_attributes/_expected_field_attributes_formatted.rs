@@ -23,11 +23,11 @@ pub struct Foo {
     pub foo: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Bar {
     #[prost(message, optional, boxed, tag = "1")]
     pub qux: ::core::option::Option<::prost::alloc::boxed::Box<Qux>>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Qux {}
