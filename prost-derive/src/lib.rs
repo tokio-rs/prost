@@ -91,16 +91,19 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
     let fields = fields;
 
-    let mut tags = fields
+    if let Some((duplicate_tag, _)) = fields
         .iter()
         .flat_map(|(_, field)| field.tags())
-        .collect::<Vec<_>>();
-    let num_tags = tags.len();
-    tags.sort_unstable();
-    tags.dedup();
-    if tags.len() != num_tags {
-        bail!("message {} has fields with duplicate tags", ident);
-    }
+        .sorted_unstable()
+        .tuple_windows()
+        .find(|(a, b)| a == b)
+    {
+        bail!(
+            "message {} has multiple fields with tag {}",
+            ident,
+            duplicate_tag
+        )
+    };
 
     let encoded_len = fields
         .iter()
@@ -251,7 +254,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         #methods
     };
 
-    Ok(expanded.into())
+    Ok(expanded)
 }
 
 #[proc_macro_derive(Message, attributes(prost))]
@@ -359,7 +362,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    Ok(expanded.into())
+    Ok(expanded)
 }
 
 #[proc_macro_derive(Enumeration, attributes(prost))]
@@ -412,23 +415,25 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     }
 
-    let mut tags = fields
+    if let Some((invalid_variant, _)) = fields.iter().find(|(_, field)| field.tags().len() > 1) {
+        bail!(
+            "invalid oneof variant {}::{}: oneof variants may only have a single tag",
+            ident,
+            invalid_variant
+        );
+    }
+    if let Some((duplicate_tag, _)) = fields
         .iter()
-        .flat_map(|(variant_ident, field)| -> Result<u32, Error> {
-            if field.tags().len() > 1 {
-                bail!(
-                    "invalid oneof variant {}::{}: oneof variants may only have a single tag",
-                    ident,
-                    variant_ident
-                );
-            }
-            Ok(field.tags()[0])
-        })
-        .collect::<Vec<_>>();
-    tags.sort_unstable();
-    tags.dedup();
-    if tags.len() != fields.len() {
-        panic!("invalid oneof {}: variants have duplicate tags", ident);
+        .flat_map(|(_, field)| field.tags())
+        .sorted_unstable()
+        .tuple_windows()
+        .find(|(a, b)| a == b)
+    {
+        bail!(
+            "invalid oneof {}: multiple variants have tag {}",
+            ident,
+            duplicate_tag
+        );
     }
 
     let encode = fields.iter().map(|(variant_ident, field)| {
@@ -519,7 +524,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    Ok(expanded.into())
+    Ok(expanded)
 }
 
 #[proc_macro_derive(Oneof, attributes(prost))]
