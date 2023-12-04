@@ -163,22 +163,21 @@ The `#[derive(::prost::Enumeration)]` annotation added to the generated
 ```rust,ignore
 impl PhoneType {
     pub fn is_valid(value: i32) -> bool { ... }
-    #[deprecated]
     pub fn from_i32(value: i32) -> Option<PhoneType> { ... }
 }
 ```
 
-It also adds an `impl TryFrom<i32> for PhoneType`, so you can convert an `i32` to its corresponding `PhoneType` value by doing,
+so you can convert an `i32` to its corresponding `PhoneType` value by doing,
 for example:
 
 ```rust,ignore
 let phone_type = 2i32;
 
-match PhoneType::try_from(phone_type) {
-    Ok(PhoneType::Mobile) => ...,
-    Ok(PhoneType::Home) => ...,
-    Ok(PhoneType::Work) => ...,
-    Err(_) => ...,
+match PhoneType::from_i32(phone_type) {
+    Some(PhoneType::Mobile) => ...,
+    Some(PhoneType::Home) => ...,
+    Some(PhoneType::Work) => ...,
+    None => ...,
 }
 ```
 
