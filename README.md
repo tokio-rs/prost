@@ -36,7 +36,7 @@ prost-types = "0.12"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
-`prost-build` library. See the [`prost-build` documentation](prost-build) for
+`prost-build` library. See the [`prost-build` documentation](https://docs.rs/prost-build/latest/prost_build/) for
 more details and examples.
 
 See the [snazzy repository](https://github.com/danburkert/snazzy) for a simple
