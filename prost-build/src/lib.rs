@@ -1125,12 +1125,17 @@ impl Config {
 
             debug!("Running: {:?}", cmd);
 
-            let output = cmd.output().map_err(|error| {
-                Error::new(
-                    error.kind(),
-                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, error),
-                )
-            })?;
+            let output = match cmd.output() {
+                Err(err) if ErrorKind::NotFound == err.kind() => return Err(Error::new(
+                    err.kind(),
+                    error_message_protoc_not_found()
+                )),
+                Err(err) => return Err(Error::new(
+                    err.kind(),
+                    format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, err),
+                )),
+                Ok(output) => output,
+            };
 
             if !output.status.success() {
                 return Err(Error::new(
@@ -1505,6 +1510,12 @@ pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
 
 /// Returns the path to the `protoc` binary.
 pub fn protoc_from_env() -> PathBuf {
+    env::var_os("PROTOC")
+        .map(PathBuf::from)
+        .unwrap_or(PathBuf::from("protoc"))
+}
+
+pub fn error_message_protoc_not_found() -> String {
     let os_specific_hint = if cfg!(target_os = "macos") {
         "You could try running `brew install protobuf` or downloading it from https://github.com/protocolbuffers/protobuf/releases"
     } else if cfg!(target_os = "linux") {
@@ -1517,18 +1528,13 @@ pub fn protoc_from_env() -> PathBuf {
     this knowledge. If `protoc` is installed and this crate had trouble finding
     it, you can set the `PROTOC` environment variable with the specific path to your
     installed `protoc` binary.";
-    let msg = format!(
+    format!(
         "{}{}
 
 For more information: https://docs.rs/prost-build/#sourcing-protoc
 ",
         error_msg, os_specific_hint
-    );
-
-    env::var_os("PROTOC")
-        .map(PathBuf::from)
-        .or_else(|| which::which("protoc").ok())
-        .expect(&msg)
+    )
 }
 
 /// Returns the path to the Protobuf include directory.
