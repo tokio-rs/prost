@@ -32,7 +32,8 @@ prost-types = { version = "0.12.3", path = "../prost-types", default-features = 
 tempfile = "3"
 once_cell = "1.17.1"
 regex = { version = "1.8.1", default-features = false, features = ["std", "unicode-bool"] }
-which = "4"
+# pin to avoid having to bump msrv to 1.63
+which = "=4.4.1"
 
 prettyplease = { version = "0.2", optional = true }
 syn = { version = "2", features = ["full"], optional = true }
