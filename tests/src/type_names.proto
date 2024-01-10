@@ -3,7 +3,9 @@ syntax = "proto3";
 package type_names;
 
 message Foo {
+    message Bar {
+    }
 }
 
-message Bar {
+message Baz {
 }
