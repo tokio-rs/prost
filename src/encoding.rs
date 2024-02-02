@@ -1602,7 +1602,7 @@ mod test {
 
     #[test]
     fn varint() {
-        fn check(value: u64, mut encoded: &[u8]) {
+        fn check(value: u64, encoded: &[u8]) {
             // Small buffer.
             let mut buf = Vec::with_capacity(1);
             encode_varint(value, &mut buf);
@@ -1615,11 +1615,10 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value =
-                decode_varint(&mut <&[u8]>::clone(&encoded)).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut &*encoded).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            let roundtrip_value = decode_varint_slow(&mut encoded).expect("slow decoding failed");
+            let roundtrip_value = decode_varint_slow(&mut &*encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 
@@ -1680,11 +1679,10 @@ mod test {
 
     #[test]
     fn varint_overflow() {
-        let mut u64_max_plus_one: &[u8] =
-            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
+        let u64_max_plus_one: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
 
-        decode_varint(&mut u64_max_plus_one).expect_err("decoding u64::MAX + 1 succeeded");
-        decode_varint_slow(&mut u64_max_plus_one)
+        decode_varint(&mut &*u64_max_plus_one).expect_err("decoding u64::MAX + 1 succeeded");
+        decode_varint_slow(&mut &*u64_max_plus_one)
             .expect_err("slow decoding u64::MAX + 1 succeeded");
     }
 
