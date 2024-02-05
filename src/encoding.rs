@@ -9,7 +9,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::min;
-use core::convert::TryFrom;
+use core::convert::{AsRef, TryFrom};
 use core::mem;
 use core::str;
 use core::u32;
@@ -794,14 +794,20 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
+    pub fn encode_ref(tag: u32, value: impl AsRef<str>, buf: &mut impl BufMut) {
+        let str = value.as_ref();
+        encode_key(tag, WireType::LengthDelimited, buf);
+        encode_varint(str.len() as u64, buf);
+        buf.put_slice(str.as_bytes());
+    }
+
     pub fn encode<B>(tag: u32, value: &String, buf: &mut B)
     where
         B: BufMut,
     {
-        encode_key(tag, WireType::LengthDelimited, buf);
-        encode_varint(value.len() as u64, buf);
-        buf.put_slice(value.as_bytes());
+        encode_ref(tag, value, buf)
     }
+
     pub fn merge<B>(
         wire_type: WireType,
         value: &mut String,
