@@ -46,8 +46,10 @@ See the [snazzy repository][snazzy] for a simple start-to-finish example.
 
 ### MSRV
 
-`prost` follows the `tokio-rs` project's MSRV model and supports 1.70. For more
-information on the tokio msrv policy you can check it out [here][tokio msrv]
+`prost` follows the `tokio-rs` project's MSRV model and supports 1.70. Some
+crates' MSRV might be lower than this version, see each `rust-version` field of
+the manifest file. For more information on the tokio msrv policy you can check
+it out [here][tokio msrv]
 
 [tokio msrv]: https://github.com/tokio-rs/tokio/#supported-rust-versions
 
