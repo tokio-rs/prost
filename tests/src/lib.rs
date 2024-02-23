@@ -197,6 +197,7 @@ where
     if let Err(error) = all_types.encode(&mut buf1) {
         return RoundtripResult::Error(error.into());
     }
+    let buf1 = buf1;
     if encoded_len != buf1.len() {
         return RoundtripResult::Error(anyhow!(
             "expected encoded len ({}) did not match actual encoded len ({})",
@@ -205,7 +206,7 @@ where
         ));
     }
 
-    let roundtrip = match M::decode(&*buf1) {
+    let roundtrip = match M::decode(buf1.as_slice()) {
         Ok(roundtrip) => roundtrip,
         Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
     };
@@ -214,6 +215,7 @@ where
     if let Err(error) = roundtrip.encode(&mut buf2) {
         return RoundtripResult::Error(error.into());
     }
+    let buf2 = buf2;
     let buf3 = roundtrip.encode_to_vec();
 
     /*
@@ -247,7 +249,7 @@ where
     msg.encode(&mut buf).unwrap();
     assert_eq!(expected_len, buf.len());
 
-    let mut buf = &*buf;
+    let mut buf = buf.as_slice();
     let roundtrip = M::decode(&mut buf).unwrap();
 
     assert!(
@@ -428,7 +430,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(&*buf).map(|_| ())
+            A::decode(buf.as_slice()).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -451,7 +453,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            A::decode(&*buf).map(|_| ())
+            A::decode(buf.as_slice()).map(|_| ())
         }
 
         assert!(build_and_roundtrip(99).is_ok());
@@ -474,7 +476,7 @@ mod tests {
 
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
-            NestedGroup2::decode(&*buf).map(|_| ())
+            NestedGroup2::decode(buf.as_slice()).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
@@ -495,7 +497,7 @@ mod tests {
 
             let mut buf = Vec::new();
             c.encode(&mut buf).unwrap();
-            C::decode(&*buf).map(|_| ())
+            C::decode(buf.as_slice()).map(|_| ())
         }
 
         assert!(build_and_roundtrip(100).is_ok());
@@ -516,7 +518,7 @@ mod tests {
 
             let mut buf = Vec::new();
             d.encode(&mut buf).unwrap();
-            D::decode(&*buf).map(|_| ())
+            D::decode(buf.as_slice()).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
@@ -679,7 +681,7 @@ mod tests {
 
         let mut bytes = Vec::new();
         msg2.encode(&mut bytes).unwrap();
-        assert_eq!(&*bytes, msg2_bytes);
+        assert_eq!(bytes.as_slice(), msg2_bytes);
 
         assert_eq!(groups::Test2::decode(msg2_bytes), Ok(msg2));
     }

@@ -1148,7 +1148,7 @@ impl Config {
                 ),
             )
         })?;
-        let file_descriptor_set = FileDescriptorSet::decode(&*buf).map_err(|error| {
+        let file_descriptor_set = FileDescriptorSet::decode(buf.as_slice()).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
                 format!("invalid FileDescriptorSet: {}", error),
