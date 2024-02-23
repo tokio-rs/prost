@@ -293,26 +293,28 @@ impl<'a> CodeGenerator<'a> {
         ));
 
         let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
-        let string_path = format!("{}::alloc::string::String", prost_path);
-        let format_path = format!("{}::alloc::format", prost_path);
+        let string_path = format!("{prost_path}::alloc::string::String");
 
-        self.buf.push_str(&format!(
-            r#"fn full_name() -> {string_path} {{
-                {format_path}!("{}{}{}{}{{}}", Self::NAME)
-            }}"#,
+        let full_name = format!(
+            "{}{}{}{}{message_name}",
             self.package.trim_matches('.'),
             if self.package.is_empty() { "" } else { "." },
             self.type_path.join("."),
             if self.type_path.is_empty() { "" } else { "." },
+        );
+        let domain_name = self
+            .config
+            .type_name_domains
+            .get_first(fq_message_name)
+            .map_or("", |name| name.as_str());
+
+        self.buf.push_str(&format!(
+            r#"fn full_name() -> {string_path} {{ "{full_name}".into() }}"#,
         ));
 
-        if let Some(domain_name) = self.config.type_name_domains.get_first(fq_message_name) {
-            self.buf.push_str(&format!(
-                r#"fn type_url() -> {string_path} {{
-                    {format_path}!("{domain_name}/{{}}", Self::full_name())
-                }}"#,
-            ));
-        }
+        self.buf.push_str(&format!(
+            r#"fn type_url() -> {string_path} {{ "{domain_name}/{full_name}".into() }}"#,
+        ));
 
         self.depth -= 1;
         self.buf.push_str("}\n");
