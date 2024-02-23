@@ -1,6 +1,6 @@
 [package]
 name = "prost-types"
-version = "0.12.1"
+version = "0.12.3"
 authors = [
     "Dan Burkert <dan@danburkert.com>",
     "Lucio Franco <luciofranco14@gmail.com",
@@ -12,7 +12,7 @@ documentation = "https://docs.rs/prost-types"
 readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.70"
 
 [lib]
 doctest = false
@@ -22,7 +22,7 @@ default = ["std"]
 std = ["prost/std"]
 
 [dependencies]
-prost = { version = "0.12.1", path = "..", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12.3", path = "..", default-features = false, features = ["prost-derive"] }
 
 [dev-dependencies]
 proptest = "1"
