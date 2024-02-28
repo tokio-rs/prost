@@ -16,7 +16,7 @@ fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
     let mut f = File::open(dataset)?;
     let mut buf = Vec::new();
     f.read_to_end(&mut buf)?;
-    Ok(BenchmarkDataset::decode(&*buf)?)
+    Ok(BenchmarkDataset::decode(buf.as_slice())?)
 }
 
 fn benchmark_dataset<M>(criterion: &mut Criterion, name: &str, dataset: &'static Path)

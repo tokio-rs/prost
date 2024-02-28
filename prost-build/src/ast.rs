@@ -190,7 +190,7 @@ where
                 fn map_codeblock(kind: CodeBlockKind) -> CodeBlockKind {
                     match kind {
                         CodeBlockKind::Fenced(s) => {
-                            if &*s == "rust" {
+                            if s.as_ref() == "rust" {
                                 CodeBlockKind::Fenced("compile_fail".into())
                             } else {
                                 CodeBlockKind::Fenced(format!("text,{}", s).into())
