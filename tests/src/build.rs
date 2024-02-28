@@ -111,6 +111,10 @@ fn main() {
         .compile_protos(&[src.join("option_struct.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("submessage_without_package.proto")], includes)
+        .unwrap();
+
     prost_build::Config::new()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)

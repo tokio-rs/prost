@@ -66,7 +66,7 @@ impl Any {
         ) {
             (Some(expected), Some(actual)) => {
                 if expected == actual {
-                    return Ok(M::decode(&*self.value)?);
+                    return Ok(M::decode(self.value.as_slice())?);
                 }
             }
             _ => (),

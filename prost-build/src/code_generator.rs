@@ -122,18 +122,7 @@ impl<'a> CodeGenerator<'a> {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
-        let fq_message_name = format!(
-            "{}{}{}{}.{}",
-            if self.package.is_empty() && self.type_path.is_empty() {
-                ""
-            } else {
-                "."
-            },
-            self.package.trim_matches('.'),
-            if self.type_path.is_empty() { "" } else { "." },
-            self.type_path.join("."),
-            message_name,
-        );
+        let fq_message_name = self.fq_name(&message_name);
 
         // Skip external types.
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
@@ -701,18 +690,7 @@ impl<'a> CodeGenerator<'a> {
         let enum_name = to_upper_camel(proto_enum_name);
 
         let enum_values = &desc.value;
-        let fq_proto_enum_name = format!(
-            "{}{}{}{}.{}",
-            if self.package.is_empty() && self.type_path.is_empty() {
-                ""
-            } else {
-                "."
-            },
-            self.package.trim_matches('.'),
-            if self.type_path.is_empty() { "" } else { "." },
-            self.type_path.join("."),
-            proto_enum_name,
-        );
+        let fq_proto_enum_name = self.fq_name(proto_enum_name);
 
         if self
             .extern_paths
@@ -1064,6 +1042,18 @@ impl<'a> CodeGenerator<'a> {
             .options
             .as_ref()
             .map_or(false, FieldOptions::deprecated)
+    }
+
+    /// Returns the fully-qualified name, starting with a dot
+    fn fq_name(&self, message_name: &str) -> String {
+        format!(
+            "{}{}{}{}.{}",
+            if self.package.is_empty() { "" } else { "." },
+            self.package.trim_matches('.'),
+            if self.type_path.is_empty() { "" } else { "." },
+            self.type_path.join("."),
+            message_name,
+        )
     }
 }
 
