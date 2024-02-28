@@ -27,7 +27,7 @@ fn main() -> io::Result<()> {
         bytes.resize(len, 0);
         io::stdin().read_exact(&mut bytes)?;
 
-        let result = match ConformanceRequest::decode(&*bytes) {
+        let result = match ConformanceRequest::decode(bytes.as_slice()) {
             Ok(request) => handle_request(request),
             Err(error) => conformance_response::Result::ParseError(format!("{:?}", error)),
         };
@@ -93,7 +93,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
     };
 
-    let roundtrip = match &*request.message_type {
+    let roundtrip = match request.message_type.as_str() {
         "protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip::<TestAllTypesProto2>(&buf),
         "protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip::<TestAllTypesProto3>(&buf),
         _ => {
