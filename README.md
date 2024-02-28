@@ -36,15 +36,17 @@ prost-types = "0.12"
 ```
 
 The recommended way to add `.proto` compilation to a Cargo project is to use the
-`prost-build` library. See the [`prost-build` documentation](prost-build) for
+`prost-build` library. See the [`prost-build` documentation][prost-build] for
 more details and examples.
 
-See the [snazzy repository](https://github.com/danburkert/snazzy) for a simple
-start-to-finish example.
+See the [snazzy repository][snazzy] for a simple start-to-finish example.
+
+[prost-build]: https://docs.rs/prost-build/latest/prost_build/
+[snazzy]: https://github.com/danburkert/snazzy
 
 ### MSRV
 
-`prost` follows the `tokio-rs` project's MSRV model and supports 1.60. For more
+`prost` follows the `tokio-rs` project's MSRV model and supports 1.70. For more
 information on the tokio msrv policy you can check it out [here][tokio msrv]
 
 [tokio msrv]: https://github.com/tokio-rs/tokio/#supported-rust-versions
@@ -59,8 +61,8 @@ possible.
 
 With `prost-build` v0.11 release, `protoc` will be required to invoke
 `compile_protos` (unless `skip_protoc` is enabled). Prost will no longer provide
-bundled a `protoc` or attempt to compile `protoc` for users. For install
-instructions for `protoc` please check out the [protobuf install] instructions.
+bundled `protoc` or attempt to compile `protoc` for users. For install
+instructions for `protoc`, please check out the [protobuf install] instructions.
 
 [protobuf install]: https://github.com/protocolbuffers/protobuf#protobuf-compiler-installation
 

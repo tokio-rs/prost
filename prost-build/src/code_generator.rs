@@ -122,18 +122,7 @@ impl<'a> CodeGenerator<'a> {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
-        let fq_message_name = format!(
-            "{}{}{}{}.{}",
-            if self.package.is_empty() && self.type_path.is_empty() {
-                ""
-            } else {
-                "."
-            },
-            self.package.trim_matches('.'),
-            if self.type_path.is_empty() { "" } else { "." },
-            self.type_path.join("."),
-            message_name,
-        );
+        let fq_message_name = self.fq_name(&message_name);
 
         // Skip external types.
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
@@ -293,26 +282,28 @@ impl<'a> CodeGenerator<'a> {
         ));
 
         let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
-        let string_path = format!("{}::alloc::string::String", prost_path);
-        let format_path = format!("{}::alloc::format", prost_path);
+        let string_path = format!("{prost_path}::alloc::string::String");
 
-        self.buf.push_str(&format!(
-            r#"fn full_name() -> {string_path} {{
-                {format_path}!("{}{}{}{}{{}}", Self::NAME)
-            }}"#,
+        let full_name = format!(
+            "{}{}{}{}{message_name}",
             self.package.trim_matches('.'),
             if self.package.is_empty() { "" } else { "." },
             self.type_path.join("."),
             if self.type_path.is_empty() { "" } else { "." },
+        );
+        let domain_name = self
+            .config
+            .type_name_domains
+            .get_first(fq_message_name)
+            .map_or("", |name| name.as_str());
+
+        self.buf.push_str(&format!(
+            r#"fn full_name() -> {string_path} {{ "{full_name}".into() }}"#,
         ));
 
-        if let Some(domain_name) = self.config.type_name_domains.get_first(fq_message_name) {
-            self.buf.push_str(&format!(
-                r#"fn type_url() -> {string_path} {{
-                    {format_path}!("{domain_name}/{{}}", Self::full_name())
-                }}"#,
-            ));
-        }
+        self.buf.push_str(&format!(
+            r#"fn type_url() -> {string_path} {{ "{domain_name}/{full_name}".into() }}"#,
+        ));
 
         self.depth -= 1;
         self.buf.push_str("}\n");
@@ -699,18 +690,7 @@ impl<'a> CodeGenerator<'a> {
         let enum_name = to_upper_camel(proto_enum_name);
 
         let enum_values = &desc.value;
-        let fq_proto_enum_name = format!(
-            "{}{}{}{}.{}",
-            if self.package.is_empty() && self.type_path.is_empty() {
-                ""
-            } else {
-                "."
-            },
-            self.package.trim_matches('.'),
-            if self.type_path.is_empty() { "" } else { "." },
-            self.type_path.join("."),
-            proto_enum_name,
-        );
+        let fq_proto_enum_name = self.fq_name(proto_enum_name);
 
         if self
             .extern_paths
@@ -1062,6 +1042,18 @@ impl<'a> CodeGenerator<'a> {
             .options
             .as_ref()
             .map_or(false, FieldOptions::deprecated)
+    }
+
+    /// Returns the fully-qualified name, starting with a dot
+    fn fq_name(&self, message_name: &str) -> String {
+        format!(
+            "{}{}{}{}.{}",
+            if self.package.is_empty() { "" } else { "." },
+            self.package.trim_matches('.'),
+            if self.type_path.is_empty() { "" } else { "." },
+            self.type_path.join("."),
+            message_name,
+        )
     }
 }
 
