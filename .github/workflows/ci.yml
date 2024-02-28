@@ -1,5 +1,12 @@
 name: CI
-on: pull_request
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+  merge_group:
+    branches: [ "master" ]
+
 
 env:
   PROTOC_VERSION: 3.20.3
