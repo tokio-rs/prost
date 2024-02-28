@@ -46,6 +46,8 @@ mod no_unused_results;
 #[cfg(feature = "std")]
 mod skip_debug;
 #[cfg(test)]
+mod submessage_without_package;
+#[cfg(test)]
 mod type_names;
 
 mod test_enum_named_option_value {
