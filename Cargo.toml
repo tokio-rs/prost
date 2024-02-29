@@ -43,6 +43,7 @@ bench = false
 
 [features]
 default = ["prost-derive", "std"]
+prost-derive = ["dep:prost-derive"]
 no-recursion-limit = []
 std = []
 
