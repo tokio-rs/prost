@@ -10,7 +10,7 @@ edition = "2018"
 
 [dependencies]
 bytes = "1"
-env_logger = { version = "0.10", default-features = false }
+env_logger = { version = "0.11", default-features = false }
 prost = { path = ".." }
 protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }
