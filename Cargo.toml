@@ -42,8 +42,9 @@ exclude = [
 bench = false
 
 [features]
-default = ["prost-derive", "std"]
-prost-derive = ["dep:prost-derive"]
+default = ["derive", "std"]
+derive = ["dep:prost-derive"]
+prost-derive = ["derive"]     # deprecated, please use derive feature instead
 no-recursion-limit = []
 std = []
 
