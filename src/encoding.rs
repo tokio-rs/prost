@@ -23,18 +23,22 @@ use crate::Message;
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
-pub fn encode_varint<B>(mut value: u64, buf: &mut B)
+pub fn encode_varint<B>(value: u64, buf: &mut B)
 where
     B: BufMut,
 {
-    loop {
-        if value < 0x80 {
-            buf.put_u8(value as u8);
-            break;
-        } else {
-            buf.put_u8(((value & 0x7F) | 0x80) as u8);
-            value >>= 7;
+    // This optimizes performance by structuring the code in a way that
+    // allows for loop unrolling to be performed.
+    for i in 0..10 {
+        let shifted = value >> (i * 7);
+
+        if shifted < 0x80 {
+            buf.put_u8(shifted as u8);
+
+            return;
         }
+
+        buf.put_u8((shifted as u8) | 0x80);
     }
 }
 
