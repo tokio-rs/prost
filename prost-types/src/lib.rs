@@ -395,6 +395,15 @@ impl std::hash::Hash for Timestamp {
     }
 }
 
+impl Ord for Timestamp {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.seconds.cmp(&other.seconds) {
+            std::cmp::Ordering::Equal => self.nanos.cmp(&other.nanos),
+            ordering => ordering,
+        }
+    }
+}
+
 #[cfg(feature = "std")]
 impl From<std::time::SystemTime> for Timestamp {
     fn from(system_time: std::time::SystemTime) -> Timestamp {
@@ -906,5 +915,21 @@ mod tests {
 
         // Must contain at least one "/" character.
         assert_eq!(TypeUrl::new("google.protobuf.Duration"), None);
+    }
+
+    #[test]
+    fn check_timestamp_ord() {
+        let earlier_timestamp = Timestamp { seconds: 10, nanos: 500 };
+        let later_timestamp = Timestamp { seconds: 10, nanos: 700 };
+        let equal_timestamp = Timestamp { seconds: 10, nanos: 500 };
+
+        assert!(earlier_timestamp < later_timestamp);
+        assert!(earlier_timestamp <= later_timestamp);
+        assert!(later_timestamp > earlier_timestamp);
+        assert!(later_timestamp >= earlier_timestamp);
+
+        assert_eq!(earlier_timestamp.cmp(&later_timestamp), std::cmp::Ordering::Less);
+        assert_eq!(later_timestamp.cmp(&earlier_timestamp), std::cmp::Ordering::Greater);
+        assert_eq!(equal_timestamp.cmp(&earlier_timestamp), std::cmp::Ordering::Equal);
     }
 }
