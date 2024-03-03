@@ -919,17 +919,35 @@ mod tests {
 
     #[test]
     fn check_timestamp_ord() {
-        let earlier_timestamp = Timestamp { seconds: 10, nanos: 500 };
-        let later_timestamp = Timestamp { seconds: 10, nanos: 700 };
-        let equal_timestamp = Timestamp { seconds: 10, nanos: 500 };
+        let earlier_timestamp = Timestamp {
+            seconds: 10,
+            nanos: 500,
+        };
+        let later_timestamp = Timestamp {
+            seconds: 10,
+            nanos: 700,
+        };
+        let equal_timestamp = Timestamp {
+            seconds: 10,
+            nanos: 500,
+        };
 
         assert!(earlier_timestamp < later_timestamp);
         assert!(earlier_timestamp <= later_timestamp);
         assert!(later_timestamp > earlier_timestamp);
         assert!(later_timestamp >= earlier_timestamp);
 
-        assert_eq!(earlier_timestamp.cmp(&later_timestamp), std::cmp::Ordering::Less);
-        assert_eq!(later_timestamp.cmp(&earlier_timestamp), std::cmp::Ordering::Greater);
-        assert_eq!(equal_timestamp.cmp(&earlier_timestamp), std::cmp::Ordering::Equal);
+        assert_eq!(
+            earlier_timestamp.cmp(&later_timestamp),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            later_timestamp.cmp(&earlier_timestamp),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            equal_timestamp.cmp(&earlier_timestamp),
+            std::cmp::Ordering::Equal
+        );
     }
 }
