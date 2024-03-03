@@ -395,6 +395,7 @@ impl std::hash::Hash for Timestamp {
     }
 }
 
+#[cfg(feature = "std")]
 impl Ord for Timestamp {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.seconds.cmp(&other.seconds) {
