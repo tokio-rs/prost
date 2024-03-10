@@ -1191,21 +1191,27 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
 ///
 /// It also tries to handle cases where the stripped name would be
 /// invalid - for example, if it were to begin with a number.
+///
+/// The stripped name can be `Self`, which is sanitized analogously to [to_upper_camel]
 fn strip_enum_prefix(prefix: &str, name: &str) -> String {
     let stripped = name.strip_prefix(prefix).unwrap_or(name);
 
     // If the next character after the stripped prefix is not
     // uppercase, then it means that we didn't have a true prefix -
     // for example, "Foo" should not be stripped from "Foobar".
-    if stripped
+    match if stripped
         .chars()
         .next()
         .map(char::is_uppercase)
         .unwrap_or(false)
     {
-        stripped.to_owned()
+        stripped
     } else {
-        name.to_owned()
+        name
+    } {
+        "Self" => "Self_".to_owned(),
+        // ... other cases to be added here as needed
+        s => s.to_owned(),
     }
 }
 
@@ -1328,5 +1334,11 @@ mod tests {
         assert_eq!(strip_enum_prefix("Foo", "Foo"), "Foo");
         assert_eq!(strip_enum_prefix("Foo", "Bar"), "Bar");
         assert_eq!(strip_enum_prefix("Foo", "Foo1"), "Foo1");
+    }
+
+    #[test]
+    fn test_strip_enum_prefix_resulting_in_keyword() {
+        assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
+        assert_eq!(strip_enum_prefix("Foo", "FooSelf"), "Self_");
     }
 }

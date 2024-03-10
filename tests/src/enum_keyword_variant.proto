@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package enum_keyword_variant;
+
+enum Feeding {
+  FEEDING_UNSPECIFIED = 0;
+  FEEDING_ASSISTED = 1;
+  // Careful: code generation resulted in "Self".
+  FEEDING_SELF = 2;
+}
+
+enum Grooming {
+  UNSPECIFIED = 0;
+  ASSISTED = 1;
+  SELF = 2;
+}
+
+enum Number {
+  NUMBER_UNSPECIFIED = 0;
+  NUMBER_1 = 1;
+}
