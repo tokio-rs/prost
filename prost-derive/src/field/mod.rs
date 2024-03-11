@@ -270,7 +270,7 @@ fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
     match *attr {
         Meta::Path(..) => Ok(Some(true)),
         Meta::List(ref meta_list) => {
-            return Ok(Some(meta_list.parse_args::<LitBool>()?.value()));
+            Ok(Some(meta_list.parse_args::<LitBool>()?.value()))
         }
         Meta::NameValue(MetaNameValue {
             value:
@@ -311,7 +311,7 @@ pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
     }
     match *attr {
         Meta::List(ref meta_list) => {
-            return Ok(Some(meta_list.parse_args::<LitInt>()?.base10_parse()?));
+            Ok(Some(meta_list.parse_args::<LitInt>()?.base10_parse()?))
         }
         Meta::NameValue(MetaNameValue {
             value: Expr::Lit(ref expr),
