@@ -1,3 +1,5 @@
+use alloc::{string::ToString, vec};
+
 use self::proto::image::Image;
 use self::proto::post::content::post_content_fragment;
 use self::proto::post::content::PostContentFragment;
