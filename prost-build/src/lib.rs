@@ -1174,6 +1174,31 @@ impl Config {
         let mut written = 0;
         entries.sort();
 
+        if depth == 0 {
+            let (empty, remaining): (Vec<&Module>, Vec<&Module>) =
+                entries.into_iter().partition(|m| m.is_empty());
+            for _ in empty {
+                if basepath.is_some() {
+                    self.write_line(
+                        outfile,
+                        depth,
+                        &format!("include!(\"{}.rs\");", self.default_package_filename),
+                    )?;
+                } else {
+                    self.write_line(
+                        outfile,
+                        depth,
+                        &format!(
+                            "include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));",
+                            self.default_package_filename
+                        ),
+                    )?;
+                }
+                written += 1;
+            }
+            entries = remaining;
+        }
+
         while !entries.is_empty() {
             let modident = entries[0].part(depth);
             let matching: Vec<&Module> = entries

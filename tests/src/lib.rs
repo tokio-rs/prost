@@ -33,6 +33,8 @@ pub mod unittest;
 #[cfg(test)]
 mod bootstrap;
 #[cfg(test)]
+mod complex_package_structure;
+#[cfg(test)]
 mod debug;
 #[cfg(test)]
 mod deprecated_field;
@@ -40,6 +42,8 @@ mod deprecated_field;
 mod generic_derive;
 #[cfg(test)]
 mod message_encoding;
+#[cfg(test)]
+mod no_package_with_message;
 #[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]

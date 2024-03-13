@@ -1,0 +1,3 @@
+[*]
+ij_protobuf_keep_blank_lines_in_code = 0
+insert_final_newline = true

@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+message NoPackageWithMessageExampleMsg {
+  string some_field = 1;
+}
