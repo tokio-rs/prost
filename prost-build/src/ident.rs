@@ -27,6 +27,12 @@ pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
     }
 }
 
+/// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
+/// identifier.
+pub fn to_snake(s: impl AsRef<str>) -> String {
+    sanitize_identifier(s.to_snake_case())
+}
+
 /// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
 pub fn to_upper_camel(s: impl AsRef<str>) -> String {
     sanitize_identifier(s.as_ref().to_upper_camel_case())
