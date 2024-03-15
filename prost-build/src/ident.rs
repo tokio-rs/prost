@@ -2,14 +2,11 @@
 
 use heck::{ToSnakeCase, ToUpperCamelCase};
 
-/// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
-/// identifier.
-pub fn to_snake(s: &str) -> String {
-    let mut ident = s.to_snake_case();
-
+pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
+    let ident = s.as_ref();
     // Use a raw identifier if the identifier matches a Rust keyword:
     // https://doc.rust-lang.org/reference/keywords.html.
-    match ident.as_str() {
+    match ident {
         // 2015 strict keywords.
         | "as" | "break" | "const" | "continue" | "else" | "enum" | "false"
         | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "match" | "mod" | "move" | "mut"
@@ -21,23 +18,46 @@ pub fn to_snake(s: &str) -> String {
         | "abstract" | "become" | "box" | "do" | "final" | "macro" | "override" | "priv" | "typeof"
         | "unsized" | "virtual" | "yield"
         // 2018 reserved keywords.
-        | "async" | "await" | "try" => ident.insert_str(0, "r#"),
+        | "async" | "await" | "try" => format!("r#{}", ident),
         // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
-        "self" | "super" | "extern" | "crate" => ident += "_",
-        _ => (),
+        "Self" | "self" | "super" | "extern" | "crate" => format!("{}_", ident),
+        // the following keywords begin with a number and are therefore prefixed with an underscore.
+        s if s.len() > 0 && s.chars().next().unwrap().is_numeric() => format!("_{}", ident),
+        _ => ident.to_string(),
     }
-    ident
 }
 
 /// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
-pub fn to_upper_camel(s: &str) -> String {
-    let mut ident = s.to_upper_camel_case();
+pub fn to_upper_camel(s: impl AsRef<str>) -> String {
+    sanitize_identifier(s.as_ref().to_upper_camel_case())
+}
 
-    // Suffix an underscore for the `Self` Rust keyword as it is not allowed as raw identifier.
-    if ident == "Self" {
-        ident += "_";
-    }
-    ident
+/// Strip an enum's type name from the prefix of an enum value.
+///
+/// This function assumes that both have been formatted to Rust's
+/// upper camel case naming conventions.
+///
+/// It also tries to handle cases where the stripped name would be
+/// invalid - for example, if it were to begin with a number.
+///
+/// The stripped name can be `Self`, which is sanitized analogously to [to_upper_camel]
+pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
+    let stripped = name.strip_prefix(prefix).unwrap_or(name);
+
+    // If the next character after the stripped prefix is not
+    // uppercase, then it means that we didn't have a true prefix -
+    // for example, "Foo" should not be stripped from "Foobar".
+    let stripped = if stripped
+        .chars()
+        .next()
+        .map(char::is_uppercase)
+        .unwrap_or(false)
+    {
+        stripped
+    } else {
+        name
+    };
+    to_upper_camel(stripped)
 }
 
 #[cfg(test)]
@@ -157,5 +177,21 @@ mod tests {
         assert_eq!("FuzzBuster", &to_upper_camel("fuzzBuster"));
         assert_eq!("FuzzBuster", &to_upper_camel("FuzzBuster"));
         assert_eq!("Self_", &to_upper_camel("self"));
+    }
+
+    #[test]
+    fn test_strip_enum_prefix() {
+        assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
+        assert_eq!(strip_enum_prefix("Foo", "Foobar"), "Foobar");
+        assert_eq!(strip_enum_prefix("Foo", "Foo"), "Foo");
+        assert_eq!(strip_enum_prefix("Foo", "Bar"), "Bar");
+        assert_eq!(strip_enum_prefix("Foo", "Foo1"), "Foo1");
+    }
+
+    #[test]
+    fn test_strip_enum_prefix_resulting_in_keyword() {
+        assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
+        assert_eq!(strip_enum_prefix("Foo", "FooSelf"), "Self_");
+        assert_eq!(strip_enum_prefix("Foo", "FooCrate"), "Crate");
     }
 }
