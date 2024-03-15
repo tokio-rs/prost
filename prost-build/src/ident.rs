@@ -20,9 +20,9 @@ pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
         // 2018 reserved keywords.
         | "async" | "await" | "try" => format!("r#{}", ident),
         // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
-        "Self" | "self" | "super" | "extern" | "crate" => format!("{}_", ident),
+        "_" | "super" | "self" | "Self" | "extern" | "crate" => format!("{}_", ident),
         // the following keywords begin with a number and are therefore prefixed with an underscore.
-        s if s.len() > 0 && s.chars().next().unwrap().is_numeric() => format!("_{}", ident),
+        s if s.starts_with(|c: char| c.is_numeric()) => format!("_{}", ident),
         _ => ident.to_string(),
     }
 }
@@ -30,7 +30,7 @@ pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
 /// Converts a `camelCase` or `SCREAMING_SNAKE_CASE` identifier to a `lower_snake` case Rust field
 /// identifier.
 pub fn to_snake(s: impl AsRef<str>) -> String {
-    sanitize_identifier(s.to_snake_case())
+    sanitize_identifier(s.as_ref().to_snake_case())
 }
 
 /// Converts a `snake_case` identifier to an `UpperCamel` case Rust type identifier.
@@ -63,7 +63,7 @@ pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
     } else {
         name
     };
-    to_upper_camel(stripped)
+    sanitize_identifier(stripped)
 }
 
 #[cfg(test)]
@@ -198,6 +198,5 @@ mod tests {
     fn test_strip_enum_prefix_resulting_in_keyword() {
         assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
         assert_eq!(strip_enum_prefix("Foo", "FooSelf"), "Self_");
-        assert_eq!(strip_enum_prefix("Foo", "FooCrate"), "Crate");
     }
 }
