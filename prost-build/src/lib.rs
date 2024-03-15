@@ -1516,24 +1516,21 @@ pub fn protoc_from_env() -> PathBuf {
 }
 
 pub fn error_message_protoc_not_found() -> String {
-    let os_specific_hint = if cfg!(target_os = "macos") {
-        "You could try running `brew install protobuf` or downloading it from https://github.com/protocolbuffers/protobuf/releases"
-    } else if cfg!(target_os = "linux") {
-        "If you're on debian, try `apt-get install protobuf-compiler` or download it from https://github.com/protocolbuffers/protobuf/releases"
-    } else {
-        "You can download it from https://github.com/protocolbuffers/protobuf/releases or from your package manager."
-    };
-    let error_msg =
-        "Could not find `protoc` installation and this build crate cannot proceed without
-    this knowledge. If `protoc` is installed and this crate had trouble finding
-    it, you can set the `PROTOC` environment variable with the specific path to your
-    installed `protoc` binary.";
-    format!(
-        "{}{}
+    let error_msg = "Could not find `protoc`. If `protoc` is installed, try setting the `PROTOC` environment variable to the path of the `protoc` binary.";
 
-For more information: https://docs.rs/prost-build/#sourcing-protoc
-",
-        error_msg, os_specific_hint
+    let os_specific_hint = if cfg!(target_os = "macos") {
+        "To install it on macOS, run `brew install protobuf`."
+    } else if cfg!(target_os = "linux") {
+        "To install it on Debian, run `apt-get install protobuf-compiler`."
+    } else {
+        "Try installing `protobuf-compiler` or `protobuf` using your package manager."
+    };
+    let download_msg =
+        "It is also available at https://github.com/protocolbuffers/protobuf/releases";
+
+    format!(
+        "{} {} {}  For more information: https://docs.rs/prost-build/#sourcing-protoc",
+        error_msg, os_specific_hint, download_msg
     )
 }
 

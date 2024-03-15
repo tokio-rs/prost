@@ -27,10 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: install cargo-machete
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: cargo-machete
+      - uses: taiki-e/install-action@cargo-machete
       - name: Check unused dependencies
         run: cargo machete
 
