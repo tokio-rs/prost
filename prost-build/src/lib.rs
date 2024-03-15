@@ -82,6 +82,10 @@
 //! That's it! Run `cargo doc` to see documentation for the generated code. The full
 //! example project can be found on [GitHub](https://github.com/danburkert/snazzy).
 //!
+//! ## Feature Flags
+//! - `format`: Format the generated output. This feature is enabled by default.
+//! - `cleanup-markdown`: Clean up Markdown in protobuf docs. Enable this to clean up protobuf files from third parties.
+//!
 //! ### Cleaning up Markdown in code docs
 //!
 //! If you are using protobuf files from third parties, where the author of the protobuf
