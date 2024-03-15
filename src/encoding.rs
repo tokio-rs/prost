@@ -27,7 +27,8 @@ pub fn encode_varint<B>(mut value: u64, buf: &mut B)
 where
     B: BufMut,
 {
-    loop {
+    // Varints are never more than 10 bytes
+    for _ in 0..10 {
         if value < 0x80 {
             buf.put_u8(value as u8);
             break;
