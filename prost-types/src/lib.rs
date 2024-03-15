@@ -7,6 +7,9 @@
 //!
 //! See the [Protobuf reference][1] for more information about well-known types.
 //!
+//! ## Feature Flags
+//! - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
+//!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
 #![cfg_attr(not(feature = "std"), no_std)]

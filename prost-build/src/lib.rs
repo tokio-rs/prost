@@ -125,6 +125,10 @@
 //! // Now compile your proto files via prost-build
 //! ```
 //!
+//! ## Feature Flags
+//! - `format`: Format the generated output. This feature is enabled by default.
+//! - `cleanup-markdown`: Clean up Markdown in protobuf docs.
+//!
 //! [`protobuf-src`]: https://docs.rs/protobuf-src
 
 use std::collections::HashMap;
