@@ -42,3 +42,29 @@ impl<'a> TypeUrl<'a> {
 pub(crate) fn type_url_for<T: Name>() -> String {
     format!("type.googleapis.com/{}.{}", T::PACKAGE, T::NAME)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_type_url_parsing() {
+        let example_type_name = "google.protobuf.Duration";
+
+        let url = TypeUrl::new("type.googleapis.com/google.protobuf.Duration").unwrap();
+        assert_eq!(url.full_name, example_type_name);
+
+        let full_url =
+            TypeUrl::new("https://type.googleapis.com/google.protobuf.Duration").unwrap();
+        assert_eq!(full_url.full_name, example_type_name);
+
+        let relative_url = TypeUrl::new("/google.protobuf.Duration").unwrap();
+        assert_eq!(relative_url.full_name, example_type_name);
+
+        // The name should be in a canonical form (e.g., leading "." is not accepted).
+        assert_eq!(TypeUrl::new("/.google.protobuf.Duration"), None);
+
+        // Must contain at least one "/" character.
+        assert_eq!(TypeUrl::new("google.protobuf.Duration"), None);
+    }
+}

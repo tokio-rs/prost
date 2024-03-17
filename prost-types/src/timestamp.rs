@@ -238,3 +238,180 @@ impl fmt::Display for Timestamp {
         datetime::DateTime::from(self.clone()).fmt(f)
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "std")]
+    use proptest::prelude::*;
+    #[cfg(feature = "std")]
+    use std::time::{self, SystemTime, UNIX_EPOCH};
+
+    #[cfg(feature = "std")]
+    proptest! {
+        #[test]
+        fn check_system_time_roundtrip(
+            system_time in SystemTime::arbitrary(),
+        ) {
+            prop_assert_eq!(SystemTime::try_from(Timestamp::from(system_time)).unwrap(), system_time);
+        }
+
+        #[test]
+        fn check_timestamp_roundtrip_via_system_time(
+            seconds in i64::arbitrary(),
+            nanos in i32::arbitrary(),
+        ) {
+            let mut timestamp = Timestamp { seconds, nanos };
+            timestamp.normalize();
+            if let Ok(system_time) = SystemTime::try_from(timestamp.clone()) {
+                prop_assert_eq!(Timestamp::from(system_time), timestamp);
+            }
+        }
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_timestamp_negative_seconds() {
+        // Representative tests for the case of timestamps before the UTC Epoch time:
+        // validate the expected behaviour that "negative second values with fractions
+        // must still have non-negative nanos values that count forward in time"
+        // https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp
+        //
+        // To ensure cross-platform compatibility, all nanosecond values in these
+        // tests are in minimum 100 ns increments.  This does not affect the general
+        // character of the behaviour being tested, but ensures that the tests are
+        // valid for both POSIX (1 ns precision) and Windows (100 ns precision).
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(1_001, 0)),
+            Timestamp {
+                seconds: -1_001,
+                nanos: 0
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(0, 999_999_900)),
+            Timestamp {
+                seconds: -1,
+                nanos: 100
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(2_001_234, 12_300)),
+            Timestamp {
+                seconds: -2_001_235,
+                nanos: 999_987_700
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(768, 65_432_100)),
+            Timestamp {
+                seconds: -769,
+                nanos: 934_567_900
+            }
+        );
+    }
+
+    #[cfg(all(unix, feature = "std"))]
+    #[test]
+    fn check_timestamp_negative_seconds_1ns() {
+        // UNIX-only test cases with 1 ns precision
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(0, 999_999_999)),
+            Timestamp {
+                seconds: -1,
+                nanos: 1
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(1_234_567, 123)),
+            Timestamp {
+                seconds: -1_234_568,
+                nanos: 999_999_877
+            }
+        );
+        assert_eq!(
+            Timestamp::from(UNIX_EPOCH - time::Duration::new(890, 987_654_321)),
+            Timestamp {
+                seconds: -891,
+                nanos: 12_345_679
+            }
+        );
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_timestamp_normalize() {
+        // Make sure that `Timestamp::normalize` behaves correctly on and near overflow.
+        #[rustfmt::skip] // Don't mangle the table formatting.
+        let cases = [
+            // --- Table of test cases ---
+            //        test seconds      test nanos  expected seconds  expected nanos
+            (line!(),            0,              0,                0,              0),
+            (line!(),            1,              1,                1,              1),
+            (line!(),           -1,             -1,               -2,    999_999_999),
+            (line!(),            0,    999_999_999,                0,    999_999_999),
+            (line!(),            0,   -999_999_999,               -1,              1),
+            (line!(),            0,  1_000_000_000,                1,              0),
+            (line!(),            0, -1_000_000_000,               -1,              0),
+            (line!(),            0,  1_000_000_001,                1,              1),
+            (line!(),            0, -1_000_000_001,               -2,    999_999_999),
+            (line!(),           -1,              1,               -1,              1),
+            (line!(),            1,             -1,                0,    999_999_999),
+            (line!(),           -1,  1_000_000_000,                0,              0),
+            (line!(),            1, -1_000_000_000,                0,              0),
+            (line!(), i64::MIN    ,              0,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1,              0,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    ,              1,     i64::MIN    ,              1),
+            (line!(), i64::MIN    ,  1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -1_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_999_999_998,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -1_999_999_998,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_999_999_998,     i64::MIN    ,              2),
+            (line!(), i64::MIN    , -1_999_999_999,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -1_999_999_999,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_999_999_999,     i64::MIN    ,              1),
+            (line!(), i64::MIN    , -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1, -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN    ,   -999_999_998,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1,   -999_999_998,     i64::MIN    ,              2),
+            (line!(), i64::MAX    ,              0,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 1,              0,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,             -1,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  1_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 2,  1_000_000_000,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,  1_999_999_998,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 2,  1_999_999_998,     i64::MAX - 1,    999_999_998),
+            (line!(), i64::MAX    ,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  1_999_999_999,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  2_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX    ,    999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 1,    999_999_998,     i64::MAX - 1,    999_999_998),
+        ];
+
+        for case in cases.iter() {
+            let mut test_timestamp = crate::Timestamp {
+                seconds: case.1,
+                nanos: case.2,
+            };
+            test_timestamp.normalize();
+
+            assert_eq!(
+                test_timestamp,
+                crate::Timestamp {
+                    seconds: case.3,
+                    nanos: case.4,
+                },
+                "test case on line {} doesn't match",
+                case.0,
+            );
+        }
+    }
+}
