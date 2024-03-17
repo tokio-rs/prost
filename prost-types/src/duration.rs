@@ -174,3 +174,160 @@ impl FromStr for Duration {
         datetime::parse_duration(s).ok_or(DurationError::ParseFailure)
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "std")]
+    use proptest::prelude::*;
+
+    #[cfg(feature = "std")]
+    proptest! {
+        #[test]
+        fn check_duration_roundtrip(
+            seconds in u64::arbitrary(),
+            nanos in 0u32..1_000_000_000u32,
+        ) {
+            let std_duration = time::Duration::new(seconds, nanos);
+            let prost_duration = match Duration::try_from(std_duration) {
+                Ok(duration) => duration,
+                Err(_) => return Err(TestCaseError::reject("duration out of range")),
+            };
+            prop_assert_eq!(time::Duration::try_from(prost_duration.clone()).unwrap(), std_duration);
+
+            if std_duration != time::Duration::default() {
+                let neg_prost_duration = Duration {
+                    seconds: -prost_duration.seconds,
+                    nanos: -prost_duration.nanos,
+                };
+
+                prop_assert!(
+                    matches!(
+                        time::Duration::try_from(neg_prost_duration),
+                        Err(DurationError::NegativeDuration(d)) if d == std_duration,
+                    )
+                )
+            }
+        }
+
+        #[test]
+        fn check_duration_roundtrip_nanos(
+            nanos in u32::arbitrary(),
+        ) {
+            let seconds = 0;
+            let std_duration = std::time::Duration::new(seconds, nanos);
+            let prost_duration = match Duration::try_from(std_duration) {
+                Ok(duration) => duration,
+                Err(_) => return Err(TestCaseError::reject("duration out of range")),
+            };
+            prop_assert_eq!(time::Duration::try_from(prost_duration.clone()).unwrap(), std_duration);
+
+            if std_duration != time::Duration::default() {
+                let neg_prost_duration = Duration {
+                    seconds: -prost_duration.seconds,
+                    nanos: -prost_duration.nanos,
+                };
+
+                prop_assert!(
+                    matches!(
+                        time::Duration::try_from(neg_prost_duration),
+                        Err(DurationError::NegativeDuration(d)) if d == std_duration,
+                    )
+                )
+            }
+        }
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_duration_try_from_negative_nanos() {
+        let seconds: u64 = 0;
+        let nanos: u32 = 1;
+        let std_duration = std::time::Duration::new(seconds, nanos);
+
+        let neg_prost_duration = Duration {
+            seconds: 0,
+            nanos: -1,
+        };
+
+        assert!(matches!(
+           time::Duration::try_from(neg_prost_duration),
+           Err(DurationError::NegativeDuration(d)) if d == std_duration,
+        ))
+    }
+
+    #[test]
+    fn check_duration_normalize() {
+        #[rustfmt::skip] // Don't mangle the table formatting.
+        let cases = [
+            // --- Table of test cases ---
+            //        test seconds      test nanos  expected seconds  expected nanos
+            (line!(),            0,              0,                0,              0),
+            (line!(),            1,              1,                1,              1),
+            (line!(),           -1,             -1,               -1,             -1),
+            (line!(),            0,    999_999_999,                0,    999_999_999),
+            (line!(),            0,   -999_999_999,                0,   -999_999_999),
+            (line!(),            0,  1_000_000_000,                1,              0),
+            (line!(),            0, -1_000_000_000,               -1,              0),
+            (line!(),            0,  1_000_000_001,                1,              1),
+            (line!(),            0, -1_000_000_001,               -1,             -1),
+            (line!(),           -1,              1,                0,   -999_999_999),
+            (line!(),            1,             -1,                0,    999_999_999),
+            (line!(),           -1,  1_000_000_000,                0,              0),
+            (line!(),            1, -1_000_000_000,                0,              0),
+            (line!(), i64::MIN    ,              0,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 1,              0,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    ,              1,     i64::MIN + 1,   -999_999_999),
+            (line!(), i64::MIN    ,  1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_000_000_000,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -1_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN + 2, -1_000_000_000,     i64::MIN + 1,              0),
+            (line!(), i64::MIN    , -1_999_999_998,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -1_999_999_998,     i64::MIN    ,   -999_999_998),
+            (line!(), i64::MIN + 2, -1_999_999_998,     i64::MIN + 1,   -999_999_998),
+            (line!(), i64::MIN    , -1_999_999_999,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -1_999_999_999,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 2, -1_999_999_999,     i64::MIN + 1,   -999_999_999),
+            (line!(), i64::MIN    , -2_000_000_000,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 1, -2_000_000_000,     i64::MIN    ,   -999_999_999),
+            (line!(), i64::MIN + 2, -2_000_000_000,     i64::MIN    ,              0),
+            (line!(), i64::MIN    ,   -999_999_998,     i64::MIN    ,   -999_999_998),
+            (line!(), i64::MIN + 1,   -999_999_998,     i64::MIN + 1,   -999_999_998),
+            (line!(), i64::MAX    ,              0,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 1,              0,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,             -1,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  1_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX - 2,  1_000_000_000,     i64::MAX - 1,              0),
+            (line!(), i64::MAX    ,  1_999_999_998,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 2,  1_999_999_998,     i64::MAX - 1,    999_999_998),
+            (line!(), i64::MAX    ,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  1_999_999_999,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  1_999_999_999,     i64::MAX - 1,    999_999_999),
+            (line!(), i64::MAX    ,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 1,  2_000_000_000,     i64::MAX    ,    999_999_999),
+            (line!(), i64::MAX - 2,  2_000_000_000,     i64::MAX    ,              0),
+            (line!(), i64::MAX    ,    999_999_998,     i64::MAX    ,    999_999_998),
+            (line!(), i64::MAX - 1,    999_999_998,     i64::MAX - 1,    999_999_998),
+        ];
+
+        for case in cases.iter() {
+            let mut test_duration = Duration {
+                seconds: case.1,
+                nanos: case.2,
+            };
+            test_duration.normalize();
+
+            assert_eq!(
+                test_duration,
+                Duration {
+                    seconds: case.3,
+                    nanos: case.4,
+                },
+                "test case on line {} doesn't match",
+                case.0,
+            );
+        }
+    }
+}
