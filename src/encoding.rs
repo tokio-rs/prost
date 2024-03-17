@@ -9,7 +9,6 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::min;
-use core::convert::TryFrom;
 use core::mem;
 use core::str;
 use core::u32;
@@ -1423,15 +1422,16 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
+    #[cfg(not(feature = "std"))]
     use alloc::string::ToString;
     use core::borrow::Borrow;
     use core::fmt::Debug;
     use core::u64;
 
-    use ::bytes::{Bytes, BytesMut};
+    use ::bytes::BytesMut;
     use proptest::{prelude::*, test_runner::TestCaseResult};
 
-    use crate::encoding::*;
+    use super::*;
 
     pub fn check_type<T, B>(
         value: T,
@@ -1616,11 +1616,10 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
+            let roundtrip_value = decode_varint(&mut &*encoded).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
-            let roundtrip_value =
-                decode_varint_slow(&mut encoded.clone()).expect("slow decoding failed");
+            let roundtrip_value = decode_varint_slow(&mut &*encoded).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 
@@ -1681,10 +1680,11 @@ mod test {
 
     #[test]
     fn varint_overflow() {
-        let u64_max_plus_one: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
+        let mut u64_max_plus_one: &[u8] =
+            &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
 
-        decode_varint(&mut u64_max_plus_one.clone()).expect_err("decoding u64::MAX + 1 succeeded");
-        decode_varint_slow(&mut u64_max_plus_one.clone())
+        decode_varint(&mut u64_max_plus_one).expect_err("decoding u64::MAX + 1 succeeded");
+        decode_varint_slow(&mut u64_max_plus_one)
             .expect_err("slow decoding u64::MAX + 1 succeeded");
     }
 
