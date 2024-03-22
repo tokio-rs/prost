@@ -12,7 +12,6 @@ env:
   PROTOC_VERSION: 3.20.3
 
 jobs:
-
   rustfmt:
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +20,15 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --all-features --tests -- -D warnings
 
   machete:
     runs-on: ubuntu-latest
