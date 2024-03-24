@@ -2,6 +2,7 @@
 
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
+use alloc::collections::TryReserveError;
 use alloc::vec::Vec;
 
 use core::fmt;
@@ -66,6 +67,12 @@ impl fmt::Display for DecodeError {
             write!(f, "{}.{}: ", message, field)?;
         }
         f.write_str(&self.inner.description)
+    }
+}
+
+impl From<TryReserveError> for DecodeError {
+    fn from(error: TryReserveError) -> Self {
+        DecodeError::new(error.to_string())
     }
 }
 

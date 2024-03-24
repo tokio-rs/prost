@@ -343,7 +343,7 @@ impl Message for Vec<u8> {
         B: Buf,
     {
         if tag == 1 {
-            bytes::merge(wire_type, self, buf, ctx)
+            bytes::merge_one_copy(wire_type, self, buf, ctx)
         } else {
             skip_field(wire_type, tag, buf, ctx)
         }
