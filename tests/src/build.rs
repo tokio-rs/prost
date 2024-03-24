@@ -80,6 +80,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("enum_keyword_variant.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 
