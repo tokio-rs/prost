@@ -205,34 +205,24 @@ pub trait ServiceGenerator {
 
 /// The map collection type to output for Protobuf `map` fields.
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 enum MapType {
     /// The [`std::collections::HashMap`] type.
+    #[default]
     HashMap,
     /// The [`std::collections::BTreeMap`] type.
     BTreeMap,
 }
 
-impl Default for MapType {
-    fn default() -> MapType {
-        MapType::HashMap
-    }
-}
-
 /// The bytes collection type to output for Protobuf `bytes` fields.
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 enum BytesType {
     /// The [`alloc::collections::Vec::<u8>`] type.
+    #[default]
     Vec,
     /// The [`bytes::Bytes`] type.
     Bytes,
-}
-
-impl Default for BytesType {
-    fn default() -> BytesType {
-        BytesType::Vec
-    }
 }
 
 /// Configuration options for Protobuf code generation.
@@ -1584,7 +1574,6 @@ mod tests {
     use std::cell::RefCell;
     use std::fs::File;
     use std::io::Read;
-    use std::path::Path;
     use std::rc::Rc;
 
     use super::*;
@@ -1751,7 +1740,7 @@ mod tests {
 
         // Prior to PR introducing this test, the generated include file would have the file
         // google.protobuf.rs which was an empty file. Now that file should only exist if it has content
-        if let Ok(mut f) = File::open(&previously_empty_proto_path) {
+        if let Ok(mut f) = File::open(previously_empty_proto_path) {
             // Since this file was generated, it should not be empty.
             let mut contents = String::new();
             f.read_to_string(&mut contents).unwrap();
