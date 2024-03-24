@@ -146,6 +146,36 @@ fn main() {
         .compile_protos(&[src.join("well_known_types.proto")], includes)
         .unwrap();
 
+    {
+        let out = std::env::var("OUT_DIR").unwrap();
+        let out_path = PathBuf::from(out).join("no_package");
+
+        std::fs::create_dir_all(&out_path).unwrap();
+
+        prost_build::Config::new()
+            .out_dir(out_path)
+            .include_file("_includes.rs")
+            .compile_protos(&[src.join("no_package_with_message.proto")], includes)
+            .unwrap();
+    }
+
+    {
+        let out = std::env::var("OUT_DIR").unwrap();
+        let out_path = PathBuf::from(out).join("complex_package_structure");
+
+        std::fs::create_dir_all(&out_path).unwrap();
+
+        prost_build::Config::new()
+            .out_dir(out_path)
+            .include_file("__.rs")
+            .default_package_filename("__.default")
+            .compile_protos(
+                &[src.join("complex_package_structure/proto/post/post.proto")],
+                &[src.join("complex_package_structure/proto")],
+            )
+            .unwrap();
+    }
+
     config
         .compile_protos(
             &[src.join("packages/widget_factory.proto")],

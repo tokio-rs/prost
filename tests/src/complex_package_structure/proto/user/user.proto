@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package user;
+
+import "std/time.proto";
+
+message User {
+  string id = 1;
+  Timestamp created_at = 2;
+  Timestamp updated_at = 3;
+  string name = 4;
+  string email = 5;
+}
