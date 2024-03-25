@@ -350,12 +350,12 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         }
 
         impl #impl_generics ::core::convert::TryFrom::<i32> for #ident #ty_generics #where_clause {
-            type Error = ::prost::DecodeError;
+            type Error = ::prost::UnknownEnumValue;
 
-            fn try_from(value: i32) -> ::core::result::Result<#ident, ::prost::DecodeError> {
+            fn try_from(value: i32) -> ::core::result::Result<#ident, Self::Error> {
                 match value {
                     #(#try_from,)*
-                    _ => ::core::result::Result::Err(::prost::DecodeError::new("invalid enumeration value")),
+                    _ => ::core::result::Result::Err(::prost::UnknownEnumValue(value)),
                 }
             }
         }
