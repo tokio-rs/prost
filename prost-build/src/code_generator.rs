@@ -805,6 +805,29 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.depth -= 1;
         self.push_indent();
         self.buf.push_str("}\n");
+
+        self.push_indent();
+        self.buf.push_str("impl From<");
+        self.buf.push_str(builder_name);
+        self.buf.push_str("> for super::");
+        self.buf.push_str(&struct_name);
+        self.buf.push_str(" {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str("#[inline]\n");
+        self.push_indent();
+        self.buf.push_str("fn from(builder: ");
+        self.buf.push_str(builder_name);
+        self.buf.push_str(") -> Self {\n");
+        self.depth += 1;
+        self.push_indent();
+        self.buf.push_str("builder.inner\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
+        self.depth -= 1;
+        self.push_indent();
+        self.buf.push_str("}\n");
     }
 
     fn append_builder_field_setter(&mut self, fq_message_name: &str, field: &Field) {

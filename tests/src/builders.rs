@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn message_field_init() {
         let msg = Zoo::builder()
-            .message_field(Evolved::builder().initial_field(42).build())
+            .message_field(Evolved::builder().initial_field(42))
             .build();
         assert_eq!(
             msg.message_field,
