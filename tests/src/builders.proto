@@ -38,3 +38,7 @@ message ConflictProneEnum {
 message ConflictFreeScalar {
   string builder = 1;
 }
+
+message Keywordy {
+  string type = 1;
+}

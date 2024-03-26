@@ -65,6 +65,15 @@
 /// assert_eq!(msg.builder, "hello");
 /// ```
 ///
+/// A Rust keyword used as a field name causes the generated setter name to
+/// be prefixed with r#:
+///
+/// ```
+/// # use tests::builders::builders::Keywordy;
+/// let msg = Keywordy::builder().r#type("foo").build();
+/// assert_eq!(msg.r#type, "foo");
+/// ```
+///
 pub mod builders {
     include!(concat!(env!("OUT_DIR"), "/builders.rs"));
 }
