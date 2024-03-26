@@ -12,6 +12,7 @@ pub use bytes;
 mod error;
 mod message;
 mod name;
+mod open_enum;
 mod types;
 
 #[doc(hidden)]
@@ -20,6 +21,7 @@ pub mod encoding;
 pub use crate::error::{DecodeError, EncodeError};
 pub use crate::message::Message;
 pub use crate::name::Name;
+pub use crate::open_enum::OpenEnum;
 
 use bytes::{Buf, BufMut};
 
