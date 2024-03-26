@@ -168,6 +168,15 @@ impl<'a> Context<'a> {
         false
     }
 
+    /// Returns `true` if the named message field should be generated using the
+    /// type-safe `OpenEnum` representation.
+    pub fn is_typed_enum_field(&self, fq_message_name: &str, field_name: &str) -> bool {
+        self.config
+            .typed_enum_fields
+            .get_first_field(fq_message_name, field_name)
+            .is_some()
+    }
+
     /// Returns `true` if this message can automatically derive Copy trait.
     pub fn can_message_derive_copy(&self, fq_message_name: &str) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
