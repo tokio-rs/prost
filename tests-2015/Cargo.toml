@@ -11,6 +11,7 @@ edition = "2015"
 build = "../tests/src/build.rs"
 
 [lib]
+name = "tests"
 doctest = false
 path = "../tests/src/lib.rs"
 
