@@ -215,10 +215,10 @@ impl Field {
     fn debug_inner(&self, wrap_name: TokenStream) -> TokenStream {
         if let Ty::Enumeration(ref ty) = self.ty {
             quote! {
-                struct #wrap_name<'a>(&'a i32);
+                struct #wrap_name<'a>(&'a ::prost::OpenEnum<#ty>);
                 impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
                     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                        let res: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(*self.0);
+                        let res = self.0.known_or(());
                         match res {
                             Err(_) => ::core::fmt::Debug::fmt(&self.0, f),
                             Ok(en) => ::core::fmt::Debug::fmt(&en, f),
@@ -296,12 +296,12 @@ impl Field {
                     quote! {
                         #[doc=#get_doc]
                         pub fn #get(&self) -> #ty {
-                            ::core::convert::TryFrom::try_from(self.#ident).unwrap_or(#default)
+                            self.#ident.unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
-                            self.#ident = value as i32;
+                            self.#ident = value.into();
                         }
                     }
                 }
@@ -314,15 +314,12 @@ impl Field {
                     quote! {
                         #[doc=#get_doc]
                         pub fn #get(&self) -> #ty {
-                            self.#ident.and_then(|x| {
-                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
-                                result.ok()
-                            }).unwrap_or(#default)
+                            self.#ident.and_then(|x| { x.known() }).unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]
                         pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::core::option::Option::Some(value as i32);
+                            self.#ident = ::core::option::Option::Some(value.into());
                         }
                     }
                 }
@@ -333,20 +330,18 @@ impl Field {
                     );
                     let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
                     let push_doc = format!("Appends the provided enum value to `{}`.", ident_str);
+                    let wrapped_ty = quote!(::prost::OpenEnum<#ty>);
                     quote! {
                         #[doc=#iter_doc]
                         pub fn #get(&self) -> ::core::iter::FilterMap<
-                            ::core::iter::Cloned<::core::slice::Iter<i32>>,
-                            fn(i32) -> ::core::option::Option<#ty>,
+                            ::core::iter::Cloned<::core::slice::Iter<#wrapped_ty>>,
+                            fn(#wrapped_ty) -> ::core::option::Option<#ty>,
                         > {
-                            self.#ident.iter().cloned().filter_map(|x| {
-                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
-                                result.ok()
-                            })
+                            self.#ident.iter().cloned().filter_map(|x| { x.known() })
                         }
                         #[doc=#push_doc]
                         pub fn #push(&mut self, value: #ty) {
-                            self.#ident.push(value as i32);
+                            self.#ident.push(value.into());
                         }
                     }
                 }
@@ -532,13 +527,14 @@ impl Ty {
         match self {
             Ty::String => quote!(::prost::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(),
+            Ty::Enumeration(path) => quote!(::prost::OpenEnum<#path>),
             _ => self.rust_ref_type(),
         }
     }
 
     // TODO: rename to 'ref_type'
     pub fn rust_ref_type(&self) -> TokenStream {
-        match *self {
+        match self {
             Ty::Double => quote!(f64),
             Ty::Float => quote!(f32),
             Ty::Int32 => quote!(i32),
@@ -554,13 +550,13 @@ impl Ty {
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
-            Ty::Enumeration(..) => quote!(i32),
+            Ty::Enumeration(..) => unreachable!("an enum should never be queried for its ref type"),
         }
     }
 
     pub fn module(&self) -> Ident {
         match *self {
-            Ty::Enumeration(..) => Ident::new("int32", Span::call_site()),
+            Ty::Enumeration(..) => Ident::new("enumeration", Span::call_site()),
             _ => Ident::new(self.as_str(), Span::call_site()),
         }
     }
@@ -798,7 +794,7 @@ impl DefaultValue {
 
     pub fn typed(&self) -> TokenStream {
         if let DefaultValue::Enumeration(_) = *self {
-            quote!(#self as i32)
+            quote!(::prost::OpenEnum::from(#self))
         } else {
             quote!(#self)
         }

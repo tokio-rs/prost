@@ -132,13 +132,13 @@ impl Field {
         let module = self.map_ty.module();
         match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
-                let default = quote!(#ty::default() as i32);
+                let default = quote!(::prost::OpenEnum::from(#ty::default()));
                 quote! {
                     ::prost::encoding::#module::encode_with_default(
                         #ke,
                         #kl,
-                        ::prost::encoding::int32::encode,
-                        ::prost::encoding::int32::encoded_len,
+                        ::prost::encoding::enumeration::encode,
+                        ::prost::encoding::enumeration::encoded_len,
                         &(#default),
                         #tag,
                         &#ident,
@@ -184,11 +184,11 @@ impl Field {
         let module = self.map_ty.module();
         match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
-                let default = quote!(#ty::default() as i32);
+                let default = quote!(::prost::OpenEnum::from(#ty::default()));
                 quote! {
                     ::prost::encoding::#module::merge_with_default(
                         #km,
-                        ::prost::encoding::int32::merge,
+                        ::prost::encoding::enumeration::merge,
                         #default,
                         &mut #ident,
                         buf,
@@ -221,11 +221,11 @@ impl Field {
         let module = self.map_ty.module();
         match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
-                let default = quote!(#ty::default() as i32);
+                let default = quote!(::prost::OpenEnum::from(#ty::default()));
                 quote! {
                     ::prost::encoding::#module::encoded_len_with_default(
                         #kl,
-                        ::prost::encoding::int32::encoded_len,
+                        ::prost::encoding::enumeration::encoded_len,
                         &(#default),
                         #tag,
                         &#ident,
@@ -275,17 +275,11 @@ impl Field {
             Some(quote! {
                 #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::core::option::Option<#ty> {
-                    self.#ident.get(#take_ref key).cloned().and_then(|x| {
-                        let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
-                        result.ok()
-                    })
+                    self.#ident.get(#take_ref key).cloned().and_then(|x| { x.known() })
                 }
                 #[doc=#insert_doc]
                 pub fn #insert(&mut self, key: #key_ty, value: #ty) -> ::core::option::Option<#ty> {
-                    self.#ident.insert(key, value as i32).and_then(|x| {
-                        let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
-                        result.ok()
-                    })
+                    self.#ident.insert(key, value.into()).and_then(|x| { x.known() })
                 }
             })
         } else {

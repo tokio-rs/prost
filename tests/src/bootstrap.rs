@@ -92,6 +92,8 @@ fn bootstrap() {
             .unwrap();
     }
 
+    let _ = tempdir.into_path();
+
     assert_eq!(protobuf, bootstrapped_protobuf);
     assert_eq!(compiler, bootstrapped_compiler);
 }

@@ -6,6 +6,7 @@
 use prost::alloc::format;
 #[cfg(not(feature = "std"))]
 use prost::alloc::string::String;
+use prost::OpenEnum;
 
 // Borrow some types from other places.
 #[cfg(feature = "std")]
@@ -35,8 +36,8 @@ fn basic() {
     );
     basic
         .enumeration_map
-        .insert(0, BasicEnumeration::TWO as i32);
-    basic.enumeration = 42;
+        .insert(0, BasicEnumeration::TWO.into());
+    basic.enumeration = OpenEnum::from_raw(42);
     basic
         .bytes_map
         .insert("hello".to_string(), "world".as_bytes().into());
@@ -47,7 +48,7 @@ fn basic() {
          bools: [], \
          string: \"\", \
          optional_string: None, \
-         enumeration: 42, \
+         enumeration: Unknown(42), \
          enumeration_map: {0: TWO}, \
          string_map: {}, \
          enumeration_btree_map: {}, \
@@ -62,12 +63,17 @@ fn basic() {
 #[test]
 fn tuple_struct() {
     #[derive(Clone, PartialEq, prost::Message)]
-    struct NewType(#[prost(enumeration = "BasicEnumeration", tag = "5")] i32);
+    struct NewType(
+        #[prost(enumeration = "BasicEnumeration", tag = "5")] OpenEnum<BasicEnumeration>,
+    );
     assert_eq!(
-        format!("{:?}", NewType(BasicEnumeration::TWO as i32)),
+        format!("{:?}", NewType(BasicEnumeration::TWO.into())),
         "NewType(TWO)"
     );
-    assert_eq!(format!("{:?}", NewType(42)), "NewType(42)");
+    assert_eq!(
+        format!("{:?}", NewType(OpenEnum::from_raw(42))),
+        "NewType(Unknown(42))"
+    );
 }
 
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -78,7 +84,7 @@ pub enum OneofWithEnum {
     #[prost(string, tag = "9")]
     String(String),
     #[prost(enumeration = "BasicEnumeration", tag = "10")]
-    Enumeration(i32),
+    Enumeration(OpenEnum<BasicEnumeration>),
 }
 
 #[derive(Clone, PartialEq, prost::Message)]
@@ -91,7 +97,7 @@ struct MessageWithOneof {
 #[test]
 fn oneof_with_enum() {
     let msg = MessageWithOneof {
-        of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO as i32)),
+        of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO.into())),
     };
     assert_eq!(
         format!("{:?}", msg),

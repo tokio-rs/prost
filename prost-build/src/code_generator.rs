@@ -399,7 +399,7 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_field(&mut self, fq_message_name: &str, field: &Field) {
         let type_ = field.descriptor.r#type();
-        let repeated = field.descriptor.label == Some(Label::Repeated as i32);
+        let repeated = field.descriptor.label.and_then(|v| v.known()) == Some(Label::Repeated);
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
         let boxed = self.boxed(&field.descriptor, fq_message_name, None);
@@ -947,7 +947,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
             Type::Uint64 | Type::Fixed64 => String::from("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => format!("{}::alloc::string::String", prost_path(self.config)),
@@ -960,6 +960,11 @@ impl<'a> CodeGenerator<'a> {
                 .rust_type()
                 .to_owned(),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
+            Type::Enum => format!(
+                "{}::OpenEnum<{}>",
+                prost_path(self.config),
+                self.resolve_ident(field.type_name())
+            ),
         }
     }
 
@@ -1063,7 +1068,7 @@ impl<'a> CodeGenerator<'a> {
         fq_message_name: &str,
         oneof: Option<&str>,
     ) -> bool {
-        let repeated = field.label == Some(Label::Repeated as i32);
+        let repeated = field.label.and_then(|v| v.known()) == Some(Label::Repeated);
         let fd_type = field.r#type();
         if !repeated
             && (fd_type == Type::Message || fd_type == Type::Group)
