@@ -1052,6 +1052,11 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
+    /// Returns whether the Rust type for this field needs to be `Box<_>`.
+    ///
+    /// This can be explicitly configured with `Config::boxed`, or necessary
+    /// to prevent an infinitely sized type definition in case when the type of
+    /// a non-repeated message field transitively contains the message itself.
     fn boxed(
         &self,
         field: &FieldDescriptorProto,
