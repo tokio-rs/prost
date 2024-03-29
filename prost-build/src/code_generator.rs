@@ -402,18 +402,8 @@ impl<'a> CodeGenerator<'a> {
         let repeated = field.descriptor.label == Some(Label::Repeated as i32);
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
+        let boxed = self.boxed(&field.descriptor, fq_message_name);
         let ty = self.resolve_type(&field.descriptor, fq_message_name);
-
-        let boxed = !repeated
-            && ((type_ == Type::Message || type_ == Type::Group)
-                && self
-                    .message_graph
-                    .is_nested(field.descriptor.type_name(), fq_message_name))
-            || (self
-                .config
-                .boxed
-                .get_first_field(fq_message_name, field.descriptor.name())
-                .is_some());
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -1066,6 +1056,20 @@ impl<'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
+    }
+
+    fn boxed(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> bool {
+        let fd_type = field.r#type();
+        field.label != Some(Label::Repeated as i32)
+            && ((fd_type == Type::Message || fd_type == Type::Group)
+                && self
+                    .message_graph
+                    .is_nested(field.type_name(), fq_message_name))
+            || (self
+                .config
+                .boxed
+                .get_first_field(fq_message_name, field.name())
+                .is_some())
     }
 
     /// Returns `true` if the field options includes the `deprecated` option.
