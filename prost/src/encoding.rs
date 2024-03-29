@@ -754,6 +754,115 @@ fixed_width!(
     get_i64_le
 );
 
+pub mod enumeration {
+    use super::*;
+    use crate::OpenEnum;
+
+    pub fn encode<T, B>(tag: u32, value: &OpenEnum<T>, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        int32::encode(tag, &value.to_raw(), buf)
+    }
+
+    pub fn merge<T, B>(
+        wire_type: WireType,
+        value: &mut OpenEnum<T>,
+        buf: &mut B,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        let mut raw = 0;
+        int32::merge(wire_type, &mut raw, buf, DecodeContext::default())?;
+        *value = OpenEnum::from_raw(raw);
+        Ok(())
+    }
+
+    pub fn encode_repeated<T, B>(tag: u32, values: &[OpenEnum<T>], buf: &mut B)
+    where
+        B: BufMut,
+    {
+        for value in values {
+            encode(tag, value, buf);
+        }
+    }
+
+    pub fn encode_packed<T, B>(tag: u32, values: &[OpenEnum<T>], buf: &mut B)
+    where
+        B: BufMut,
+    {
+        if values.is_empty() {
+            return;
+        }
+
+        encode_key(tag, WireType::LengthDelimited, buf);
+        let len: usize = values
+            .iter()
+            .map(|value| encoded_len_varint(value.to_raw() as u64))
+            .sum();
+        encode_varint(len as u64, buf);
+
+        for value in values {
+            encode_varint(value.to_raw() as u64, buf);
+        }
+    }
+
+    pub fn merge_repeated<T, B>(
+        wire_type: WireType,
+        values: &mut Vec<OpenEnum<T>>,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        T: Default,
+        T: Into<i32>,
+        B: Buf,
+    {
+        if wire_type == WireType::LengthDelimited {
+            // Packed.
+            merge_loop(values, buf, ctx, |values, buf, ctx| {
+                let mut value = Default::default();
+                merge(WireType::Varint, &mut value, buf, ctx)?;
+                values.push(value);
+                Ok(())
+            })
+        } else {
+            // Unpacked.
+            check_wire_type(WireType::Varint, wire_type)?;
+            let mut value = Default::default();
+            merge(wire_type, &mut value, buf, ctx)?;
+            values.push(value);
+            Ok(())
+        }
+    }
+
+    pub fn encoded_len<T>(tag: u32, value: &OpenEnum<T>) -> usize {
+        int32::encoded_len(tag, &value.to_raw())
+    }
+
+    pub fn encoded_len_repeated<T>(tag: u32, values: &[OpenEnum<T>]) -> usize {
+        key_len(tag) * values.len()
+            + values
+                .iter()
+                .map(|value| encoded_len_varint(value.to_raw() as u64))
+                .sum::<usize>()
+    }
+
+    pub fn encoded_len_packed<T>(tag: u32, values: &[OpenEnum<T>]) -> usize {
+        if values.is_empty() {
+            0
+        } else {
+            let len = values
+                .iter()
+                .map(|value| encoded_len_varint(value.to_raw() as u64))
+                .sum::<usize>();
+            key_len(tag) + encoded_len_varint(len as u64) + len
+        }
+    }
+}
+
 /// Macro which emits encoding functions for a length-delimited type.
 macro_rules! length_delimited {
     ($ty:ty) => {
