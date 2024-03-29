@@ -52,6 +52,44 @@ fn prost_path(config: &Config) -> &str {
     config.prost_path.as_deref().unwrap_or("::prost")
 }
 
+struct Field {
+    rust_name: String,
+    descriptor: FieldDescriptorProto,
+    path_index: i32,
+}
+
+impl Field {
+    fn new(descriptor: FieldDescriptorProto, path_index: i32) -> Self {
+        Self {
+            rust_name: to_snake(descriptor.name()),
+            descriptor,
+            path_index,
+        }
+    }
+}
+
+struct OneofField {
+    rust_name: String,
+    descriptor: OneofDescriptorProto,
+    fields: Vec<(FieldDescriptorProto, i32)>,
+    path_index: i32,
+}
+
+impl OneofField {
+    fn new(
+        descriptor: OneofDescriptorProto,
+        fields: Vec<(FieldDescriptorProto, i32)>,
+        path_index: i32,
+    ) -> Self {
+        Self {
+            rust_name: to_snake(descriptor.name()),
+            descriptor,
+            fields,
+            path_index,
+        }
+    }
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -167,21 +205,33 @@ impl<'a> CodeGenerator<'a> {
 
         // Split the fields into a vector of the normal fields, and oneof fields.
         // Path indexes are preserved so that comments can be retrieved.
-        type Fields = Vec<(FieldDescriptorProto, usize)>;
-        type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
-        let (fields, mut oneof_fields): (Fields, OneofFields) = message
+        type OneofFieldsByIndex = MultiMap<i32, (FieldDescriptorProto, i32)>;
+        let (fields, mut oneof_map): (Vec<Field>, OneofFieldsByIndex) = message
             .field
             .into_iter()
             .enumerate()
-            .partition_map(|(idx, field)| {
-                if field.proto3_optional.unwrap_or(false) {
-                    Either::Left((field, idx))
-                } else if let Some(oneof_index) = field.oneof_index {
-                    Either::Right((oneof_index, (field, idx)))
+            .partition_map(|(idx, proto)| {
+                let idx = idx as i32;
+                if proto.proto3_optional.unwrap_or(false) {
+                    Either::Left(Field::new(proto, idx))
+                } else if let Some(oneof_index) = proto.oneof_index {
+                    Either::Right((oneof_index, (proto, idx)))
                 } else {
-                    Either::Left((field, idx))
+                    Either::Left(Field::new(proto, idx))
                 }
             });
+        // Optional fields create a synthetic oneof that we want to skip
+        let oneof_fields: Vec<OneofField> = message
+            .oneof_decl
+            .into_iter()
+            .enumerate()
+            .filter_map(move |(idx, proto)| {
+                let idx = idx as i32;
+                oneof_map
+                    .remove(&idx)
+                    .map(|fields| OneofField::new(proto, fields, idx))
+            })
+            .collect();
 
         self.append_doc(&fq_message_name, None);
         self.append_type_attributes(&fq_message_name);
@@ -201,9 +251,10 @@ impl<'a> CodeGenerator<'a> {
 
         self.depth += 1;
         self.path.push(2);
-        for (field, idx) in fields {
-            self.path.push(idx as i32);
+        for field in &fields {
+            self.path.push(field.path_index);
             match field
+                .descriptor
                 .type_name
                 .as_ref()
                 .and_then(|type_name| map_types.get(type_name))
@@ -216,16 +267,9 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         self.path.push(8);
-        for (idx, oneof) in message.oneof_decl.iter().enumerate() {
-            let idx = idx as i32;
-
-            let fields = match oneof_fields.get_vec(&idx) {
-                Some(fields) => fields,
-                None => continue,
-            };
-
-            self.path.push(idx);
-            self.append_oneof_field(&message_name, &fq_message_name, oneof, fields);
+        for oneof in &oneof_fields {
+            self.path.push(oneof.path_index);
+            self.append_oneof_field(&message_name, &fq_message_name, oneof);
             self.path.pop();
         }
         self.path.pop();
@@ -252,14 +296,8 @@ impl<'a> CodeGenerator<'a> {
             }
             self.path.pop();
 
-            for (idx, oneof) in message.oneof_decl.into_iter().enumerate() {
-                let idx = idx as i32;
-                // optional fields create a synthetic oneof that we want to skip
-                let fields = match oneof_fields.remove(&idx) {
-                    Some(fields) => fields,
-                    None => continue,
-                };
-                self.append_oneof(&fq_message_name, oneof, idx, fields);
+            for oneof in &oneof_fields {
+                self.append_oneof(&fq_message_name, oneof);
             }
 
             self.pop_mod();
@@ -368,12 +406,14 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_field(&mut self, fq_message_name: &str, field: FieldDescriptorProto) {
+    fn append_field(&mut self, fq_message_name: &str, field: &Field) {
+        let rust_name = &field.rust_name;
+        let field = &field.descriptor;
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
-        let deprecated = self.deprecated(&field);
-        let optional = self.optional(&field);
-        let ty = self.resolve_type(&field, fq_message_name);
+        let deprecated = self.deprecated(field);
+        let optional = self.optional(field);
+        let ty = self.resolve_type(field, fq_message_name);
 
         let boxed = !repeated
             && ((type_ == Type::Message || type_ == Type::Group)
@@ -402,7 +442,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field);
+        let type_tag = self.field_type_tag(field);
         self.buf.push_str(&type_tag);
 
         if type_ == Type::Bytes {
@@ -425,7 +465,7 @@ impl<'a> CodeGenerator<'a> {
             Label::Required => self.buf.push_str(", required"),
             Label::Repeated => {
                 self.buf.push_str(", repeated");
-                if can_pack(&field)
+                if can_pack(field)
                     && !field
                         .options
                         .as_ref()
@@ -476,7 +516,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_field_attributes(fq_message_name, field.name());
         self.push_indent();
         self.buf.push_str("pub ");
-        self.buf.push_str(&to_snake(field.name()));
+        self.buf.push_str(rust_name);
         self.buf.push_str(": ");
 
         let prost_path = prost_path(self.config);
@@ -504,10 +544,12 @@ impl<'a> CodeGenerator<'a> {
     fn append_map_field(
         &mut self,
         fq_message_name: &str,
-        field: FieldDescriptorProto,
+        field: &Field,
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) {
+        let rust_name = &field.rust_name;
+        let field = &field.descriptor;
         let key_ty = self.resolve_type(key, fq_message_name);
         let value_ty = self.resolve_type(value, fq_message_name);
 
@@ -541,7 +583,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",
-            to_snake(field.name()),
+            rust_name,
             map_type.rust_type(),
             key_ty,
             value_ty
@@ -552,44 +594,40 @@ impl<'a> CodeGenerator<'a> {
         &mut self,
         message_name: &str,
         fq_message_name: &str,
-        oneof: &OneofDescriptorProto,
-        fields: &[(FieldDescriptorProto, usize)],
+        oneof: &OneofField,
     ) {
-        let name = format!(
+        let type_name = format!(
             "{}::{}",
             to_snake(message_name),
-            to_upper_camel(oneof.name())
+            to_upper_camel(oneof.descriptor.name())
         );
+        let field_tags = oneof
+            .fields
+            .iter()
+            .map(|(field, _)| field.number())
+            .join(", ");
         self.append_doc(fq_message_name, None);
         self.push_indent();
         self.buf.push_str(&format!(
             "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
-            name,
-            fields.iter().map(|(field, _)| field.number()).join(", ")
+            type_name, field_tags,
         ));
-        self.append_field_attributes(fq_message_name, oneof.name());
+        self.append_field_attributes(fq_message_name, oneof.descriptor.name());
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: ::core::option::Option<{}>,\n",
-            to_snake(oneof.name()),
-            name
+            oneof.rust_name, type_name
         ));
     }
 
-    fn append_oneof(
-        &mut self,
-        fq_message_name: &str,
-        oneof: OneofDescriptorProto,
-        idx: i32,
-        fields: Vec<(FieldDescriptorProto, usize)>,
-    ) {
+    fn append_oneof(&mut self, fq_message_name: &str, oneof: &OneofField) {
         self.path.push(8);
-        self.path.push(idx);
+        self.path.push(oneof.path_index);
         self.append_doc(fq_message_name, None);
         self.path.pop();
         self.path.pop();
 
-        let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
+        let oneof_name = format!("{}.{}", fq_message_name, oneof.descriptor.name());
         self.append_type_attributes(&oneof_name);
         self.append_enum_attributes(&oneof_name);
         self.push_indent();
@@ -602,20 +640,20 @@ impl<'a> CodeGenerator<'a> {
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(&to_upper_camel(oneof.name()));
+        self.buf.push_str(&to_upper_camel(oneof.descriptor.name()));
         self.buf.push_str(" {\n");
 
         self.path.push(2);
         self.depth += 1;
-        for (field, idx) in fields {
+        for (field, idx) in &oneof.fields {
             let type_ = field.r#type();
 
-            self.path.push(idx as i32);
+            self.path.push(*idx);
             self.append_doc(fq_message_name, Some(field.name()));
             self.path.pop();
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field);
+            let ty_tag = self.field_type_tag(field);
             self.buf.push_str(&format!(
                 "#[prost({}, tag=\"{}\")]\n",
                 ty_tag,
@@ -624,7 +662,7 @@ impl<'a> CodeGenerator<'a> {
             self.append_field_attributes(&oneof_name, field.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field, fq_message_name);
+            let ty = self.resolve_type(field, fq_message_name);
 
             let boxed = ((type_ == Type::Message || type_ == Type::Group)
                 && self
