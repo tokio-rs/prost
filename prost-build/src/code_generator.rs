@@ -402,7 +402,7 @@ impl<'a> CodeGenerator<'a> {
         let repeated = field.descriptor.label == Some(Label::Repeated as i32);
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
-        let boxed = self.boxed(&field.descriptor, fq_message_name);
+        let boxed = self.boxed(&field.descriptor, fq_message_name, None);
         let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
         debug!(
@@ -626,8 +626,6 @@ impl<'a> CodeGenerator<'a> {
         self.path.push(2);
         self.depth += 1;
         for field in &oneof.fields {
-            let type_ = field.descriptor.r#type();
-
             self.path.push(field.path_index);
             self.append_doc(fq_message_name, Some(field.descriptor.name()));
             self.path.pop();
@@ -644,15 +642,11 @@ impl<'a> CodeGenerator<'a> {
             self.push_indent();
             let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
-            let boxed = ((type_ == Type::Message || type_ == Type::Group)
-                && self
-                    .message_graph
-                    .is_nested(field.descriptor.type_name(), fq_message_name))
-                || (self
-                    .config
-                    .boxed
-                    .get_first_field(&oneof_name, field.descriptor.name())
-                    .is_some());
+            let boxed = self.boxed(
+                &field.descriptor,
+                fq_message_name,
+                Some(oneof.descriptor.name()),
+            );
 
             debug!(
                 "    oneof: {:?}, type: {:?}, boxed: {}",
@@ -1058,18 +1052,40 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn boxed(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> bool {
+    fn boxed(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+        oneof: Option<&str>,
+    ) -> bool {
+        let repeated = field.label == Some(Label::Repeated as i32);
         let fd_type = field.r#type();
-        field.label != Some(Label::Repeated as i32)
-            && ((fd_type == Type::Message || fd_type == Type::Group)
-                && self
-                    .message_graph
-                    .is_nested(field.type_name(), fq_message_name))
-            || (self
-                .config
-                .boxed
-                .get_first_field(fq_message_name, field.name())
-                .is_some())
+        if !repeated
+            && (fd_type == Type::Message || fd_type == Type::Group)
+            && self
+                .message_graph
+                .is_nested(field.type_name(), fq_message_name)
+        {
+            return true;
+        }
+        let config_path = match oneof {
+            None => Cow::Borrowed(fq_message_name),
+            Some(ooname) => Cow::Owned(format!("{fq_message_name}.{ooname}")),
+        };
+        if self
+            .config
+            .boxed
+            .get_first_field(&config_path, field.name())
+            .is_some()
+        {
+            println!(
+                "cargo:warning=\
+                Field X is repeated and manually marked as boxed. \
+                This is deprecated and support will be removed in a later release"
+            );
+            return true;
+        }
+        false
     }
 
     /// Returns `true` if the field options includes the `deprecated` option.
