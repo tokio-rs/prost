@@ -44,6 +44,11 @@ fn push_indent(buf: &mut String, depth: u8) {
         buf.push_str("    ");
     }
 }
+
+fn prost_path(config: &Config) -> &str {
+    config.prost_path.as_deref().unwrap_or("::prost")
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -183,7 +188,7 @@ impl<'a> CodeGenerator<'a> {
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Message)]\n",
-            self.config.prost_path.as_deref().unwrap_or("::prost")
+            prost_path(self.config)
         ));
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
@@ -473,7 +478,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
 
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
+        let prost_path = prost_path(self.config);
 
         if repeated {
             self.buf
@@ -594,7 +599,7 @@ impl<'a> CodeGenerator<'a> {
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
-            self.config.prost_path.as_deref().unwrap_or("::prost")
+            prost_path(self.config)
         ));
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
@@ -712,7 +717,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
             dbg,
-            self.config.prost_path.as_deref().unwrap_or("::prost"),
+            prost_path(self.config),
         ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
@@ -924,8 +929,6 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
-
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -934,7 +937,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", prost_path),
+            Type::String => format!("{}::alloc::string::String", prost_path(self.config)),
             Type::Bytes => self
                 .config
                 .bytes_type
