@@ -48,10 +48,6 @@ fn push_indent(buf: &mut String, depth: u8) {
     }
 }
 
-fn prost_path(config: &Config) -> &str {
-    config.prost_path.as_deref().unwrap_or("::prost")
-}
-
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -191,7 +187,7 @@ impl<'a> CodeGenerator<'a> {
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Message)]\n",
-            prost_path(self.config)
+            self.resolve_prost_path()
         ));
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
@@ -273,7 +269,7 @@ impl<'a> CodeGenerator<'a> {
     fn append_type_name(&mut self, message_name: &str, fq_message_name: &str) {
         self.buf.push_str(&format!(
             "impl {}::Name for {} {{\n",
-            self.config.prost_path.as_deref().unwrap_or("::prost"),
+            self.resolve_prost_path(),
             to_upper_camel(message_name)
         ));
         self.depth += 1;
@@ -287,7 +283,7 @@ impl<'a> CodeGenerator<'a> {
             self.package,
         ));
 
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
+        let prost_path = self.resolve_prost_path();
         let string_path = format!("{prost_path}::alloc::string::String");
 
         let full_name = format!(
@@ -402,8 +398,7 @@ impl<'a> CodeGenerator<'a> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field);
-        self.buf.push_str(&type_tag);
+        self.buf.push_str(&self.field_type_tag(&field));
 
         if type_ == Type::Bytes {
             let bytes_type = self
@@ -479,17 +474,17 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
 
-        let prost_path = prost_path(self.config);
-
         if repeated {
             self.buf
-                .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
+                .push_str(&format!("{}::alloc::vec::Vec<", self.resolve_prost_path()));
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf
-                .push_str(&format!("{}::alloc::boxed::Box<", prost_path));
+            self.buf.push_str(&format!(
+                "{}::alloc::boxed::Box<",
+                self.resolve_prost_path()
+            ));
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -597,7 +592,7 @@ impl<'a> CodeGenerator<'a> {
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
-            prost_path(self.config)
+            self.resolve_prost_path()
         ));
         self.append_skip_debug(fq_message_name);
         self.push_indent();
@@ -715,7 +710,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
             dbg,
-            prost_path(self.config),
+            self.resolve_prost_path()
         ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
@@ -935,7 +930,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", prost_path(self.config)),
+            Type::String => format!("{}::alloc::string::String", self.resolve_prost_path()),
             Type::Bytes => self
                 .config
                 .bytes_type
@@ -1055,6 +1050,10 @@ impl<'a> CodeGenerator<'a> {
             self.type_path.join("."),
             message_name,
         )
+    }
+
+    fn resolve_prost_path(&self) -> &str {
+        self.config.prost_path.as_deref().unwrap_or("::prost")
     }
 }
 
