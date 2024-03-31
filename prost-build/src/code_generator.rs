@@ -359,7 +359,6 @@ impl<'a> CodeGenerator<'a> {
     fn append_field(&mut self, fq_message_name: &str, field: FieldDescriptorProto) {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
-        let deprecated = self.deprecated(&field);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field, fq_message_name);
 
@@ -383,7 +382,12 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(fq_message_name, Some(field.name()));
 
-        if deprecated {
+        if field
+            .options
+            .as_ref()
+            .map(FieldOptions::deprecated)
+            .unwrap_or_default()
+        {
             self.buf.push_str("#[deprecated]\n");
         }
 
@@ -923,14 +927,6 @@ impl<'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
-    }
-
-    /// Returns `true` if the field options includes the `deprecated` option.
-    fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
-        field
-            .options
-            .as_ref()
-            .map_or(false, FieldOptions::deprecated)
     }
 
     /// Returns the fully-qualified name, starting with a dot
