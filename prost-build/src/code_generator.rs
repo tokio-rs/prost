@@ -619,16 +619,11 @@ impl<'a> CodeGenerator<'a> {
                 boxed
             );
 
-            if boxed {
-                self.buf.push_str(&format!(
-                    "{}(::prost::alloc::boxed::Box<{}>),\n",
-                    to_upper_camel(field.name()),
-                    ty
-                ));
-            } else {
-                self.buf
-                    .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
-            }
+            let field_name = to_upper_camel(field.name());
+            self.buf.push_str(&match boxed {
+                true => format!("{}(::prost::alloc::boxed::Box<{}>),\n", field_name, ty),
+                false => format!("{}({}),\n", field_name, ty),
+            });
         }
         self.path.pop();
 
