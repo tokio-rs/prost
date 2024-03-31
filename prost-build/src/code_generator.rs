@@ -18,7 +18,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType};
+use crate::Config;
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
@@ -1121,40 +1121,4 @@ fn build_enum_value_mappings<'a>(
         })
     }
     mappings
-}
-
-impl MapType {
-    /// The `prost-derive` annotation type corresponding to the map type.
-    fn annotation(&self) -> &'static str {
-        match self {
-            MapType::HashMap => "map",
-            MapType::BTreeMap => "btree_map",
-        }
-    }
-
-    /// The fully-qualified Rust type corresponding to the map type.
-    fn rust_type(&self) -> &'static str {
-        match self {
-            MapType::HashMap => "::std::collections::HashMap",
-            MapType::BTreeMap => "::prost::alloc::collections::BTreeMap",
-        }
-    }
-}
-
-impl BytesType {
-    /// The `prost-derive` annotation type corresponding to the bytes type.
-    fn annotation(&self) -> &'static str {
-        match self {
-            BytesType::Vec => "vec",
-            BytesType::Bytes => "bytes",
-        }
-    }
-
-    /// The fully-qualified Rust type corresponding to the bytes type.
-    fn rust_type(&self) -> &'static str {
-        match self {
-            BytesType::Vec => "::prost::alloc::vec::Vec<u8>",
-            BytesType::Bytes => "::prost::bytes::Bytes",
-        }
-    }
 }
