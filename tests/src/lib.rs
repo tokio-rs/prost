@@ -39,6 +39,8 @@ mod deprecated_field;
 #[cfg(test)]
 mod derive_copy;
 #[cfg(test)]
+mod encoded_len;
+#[cfg(test)]
 mod enum_keyword_variant;
 #[cfg(test)]
 mod generic_derive;
