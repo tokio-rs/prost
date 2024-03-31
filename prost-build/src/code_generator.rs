@@ -37,7 +37,6 @@ pub struct CodeGenerator<'a> {
     syntax: Syntax,
     message_graph: &'a MessageGraph,
     extern_paths: &'a ExternPaths,
-    depth: u8,
     path: Vec<i32>,
     buf: &'a mut String,
 }
@@ -79,7 +78,6 @@ impl<'a> CodeGenerator<'a> {
             syntax,
             message_graph,
             extern_paths,
-            depth: 0,
             path: Vec::new(),
             buf,
         };
@@ -181,7 +179,6 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_message_name, None);
         self.append_message_attributes(&fq_message_name);
-        self.push_indent();
         self.buf.push_str(&{
             let prost_path = self.prost_type_path("Message");
             quote! {
@@ -191,12 +188,10 @@ impl<'a> CodeGenerator<'a> {
             .to_string()
         });
         self.append_skip_debug(&fq_message_name);
-        self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
         self.buf.push_str(" {\n");
 
-        self.depth += 1;
         self.path.push(2);
         for (field, idx) in fields {
             self.path.push(idx as i32);
@@ -227,21 +222,16 @@ impl<'a> CodeGenerator<'a> {
         }
         self.path.pop();
 
-        self.depth -= 1;
-        self.push_indent();
         self.buf.push_str("}\n");
 
         if !message.enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
-            self.push_indent();
             self.buf.push_str("/// Nested message and enum types in `");
             self.buf.push_str(&message_name);
             self.buf.push_str("`.\n");
-            self.push_indent();
             self.buf.push_str("pub mod ");
             self.buf.push_str(&to_snake(&message_name));
             self.buf.push_str(" {\n");
             self.type_path.push(message_name.clone());
-            self.depth += 1;
 
             self.path.push(3);
             for (nested_type, idx) in nested_types {
@@ -269,9 +259,7 @@ impl<'a> CodeGenerator<'a> {
                 self.append_oneof(&fq_message_name, oneof, idx, fields);
             }
 
-            self.depth -= 1;
             self.type_path.pop();
-            self.push_indent();
             self.buf.push_str("}\n"); // end of module
         }
 
@@ -396,11 +384,9 @@ impl<'a> CodeGenerator<'a> {
         self.append_doc(fq_message_name, Some(field.name()));
 
         if deprecated {
-            self.push_indent();
             self.buf.push_str("#[deprecated]\n");
         }
 
-        self.push_indent();
         self.buf.push_str("#[prost(");
         self.buf.push_str(&self.field_type_tag(&field));
 
@@ -473,7 +459,6 @@ impl<'a> CodeGenerator<'a> {
 
         self.buf.push_str("\")]\n");
         self.append_field_attributes(fq_message_name, field.name());
-        self.push_indent();
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
@@ -518,7 +503,6 @@ impl<'a> CodeGenerator<'a> {
         );
 
         self.append_doc(fq_message_name, Some(field.name()));
-        self.push_indent();
 
         let map_type = self
             .config
@@ -537,7 +521,6 @@ impl<'a> CodeGenerator<'a> {
             field.number()
         ));
         self.append_field_attributes(fq_message_name, field.name());
-        self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",
             to_snake(field.name()),
@@ -560,14 +543,12 @@ impl<'a> CodeGenerator<'a> {
             to_upper_camel(oneof.name())
         );
         self.append_doc(fq_message_name, None);
-        self.push_indent();
         self.buf.push_str(&format!(
             "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
             name,
             fields.iter().map(|(field, _)| field.number()).join(", ")
         ));
         self.append_field_attributes(fq_message_name, oneof.name());
-        self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: ::core::option::Option<{}>,\n",
             to_snake(oneof.name()),
@@ -590,7 +571,6 @@ impl<'a> CodeGenerator<'a> {
 
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
         self.append_enum_attributes(&oneof_name);
-        self.push_indent();
         self.buf.push_str(&{
             let one_of_path = self.prost_type_path("Oneof");
             quote! {
@@ -600,13 +580,11 @@ impl<'a> CodeGenerator<'a> {
             .to_string()
         });
         self.append_skip_debug(fq_message_name);
-        self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
         self.buf.push_str(" {\n");
 
         self.path.push(2);
-        self.depth += 1;
         for (field, idx) in fields {
             let type_ = field.r#type();
 
@@ -614,7 +592,6 @@ impl<'a> CodeGenerator<'a> {
             self.append_doc(fq_message_name, Some(field.name()));
             self.path.pop();
 
-            self.push_indent();
             let ty_tag = self.field_type_tag(&field);
             self.buf.push_str(&format!(
                 "#[prost({}, tag=\"{}\")]\n",
@@ -623,7 +600,6 @@ impl<'a> CodeGenerator<'a> {
             ));
             self.append_field_attributes(&oneof_name, field.name());
 
-            self.push_indent();
             let ty = self.resolve_type(&field, fq_message_name);
 
             let boxed = ((type_ == Type::Message || type_ == Type::Group)
@@ -654,10 +630,8 @@ impl<'a> CodeGenerator<'a> {
                     .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
             }
         }
-        self.depth -= 1;
         self.path.pop();
 
-        self.push_indent();
         self.buf.push_str("}\n");
     }
 
@@ -680,7 +654,7 @@ impl<'a> CodeGenerator<'a> {
 
         if append_doc {
             if let Some(comments) = self.comments_from_location() {
-                comments.append_with_indent(self.depth, self.buf);
+                comments.append_with_indent(self.buf);
             }
         }
     }
@@ -703,7 +677,6 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_proto_enum_name, None);
         self.append_enum_attributes(&fq_proto_enum_name);
-        self.push_indent();
         let dbg = if self.should_skip_debug(&fq_proto_enum_name) {
             ""
         } else {
@@ -714,9 +687,7 @@ impl<'a> CodeGenerator<'a> {
             dbg,
             self.resolve_prost_path()
         ));
-        self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
-        self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&enum_name);
         self.buf.push_str(" {\n");
@@ -727,14 +698,12 @@ impl<'a> CodeGenerator<'a> {
             &desc.value,
         );
 
-        self.depth += 1;
         self.path.push(2);
         for variant in variant_mappings.iter() {
             self.path.push(variant.path_idx as i32);
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
-            self.push_indent();
             self.buf.push_str(&variant.generated_variant_name);
             self.buf.push_str(" = ");
             self.buf.push_str(&variant.proto_number.to_string());
@@ -744,9 +713,7 @@ impl<'a> CodeGenerator<'a> {
         }
 
         self.path.pop();
-        self.depth -= 1;
 
-        self.push_indent();
         self.buf.push_str("}\n");
 
         let arms_1 = variant_mappings.iter().map(|variant| {
@@ -850,10 +817,6 @@ impl<'a> CodeGenerator<'a> {
         if let Some(service_generator) = self.config.service_generator.as_mut() {
             service_generator.generate(service, self.buf)
         }
-    }
-
-    fn push_indent(&mut self) {
-        push_indent(self.buf, self.depth);
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {

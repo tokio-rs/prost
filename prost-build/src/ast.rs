@@ -42,13 +42,10 @@ impl Comments {
     /// Appends the comments to a buffer with indentation.
     ///
     /// Each level of indentation corresponds to four space (' ') characters.
-    pub fn append_with_indent(&self, indent_level: u8, buf: &mut String) {
+    pub fn append_with_indent(&self, buf: &mut String) {
         // Append blocks of detached comments.
         for detached_block in &self.leading_detached {
             for line in detached_block {
-                for _ in 0..indent_level {
-                    buf.push_str("    ");
-                }
                 buf.push_str("//");
                 buf.push_str(&Self::sanitize_line(line));
                 buf.push('\n');
@@ -58,9 +55,6 @@ impl Comments {
 
         // Append leading comments.
         for line in &self.leading {
-            for _ in 0..indent_level {
-                buf.push_str("    ");
-            }
             buf.push_str("///");
             buf.push_str(&Self::sanitize_line(line));
             buf.push('\n');
@@ -68,17 +62,11 @@ impl Comments {
 
         // Append an empty comment line if there are leading and trailing comments.
         if !self.leading.is_empty() && !self.trailing.is_empty() {
-            for _ in 0..indent_level {
-                buf.push_str("    ");
-            }
             buf.push_str("///\n");
         }
 
         // Append trailing comments.
         for line in &self.trailing {
-            for _ in 0..indent_level {
-                buf.push_str("    ");
-            }
             buf.push_str("///");
             buf.push_str(&Self::sanitize_line(line));
             buf.push('\n');
@@ -262,7 +250,7 @@ mod tests {
             };
 
             let mut actual = "".to_string();
-            input.append_with_indent(0, &mut actual);
+            input.append_with_indent(&mut actual);
 
             assert_eq!(t.expected, actual, "failed {}", t.name);
         }
@@ -306,7 +294,7 @@ mod tests {
             };
 
             let mut actual = "".to_string();
-            input.append_with_indent(0, &mut actual);
+            input.append_with_indent(&mut actual);
 
             assert_eq!(t.expected, actual, "failed {}", t.name);
         }
@@ -400,7 +388,7 @@ mod tests {
             };
 
             let mut actual = "".to_string();
-            input.append_with_indent(0, &mut actual);
+            input.append_with_indent(&mut actual);
 
             assert_eq!(t.expected, actual, "failed {}", t.name);
         }
