@@ -66,6 +66,11 @@ pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
     sanitize_identifier(stripped)
 }
 
+// TEMP
+pub fn to_upper_camel_syn(s: &str) -> syn::Ident {
+    syn::parse_str(s).expect("unable to parse identifier")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

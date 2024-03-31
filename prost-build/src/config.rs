@@ -13,6 +13,8 @@ use log::trace;
 
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
+use syn::parse::Parser;
+use syn::Attribute;
 
 use crate::code_generator::CodeGenerator;
 use crate::extern_paths::ExternPaths;
@@ -31,10 +33,10 @@ pub struct Config {
     pub(crate) service_generator: Option<Box<dyn ServiceGenerator>>,
     pub(crate) map_type: PathMap<MapType>,
     pub(crate) bytes_type: PathMap<BytesType>,
-    pub(crate) type_attributes: PathMap<String>,
-    pub(crate) message_attributes: PathMap<String>,
-    pub(crate) enum_attributes: PathMap<String>,
-    pub(crate) field_attributes: PathMap<String>,
+    pub(crate) type_attributes: PathMap<Vec<Attribute>>,
+    pub(crate) message_attributes: PathMap<Vec<Attribute>>,
+    pub(crate) enum_attributes: PathMap<Vec<Attribute>>,
+    pub(crate) field_attributes: PathMap<Vec<Attribute>>,
     pub(crate) boxed: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
@@ -208,8 +210,13 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.field_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self.field_attributes.insert(
+            path.as_ref().to_string(),
+            // TEMP: unwrap
+            Attribute::parse_outer
+                .parse_str(attribute.as_ref())
+                .unwrap(),
+        );
         self
     }
 
@@ -257,8 +264,13 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.type_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self.type_attributes.insert(
+            path.as_ref().to_string(),
+            // TEMP: unwrap
+            Attribute::parse_outer
+                .parse_str(attribute.as_ref())
+                .unwrap(),
+        );
         self
     }
 
@@ -296,8 +308,13 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.message_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self.message_attributes.insert(
+            path.as_ref().to_string(),
+            // TEMP: unwrap
+            Attribute::parse_outer
+                .parse_str(attribute.as_ref())
+                .unwrap(),
+        );
         self
     }
 
@@ -345,8 +362,13 @@ impl Config {
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        self.enum_attributes
-            .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self.enum_attributes.insert(
+            path.as_ref().to_string(),
+            // TEMP unwrap:
+            Attribute::parse_outer
+                .parse_str(attribute.as_ref())
+                .unwrap(),
+        );
         self
     }
 

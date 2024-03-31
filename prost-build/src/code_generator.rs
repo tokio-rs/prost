@@ -13,10 +13,12 @@ use prost_types::{
     FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
     SourceCodeInfo,
 };
+use quote::{quote, ToTokens};
+use syn::TypePath;
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
+use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel, to_upper_camel_syn};
 use crate::message_graph::MessageGraph;
 use crate::Config;
 
@@ -180,15 +182,16 @@ impl<'a> CodeGenerator<'a> {
             });
 
         self.append_doc(&fq_message_name, None);
-        self.append_type_attributes(&fq_message_name);
         self.append_message_attributes(&fq_message_name);
         self.push_indent();
-        self.buf
-            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
-        self.buf.push_str(&format!(
-            "#[derive(Clone, PartialEq, {}::Message)]\n",
-            self.resolve_prost_path()
-        ));
+        self.buf.push_str(&{
+            let prost_path = self.prost_type_path("Message");
+            quote! {
+                #[allow(clippy::derive_partial_eq_without_eq)]
+                #[derive(Clone, PartialEq, #prost_path)]
+            }
+            .to_string()
+        });
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -231,7 +234,17 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("}\n");
 
         if !message.enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
-            self.push_mod(&message_name);
+            self.push_indent();
+            self.buf.push_str("/// Nested message and enum types in `");
+            self.buf.push_str(&message_name);
+            self.buf.push_str("`.\n");
+            self.push_indent();
+            self.buf.push_str("pub mod ");
+            self.buf.push_str(&to_snake(&message_name));
+            self.buf.push_str(" {\n");
+            self.type_path.push(message_name.clone());
+            self.depth += 1;
+
             self.path.push(3);
             for (nested_type, idx) in nested_types {
                 self.path.push(idx as i32);
@@ -258,7 +271,10 @@ impl<'a> CodeGenerator<'a> {
                 self.append_oneof(&fq_message_name, oneof, idx, fields);
             }
 
-            self.pop_mod();
+            self.depth -= 1;
+            self.type_path.pop();
+            self.push_indent();
+            self.buf.push_str("}\n"); // end of module
         }
 
         if self.config.enable_type_names {
@@ -267,66 +283,63 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_type_name(&mut self, message_name: &str, fq_message_name: &str) {
-        self.buf.push_str(&format!(
-            "impl {}::Name for {} {{\n",
-            self.resolve_prost_path(),
-            to_upper_camel(message_name)
-        ));
-        self.depth += 1;
+        self.buf.push_str(&{
+            let name_path = self.prost_type_path("Name");
+            let message_name_syn = to_upper_camel_syn(message_name);
+            let package_name = &self.package;
+            let string_path = self.prost_type_path("alloc::string::String");
+            let full_name = format!(
+                "{}{}{}{}{message_name}",
+                self.package.trim_matches('.'),
+                if self.package.is_empty() { "" } else { "." },
+                self.type_path.join("."),
+                if self.type_path.is_empty() { "" } else { "." },
+            );
+            let domain_name = self
+                .config
+                .type_name_domains
+                .get_first(fq_message_name)
+                .map_or("", |name| name.as_str());
+            let type_url = format!("{}/{}", domain_name, full_name);
 
-        self.buf.push_str(&format!(
-            "const NAME: &'static str = \"{}\";\n",
-            message_name,
-        ));
-        self.buf.push_str(&format!(
-            "const PACKAGE: &'static str = \"{}\";\n",
-            self.package,
-        ));
+            quote! {
+                impl #name_path for #message_name_syn {
+                    const NAME: &'static str = #message_name;
+                    const PACKAGE: &'static str = #package_name;
 
-        let prost_path = self.resolve_prost_path();
-        let string_path = format!("{prost_path}::alloc::string::String");
-
-        let full_name = format!(
-            "{}{}{}{}{message_name}",
-            self.package.trim_matches('.'),
-            if self.package.is_empty() { "" } else { "." },
-            self.type_path.join("."),
-            if self.type_path.is_empty() { "" } else { "." },
-        );
-        let domain_name = self
-            .config
-            .type_name_domains
-            .get_first(fq_message_name)
-            .map_or("", |name| name.as_str());
-
-        self.buf.push_str(&format!(
-            r#"fn full_name() -> {string_path} {{ "{full_name}".into() }}"#,
-        ));
-
-        self.buf.push_str(&format!(
-            r#"fn type_url() -> {string_path} {{ "{domain_name}/{full_name}".into() }}"#,
-        ));
-
-        self.depth -= 1;
-        self.buf.push_str("}\n");
-    }
-
-    fn append_type_attributes(&mut self, fq_message_name: &str) {
-        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        for attribute in self.config.type_attributes.get(fq_message_name) {
-            push_indent(self.buf, self.depth);
-            self.buf.push_str(attribute);
-            self.buf.push('\n');
-        }
+                    fn full_name() -> #string_path { #full_name.into() }
+                    fn type_url() -> #string_path { #type_url.into() }
+                }
+            }
+            .to_string()
+        });
     }
 
     fn append_message_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        for attribute in self.config.message_attributes.get(fq_message_name) {
-            push_indent(self.buf, self.depth);
-            self.buf.push_str(attribute);
-            self.buf.push('\n');
-        }
+        self.buf.push_str(&{
+            let type_attributes = self.config.type_attributes.get(fq_message_name);
+            let message_attributes = self.config.message_attributes.get(fq_message_name);
+            quote! {
+                #(#(#type_attributes)*)*
+                #(#(#message_attributes)*)*
+            }
+            .to_string()
+        });
+    }
+
+    fn append_enum_attributes(&mut self, fq_message_name: &str) {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        let str = {
+            let type_attributes = self.config.type_attributes.get(fq_message_name);
+            let enum_attributes = self.config.enum_attributes.get(fq_message_name);
+            quote! {
+                #(#(#type_attributes)*)*
+                #(#(#enum_attributes)*)*
+            }
+            .to_string()
+        };
+        self.buf.push_str(&str);
     }
 
     fn should_skip_debug(&self, fq_message_name: &str) -> bool {
@@ -336,32 +349,25 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_skip_debug(&mut self, fq_message_name: &str) {
         if self.should_skip_debug(fq_message_name) {
-            push_indent(self.buf, self.depth);
-            self.buf.push_str("#[prost(skip_debug)]");
-            self.buf.push('\n');
-        }
-    }
-
-    fn append_enum_attributes(&mut self, fq_message_name: &str) {
-        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        for attribute in self.config.enum_attributes.get(fq_message_name) {
-            push_indent(self.buf, self.depth);
-            self.buf.push_str(attribute);
-            self.buf.push('\n');
+            self.buf
+                .push_str(&quote! { #[prost(skip_debug)] }.to_string());
         }
     }
 
     fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        for attribute in self
+
+        let field_attributes = self
             .config
             .field_attributes
-            .get_field(fq_message_name, field_name)
-        {
-            push_indent(self.buf, self.depth);
-            self.buf.push_str(attribute);
-            self.buf.push('\n');
-        }
+            .get_field(fq_message_name, field_name);
+
+        self.buf.push_str(
+            &quote! {
+                #(#(#field_attributes)*)*
+            }
+            .to_string(),
+        )
     }
 
     fn append_field(&mut self, fq_message_name: &str, field: FieldDescriptorProto) {
@@ -585,15 +591,16 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
-        self.append_type_attributes(&oneof_name);
         self.append_enum_attributes(&oneof_name);
         self.push_indent();
-        self.buf
-            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
-        self.buf.push_str(&format!(
-            "#[derive(Clone, PartialEq, {}::Oneof)]\n",
-            self.resolve_prost_path()
-        ));
+        self.buf.push_str(&{
+            let one_of_path = self.prost_type_path("Oneof");
+            quote! {
+                #[allow(clippy::derive_partial_eq_without_eq)]
+                #[derive(Clone, PartialEq, #one_of_path)]
+            }
+            .to_string()
+        });
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
@@ -699,7 +706,6 @@ impl<'a> CodeGenerator<'a> {
         }
 
         self.append_doc(&fq_proto_enum_name, None);
-        self.append_type_attributes(&fq_proto_enum_name);
         self.append_enum_attributes(&fq_proto_enum_name);
         self.push_indent();
         let dbg = if self.should_skip_debug(&fq_proto_enum_name) {
@@ -744,90 +750,51 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf.push_str("}\n");
 
-        self.push_indent();
-        self.buf.push_str("impl ");
-        self.buf.push_str(&enum_name);
-        self.buf.push_str(" {\n");
-        self.depth += 1;
-        self.path.push(2);
+        let arms_1 = variant_mappings.iter().map(|variant| {
+            syn::parse_str::<syn::Arm>(&format!(
+                "{}::{} => \"{}\"",
+                enum_name, variant.generated_variant_name, variant.proto_name
+            ))
+            .expect("unable to parse enum arm")
+            .to_token_stream()
+        });
 
-        self.push_indent();
+        let arms_2 = variant_mappings.iter().map(|variant| {
+            syn::parse_str::<syn::Arm>(&format!(
+                "\"{}\" => Some(Self::{})",
+                variant.proto_name, variant.generated_variant_name
+            ))
+            .expect("unable to parse enum arm")
+            .to_token_stream()
+        });
+
+        let enum_name =
+            syn::parse_str::<syn::TypePath>(&enum_name).expect("unable to parse enum name");
+
         self.buf.push_str(
-            "/// String value of the enum field names used in the ProtoBuf definition.\n",
+            &quote! {
+                impl #enum_name {
+                    /// String value of the enum field names used in the ProtoBuf definition.
+                    ///
+                    /// The values are not transformed in any way and thus are considered stable
+                    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+                    pub fn as_str_name(&self) -> &'static str {
+                        match self {
+                            #(#arms_1,)*
+                        }
+                    }
+
+                    /// Creates an enum from field names used in the ProtoBuf definition.
+                    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                        match value {
+                            #(#arms_2,)*
+                            _ => None,
+                        }
+                    }
+                }
+            }
+            .to_string(),
         );
-        self.push_indent();
-        self.buf.push_str("///\n");
-        self.push_indent();
-        self.buf.push_str(
-            "/// The values are not transformed in any way and thus are considered stable\n",
-        );
-        self.push_indent();
-        self.buf.push_str(
-            "/// (if the ProtoBuf definition does not change) and safe for programmatic use.\n",
-        );
-        self.push_indent();
-        self.buf
-            .push_str("pub fn as_str_name(&self) -> &'static str {\n");
-        self.depth += 1;
-
-        self.push_indent();
-        self.buf.push_str("match self {\n");
-        self.depth += 1;
-
-        for variant in variant_mappings.iter() {
-            self.push_indent();
-            self.buf.push_str(&enum_name);
-            self.buf.push_str("::");
-            self.buf.push_str(&variant.generated_variant_name);
-            self.buf.push_str(" => \"");
-            self.buf.push_str(variant.proto_name);
-            self.buf.push_str("\",\n");
-        }
-
-        self.depth -= 1;
-        self.push_indent();
-        self.buf.push_str("}\n"); // End of match
-
-        self.depth -= 1;
-        self.push_indent();
-        self.buf.push_str("}\n"); // End of as_str_name()
-
-        self.push_indent();
-        self.buf
-            .push_str("/// Creates an enum from field names used in the ProtoBuf definition.\n");
-
-        self.push_indent();
-        self.buf
-            .push_str("pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {\n");
-        self.depth += 1;
-
-        self.push_indent();
-        self.buf.push_str("match value {\n");
-        self.depth += 1;
-
-        for variant in variant_mappings.iter() {
-            self.push_indent();
-            self.buf.push('\"');
-            self.buf.push_str(variant.proto_name);
-            self.buf.push_str("\" => Some(Self::");
-            self.buf.push_str(&variant.generated_variant_name);
-            self.buf.push_str("),\n");
-        }
-        self.push_indent();
-        self.buf.push_str("_ => None,\n");
-
-        self.depth -= 1;
-        self.push_indent();
-        self.buf.push_str("}\n"); // End of match
-
-        self.depth -= 1;
-        self.push_indent();
-        self.buf.push_str("}\n"); // End of from_str_name()
-
-        self.path.pop();
-        self.depth -= 1;
-        self.push_indent();
-        self.buf.push_str("}\n"); // End of impl
     }
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
@@ -894,31 +861,6 @@ impl<'a> CodeGenerator<'a> {
 
     fn push_indent(&mut self) {
         push_indent(self.buf, self.depth);
-    }
-
-    fn push_mod(&mut self, module: &str) {
-        self.push_indent();
-        self.buf.push_str("/// Nested message and enum types in `");
-        self.buf.push_str(module);
-        self.buf.push_str("`.\n");
-
-        self.push_indent();
-        self.buf.push_str("pub mod ");
-        self.buf.push_str(&to_snake(module));
-        self.buf.push_str(" {\n");
-
-        self.type_path.push(module.into());
-
-        self.depth += 1;
-    }
-
-    fn pop_mod(&mut self) {
-        self.depth -= 1;
-
-        self.type_path.pop();
-
-        self.push_indent();
-        self.buf.push_str("}\n");
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
@@ -1054,6 +996,11 @@ impl<'a> CodeGenerator<'a> {
 
     fn resolve_prost_path(&self) -> &str {
         self.config.prost_path.as_deref().unwrap_or("::prost")
+    }
+
+    fn prost_type_path(&self, item: &str) -> TypePath {
+        syn::parse_str(&format!("{}::{}", self.resolve_prost_path(), item))
+            .expect("unable to parse prost type path")
     }
 }
 
