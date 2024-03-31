@@ -672,14 +672,12 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn append_doc(&mut self, fq_name: &str, field_name: Option<&str>) {
-        let append_doc = if let Some(field_name) = field_name {
-            self.config
-                .disable_comments
-                .get_first_field(fq_name, field_name)
-                .is_none()
-        } else {
-            self.config.disable_comments.get(fq_name).next().is_none()
-        };
+        let disable_comments = &self.config.disable_comments;
+        let append_doc = match field_name {
+            Some(field_name) => disable_comments.get_first_field(fq_name, field_name),
+            None => disable_comments.get(fq_name).next(),
+        }
+        .is_none();
         if append_doc {
             if let Some(comments) = self.location().map(Comments::from_location) {
                 comments.append_with_indent(self.depth, self.buf);
@@ -693,7 +691,6 @@ impl<'a> CodeGenerator<'a> {
         let proto_enum_name = desc.name();
         let enum_name = to_upper_camel(proto_enum_name);
 
-        let enum_values = &desc.value;
         let fq_proto_enum_name = self.fq_name(proto_enum_name);
 
         if self
@@ -727,7 +724,7 @@ impl<'a> CodeGenerator<'a> {
         let variant_mappings = EnumVariantMapping::build_enum_value_mappings(
             &enum_name,
             self.config.strip_enum_prefix,
-            enum_values,
+            &desc.value,
         );
 
         self.depth += 1;
