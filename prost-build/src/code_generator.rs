@@ -433,31 +433,32 @@ impl<'a> CodeGenerator<'a> {
 
         if let Some(ref default) = field.default_value {
             self.buf.push_str("\", default=\"");
-            if type_ == Type::Bytes {
-                self.buf.push_str("b\\\"");
-                for b in unescape_c_escape_string(default) {
-                    self.buf.extend(
-                        ascii::escape_default(b).flat_map(|c| (c as char).escape_default()),
-                    );
+            match type_ {
+                Type::Bytes => {
+                    self.buf.push_str("b\\\"");
+                    for b in unescape_c_escape_string(default) {
+                        self.buf.extend(
+                            ascii::escape_default(b).flat_map(|c| (c as char).escape_default()),
+                        );
+                    }
+                    self.buf.push_str("\\\"");
                 }
-                self.buf.push_str("\\\"");
-            } else if type_ == Type::Enum {
-                let mut enum_value = to_upper_camel(default);
-                if self.config.strip_enum_prefix {
-                    // Field types are fully qualified, so we extract
-                    // the last segment and strip it from the left
-                    // side of the default value.
-                    let enum_type = field
-                        .type_name
-                        .as_ref()
-                        .and_then(|ty| ty.split('.').last())
-                        .unwrap();
+                Type::Enum => {
+                    let mut enum_value = to_upper_camel(default);
+                    if self.config.strip_enum_prefix {
+                        let enum_type = field
+                            .type_name
+                            .as_ref()
+                            .and_then(|ty| ty.split('.').last())
+                            .expect("field type not fully qualified");
 
-                    enum_value = strip_enum_prefix(&to_upper_camel(enum_type), &enum_value)
+                        enum_value = strip_enum_prefix(&to_upper_camel(enum_type), &enum_value)
+                    }
+                    self.buf.push_str(&enum_value);
                 }
-                self.buf.push_str(&enum_value);
-            } else {
-                self.buf.push_str(&default.escape_default().to_string());
+                _ => {
+                    self.buf.push_str(&default.escape_default().to_string());
+                }
             }
         }
 
