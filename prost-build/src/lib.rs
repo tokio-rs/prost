@@ -139,6 +139,9 @@ use prost_types::FileDescriptorSet;
 mod ast;
 pub use crate::ast::{Comments, Method, Service};
 
+mod collections;
+pub(crate) use collections::{BytesType, MapType};
+
 mod code_generator;
 mod extern_paths;
 mod ident;
@@ -194,28 +197,6 @@ pub trait ServiceGenerator {
     ///
     /// The default implementation is empty and does nothing.
     fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
-}
-
-/// The map collection type to output for Protobuf `map` fields.
-#[non_exhaustive]
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-enum MapType {
-    /// The [`std::collections::HashMap`] type.
-    #[default]
-    HashMap,
-    /// The [`std::collections::BTreeMap`] type.
-    BTreeMap,
-}
-
-/// The bytes collection type to output for Protobuf `bytes` fields.
-#[non_exhaustive]
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-enum BytesType {
-    /// The [`alloc::collections::Vec::<u8>`] type.
-    #[default]
-    Vec,
-    /// The [`bytes::Bytes`] type.
-    Bytes,
 }
 
 /// Compile `.proto` files into Rust files during a Cargo build.
