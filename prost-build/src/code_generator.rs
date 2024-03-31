@@ -1,6 +1,6 @@
 use std::ascii;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::iter;
 
 use itertools::{Either, Itertools};
@@ -9,9 +9,8 @@ use multimap::MultiMap;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-    SourceCodeInfo,
+    DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FieldOptions, FileDescriptorProto,
+    OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
 };
 use quote::{quote, ToTokens};
 use syn::TypePath;
@@ -725,8 +724,11 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&enum_name);
         self.buf.push_str(" {\n");
 
-        let variant_mappings =
-            build_enum_value_mappings(&enum_name, self.config.strip_enum_prefix, enum_values);
+        let variant_mappings = EnumVariantMapping::build_enum_value_mappings(
+            &enum_name,
+            self.config.strip_enum_prefix,
+            enum_values,
+        );
 
         self.depth += 1;
         self.path.push(2);
@@ -1025,47 +1027,61 @@ fn can_pack(field: &FieldDescriptorProto) -> bool {
     )
 }
 
-struct EnumVariantMapping<'a> {
-    path_idx: usize,
-    proto_name: &'a str,
-    proto_number: i32,
-    generated_variant_name: String,
-}
+use enum_variant_mapping::EnumVariantMapping;
+mod enum_variant_mapping {
+    use std::collections::{HashMap, HashSet};
 
-fn build_enum_value_mappings<'a>(
-    generated_enum_name: &str,
-    do_strip_enum_prefix: bool,
-    enum_values: &'a [EnumValueDescriptorProto],
-) -> Vec<EnumVariantMapping<'a>> {
-    let mut numbers = HashSet::new();
-    let mut generated_names = HashMap::new();
-    let mut mappings = Vec::new();
+    use prost_types::EnumValueDescriptorProto;
 
-    for (idx, value) in enum_values.iter().enumerate() {
-        // Skip duplicate enum values. Protobuf allows this when the
-        // 'allow_alias' option is set.
-        if !numbers.insert(value.number()) {
-            continue;
-        }
+    use crate::ident::to_upper_camel;
 
-        let mut generated_variant_name = to_upper_camel(value.name());
-        if do_strip_enum_prefix {
-            generated_variant_name =
-                strip_enum_prefix(generated_enum_name, &generated_variant_name);
-        }
+    use super::strip_enum_prefix;
 
-        if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), value.name())
-        {
-            panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
-                generated_variant_name, old_v, value.name());
-        }
-
-        mappings.push(EnumVariantMapping {
-            path_idx: idx,
-            proto_name: value.name(),
-            proto_number: value.number(),
-            generated_variant_name,
-        })
+    pub(super) struct EnumVariantMapping<'a> {
+        pub(super) path_idx: usize,
+        pub(super) proto_name: &'a str,
+        pub(super) proto_number: i32,
+        pub(super) generated_variant_name: String,
     }
-    mappings
+
+    impl EnumVariantMapping<'_> {
+        pub(super) fn build_enum_value_mappings<'a>(
+            generated_enum_name: &str,
+            do_strip_enum_prefix: bool,
+            enum_values: &'a [EnumValueDescriptorProto],
+        ) -> Vec<EnumVariantMapping<'a>> {
+            let mut numbers = HashSet::new();
+            let mut generated_names = HashMap::new();
+            let mut mappings = Vec::new();
+
+            for (idx, value) in enum_values.iter().enumerate() {
+                // Skip duplicate enum values. Protobuf allows this when the
+                // 'allow_alias' option is set.
+                if !numbers.insert(value.number()) {
+                    continue;
+                }
+
+                let mut generated_variant_name = to_upper_camel(value.name());
+                if do_strip_enum_prefix {
+                    generated_variant_name =
+                        strip_enum_prefix(generated_enum_name, &generated_variant_name);
+                }
+
+                if let Some(old_v) =
+                    generated_names.insert(generated_variant_name.to_owned(), value.name())
+                {
+                    panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
+                    generated_variant_name, old_v, value.name());
+                }
+
+                mappings.push(EnumVariantMapping {
+                    path_idx: idx,
+                    proto_name: value.name(),
+                    proto_number: value.number(),
+                    generated_variant_name,
+                })
+            }
+            mappings
+        }
+    }
 }
