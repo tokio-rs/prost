@@ -463,6 +463,11 @@ The prost project maintains flakes support for local development. Once you have
 nix and nix flakes setup you can just run `nix develop` to get a shell
 configured with the required dependencies to compile the whole project.
 
+## Feature Flags
+- `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
+- `derive`: Enable integration with `prost-derive`. Disable this feature to reduce compile times. This feature is enabled by default.
+- `prost-derive`: Deprecated. Alias for `derive` feature.
+- `no-recursion-limit`: Disable the recursion limit. The recursion limit is 100 and cannot be customized. 
 
 ## FAQ
 
