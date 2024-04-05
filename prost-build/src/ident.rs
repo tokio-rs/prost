@@ -46,7 +46,7 @@ pub fn to_upper_camel(s: impl AsRef<str>) -> String {
 /// It also tries to handle cases where the stripped name would be
 /// invalid - for example, if it were to begin with a number.
 ///
-/// The stripped name can be `Self`, which is sanitized analogously to [to_upper_camel]
+/// If the stripped name is `"Self"`, it will be replaced with `"Self_"`
 pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
     let stripped = name.strip_prefix(prefix).unwrap_or(name);
 
