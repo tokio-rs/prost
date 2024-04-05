@@ -9,7 +9,6 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::min;
-use core::convert::TryFrom;
 use core::mem;
 use core::str;
 use core::u32;
@@ -1423,15 +1422,16 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
+    #[cfg(not(feature = "std"))]
     use alloc::string::ToString;
     use core::borrow::Borrow;
     use core::fmt::Debug;
     use core::u64;
 
-    use ::bytes::{Bytes, BytesMut};
+    use ::bytes::BytesMut;
     use proptest::{prelude::*, test_runner::TestCaseResult};
 
-    use crate::encoding::*;
+    use super::*;
 
     pub fn check_type<T, B>(
         value: T,

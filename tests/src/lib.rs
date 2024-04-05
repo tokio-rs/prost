@@ -138,6 +138,7 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
 use anyhow::anyhow;
@@ -278,11 +279,10 @@ where
 #[cfg(test)]
 mod tests {
 
-    use alloc::borrow::ToOwned;
-    use alloc::boxed::Box;
     use alloc::collections::{BTreeMap, BTreeSet};
-    use alloc::string::ToString;
     use alloc::vec;
+    #[cfg(not(feature = "std"))]
+    use alloc::{borrow::ToOwned, boxed::Box, string::ToString};
 
     use super::*;
 

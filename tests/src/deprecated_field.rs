@@ -1,3 +1,4 @@
+#[cfg(not(feature = "std"))]
 use alloc::string::ToString;
 
 mod deprecated_field {
