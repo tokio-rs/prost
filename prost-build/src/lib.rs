@@ -1029,8 +1029,8 @@ impl Config {
             self.write_includes(
                 modules.keys().collect(),
                 &mut file,
-                0,
                 if target_is_env { None } else { Some(&target) },
+                &file_names,
             )?;
             file.flush()?;
         }
@@ -1160,90 +1160,56 @@ impl Config {
 
     fn write_includes(
         &self,
-        mut entries: Vec<&Module>,
-        outfile: &mut fs::File,
-        depth: usize,
+        mut modules: Vec<&Module>,
+        outfile: &mut impl Write,
         basepath: Option<&PathBuf>,
-    ) -> Result<usize> {
-        let mut written = 0;
-        entries.sort();
+        file_names: &HashMap<Module, String>,
+    ) -> Result<()> {
+        modules.sort();
 
-        if depth == 0 {
-            let (empty, remaining): (Vec<&Module>, Vec<&Module>) =
-                entries.into_iter().partition(|m| m.is_empty());
-            for _ in empty {
-                if basepath.is_some() {
-                    self.write_line(
-                        outfile,
-                        depth,
-                        &format!("include!(\"{}.rs\");", self.default_package_filename),
-                    )?;
-                } else {
-                    self.write_line(
-                        outfile,
-                        depth,
-                        &format!(
-                            "include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));",
-                            self.default_package_filename
-                        ),
-                    )?;
-                }
-                written += 1;
+        let mut stack = Vec::new();
+
+        for module in modules {
+            while !module.components.starts_with(&stack) {
+                stack.pop();
+                self.write_line(outfile, stack.len(), "}")?;
             }
-            entries = remaining;
+            while stack.len() < module.components.len() {
+                self.write_line(
+                    outfile,
+                    stack.len(),
+                    &format!("pub mod {} {{", module.part(stack.len())),
+                )?;
+                stack.push(module.part(stack.len()).to_owned());
+            }
+
+            let file_name = file_names
+                .get(module)
+                .expect("every module should have a filename");
+
+            if basepath.is_some() {
+                self.write_line(
+                    outfile,
+                    stack.len(),
+                    &format!("include!(\"{}\");", file_name),
+                )?;
+            } else {
+                self.write_line(
+                    outfile,
+                    stack.len(),
+                    &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}\"));", file_name),
+                )?;
+            }
         }
 
-        while !entries.is_empty() {
-            let modident = entries[0].part(depth);
-            let matching: Vec<&Module> = entries
-                .iter()
-                .filter(|&v| v.part(depth) == modident)
-                .copied()
-                .collect();
-            {
-                // Will NLL sort this mess out?
-                let _temp = entries
-                    .drain(..)
-                    .filter(|&v| v.part(depth) != modident)
-                    .collect();
-                entries = _temp;
-            }
-            self.write_line(outfile, depth, &format!("pub mod {} {{", modident))?;
-            let subwritten = self.write_includes(
-                matching
-                    .iter()
-                    .filter(|v| v.len() > depth + 1)
-                    .copied()
-                    .collect(),
-                outfile,
-                depth + 1,
-                basepath,
-            )?;
-            written += subwritten;
-            if subwritten != matching.len() {
-                let modname = matching[0].to_partial_file_name(..=depth);
-                if basepath.is_some() {
-                    self.write_line(
-                        outfile,
-                        depth + 1,
-                        &format!("include!(\"{}.rs\");", modname),
-                    )?;
-                } else {
-                    self.write_line(
-                        outfile,
-                        depth + 1,
-                        &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));", modname),
-                    )?;
-                }
-                written += 1;
-            }
-
+        for depth in (0..stack.len()).rev() {
             self.write_line(outfile, depth, "}")?;
         }
-        Ok(written)
+
+        Ok(())
     }
 
-    fn write_line(&self, outfile: &mut fs::File, depth: usize, line: &str) -> Result<()> {
+    fn write_line(&self, outfile: &mut impl Write, depth: usize, line: &str) -> Result<()> {
         outfile.write_all(format!("{}{}\n", ("    ").to_owned().repeat(depth), line).as_bytes())
     }
 
@@ -1857,5 +1823,58 @@ mod tests {
         let mut content = String::new();
         f.read_to_string(&mut content).unwrap();
         content
+    }
+
+    #[test]
+    fn test_write_includes() {
+        let modules = [
+            Module::from_protobuf_package_name("foo.bar.baz"),
+            Module::from_protobuf_package_name(""),
+            Module::from_protobuf_package_name("foo.bar"),
+            Module::from_protobuf_package_name("bar"),
+            Module::from_protobuf_package_name("foo"),
+            Module::from_protobuf_package_name("foo.bar.qux"),
+            Module::from_protobuf_package_name("foo.bar.a.b.c"),
+        ];
+
+        let file_names = modules
+            .iter()
+            .map(|m| (m.clone(), m.to_file_name_or("_.default")))
+            .collect();
+
+        let mut buf = Vec::new();
+        Config::new()
+            .default_package_filename("_.default")
+            .write_includes(modules.iter().collect(), &mut buf, None, &file_names)
+            .unwrap();
+        let expected = [
+            r#"include!(concat!(env!("OUT_DIR"), "/_.default.rs"));"#,
+            r#"pub mod bar {"#,
+            r#"    include!(concat!(env!("OUT_DIR"), "/bar.rs"));"#,
+            r#"}"#,
+            r#"pub mod foo {"#,
+            r#"    include!(concat!(env!("OUT_DIR"), "/foo.rs"));"#,
+            r#"    pub mod bar {"#,
+            r#"        include!(concat!(env!("OUT_DIR"), "/foo.bar.rs"));"#,
+            r#"        pub mod a {"#,
+            r#"            pub mod b {"#,
+            r#"                pub mod c {"#,
+            r#"                    include!(concat!(env!("OUT_DIR"), "/foo.bar.a.b.c.rs"));"#,
+            r#"                }"#,
+            r#"            }"#,
+            r#"        }"#,
+            r#"        pub mod baz {"#,
+            r#"            include!(concat!(env!("OUT_DIR"), "/foo.bar.baz.rs"));"#,
+            r#"        }"#,
+            r#"        pub mod qux {"#,
+            r#"            include!(concat!(env!("OUT_DIR"), "/foo.bar.qux.rs"));"#,
+            r#"        }"#,
+            r#"    }"#,
+            r#"}"#,
+            r#""#,
+        ]
+        .join("\n");
+        let actual = String::from_utf8(buf).unwrap();
+        assert_eq!(expected, actual);
     }
 }
