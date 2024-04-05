@@ -20,16 +20,13 @@ impl Any {
     {
         let expected_type_url = M::type_url();
 
-        match (
+        if let (Some(expected), Some(actual)) = (
             TypeUrl::new(&expected_type_url),
             TypeUrl::new(&self.type_url),
         ) {
-            (Some(expected), Some(actual)) => {
-                if expected == actual {
-                    return Ok(M::decode(self.value.as_slice())?);
-                }
+            if expected == actual {
+                return M::decode(self.value.as_slice());
             }
-            _ => (),
         }
 
         let mut err = DecodeError::new(format!(
