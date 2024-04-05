@@ -42,9 +42,6 @@ pub fn to_upper_camel(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-
-    #![allow(clippy::cognitive_complexity)]
-
     use super::*;
 
     #[test]
