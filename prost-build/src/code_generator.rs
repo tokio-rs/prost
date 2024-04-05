@@ -200,9 +200,7 @@ impl<'a> CodeGenerator<'a> {
                 .as_ref()
                 .and_then(|type_name| map_types.get(type_name))
             {
-                Some(&(ref key, ref value)) => {
-                    self.append_map_field(&fq_message_name, field, key, value)
-                }
+                Some((key, value)) => self.append_map_field(&fq_message_name, field, key, value),
                 None => self.append_field(&fq_message_name, field),
             }
             self.path.pop();
@@ -268,7 +266,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "impl {}::Name for {} {{\n",
             self.config.prost_path.as_deref().unwrap_or("::prost"),
-            to_upper_camel(&message_name)
+            to_upper_camel(message_name)
         ));
         self.depth += 1;
 
@@ -377,7 +375,7 @@ impl<'a> CodeGenerator<'a> {
             || (self
                 .config
                 .boxed
-                .get_first_field(&fq_message_name, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .is_some());
 
         debug!(
@@ -559,10 +557,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
             name,
-            fields
-                .iter()
-                .map(|&(ref field, _)| field.number())
-                .join(", ")
+            fields.iter().map(|(field, _)| field.number()).join(", ")
         ));
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
@@ -596,7 +591,7 @@ impl<'a> CodeGenerator<'a> {
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
             self.config.prost_path.as_deref().unwrap_or("::prost")
         ));
-        self.append_skip_debug(&fq_message_name);
+        self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
