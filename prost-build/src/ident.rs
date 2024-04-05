@@ -253,10 +253,6 @@ mod tests {
         assert_eq!(strip_enum_prefix("Foo", "Foo"), "Foo");
         assert_eq!(strip_enum_prefix("Foo", "Bar"), "Bar");
         assert_eq!(strip_enum_prefix("Foo", "Foo1"), "Foo1");
-    }
-
-    #[test]
-    fn test_strip_enum_prefix_resulting_in_keyword() {
         assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
         assert_eq!(strip_enum_prefix("Foo", "FooSelf"), "Self_");
     }
