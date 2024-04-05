@@ -272,7 +272,7 @@ impl Field {
     pub fn methods(&self, ident: &TokenStream) -> Option<TokenStream> {
         let mut ident_str = ident.to_string();
         if ident_str.starts_with("r#") {
-            ident_str = ident_str[2..].to_owned();
+            ident_str = ident_str.split_off(2);
         }
 
         // Prepend `get_` for getter methods of tuple structs.
