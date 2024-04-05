@@ -37,6 +37,8 @@ mod debug;
 #[cfg(test)]
 mod deprecated_field;
 #[cfg(test)]
+mod derive_const;
+#[cfg(test)]
 mod generic_derive;
 #[cfg(test)]
 mod message_encoding;

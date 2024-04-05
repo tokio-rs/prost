@@ -770,7 +770,7 @@ macro_rules! length_delimited {
             B: Buf,
         {
             check_wire_type(WireType::LengthDelimited, wire_type)?;
-            let mut value = Default::default();
+            let mut value = crate::encoding::sealed::Newable::new();
             merge(wire_type, &mut value, buf, ctx)?;
             values.push(value);
             Ok(())
@@ -874,42 +874,63 @@ pub mod string {
     }
 }
 
-pub trait BytesAdapter: sealed::BytesAdapter {}
+pub trait BytesAdapter: Sized + 'static {
+    /// Create a new instance (required as `Default` is not available for all types)
+    fn new() -> Self;
+
+    fn len(&self) -> usize;
+
+    /// Replace contents of this buffer with the contents of another buffer.
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    where
+        B: Buf;
+
+    /// Appends this buffer to the (contents of) other buffer.
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn clear(&mut self);
+}
 
 mod sealed {
-    use super::{Buf, BufMut};
+    pub trait Newable: Sized {
+        fn new() -> Self;
+    }
 
-    pub trait BytesAdapter: Default + Sized + 'static {
-        fn len(&self) -> usize;
+    impl<T: super::BytesAdapter> Newable for T {
+        fn new() -> Self {
+            super::BytesAdapter::new()
+        }
+    }
 
-        /// Replace contents of this buffer with the contents of another buffer.
-        fn replace_with<B>(&mut self, buf: B)
-        where
-            B: Buf;
-
-        /// Appends this buffer to the (contents of) other buffer.
-        fn append_to<B>(&self, buf: &mut B)
-        where
-            B: BufMut;
-
-        fn is_empty(&self) -> bool {
-            self.len() == 0
+    impl Newable for alloc::string::String {
+        fn new() -> Self {
+            Default::default()
         }
     }
 }
 
-impl BytesAdapter for Bytes {}
+impl BytesAdapter for Bytes {
+    fn new() -> Self {
+        Default::default()
+    }
 
-impl sealed::BytesAdapter for Bytes {
     fn len(&self) -> usize {
         Buf::remaining(self)
     }
 
-    fn replace_with<B>(&mut self, mut buf: B)
+    fn replace_with<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
     {
         *self = buf.copy_to_bytes(buf.remaining());
+
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -918,22 +939,30 @@ impl sealed::BytesAdapter for Bytes {
     {
         buf.put(self.clone())
     }
+
+    fn clear(&mut self) {
+        Bytes::clear(self)
+    }
 }
 
-impl BytesAdapter for Vec<u8> {}
+impl BytesAdapter for Vec<u8> {
+    fn new() -> Self {
+        Default::default()
+    }
 
-impl sealed::BytesAdapter for Vec<u8> {
     fn len(&self) -> usize {
         Vec::len(self)
     }
 
-    fn replace_with<B>(&mut self, buf: B)
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        self.clear();
+        Vec::clear(self);
         self.reserve(buf.remaining());
         self.put(buf);
+
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -941,6 +970,46 @@ impl sealed::BytesAdapter for Vec<u8> {
         B: BufMut,
     {
         buf.put(self.as_slice())
+    }
+
+    fn clear(&mut self) {
+        Vec::clear(self)
+    }
+}
+
+impl<const N: usize> BytesAdapter for [u8; N] {
+    fn new() -> Self {
+        [0u8; N]
+    }
+
+    fn len(&self) -> usize {
+        N
+    }
+
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if buf.remaining() != N {
+            return Err(DecodeError::new("invalid byte array length"));
+        }
+
+        self.copy_from_slice(buf.chunk());
+
+        Ok(())
+    }
+
+    fn append_to<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        buf.put(&self[..])
+    }
+
+    fn clear(&mut self) {
+        for b in &mut self[..] {
+            *b = 0;
+        }
     }
 }
 
@@ -986,7 +1055,8 @@ pub mod bytes {
         // This is intended for A and B both being Bytes so it is zero-copy.
         // Some combinations of A and B types may cause a double-copy,
         // in which case merge_one_copy() should be used instead.
-        value.replace_with(buf.copy_to_bytes(len));
+        value.replace_with(buf.copy_to_bytes(len))?;
+
         Ok(())
     }
 
@@ -1008,7 +1078,8 @@ pub mod bytes {
         let len = len as usize;
 
         // If we must copy, make sure to copy only once.
-        value.replace_with(buf.take(len));
+        value.replace_with(buf.take(len))?;
+
         Ok(())
     }
 
