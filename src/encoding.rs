@@ -4,7 +4,7 @@
 
 #![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, TryReserveError};
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -453,6 +453,7 @@ macro_rules! merge_repeated_numeric {
                 merge_loop(values, buf, ctx, |values, buf, ctx| {
                     let mut value = Default::default();
                     $merge($wire_type, &mut value, buf, ctx)?;
+                    values.try_reserve(1)?;
                     values.push(value);
                     Ok(())
                 })
@@ -461,6 +462,7 @@ macro_rules! merge_repeated_numeric {
                 check_wire_type($wire_type, wire_type)?;
                 let mut value = Default::default();
                 $merge(wire_type, &mut value, buf, ctx)?;
+                values.try_reserve(1)?;
                 values.push(value);
                 Ok(())
             }
@@ -772,7 +774,15 @@ macro_rules! length_delimited {
             check_wire_type(WireType::LengthDelimited, wire_type)?;
             let mut value = Default::default();
             merge(wire_type, &mut value, buf, ctx)?;
+
+            // Explicitly reserve before pushing so we can return an error instead of panicking from
+            // and out-of-memory exception.
+            //
+            // Note: Reserving a single element will still cause ammortizied growth of the Vec like
+            // pushing does, so there is no performance impact of reserving early.
+            values.try_reserve(1)?;
             values.push(value);
+
             Ok(())
         }
 
@@ -878,12 +888,13 @@ pub trait BytesAdapter: sealed::BytesAdapter {}
 
 mod sealed {
     use super::{Buf, BufMut};
+    use alloc::collections::TryReserveError;
 
     pub trait BytesAdapter: Default + Sized + 'static {
         fn len(&self) -> usize;
 
         /// Replace contents of this buffer with the contents of another buffer.
-        fn replace_with<B>(&mut self, buf: B)
+        fn replace_with<B>(&mut self, buf: B) -> Result<(), TryReserveError>
         where
             B: Buf;
 
@@ -905,11 +916,12 @@ impl sealed::BytesAdapter for Bytes {
         Buf::remaining(self)
     }
 
-    fn replace_with<B>(&mut self, mut buf: B)
+    fn replace_with<B>(&mut self, mut buf: B) -> Result<(), TryReserveError>
     where
         B: Buf,
     {
         *self = buf.copy_to_bytes(buf.remaining());
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -927,13 +939,14 @@ impl sealed::BytesAdapter for Vec<u8> {
         Vec::len(self)
     }
 
-    fn replace_with<B>(&mut self, buf: B)
+    fn replace_with<B>(&mut self, buf: B) -> Result<(), TryReserveError>
     where
         B: Buf,
     {
         self.clear();
-        self.reserve(buf.remaining());
+        self.try_reserve(buf.remaining())?;
         self.put(buf);
+        Ok(())
     }
 
     fn append_to<B>(&self, buf: &mut B)
@@ -986,11 +999,11 @@ pub mod bytes {
         // This is intended for A and B both being Bytes so it is zero-copy.
         // Some combinations of A and B types may cause a double-copy,
         // in which case merge_one_copy() should be used instead.
-        value.replace_with(buf.copy_to_bytes(len));
+        value.replace_with(buf.copy_to_bytes(len))?;
         Ok(())
     }
 
-    pub(super) fn merge_one_copy<A, B>(
+    pub fn merge_one_copy<A, B>(
         wire_type: WireType,
         value: &mut A,
         buf: &mut B,
@@ -1008,7 +1021,7 @@ pub mod bytes {
         let len = len as usize;
 
         // If we must copy, make sure to copy only once.
-        value.replace_with(buf.take(len));
+        value.replace_with(buf.take(len))?;
         Ok(())
     }
 
@@ -1112,7 +1125,15 @@ pub mod message {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut msg = M::default();
         merge(WireType::LengthDelimited, &mut msg, buf, ctx)?;
+
+        // Explicitly reserve before pushing so we can return an error instead of panicking from
+        // and out-of-memory exception.
+        //
+        // Note: Reserving a single element will still cause ammortizied growth of the Vec like
+        // pushing does, so there is no performance impact of reserving early.
+        messages.try_reserve(1)?;
         messages.push(msg);
+
         Ok(())
     }
 
@@ -1203,7 +1224,15 @@ pub mod group {
         check_wire_type(WireType::StartGroup, wire_type)?;
         let mut msg = M::default();
         merge(tag, WireType::StartGroup, &mut msg, buf, ctx)?;
+
+        // Explicitly reserve before pushing so we can return an error instead of panicking from
+        // and out-of-memory exception.
+        //
+        // Note: Reserving a single element will still cause ammortizied growth of the Vec like
+        // pushing does, so there is no performance impact of reserving early.
+        messages.try_reserve(1)?;
         messages.push(msg);
+
         Ok(())
     }
 
