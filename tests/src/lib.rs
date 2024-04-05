@@ -409,10 +409,10 @@ mod tests {
     fn test_nesting() {
         use crate::nesting::{A, B};
         let _ = A {
-            a: Some(Box::new(A::default())),
+            a: Some(Box::default()),
             repeated_a: Vec::<A>::new(),
             map_a: BTreeMap::<i32, A>::new(),
-            b: Some(Box::new(B::default())),
+            b: Some(Box::default()),
             repeated_b: Vec::<B>::new(),
             map_b: BTreeMap::<i32, B>::new(),
         };
@@ -423,9 +423,9 @@ mod tests {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::A;
 
-            let mut a = Box::new(A::default());
+            let mut a = Box::<A>::default();
             for _ in 0..depth {
-                let mut next = Box::new(A::default());
+                let mut next = Box::<A>::default();
                 next.a = Some(a);
                 a = next;
             }
