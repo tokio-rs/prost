@@ -317,17 +317,19 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
+    // TEMP: deprecate
     fn append_enum_attributes(&mut self, fq_message_name: &FullyQualifiedName) {
-        let str = {
-            let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
-            let enum_attributes = self.config.enum_attributes.get(fq_message_name.as_ref());
-            quote! {
-                #(#(#type_attributes)*)*
-                #(#(#enum_attributes)*)*
-            }
-            .to_string()
-        };
-        self.buf.push_str(&str);
+        self.buf
+            .push_str(&self.resolve_enum_attributes(fq_message_name).to_string());
+    }
+
+    fn resolve_enum_attributes(&self, fq_message_name: &FullyQualifiedName) -> TokenStream {
+        let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
+        let enum_attributes = self.config.enum_attributes.get(fq_message_name.as_ref());
+        quote! {
+            #(#(#type_attributes)*)*
+            #(#(#enum_attributes)*)*
+        }
     }
 
     fn should_skip_debug(&self, fq_message_name: &FullyQualifiedName) -> bool {
@@ -698,7 +700,6 @@ impl<'a> CodeGenerator<'a> {
 
         let proto_enum_name = desc.name();
         let enum_name = to_upper_camel(proto_enum_name);
-
         let fq_proto_enum_name =
             FullyQualifiedName::new(&self.package, &self.type_path, proto_enum_name);
 
@@ -710,49 +711,41 @@ impl<'a> CodeGenerator<'a> {
             return;
         }
 
-        self.append_doc(&fq_proto_enum_name, None);
-        self.append_enum_attributes(&fq_proto_enum_name);
-
-        if !self.should_skip_debug(&fq_proto_enum_name) {
-            self.buf.push_str(&quote! {#[derive(Debug)]}.to_string());
-        }
-
-        self.buf.push_str(&{
-            let prost_path = self.prost_type_path("Enumeration");
-            quote! {#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #prost_path)]}
-                .to_string()
-        });
-
+        let enum_docs = self.resolve_docs(&fq_proto_enum_name, None);
+        let enum_attributes = self.resolve_enum_attributes(&fq_proto_enum_name);
+        let prost_path = self.prost_type_path("Enumeration");
+        let optional_debug =
+            (!self.should_skip_debug(&fq_proto_enum_name)).then_some(quote! {#[derive(Debug)]});
         let variant_mappings = EnumVariantMapping::build_enum_value_mappings(
             &enum_name,
             self.config.strip_enum_prefix,
             &desc.value,
         );
-
         let enum_variants = self.resolve_enum_variants(&variant_mappings, &fq_proto_enum_name);
+        let enum_name_syn = to_upper_camel_syn(&enum_name);
+        let arms_1 = variant_mappings.iter().map(|variant| {
+            syn::parse_str::<syn::Arm>(&format!(
+                "{}::{} => \"{}\"",
+                enum_name_syn, variant.generated_variant_name, variant.proto_name
+            ))
+            .expect("unable to parse enum arm")
+            .to_token_stream()
+        });
+        let arms_2 = variant_mappings.iter().map(|variant| {
+            syn::parse_str::<syn::Arm>(&format!(
+                "\"{}\" => Some(Self::{})",
+                variant.proto_name, variant.generated_variant_name
+            ))
+            .expect("unable to parse enum arm")
+            .to_token_stream()
+        });
 
         self.buf.push_str(&{
-            let enum_name_syn = to_upper_camel_syn(&enum_name);
-
-            let arms_1 = variant_mappings.iter().map(|variant| {
-                syn::parse_str::<syn::Arm>(&format!(
-                    "{}::{} => \"{}\"",
-                    enum_name_syn, variant.generated_variant_name, variant.proto_name
-                ))
-                .expect("unable to parse enum arm")
-                .to_token_stream()
-            });
-
-            let arms_2 = variant_mappings.iter().map(|variant| {
-                syn::parse_str::<syn::Arm>(&format!(
-                    "\"{}\" => Some(Self::{})",
-                    variant.proto_name, variant.generated_variant_name
-                ))
-                .expect("unable to parse enum arm")
-                .to_token_stream()
-            });
-
             quote! {
+                #(#enum_docs)*
+                #enum_attributes
+                #optional_debug
+                #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #prost_path)]
                 #[repr(i32)]
                 pub enum #enum_name_syn {
                     #(#enum_variants,)*
