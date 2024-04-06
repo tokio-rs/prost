@@ -180,15 +180,18 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_message_name, None);
         self.append_message_attributes(&fq_message_name);
+
+        let prost_path = self.prost_type_path("Message");
+        let maybe_skip_debug = self.resolve_skip_debug(&fq_message_name);
         self.buf.push_str(&{
-            let prost_path = self.prost_type_path("Message");
             quote! {
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #prost_path)]
+                #maybe_skip_debug
             }
             .to_string()
         });
-        self.append_skip_debug(&fq_message_name);
+
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
         self.buf.push_str(" {\n");
@@ -328,11 +331,9 @@ impl<'a> CodeGenerator<'a> {
             .is_some()
     }
 
-    fn append_skip_debug(&mut self, fq_message_name: &FullyQualifiedName) {
-        if self.should_skip_debug(fq_message_name) {
-            self.buf
-                .push_str(&quote! { #[prost(skip_debug)] }.to_string());
-        }
+    fn resolve_skip_debug(&mut self, fq_message_name: &FullyQualifiedName) -> Option<TokenStream> {
+        self.should_skip_debug(fq_message_name)
+            .then_some(quote! { #[prost(skip_debug)] })
     }
 
     // TEMP: deprecate
@@ -581,16 +582,18 @@ impl<'a> CodeGenerator<'a> {
 
         let oneof_name = fq_message_name.join(oneof.name());
         let enum_attributes = self.resolve_enum_attributes(&oneof_name);
+        let maybe_skip_debug = self.resolve_skip_debug(fq_message_name);
         self.buf.push_str(&{
             let one_of_path = self.prost_type_path("Oneof");
             quote! {
                 #enum_attributes
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #one_of_path)]
+                #maybe_skip_debug
             }
             .to_string()
         });
-        self.append_skip_debug(fq_message_name);
+
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
         self.buf.push_str(" {\n");
