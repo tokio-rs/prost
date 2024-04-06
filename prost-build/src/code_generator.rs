@@ -178,14 +178,14 @@ impl<'a> CodeGenerator<'a> {
                 }
             });
 
-        self.append_doc(&fq_message_name, None);
-
+        let documentation = self.resolve_docs(&fq_message_name, None);
         let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
         let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
         let prost_path = self.prost_type_path("Message");
         let maybe_skip_debug = self.resolve_skip_debug(&fq_message_name);
         self.buf.push_str(&{
             quote! {
+                #(#documentation)*
                 #(#(#type_attributes)*)*
                 #(#(#message_attributes)*)*
                 #[allow(clippy::derive_partial_eq_without_eq)]
