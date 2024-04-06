@@ -18,7 +18,7 @@ use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel, to_upper_camel_syn};
+use crate::ident::{strip_enum_prefix, to_snake, to_syn_ident, to_upper_camel};
 use crate::message_graph::MessageGraph;
 use crate::{Config, FullyQualifiedName};
 
@@ -41,12 +41,6 @@ pub struct CodeGenerator<'a> {
     extern_paths: &'a ExternPaths,
     path: Vec<i32>,
     buf: &'a mut String,
-}
-
-fn push_indent(buf: &mut String, depth: u8) {
-    for _ in 0..depth {
-        buf.push_str("    ");
-    }
 }
 
 impl<'a> CodeGenerator<'a> {
@@ -278,7 +272,7 @@ impl<'a> CodeGenerator<'a> {
     fn append_type_name(&mut self, message_name: &str, fq_message_name: &FullyQualifiedName) {
         self.buf.push_str(&{
             let name_path = self.prost_type_path("Name");
-            let message_name_syn = to_upper_camel_syn(message_name);
+            let message_name_syn = to_syn_ident(message_name);
             let package_name = &self.package;
             let string_path = self.prost_type_path("alloc::string::String");
             let fully_qualified_name =
@@ -722,7 +716,7 @@ impl<'a> CodeGenerator<'a> {
             &desc.value,
         );
         let enum_variants = self.resolve_enum_variants(&variant_mappings, &fq_proto_enum_name);
-        let enum_name_syn = to_upper_camel_syn(&enum_name);
+        let enum_name_syn = to_syn_ident(&enum_name);
         let arms_1 = variant_mappings.iter().map(|variant| {
             syn::parse_str::<syn::Arm>(&format!(
                 "{}::{} => \"{}\"",
