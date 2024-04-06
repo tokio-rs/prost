@@ -311,12 +311,6 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
-    // TEMP: deprecate
-    fn append_enum_attributes(&mut self, fq_message_name: &FullyQualifiedName) {
-        self.buf
-            .push_str(&self.resolve_enum_attributes(fq_message_name).to_string());
-    }
-
     fn resolve_enum_attributes(&self, fq_message_name: &FullyQualifiedName) -> TokenStream {
         let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
         let enum_attributes = self.config.enum_attributes.get(fq_message_name.as_ref());
@@ -586,10 +580,11 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         let oneof_name = fq_message_name.join(oneof.name());
-        self.append_enum_attributes(&oneof_name);
+        let enum_attributes = self.resolve_enum_attributes(&oneof_name);
         self.buf.push_str(&{
             let one_of_path = self.prost_type_path("Oneof");
             quote! {
+                #enum_attributes
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #one_of_path)]
             }
