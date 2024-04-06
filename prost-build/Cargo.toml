@@ -27,6 +27,7 @@ itertools = { version = ">=0.10, <=0.12", default-features = false, features = [
 log = "0.4.4"
 multimap = { version = ">=0.8, <=0.10", default-features = false }
 petgraph = { version = "0.6", default-features = false }
+proc-macro2 = "1"
 prost = { version = "0.12.4", path = "..", default-features = false }
 prost-types = { version = "0.12.4", path = "../prost-types", default-features = false }
 quote = "1"

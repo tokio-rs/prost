@@ -6,13 +6,15 @@ use std::iter;
 use itertools::{Either, Itertools};
 use log::debug;
 use multimap::MultiMap;
+use proc_macro2::TokenStream;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::{
     DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FieldOptions, FileDescriptorProto,
     OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
 };
 use quote::{quote, ToTokens};
-use syn::TypePath;
+use syn::parse::Parser;
+use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
@@ -343,20 +345,30 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
+    // TEMP: deprecate
     fn append_field_attributes(
         &mut self,
         fully_qualified_name: &FullyQualifiedName,
         field_name: &str,
     ) {
+        self.buf.push_str(
+            &self
+                .resolve_field_attributes(fully_qualified_name, field_name)
+                .to_string(),
+        )
+    }
+
+    fn resolve_field_attributes(
+        &self,
+        fully_qualified_name: &FullyQualifiedName,
+        field_name: &str,
+    ) -> TokenStream {
         let fq_str = fully_qualified_name.as_ref();
         let field_attributes = self.config.field_attributes.get_field(fq_str, field_name);
 
-        self.buf.push_str(
-            &quote! {
-                #(#(#field_attributes)*)*
-            }
-            .to_string(),
-        )
+        quote! {
+            #(#(#field_attributes)*)*
+        }
     }
 
     fn append_field(&mut self, fq_message_name: &FullyQualifiedName, field: FieldDescriptorProto) {
@@ -647,7 +659,19 @@ impl<'a> CodeGenerator<'a> {
         Some(Comments::from_location(&source_info.location[idx]))
     }
 
+    // TEMP: deprecate
     fn append_doc(&mut self, fq_name: &FullyQualifiedName, field_name: Option<&str>) {
+        for doc in self.resolve_docs(fq_name, field_name) {
+            self.buf.push_str(&doc.to_token_stream().to_string());
+        }
+    }
+
+    fn resolve_docs(
+        &self,
+        fq_name: &FullyQualifiedName,
+        field_name: Option<&str>,
+    ) -> Vec<Attribute> {
+        let mut comment_string = String::new();
         let disable_comments = &self.config.disable_comments;
         let append_doc = match field_name {
             Some(field_name) => disable_comments.get_first_field(fq_name, field_name),
@@ -657,8 +681,15 @@ impl<'a> CodeGenerator<'a> {
 
         if append_doc {
             if let Some(comments) = self.comments_from_location() {
-                comments.append_with_indent(self.buf);
+                comments.append_with_indent(&mut comment_string);
             }
+        }
+
+        match comment_string.is_empty() {
+            true => Vec::new(),
+            false => Attribute::parse_outer
+                .parse_str(&comment_string)
+                .expect("unable to parse comment attribute"),
         }
     }
 
@@ -692,59 +723,42 @@ impl<'a> CodeGenerator<'a> {
                 .to_string()
         });
 
-        self.buf.push_str("#[repr(i32)]\n");
-        self.buf.push_str("pub enum ");
-        self.buf.push_str(&enum_name);
-        self.buf.push_str(" {\n");
-
         let variant_mappings = EnumVariantMapping::build_enum_value_mappings(
             &enum_name,
             self.config.strip_enum_prefix,
             &desc.value,
         );
 
-        self.path.push(2);
-        for variant in variant_mappings.iter() {
-            self.path.push(variant.path_idx as i32);
+        let enum_variants = self.resolve_enum_variants(&variant_mappings, &fq_proto_enum_name);
 
-            self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
-            self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
-            self.buf.push_str(&variant.generated_variant_name);
-            self.buf.push_str(" = ");
-            self.buf.push_str(&variant.proto_number.to_string());
-            self.buf.push_str(",\n");
+        self.buf.push_str(&{
+            let enum_name_syn = to_upper_camel_syn(&enum_name);
 
-            self.path.pop();
-        }
+            let arms_1 = variant_mappings.iter().map(|variant| {
+                syn::parse_str::<syn::Arm>(&format!(
+                    "{}::{} => \"{}\"",
+                    enum_name_syn, variant.generated_variant_name, variant.proto_name
+                ))
+                .expect("unable to parse enum arm")
+                .to_token_stream()
+            });
 
-        self.path.pop();
+            let arms_2 = variant_mappings.iter().map(|variant| {
+                syn::parse_str::<syn::Arm>(&format!(
+                    "\"{}\" => Some(Self::{})",
+                    variant.proto_name, variant.generated_variant_name
+                ))
+                .expect("unable to parse enum arm")
+                .to_token_stream()
+            });
 
-        self.buf.push_str("}\n");
+            quote! {
+                #[repr(i32)]
+                pub enum #enum_name_syn {
+                    #(#enum_variants,)*
+                }
 
-        let arms_1 = variant_mappings.iter().map(|variant| {
-            syn::parse_str::<syn::Arm>(&format!(
-                "{}::{} => \"{}\"",
-                enum_name, variant.generated_variant_name, variant.proto_name
-            ))
-            .expect("unable to parse enum arm")
-            .to_token_stream()
-        });
-
-        let arms_2 = variant_mappings.iter().map(|variant| {
-            syn::parse_str::<syn::Arm>(&format!(
-                "\"{}\" => Some(Self::{})",
-                variant.proto_name, variant.generated_variant_name
-            ))
-            .expect("unable to parse enum arm")
-            .to_token_stream()
-        });
-
-        let enum_name =
-            syn::parse_str::<syn::TypePath>(&enum_name).expect("unable to parse enum name");
-
-        self.buf.push_str(
-            &quote! {
-                impl #enum_name {
+                impl #enum_name_syn {
                     /// String value of the enum field names used in the ProtoBuf definition.
                     ///
                     /// The values are not transformed in any way and thus are considered stable
@@ -764,8 +778,45 @@ impl<'a> CodeGenerator<'a> {
                     }
                 }
             }
-            .to_string(),
-        );
+            .to_string()
+        });
+    }
+
+    fn resolve_enum_variants(
+        &mut self,
+        variant_mappings: &[EnumVariantMapping],
+        fq_proto_enum_name: &FullyQualifiedName,
+    ) -> Vec<TokenStream> {
+        let mut variants = Vec::with_capacity(variant_mappings.len());
+
+        self.path.push(2);
+
+        for variant in variant_mappings.iter() {
+            self.path.push(variant.path_idx as i32);
+
+            let documentation = self.resolve_docs(fq_proto_enum_name, Some(variant.proto_name));
+
+            let field_attributes =
+                self.resolve_field_attributes(fq_proto_enum_name, variant.proto_name);
+
+            let variant = syn::parse_str::<syn::Variant>(&format!(
+                "{} = {}",
+                variant.generated_variant_name, variant.proto_number
+            ))
+            .expect("unable to parse enum variant");
+
+            variants.push(quote! {
+                #(#documentation)*
+                #field_attributes
+                #variant
+            });
+
+            self.path.pop();
+        }
+
+        self.path.pop();
+
+        variants
     }
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
