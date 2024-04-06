@@ -681,16 +681,17 @@ impl<'a> CodeGenerator<'a> {
 
         self.append_doc(&fq_proto_enum_name, None);
         self.append_enum_attributes(&fq_proto_enum_name);
-        let dbg = if self.should_skip_debug(&fq_proto_enum_name) {
-            ""
-        } else {
-            "Debug, "
-        };
-        self.buf.push_str(&format!(
-            "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
-            dbg,
-            self.resolve_prost_path()
-        ));
+
+        if !self.should_skip_debug(&fq_proto_enum_name) {
+            self.buf.push_str(&quote! {#[derive(Debug)]}.to_string());
+        }
+
+        self.buf.push_str(&{
+            let prost_path = self.prost_type_path("Enumeration");
+            quote! {#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #prost_path)]}
+                .to_string()
+        });
+
         self.buf.push_str("#[repr(i32)]\n");
         self.buf.push_str("pub enum ");
         self.buf.push_str(&enum_name);

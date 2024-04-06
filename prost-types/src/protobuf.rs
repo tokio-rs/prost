@@ -181,17 +181,8 @@ pub struct FieldDescriptorProto {
 }
 /// Nested message and enum types in `FieldDescriptorProto`.
 pub mod field_descriptor_proto {
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
         /// 0 is reserved for errors.
@@ -279,17 +270,8 @@ pub mod field_descriptor_proto {
             }
         }
     }
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Label {
         /// 0 is reserved for errors
@@ -561,17 +543,8 @@ pub struct FileOptions {
 /// Nested message and enum types in `FileOptions`.
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
@@ -750,17 +723,8 @@ pub struct FieldOptions {
 }
 /// Nested message and enum types in `FieldOptions`.
 pub mod field_options {
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum CType {
         /// Default mode.
@@ -790,17 +754,8 @@ pub mod field_options {
             }
         }
     }
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum JsType {
         /// Use the default type.
@@ -908,17 +863,8 @@ pub mod method_options {
     /// Is this method side-effect-free (or safe in HTTP parlance), or idempotent,
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum IdempotencyLevel {
         IdempotencyUnknown = 0,
@@ -1374,17 +1320,8 @@ pub struct Field {
 /// Nested message and enum types in `Field`.
 pub mod field {
     /// Basic field types.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Kind {
         /// Field type unknown.
@@ -1481,17 +1418,8 @@ pub mod field {
         }
     }
     /// Whether a field is optional, required, or repeated.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Cardinality {
         /// For fields with unknown cardinality.
@@ -1581,7 +1509,8 @@ pub struct Option {
     pub value: ::core::option::Option<Any>,
 }
 /// The syntax in which a protocol buffer element is defined.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Syntax {
     /// Syntax `proto2`.
@@ -2169,7 +2098,8 @@ pub struct ListValue {
 /// `Value` type union.
 ///
 /// The JSON representation for `NullValue` is JSON `null`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum NullValue {
     /// Null value.
