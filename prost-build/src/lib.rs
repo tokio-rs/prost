@@ -142,6 +142,9 @@ pub use crate::ast::{Comments, Method, Service};
 mod collections;
 pub(crate) use collections::{BytesType, MapType};
 
+mod fully_qualified_name;
+pub(crate) use fully_qualified_name::FullyQualifiedName;
+
 mod code_generator;
 mod extern_paths;
 mod ident;
@@ -409,11 +412,7 @@ mod tests {
         let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
             .replace("\r\n", "\n");
         let content = read_all_content(&out_file).replace("\r\n", "\n");
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
-        );
+        pretty_assertions::assert_eq!(expected_content, content,);
     }
 
     #[test]
@@ -499,11 +498,7 @@ mod tests {
             read_all_content("src/fixtures/field_attributes/_expected_field_attributes.rs")
                 .replace("\r\n", "\n");
 
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
-        );
+        pretty_assertions::assert_eq!(expected_content, content,);
     }
 
     #[test]

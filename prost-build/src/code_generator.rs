@@ -18,7 +18,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel, to_upper_camel_syn};
 use crate::message_graph::MessageGraph;
-use crate::Config;
+use crate::{Config, FullyQualifiedName};
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
@@ -124,7 +124,8 @@ impl<'a> CodeGenerator<'a> {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
-        let fq_message_name = self.fq_name(&message_name);
+        let fq_message_name =
+            FullyQualifiedName::new(&self.package, &self.type_path, &message_name);
 
         // Skip external types.
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
@@ -151,9 +152,13 @@ impl<'a> CodeGenerator<'a> {
                     let value = nested_type.field[1].clone();
                     assert_eq!("key", key.name());
                     assert_eq!("value", value.name());
-
-                    let name = format!("{}.{}", &fq_message_name, nested_type.name());
-                    Either::Right((name, (key, value)))
+                    Either::Right((
+                        fq_message_name
+                            .join(nested_type.name())
+                            .as_ref()
+                            .to_string(),
+                        (key, value),
+                    ))
                 } else {
                     Either::Left((nested_type, idx))
                 }
@@ -268,32 +273,29 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_type_name(&mut self, message_name: &str, fq_message_name: &str) {
+    fn append_type_name(&mut self, message_name: &str, fq_message_name: &FullyQualifiedName) {
         self.buf.push_str(&{
             let name_path = self.prost_type_path("Name");
             let message_name_syn = to_upper_camel_syn(message_name);
             let package_name = &self.package;
             let string_path = self.prost_type_path("alloc::string::String");
-            let full_name = format!(
-                "{}{}{}{}{message_name}",
-                self.package.trim_matches('.'),
-                if self.package.is_empty() { "" } else { "." },
-                self.type_path.join("."),
-                if self.type_path.is_empty() { "" } else { "." },
-            );
+            let fully_qualified_name =
+                FullyQualifiedName::new(&self.package, &self.type_path, message_name);
             let domain_name = self
                 .config
                 .type_name_domains
-                .get_first(fq_message_name)
+                .get_first(fq_message_name.as_ref())
                 .map_or("", |name| name.as_str());
-            let type_url = format!("{}/{}", domain_name, full_name);
+
+            let fq_name_str = fully_qualified_name.as_ref().trim_start_matches('.');
+            let type_url = format!("{}/{}", domain_name, fq_name_str);
 
             quote! {
                 impl #name_path for #message_name_syn {
                     const NAME: &'static str = #message_name;
                     const PACKAGE: &'static str = #package_name;
 
-                    fn full_name() -> #string_path { #full_name.into() }
+                    fn full_name() -> #string_path { #fq_name_str.into() }
                     fn type_url() -> #string_path { #type_url.into() }
                 }
             }
@@ -301,11 +303,10 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
-    fn append_message_attributes(&mut self, fq_message_name: &str) {
-        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+    fn append_message_attributes(&mut self, fq_message_name: &FullyQualifiedName) {
         self.buf.push_str(&{
-            let type_attributes = self.config.type_attributes.get(fq_message_name);
-            let message_attributes = self.config.message_attributes.get(fq_message_name);
+            let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
+            let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
             quote! {
                 #(#(#type_attributes)*)*
                 #(#(#message_attributes)*)*
@@ -314,11 +315,10 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
-    fn append_enum_attributes(&mut self, fq_message_name: &str) {
-        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+    fn append_enum_attributes(&mut self, fq_message_name: &FullyQualifiedName) {
         let str = {
-            let type_attributes = self.config.type_attributes.get(fq_message_name);
-            let enum_attributes = self.config.enum_attributes.get(fq_message_name);
+            let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
+            let enum_attributes = self.config.enum_attributes.get(fq_message_name.as_ref());
             quote! {
                 #(#(#type_attributes)*)*
                 #(#(#enum_attributes)*)*
@@ -328,25 +328,28 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&str);
     }
 
-    fn should_skip_debug(&self, fq_message_name: &str) -> bool {
-        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-        self.config.skip_debug.get(fq_message_name).next().is_some()
+    fn should_skip_debug(&self, fq_message_name: &FullyQualifiedName) -> bool {
+        self.config
+            .skip_debug
+            .get(fq_message_name.as_ref())
+            .next()
+            .is_some()
     }
 
-    fn append_skip_debug(&mut self, fq_message_name: &str) {
+    fn append_skip_debug(&mut self, fq_message_name: &FullyQualifiedName) {
         if self.should_skip_debug(fq_message_name) {
             self.buf
                 .push_str(&quote! { #[prost(skip_debug)] }.to_string());
         }
     }
 
-    fn append_field_attributes(&mut self, fq_message_name: &str, field_name: &str) {
-        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
-
-        let field_attributes = self
-            .config
-            .field_attributes
-            .get_field(fq_message_name, field_name);
+    fn append_field_attributes(
+        &mut self,
+        fully_qualified_name: &FullyQualifiedName,
+        field_name: &str,
+    ) {
+        let fq_str = fully_qualified_name.as_ref();
+        let field_attributes = self.config.field_attributes.get_field(fq_str, field_name);
 
         self.buf.push_str(
             &quote! {
@@ -356,7 +359,7 @@ impl<'a> CodeGenerator<'a> {
         )
     }
 
-    fn append_field(&mut self, fq_message_name: &str, field: FieldDescriptorProto) {
+    fn append_field(&mut self, fq_message_name: &FullyQualifiedName, field: FieldDescriptorProto) {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
@@ -366,7 +369,7 @@ impl<'a> CodeGenerator<'a> {
             && ((type_ == Type::Message || type_ == Type::Group)
                 && self
                     .message_graph
-                    .is_nested(field.type_name(), fq_message_name))
+                    .is_nested(field.type_name(), fq_message_name.as_ref()))
             || (self
                 .config
                 .boxed
@@ -492,7 +495,7 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_map_field(
         &mut self,
-        fq_message_name: &str,
+        fq_message_name: &FullyQualifiedName,
         field: FieldDescriptorProto,
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
@@ -538,7 +541,7 @@ impl<'a> CodeGenerator<'a> {
     fn append_oneof_field(
         &mut self,
         message_name: &str,
-        fq_message_name: &str,
+        fq_message_name: &FullyQualifiedName,
         oneof: &OneofDescriptorProto,
         fields: &[(FieldDescriptorProto, usize)],
     ) {
@@ -563,7 +566,7 @@ impl<'a> CodeGenerator<'a> {
 
     fn append_oneof(
         &mut self,
-        fq_message_name: &str,
+        fq_message_name: &FullyQualifiedName,
         oneof: OneofDescriptorProto,
         idx: i32,
         fields: Vec<(FieldDescriptorProto, usize)>,
@@ -574,7 +577,7 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
         self.path.pop();
 
-        let oneof_name = format!("{}.{}", fq_message_name, oneof.name());
+        let oneof_name = fq_message_name.join(oneof.name());
         self.append_enum_attributes(&oneof_name);
         self.buf.push_str(&{
             let one_of_path = self.prost_type_path("Oneof");
@@ -610,7 +613,7 @@ impl<'a> CodeGenerator<'a> {
             let boxed = ((type_ == Type::Message || type_ == Type::Group)
                 && self
                     .message_graph
-                    .is_nested(field.type_name(), fq_message_name))
+                    .is_nested(field.type_name(), fq_message_name.as_ref()))
                 || (self
                     .config
                     .boxed
@@ -644,11 +647,11 @@ impl<'a> CodeGenerator<'a> {
         Some(Comments::from_location(&source_info.location[idx]))
     }
 
-    fn append_doc(&mut self, fq_name: &str, field_name: Option<&str>) {
+    fn append_doc(&mut self, fq_name: &FullyQualifiedName, field_name: Option<&str>) {
         let disable_comments = &self.config.disable_comments;
         let append_doc = match field_name {
             Some(field_name) => disable_comments.get_first_field(fq_name, field_name),
-            None => disable_comments.get(fq_name).next(),
+            None => disable_comments.get(fq_name.as_ref()).next(),
         }
         .is_none();
 
@@ -665,7 +668,8 @@ impl<'a> CodeGenerator<'a> {
         let proto_enum_name = desc.name();
         let enum_name = to_upper_camel(proto_enum_name);
 
-        let fq_proto_enum_name = self.fq_name(proto_enum_name);
+        let fq_proto_enum_name =
+            FullyQualifiedName::new(&self.package, &self.type_path, proto_enum_name);
 
         if self
             .extern_paths
@@ -784,8 +788,10 @@ impl<'a> CodeGenerator<'a> {
                 let name = method.name.take().unwrap();
                 let input_proto_type = method.input_type.take().unwrap();
                 let output_proto_type = method.output_type.take().unwrap();
-                let input_type = self.resolve_ident(&input_proto_type);
-                let output_type = self.resolve_ident(&output_proto_type);
+                let input_type =
+                    self.resolve_ident(&FullyQualifiedName::from_type_name(&input_proto_type));
+                let output_type =
+                    self.resolve_ident(&FullyQualifiedName::from_type_name(&output_proto_type));
                 let client_streaming = method.client_streaming();
                 let server_streaming = method.server_streaming();
 
@@ -819,7 +825,11 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+    fn resolve_type(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &FullyQualifiedName,
+    ) -> String {
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -837,14 +847,13 @@ impl<'a> CodeGenerator<'a> {
                 .unwrap_or_default()
                 .rust_type()
                 .to_owned(),
-            Type::Group | Type::Message => self.resolve_ident(field.type_name()),
+            Type::Group | Type::Message => {
+                self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
+            }
         }
     }
 
-    fn resolve_ident(&self, pb_ident: &str) -> String {
-        // protoc should always give fully qualified identifiers.
-        assert_eq!(".", &pb_ident[..1]);
-
+    fn resolve_ident(&self, pb_ident: &FullyQualifiedName) -> String {
         if let Some(proto_ident) = self.extern_paths.resolve_ident(pb_ident) {
             return proto_ident;
         }
@@ -862,7 +871,7 @@ impl<'a> CodeGenerator<'a> {
             local_path.next();
         }
 
-        let mut ident_path = pb_ident[1..].split('.');
+        let mut ident_path = pb_ident.path_iterator();
         let ident_type = ident_path.next_back().unwrap();
         let mut ident_path = ident_path.peekable();
 
@@ -900,7 +909,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
                 "enumeration={:?}",
-                self.resolve_ident(field.type_name())
+                self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
             )),
         }
     }
@@ -909,7 +918,7 @@ impl<'a> CodeGenerator<'a> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
-                self.resolve_ident(field.type_name())
+                self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
             )),
             _ => self.field_type_tag(field),
         }
@@ -928,18 +937,6 @@ impl<'a> CodeGenerator<'a> {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
-    }
-
-    /// Returns the fully-qualified name, starting with a dot
-    fn fq_name(&self, message_name: &str) -> String {
-        format!(
-            "{}{}{}{}.{}",
-            if self.package.is_empty() { "" } else { "." },
-            self.package.trim_matches('.'),
-            if self.type_path.is_empty() { "" } else { "." },
-            self.type_path.join("."),
-            message_name,
-        )
     }
 
     fn resolve_prost_path(&self) -> &str {
