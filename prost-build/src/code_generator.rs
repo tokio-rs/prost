@@ -576,16 +576,18 @@ impl<'a> CodeGenerator<'a> {
     ) {
         self.path.push(8);
         self.path.push(idx);
-        self.append_doc(fq_message_name, None);
+        let documentation = self.resolve_docs(fq_message_name, None);
         self.path.pop();
         self.path.pop();
 
         let oneof_name = fq_message_name.join(oneof.name());
         let enum_attributes = self.resolve_enum_attributes(&oneof_name);
         let maybe_skip_debug = self.resolve_skip_debug(fq_message_name);
+
         self.buf.push_str(&{
             let one_of_path = self.prost_type_path("Oneof");
             quote! {
+                #(#documentation)*
                 #enum_attributes
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #one_of_path)]
