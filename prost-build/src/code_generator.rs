@@ -583,6 +583,8 @@ impl<'a> CodeGenerator<'a> {
         let oneof_name = fq_message_name.join(oneof.name());
         let enum_attributes = self.resolve_enum_attributes(&oneof_name);
         let maybe_skip_debug = self.resolve_skip_debug(fq_message_name);
+        let enum_name = to_syn_ident(&to_upper_camel(oneof.name()));
+        let variants = self.oneof_variants(&fields, fq_message_name, &oneof_name);
 
         self.buf.push_str(&{
             let one_of_path = self.prost_type_path("Oneof");
@@ -592,31 +594,35 @@ impl<'a> CodeGenerator<'a> {
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #one_of_path)]
                 #maybe_skip_debug
+                pub enum #enum_name {
+                    #(#variants,)*
+                }
             }
             .to_string()
         });
+    }
 
-        self.buf.push_str("pub enum ");
-        self.buf.push_str(&to_upper_camel(oneof.name()));
-        self.buf.push_str(" {\n");
+    fn oneof_variants(
+        &mut self,
+        fields: &[(FieldDescriptorProto, usize)],
+        fq_message_name: &FullyQualifiedName,
+        oneof_name: &FullyQualifiedName,
+    ) -> Vec<TokenStream> {
+        let mut variants = Vec::with_capacity(fields.len());
 
         self.path.push(2);
         for (field, idx) in fields {
             let type_ = field.r#type();
 
-            self.path.push(idx as i32);
-            self.append_doc(fq_message_name, Some(field.name()));
+            self.path.push((*idx).try_into().expect("idx overflow"));
+            let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
             self.path.pop();
 
-            let ty_tag = self.field_type_tag(&field);
-            self.buf.push_str(&format!(
-                "#[prost({}, tag=\"{}\")]\n",
-                ty_tag,
-                field.number()
-            ));
-            self.append_field_attributes(&oneof_name, field.name());
+            let ty_tag = syn::parse_str::<syn::Meta>(&self.field_type_tag(field))
+                .expect("unable to parse meta");
+            let field_attributes = self.resolve_field_attributes(oneof_name, field.name());
 
-            let ty = self.resolve_type(&field, fq_message_name);
+            let ty = self.resolve_type(field, fq_message_name);
 
             let boxed = ((type_ == Type::Message || type_ == Type::Group)
                 && self
@@ -625,7 +631,7 @@ impl<'a> CodeGenerator<'a> {
                 || (self
                     .config
                     .boxed
-                    .get_first_field(&oneof_name, field.name())
+                    .get_first_field(oneof_name, field.name())
                     .is_some());
 
             debug!(
@@ -635,15 +641,28 @@ impl<'a> CodeGenerator<'a> {
                 boxed
             );
 
-            let field_name = to_upper_camel(field.name());
-            self.buf.push_str(&match boxed {
-                true => format!("{}(::prost::alloc::boxed::Box<{}>),\n", field_name, ty),
-                false => format!("{}({}),\n", field_name, ty),
+            let field_name = to_syn_ident(&to_upper_camel(field.name()));
+            let type_path = syn::parse_str::<syn::Path>(&ty).expect("unable to parse type path");
+            let enum_variant = match boxed {
+                true => quote! {
+                    #field_name(::prost::alloc::boxed::Box<#type_path>)
+                },
+                false => quote! {
+                    #field_name(#type_path)
+                },
+            };
+
+            let field_number_string = field.number().to_string();
+            variants.push(quote! {
+                 #(#documentation)*
+                 #[prost(#ty_tag, tag=#field_number_string)]
+                 #field_attributes
+                 #enum_variant
             });
         }
         self.path.pop();
 
-        self.buf.push_str("}\n");
+        variants
     }
 
     fn comments_from_location(&self) -> Option<Comments> {
