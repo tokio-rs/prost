@@ -612,8 +612,6 @@ impl<'a> CodeGenerator<'a> {
 
         self.path.push(2);
         for (field, idx) in fields {
-            let type_ = field.r#type();
-
             self.path.push((*idx).try_into().expect("idx overflow"));
             let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
             self.path.pop();
@@ -622,9 +620,9 @@ impl<'a> CodeGenerator<'a> {
                 .expect("unable to parse meta");
             let field_attributes = self.resolve_field_attributes(oneof_name, field.name());
 
-            let ty = self.resolve_type(field, fq_message_name);
+            let rust_type = self.resolve_type(field, fq_message_name);
 
-            let boxed = (matches!(type_, Type::Message | Type::Group)
+            let boxed = (matches!(field.r#type(), Type::Message | Type::Group)
                 && self
                     .message_graph
                     .is_nested(field.type_name(), fq_message_name.as_ref()))
@@ -635,14 +633,15 @@ impl<'a> CodeGenerator<'a> {
                     .is_some());
 
             debug!(
-                "    oneof: {:?}, type: {:?}, boxed: {}",
+                "    oneof: {}, type: {}, boxed: {}",
                 field.name(),
-                ty,
+                rust_type,
                 boxed
             );
 
             let field_name = to_syn_ident(&to_upper_camel(field.name()));
-            let type_path = syn::parse_str::<syn::Path>(&ty).expect("unable to parse type path");
+            let type_path =
+                syn::parse_str::<syn::Path>(&rust_type).expect("unable to parse type path");
             let enum_variant = match boxed {
                 true => quote! {
                     #field_name(::prost::alloc::boxed::Box<#type_path>)
