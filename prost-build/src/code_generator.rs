@@ -179,12 +179,15 @@ impl<'a> CodeGenerator<'a> {
             });
 
         self.append_doc(&fq_message_name, None);
-        self.append_message_attributes(&fq_message_name);
 
+        let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
+        let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
         let prost_path = self.prost_type_path("Message");
         let maybe_skip_debug = self.resolve_skip_debug(&fq_message_name);
         self.buf.push_str(&{
             quote! {
+                #(#(#type_attributes)*)*
+                #(#(#message_attributes)*)*
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #prost_path)]
                 #maybe_skip_debug
@@ -302,18 +305,6 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
-    fn append_message_attributes(&mut self, fq_message_name: &FullyQualifiedName) {
-        self.buf.push_str(&{
-            let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
-            let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
-            quote! {
-                #(#(#type_attributes)*)*
-                #(#(#message_attributes)*)*
-            }
-            .to_string()
-        });
-    }
-
     fn resolve_enum_attributes(&self, fq_message_name: &FullyQualifiedName) -> TokenStream {
         let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
         let enum_attributes = self.config.enum_attributes.get(fq_message_name.as_ref());
@@ -331,7 +322,7 @@ impl<'a> CodeGenerator<'a> {
             .is_some()
     }
 
-    fn resolve_skip_debug(&mut self, fq_message_name: &FullyQualifiedName) -> Option<TokenStream> {
+    fn resolve_skip_debug(&self, fq_message_name: &FullyQualifiedName) -> Option<TokenStream> {
         self.should_skip_debug(fq_message_name)
             .then_some(quote! { #[prost(skip_debug)] })
     }
