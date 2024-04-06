@@ -618,40 +618,41 @@ impl<'a> CodeGenerator<'a> {
 
             let ty_tag = syn::parse_str::<syn::Meta>(&self.field_type_tag(field))
                 .expect("unable to parse meta");
+            let field_number_string = field.number().to_string();
             let field_attributes = self.resolve_field_attributes(oneof_name, field.name());
+            let enum_variant = {
+                let rust_type = self.resolve_type(field, fq_message_name);
+                let type_path =
+                    syn::parse_str::<syn::Path>(&rust_type).expect("unable to parse type path");
+                let field_name = to_syn_ident(&to_upper_camel(field.name()));
 
-            let rust_type = self.resolve_type(field, fq_message_name);
+                let boxed = (matches!(field.r#type(), Type::Message | Type::Group)
+                    && self
+                        .message_graph
+                        .is_nested(field.type_name(), fq_message_name.as_ref()))
+                    || (self
+                        .config
+                        .boxed
+                        .get_first_field(oneof_name, field.name())
+                        .is_some());
 
-            let boxed = (matches!(field.r#type(), Type::Message | Type::Group)
-                && self
-                    .message_graph
-                    .is_nested(field.type_name(), fq_message_name.as_ref()))
-                || (self
-                    .config
-                    .boxed
-                    .get_first_field(oneof_name, field.name())
-                    .is_some());
+                debug!(
+                    "    oneof: {}, type: {}, boxed: {}",
+                    field.name(),
+                    rust_type,
+                    boxed
+                );
 
-            debug!(
-                "    oneof: {}, type: {}, boxed: {}",
-                field.name(),
-                rust_type,
-                boxed
-            );
-
-            let field_name = to_syn_ident(&to_upper_camel(field.name()));
-            let type_path =
-                syn::parse_str::<syn::Path>(&rust_type).expect("unable to parse type path");
-            let enum_variant = match boxed {
-                true => quote! {
-                    #field_name(::prost::alloc::boxed::Box<#type_path>)
-                },
-                false => quote! {
-                    #field_name(#type_path)
-                },
+                match boxed {
+                    true => quote! {
+                        #field_name(::prost::alloc::boxed::Box<#type_path>)
+                    },
+                    false => quote! {
+                        #field_name(#type_path)
+                    },
+                }
             };
 
-            let field_number_string = field.number().to_string();
             variants.push(quote! {
                  #(#documentation)*
                  #[prost(#ty_tag, tag=#field_number_string)]
