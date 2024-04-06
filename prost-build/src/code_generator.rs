@@ -624,7 +624,7 @@ impl<'a> CodeGenerator<'a> {
 
             let ty = self.resolve_type(field, fq_message_name);
 
-            let boxed = ((type_ == Type::Message || type_ == Type::Group)
+            let boxed = (matches!(type_, Type::Message | Type::Group)
                 && self
                     .message_graph
                     .is_nested(field.type_name(), fq_message_name.as_ref()))
