@@ -359,16 +359,7 @@ impl<'a> CodeGenerator<'a> {
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field, fq_message_name);
 
-        let boxed = !repeated
-            && ((type_ == Type::Message || type_ == Type::Group)
-                && self
-                    .message_graph
-                    .is_nested(field.type_name(), fq_message_name.as_ref()))
-            || (self
-                .config
-                .boxed
-                .get_first_field(fq_message_name, field.name())
-                .is_some());
+        let boxed = !repeated && self.should_box_field(&field, fq_message_name, fq_message_name);
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -617,15 +608,7 @@ impl<'a> CodeGenerator<'a> {
                     syn::parse_str::<syn::Path>(&rust_type).expect("unable to parse type path");
                 let field_name = to_syn_ident(&to_upper_camel(field.name()));
 
-                let boxed = (matches!(field.r#type(), Type::Message | Type::Group)
-                    && self
-                        .message_graph
-                        .is_nested(field.type_name(), fq_message_name.as_ref()))
-                    || (self
-                        .config
-                        .boxed
-                        .get_first_field(oneof_name, field.name())
-                        .is_some());
+                let boxed = self.should_box_field(field, fq_message_name, oneof_name);
 
                 debug!(
                     "    oneof: {}, type: {}, boxed: {}",
@@ -670,6 +653,23 @@ impl<'a> CodeGenerator<'a> {
         for doc in self.resolve_docs(fq_name, field_name) {
             self.buf.push_str(&doc.to_token_stream().to_string());
         }
+    }
+
+    fn should_box_field(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &FullyQualifiedName,
+        first_field: &FullyQualifiedName,
+    ) -> bool {
+        ((matches!(field.r#type(), Type::Message | Type::Group))
+            && self
+                .message_graph
+                .is_nested(field.type_name(), fq_message_name.as_ref()))
+            || (self
+                .config
+                .boxed
+                .get_first_field(first_field, field.name())
+                .is_some())
     }
 
     fn resolve_docs(
