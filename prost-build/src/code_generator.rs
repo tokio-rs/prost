@@ -353,12 +353,12 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
+    // TEMP: return token stream
     fn append_field(&mut self, fq_message_name: &FullyQualifiedName, field: FieldDescriptorProto) {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
         let ty = self.resolve_type(&field, fq_message_name);
-
         let boxed = !repeated && self.should_box_field(&field, fq_message_name, fq_message_name);
 
         debug!(
@@ -368,7 +368,13 @@ impl<'a> CodeGenerator<'a> {
             boxed
         );
 
-        self.append_doc(fq_message_name, Some(field.name()));
+        let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
+        self.buf.push_str(&{
+            quote! {
+                #(#documentation)*
+            }
+            .to_string()
+        });
 
         if field
             .options
@@ -655,13 +661,6 @@ impl<'a> CodeGenerator<'a> {
             .binary_search_by_key(&&self.path[..], |location| &location.path[..])
             .unwrap();
         Some(Comments::from_location(&source_info.location[idx]))
-    }
-
-    // TEMP: deprecate
-    fn append_doc(&mut self, fq_name: &FullyQualifiedName, field_name: Option<&str>) {
-        for doc in self.resolve_docs(fq_name, field_name) {
-            self.buf.push_str(&doc.to_token_stream().to_string());
-        }
     }
 
     fn should_box_field(
