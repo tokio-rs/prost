@@ -394,7 +394,7 @@ impl<'a> CodeGenerator<'a> {
                 .copied()
                 .unwrap_or_default();
             self.buf
-                .push_str(&format!("={:?}", bytes_type.annotation()));
+                .push_str(&format!("=\"{}\"", bytes_type.annotation()));
         }
 
         match field.label() {
@@ -963,7 +963,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
-                "enumeration={:?}",
+                "enumeration=\"{}\"",
                 self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
             )),
         }
