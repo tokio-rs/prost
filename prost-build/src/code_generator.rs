@@ -530,6 +530,7 @@ impl<'a> CodeGenerator<'a> {
         });
     }
 
+    // TEMP: return token stream instead
     fn append_oneof_field(
         &mut self,
         message_name: &str,
@@ -537,23 +538,25 @@ impl<'a> CodeGenerator<'a> {
         oneof: &OneofDescriptorProto,
         fields: &[(FieldDescriptorProto, usize)],
     ) {
-        let name = format!(
+        let documentation = self.resolve_docs(fq_message_name, None);
+        let oneof_name = format!(
             "{}::{}",
             to_snake(message_name),
             to_upper_camel(oneof.name())
         );
-        self.append_doc(fq_message_name, None);
-        self.buf.push_str(&format!(
-            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
-            name,
-            fields.iter().map(|(field, _)| field.number()).join(", ")
-        ));
-        self.append_field_attributes(fq_message_name, oneof.name());
-        self.buf.push_str(&format!(
-            "pub {}: ::core::option::Option<{}>,\n",
-            to_snake(oneof.name()),
-            name
-        ));
+        let tags = fields.iter().map(|(field, _)| field.number()).join(", ");
+        let field_attributes = self.resolve_field_attributes(fq_message_name, oneof.name());
+        let field_name = to_syn_ident(&to_snake(oneof.name()));
+        let oneof_type_name = to_syn_type_path(&oneof_name);
+        self.buf.push_str(&{
+            quote! {
+                #(#documentation)*
+                #[prost(oneof=#oneof_name, tags=#tags)]
+                #field_attributes
+                pub #field_name: ::core::option::Option<#oneof_type_name>,
+            }
+            .to_string()
+        });
     }
 
     fn append_oneof(
