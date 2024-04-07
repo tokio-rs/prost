@@ -18,7 +18,7 @@ use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{strip_enum_prefix, to_snake, to_syn_ident, to_upper_camel};
+use crate::ident::{strip_enum_prefix, to_snake, to_syn_ident, to_syn_type_path, to_upper_camel};
 use crate::message_graph::MessageGraph;
 use crate::{Config, FullyQualifiedName};
 
@@ -478,6 +478,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(",\n");
     }
 
+    // TEMP: return token stream instead
     fn append_map_field(
         &mut self,
         fq_message_name: &FullyQualifiedName,
@@ -512,23 +513,21 @@ impl<'a> CodeGenerator<'a> {
         ))
         .expect("unable to parse meta name value");
         let field_number_string = field.number().to_string();
+        let field_attributes = self.resolve_field_attributes(fq_message_name, field.name());
+        let field_name_syn = to_syn_ident(&to_snake(field.name()));
+        let map_rust_type = to_syn_type_path(map_type.rust_type());
+        let key_rust_type = to_syn_type_path(&key_ty);
+        let value_rust_type = to_syn_type_path(&value_ty);
 
         self.buf.push_str(&{
             quote! {
                 #(#documentation)*
                 #[prost(#meta_name_value, tag=#field_number_string)]
+                #field_attributes
+                pub #field_name_syn: #map_rust_type<#key_rust_type, #value_rust_type>,
             }
             .to_string()
         });
-
-        self.append_field_attributes(fq_message_name, field.name());
-        self.buf.push_str(&format!(
-            "pub {}: {}<{}, {}>,\n",
-            to_snake(field.name()),
-            map_type.rust_type(),
-            key_ty,
-            value_ty
-        ));
     }
 
     fn append_oneof_field(
@@ -612,8 +611,7 @@ impl<'a> CodeGenerator<'a> {
             let field_attributes = self.resolve_field_attributes(oneof_name, field.name());
             let enum_variant = {
                 let rust_type = self.resolve_type(field, fq_message_name);
-                let type_path =
-                    syn::parse_str::<syn::Path>(&rust_type).expect("unable to parse type path");
+                let type_path = to_syn_type_path(&rust_type);
                 let field_name = to_syn_ident(&to_upper_camel(field.name()));
 
                 let boxed = self.should_box_field(field, fq_message_name, oneof_name);

@@ -71,6 +71,10 @@ pub fn to_syn_ident(s: &str) -> syn::Ident {
     syn::parse_str(s).expect("unable to parse identifier")
 }
 
+pub fn to_syn_type_path(s: &str) -> syn::Type {
+    syn::parse_str(s).expect("unable to parse type path")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
