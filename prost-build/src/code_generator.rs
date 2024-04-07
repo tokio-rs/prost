@@ -495,8 +495,7 @@ impl<'a> CodeGenerator<'a> {
             value_ty
         );
 
-        self.append_doc(fq_message_name, Some(field.name()));
-
+        let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
         let map_type = self
             .config
             .map_type
@@ -505,14 +504,23 @@ impl<'a> CodeGenerator<'a> {
             .unwrap_or_default();
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
-
-        self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+        let meta_name_value = syn::parse_str::<syn::MetaNameValue>(&format!(
+            "{}=\"{}, {}\"",
             map_type.annotation(),
             key_tag,
-            value_tag,
-            field.number()
-        ));
+            value_tag
+        ))
+        .expect("unable to parse meta name value");
+        let field_number_string = field.number().to_string();
+
+        self.buf.push_str(&{
+            quote! {
+                #(#documentation)*
+                #[prost(#meta_name_value, tag=#field_number_string)]
+            }
+            .to_string()
+        });
+
         self.append_field_attributes(fq_message_name, field.name());
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",
