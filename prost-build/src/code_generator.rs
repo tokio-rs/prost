@@ -369,21 +369,19 @@ impl<'a> CodeGenerator<'a> {
         );
 
         let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
+        let maybe_deprecated = field
+            .options
+            .as_ref()
+            .is_some_and(FieldOptions::deprecated)
+            .then_some(quote! { #[deprecated] });
+
         self.buf.push_str(&{
             quote! {
                 #(#documentation)*
+                #maybe_deprecated
             }
             .to_string()
         });
-
-        if field
-            .options
-            .as_ref()
-            .map(FieldOptions::deprecated)
-            .unwrap_or_default()
-        {
-            self.buf.push_str("#[deprecated]\n");
-        }
 
         self.buf.push_str("#[prost(");
         self.buf.push_str(&self.field_type_tag(&field));
