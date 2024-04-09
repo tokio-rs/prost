@@ -16,7 +16,7 @@ use prost_types::{
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{to_snake, to_upper_camel};
+use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
 use crate::{BytesType, Config, MapType};
 
@@ -1187,31 +1187,6 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
     dst
 }
 
-/// Strip an enum's type name from the prefix of an enum value.
-///
-/// This function assumes that both have been formatted to Rust's
-/// upper camel case naming conventions.
-///
-/// It also tries to handle cases where the stripped name would be
-/// invalid - for example, if it were to begin with a number.
-fn strip_enum_prefix(prefix: &str, name: &str) -> String {
-    let stripped = name.strip_prefix(prefix).unwrap_or(name);
-
-    // If the next character after the stripped prefix is not
-    // uppercase, then it means that we didn't have a true prefix -
-    // for example, "Foo" should not be stripped from "Foobar".
-    if stripped
-        .chars()
-        .next()
-        .map(char::is_uppercase)
-        .unwrap_or(false)
-    {
-        stripped.to_owned()
-    } else {
-        name.to_owned()
-    }
-}
-
 struct EnumVariantMapping<'a> {
     path_idx: usize,
     proto_name: &'a str,
@@ -1322,14 +1297,5 @@ mod tests {
     #[should_panic(expected = "incomplete hex value")]
     fn test_unescape_c_escape_string_incomplete_hex_value() {
         unescape_c_escape_string(r#"\x1"#);
-    }
-
-    #[test]
-    fn test_strip_enum_prefix() {
-        assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
-        assert_eq!(strip_enum_prefix("Foo", "Foobar"), "Foobar");
-        assert_eq!(strip_enum_prefix("Foo", "Foo"), "Foo");
-        assert_eq!(strip_enum_prefix("Foo", "Bar"), "Bar");
-        assert_eq!(strip_enum_prefix("Foo", "Foo1"), "Foo1");
     }
 }
