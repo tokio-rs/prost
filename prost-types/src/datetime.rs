@@ -567,10 +567,7 @@ pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
         (seconds, nanos as i32)
     };
 
-    Some(Duration {
-        seconds,
-        nanos: nanos as i32,
-    })
+    Some(Duration { seconds, nanos })
 }
 
 impl From<DateTime> for Timestamp {

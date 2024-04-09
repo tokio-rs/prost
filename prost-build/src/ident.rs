@@ -68,9 +68,6 @@ pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-
-    #![allow(clippy::cognitive_complexity)]
-
     use super::*;
 
     #[test]

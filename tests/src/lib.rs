@@ -140,6 +140,7 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
 use anyhow::anyhow;
@@ -280,11 +281,10 @@ where
 #[cfg(test)]
 mod tests {
 
-    use alloc::borrow::ToOwned;
-    use alloc::boxed::Box;
     use alloc::collections::{BTreeMap, BTreeSet};
-    use alloc::string::ToString;
     use alloc::vec;
+    #[cfg(not(feature = "std"))]
+    use alloc::{borrow::ToOwned, boxed::Box, string::ToString};
 
     use super::*;
 
@@ -411,10 +411,10 @@ mod tests {
     fn test_nesting() {
         use crate::nesting::{A, B};
         let _ = A {
-            a: Some(Box::new(A::default())),
+            a: Some(Box::default()),
             repeated_a: Vec::<A>::new(),
             map_a: BTreeMap::<i32, A>::new(),
-            b: Some(Box::new(B::default())),
+            b: Some(Box::default()),
             repeated_b: Vec::<B>::new(),
             map_b: BTreeMap::<i32, B>::new(),
         };
@@ -425,9 +425,9 @@ mod tests {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::nesting::A;
 
-            let mut a = Box::new(A::default());
+            let mut a = Box::<A>::default();
             for _ in 0..depth {
-                let mut next = Box::new(A::default());
+                let mut next = Box::<A>::default();
                 next.a = Some(a);
                 a = next;
             }

@@ -159,7 +159,7 @@ fn main() {
 
     prost_build::Config::new()
         .enable_type_names()
-        .type_name_domain(&[".type_names.Foo"], "tests")
+        .type_name_domain([".type_names.Foo"], "tests")
         .compile_protos(&[src.join("type_names.proto")], includes)
         .unwrap();
 
