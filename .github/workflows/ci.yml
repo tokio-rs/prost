@@ -12,7 +12,6 @@ env:
   PROTOC_VERSION: 3.20.3
 
 jobs:
-
   rustfmt:
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +20,21 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc@${{ env.PROTOC_VERSION }}
+      - name: install ninja
+        uses: ./.github/actions/setup-ninja
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --workspace --all-features --tests -- -D warnings
 
   machete:
     runs-on: ubuntu-latest

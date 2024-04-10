@@ -16,7 +16,7 @@ use prost_types::{
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{to_snake, to_upper_camel};
+use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
 use crate::{BytesType, Config, MapType};
 
@@ -44,6 +44,11 @@ fn push_indent(buf: &mut String, depth: u8) {
         buf.push_str("    ");
     }
 }
+
+fn prost_path(config: &Config) -> &str {
+    config.prost_path.as_deref().unwrap_or("::prost")
+}
+
 impl<'a> CodeGenerator<'a> {
     pub fn generate(
         config: &mut Config,
@@ -183,7 +188,7 @@ impl<'a> CodeGenerator<'a> {
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Message)]\n",
-            self.config.prost_path.as_deref().unwrap_or("::prost")
+            prost_path(self.config)
         ));
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
@@ -200,9 +205,7 @@ impl<'a> CodeGenerator<'a> {
                 .as_ref()
                 .and_then(|type_name| map_types.get(type_name))
             {
-                Some(&(ref key, ref value)) => {
-                    self.append_map_field(&fq_message_name, field, key, value)
-                }
+                Some((key, value)) => self.append_map_field(&fq_message_name, field, key, value),
                 None => self.append_field(&fq_message_name, field),
             }
             self.path.pop();
@@ -268,7 +271,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "impl {}::Name for {} {{\n",
             self.config.prost_path.as_deref().unwrap_or("::prost"),
-            to_upper_camel(&message_name)
+            to_upper_camel(message_name)
         ));
         self.depth += 1;
 
@@ -377,7 +380,7 @@ impl<'a> CodeGenerator<'a> {
             || (self
                 .config
                 .boxed
-                .get_first_field(&fq_message_name, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .is_some());
 
         debug!(
@@ -473,7 +476,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
 
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
+        let prost_path = prost_path(self.config);
 
         if repeated {
             self.buf
@@ -559,10 +562,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
             name,
-            fields
-                .iter()
-                .map(|&(ref field, _)| field.number())
-                .join(", ")
+            fields.iter().map(|(field, _)| field.number()).join(", ")
         ));
         self.append_field_attributes(fq_message_name, oneof.name());
         self.push_indent();
@@ -594,9 +594,9 @@ impl<'a> CodeGenerator<'a> {
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, PartialEq, {}::Oneof)]\n",
-            self.config.prost_path.as_deref().unwrap_or("::prost")
+            prost_path(self.config)
         ));
-        self.append_skip_debug(&fq_message_name);
+        self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.name()));
@@ -712,7 +712,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&format!(
             "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
             dbg,
-            self.config.prost_path.as_deref().unwrap_or("::prost"),
+            prost_path(self.config),
         ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
@@ -924,8 +924,6 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
-
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -934,7 +932,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", prost_path),
+            Type::String => format!("{}::alloc::string::String", prost_path(self.config)),
             Type::Bytes => self
                 .config
                 .bytes_type
@@ -1184,31 +1182,6 @@ fn unescape_c_escape_string(s: &str) -> Vec<u8> {
     dst
 }
 
-/// Strip an enum's type name from the prefix of an enum value.
-///
-/// This function assumes that both have been formatted to Rust's
-/// upper camel case naming conventions.
-///
-/// It also tries to handle cases where the stripped name would be
-/// invalid - for example, if it were to begin with a number.
-fn strip_enum_prefix(prefix: &str, name: &str) -> String {
-    let stripped = name.strip_prefix(prefix).unwrap_or(name);
-
-    // If the next character after the stripped prefix is not
-    // uppercase, then it means that we didn't have a true prefix -
-    // for example, "Foo" should not be stripped from "Foobar".
-    if stripped
-        .chars()
-        .next()
-        .map(char::is_uppercase)
-        .unwrap_or(false)
-    {
-        stripped.to_owned()
-    } else {
-        name.to_owned()
-    }
-}
-
 struct EnumVariantMapping<'a> {
     path_idx: usize,
     proto_name: &'a str,
@@ -1319,14 +1292,5 @@ mod tests {
     #[should_panic(expected = "incomplete hex value")]
     fn test_unescape_c_escape_string_incomplete_hex_value() {
         unescape_c_escape_string(r#"\x1"#);
-    }
-
-    #[test]
-    fn test_strip_enum_prefix() {
-        assert_eq!(strip_enum_prefix("Foo", "FooBar"), "Bar");
-        assert_eq!(strip_enum_prefix("Foo", "Foobar"), "Foobar");
-        assert_eq!(strip_enum_prefix("Foo", "Foo"), "Foo");
-        assert_eq!(strip_enum_prefix("Foo", "Bar"), "Bar");
-        assert_eq!(strip_enum_prefix("Foo", "Foo1"), "Foo1");
     }
 }
