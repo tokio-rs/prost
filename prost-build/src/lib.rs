@@ -1398,6 +1398,8 @@ impl Module {
         self.components.is_empty()
     }
 
+    // TODO: remove if it stays unused
+    #[allow(dead_code)]
     fn to_partial_file_name(&self, range: RangeToInclusive<usize>) -> String {
         self.components[range].join(".")
     }
@@ -1826,7 +1828,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_includes() {
+    fn write_includes() {
         let modules = [
             Module::from_protobuf_package_name("foo.bar.baz"),
             Module::from_protobuf_package_name(""),
@@ -1847,33 +1849,7 @@ mod tests {
             .default_package_filename("_.default")
             .write_includes(modules.iter().collect(), &mut buf, None, &file_names)
             .unwrap();
-        let expected = [
-            r#"include!(concat!(env!("OUT_DIR"), "/_.default.rs"));"#,
-            r#"pub mod bar {"#,
-            r#"    include!(concat!(env!("OUT_DIR"), "/bar.rs"));"#,
-            r#"}"#,
-            r#"pub mod foo {"#,
-            r#"    include!(concat!(env!("OUT_DIR"), "/foo.rs"));"#,
-            r#"    pub mod bar {"#,
-            r#"        include!(concat!(env!("OUT_DIR"), "/foo.bar.rs"));"#,
-            r#"        pub mod a {"#,
-            r#"            pub mod b {"#,
-            r#"                pub mod c {"#,
-            r#"                    include!(concat!(env!("OUT_DIR"), "/foo.bar.a.b.c.rs"));"#,
-            r#"                }"#,
-            r#"            }"#,
-            r#"        }"#,
-            r#"        pub mod baz {"#,
-            r#"            include!(concat!(env!("OUT_DIR"), "/foo.bar.baz.rs"));"#,
-            r#"        }"#,
-            r#"        pub mod qux {"#,
-            r#"            include!(concat!(env!("OUT_DIR"), "/foo.bar.qux.rs"));"#,
-            r#"        }"#,
-            r#"    }"#,
-            r#"}"#,
-            r#""#,
-        ]
-        .join("\n");
+        let expected = read_all_content("src/fixtures/write_includes/_.includes.rs");
         let actual = String::from_utf8(buf).unwrap();
         assert_eq!(expected, actual);
     }
