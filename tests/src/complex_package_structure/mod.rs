@@ -58,6 +58,6 @@ fn test_complex_package_structure() {
     {
         assert_eq!(name, "doggo.jpg");
     } else {
-        assert!(false, "Expected an image")
+        panic!("Expected an image")
     }
 }

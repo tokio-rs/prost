@@ -1849,7 +1849,8 @@ mod tests {
             .default_package_filename("_.default")
             .write_includes(modules.iter().collect(), &mut buf, None, &file_names)
             .unwrap();
-        let expected = read_all_content("src/fixtures/write_includes/_.includes.rs");
+        let expected =
+            read_all_content("src/fixtures/write_includes/_.includes.rs").replace("\r\n", "\n");
         let actual = String::from_utf8(buf).unwrap();
         assert_eq!(expected, actual);
     }
