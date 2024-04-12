@@ -14,10 +14,7 @@ prost-types = { path = "../prost-types" }
 
 [build-dependencies]
 anyhow = "1.0.1"
-curl = "0.4.13"
-flate2 = "1.0.3"
 prost-build = { path = "../prost-build" }
-tar = "0.4.15"
 tempfile = "3"
 
 # With libz-sys `1.1.8` the msrv has been bumped to 1.54. Since, this dep

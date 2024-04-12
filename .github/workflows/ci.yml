@@ -58,6 +58,8 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       - name: install toolchain (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@master
         with:
