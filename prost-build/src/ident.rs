@@ -75,6 +75,14 @@ pub fn to_syn_type_path(s: &str) -> syn::Type {
     syn::parse_str(s).expect("unable to parse type path")
 }
 
+pub fn to_syn_attribute_meta(s: &str) -> syn::Meta {
+    syn::parse_str(s).expect("unable to parse attribute meta")
+}
+
+pub fn to_syn_attribute_meta_value(s: &str) -> syn::MetaNameValue {
+    syn::parse_str(s).expect("unable to parse attribute meta name value")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

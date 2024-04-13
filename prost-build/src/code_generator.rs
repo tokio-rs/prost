@@ -18,7 +18,10 @@ use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{strip_enum_prefix, to_snake, to_syn_ident, to_syn_type_path, to_upper_camel};
+use crate::ident::{
+    strip_enum_prefix, to_snake, to_syn_attribute_meta, to_syn_attribute_meta_value, to_syn_ident,
+    to_syn_type_path, to_upper_camel,
+};
 use crate::message_graph::MessageGraph;
 use crate::{Config, FullyQualifiedName};
 
@@ -374,66 +377,54 @@ impl<'a> CodeGenerator<'a> {
             .as_ref()
             .is_some_and(FieldOptions::deprecated)
             .then_some(quote! { #[deprecated] });
+        let field_type = to_syn_attribute_meta(&match type_ {
+            Type::Bytes => {
+                let bytes_type = self
+                    .config
+                    .bytes_type
+                    .get_first_field(fq_message_name, field.name())
+                    .copied()
+                    .unwrap_or_default();
 
-        self.buf.push_str(&{
-            quote! {
-                #(#documentation)*
-                #maybe_deprecated
+                Cow::from(format!(
+                    "{}=\"{}\"",
+                    self.field_type_tag(&field),
+                    bytes_type.annotation()
+                ))
             }
-            .to_string()
+            _ => self.field_type_tag(&field),
         });
-
-        self.buf.push_str("#[prost(");
-        self.buf.push_str(&self.field_type_tag(&field));
-
-        if type_ == Type::Bytes {
-            let bytes_type = self
-                .config
-                .bytes_type
-                .get_first_field(fq_message_name, field.name())
-                .copied()
-                .unwrap_or_default();
-            self.buf
-                .push_str(&format!("=\"{}\"", bytes_type.annotation()));
-        }
-
-        match field.label() {
-            Label::Optional => {
-                if optional {
-                    self.buf.push_str(", optional");
-                }
+        let maybe_label = {
+            match field.label() {
+                Label::Optional => optional.then_some(quote! { optional, }),
+                Label::Required => Some(quote! { required, }),
+                Label::Repeated => Some(
+                    match can_pack(&field)
+                        && !field
+                            .options
+                            .as_ref()
+                            .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
+                    {
+                        true => quote! { repeated, packed="false", },
+                        false => quote! { repeated, },
+                    },
+                ),
             }
-            Label::Required => self.buf.push_str(", required"),
-            Label::Repeated => {
-                self.buf.push_str(", repeated");
-                if can_pack(&field)
-                    && !field
-                        .options
-                        .as_ref()
-                        .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
-                {
-                    self.buf.push_str(", packed=\"false\"");
-                }
-            }
-        }
-
-        if boxed {
-            self.buf.push_str(", boxed");
-        }
-        self.buf.push_str(", tag=\"");
-        self.buf.push_str(&field.number().to_string());
-
-        if let Some(ref default) = field.default_value {
-            self.buf.push_str("\", default=\"");
-            match type_ {
+        };
+        let maybe_boxed = boxed.then_some(quote! { boxed, });
+        let field_number_string = field.number().to_string();
+        let maybe_default = field.default_value.as_ref().map(|default| {
+            let default_value = match type_ {
                 Type::Bytes => {
-                    self.buf.push_str("b\\\"");
+                    let mut bytes_string = String::new();
+                    bytes_string.push_str("b\\\"");
                     for b in unescape_c_escape_string(default) {
-                        self.buf.extend(
+                        bytes_string.extend(
                             ascii::escape_default(b).flat_map(|c| (c as char).escape_default()),
                         );
                     }
-                    self.buf.push_str("\\\"");
+                    bytes_string.push_str("\\\"");
+                    bytes_string
                 }
                 Type::Enum => {
                     let mut enum_value = to_upper_camel(default);
@@ -446,15 +437,23 @@ impl<'a> CodeGenerator<'a> {
 
                         enum_value = strip_enum_prefix(&to_upper_camel(enum_type), &enum_value)
                     }
-                    self.buf.push_str(&enum_value);
-                }
-                _ => {
-                    self.buf.push_str(&default.escape_default().to_string());
-                }
-            }
-        }
 
-        self.buf.push_str("\")]\n");
+                    enum_value
+                }
+                _ => default.escape_default().to_string(),
+            };
+            to_syn_attribute_meta_value(&format!("default=\"{}\"", default_value))
+        });
+
+        self.buf.push_str(&{
+            quote! {
+                #(#documentation)*
+                #maybe_deprecated
+                #[prost(#field_type, #maybe_label #maybe_boxed tag=#field_number_string, #maybe_default)]
+            }
+            .to_string()
+        });
+
         self.append_field_attributes(fq_message_name, field.name());
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
@@ -509,13 +508,12 @@ impl<'a> CodeGenerator<'a> {
             .unwrap_or_default();
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
-        let meta_name_value = syn::parse_str::<syn::MetaNameValue>(&format!(
+        let meta_name_value = to_syn_attribute_meta_value(&format!(
             "{}=\"{}, {}\"",
             map_type.annotation(),
             key_tag,
             value_tag
-        ))
-        .expect("unable to parse meta name value");
+        ));
         let field_number_string = field.number().to_string();
         let field_attributes = self.resolve_field_attributes(fq_message_name, field.name());
         let field_name_syn = to_syn_ident(&to_snake(field.name()));
@@ -612,8 +610,7 @@ impl<'a> CodeGenerator<'a> {
             let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
             self.path.pop();
 
-            let ty_tag = syn::parse_str::<syn::Meta>(&self.field_type_tag(field))
-                .expect("unable to parse meta");
+            let ty_tag = to_syn_attribute_meta(&self.field_type_tag(field));
             let field_number_string = field.number().to_string();
             let field_attributes = self.resolve_field_attributes(oneof_name, field.name());
             let enum_variant = {
