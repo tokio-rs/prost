@@ -168,7 +168,7 @@ impl<'a> CodeGenerator<'a> {
         // Split the fields into a vector of the normal fields, and oneof fields.
         // Path indexes are preserved so that comments can be retrieved.
         type Fields = Vec<(FieldDescriptorProto, usize)>;
-        let (fields, mut oneof_fields): (Fields, OneofFields) = message
+        let (fields, oneof_fields): (Fields, OneofFields) = message
             .field
             .into_iter()
             .enumerate()
@@ -212,14 +212,37 @@ impl<'a> CodeGenerator<'a> {
             .to_string()
         });
 
-        if !message.enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
+        self.recursive_nested(
+            &message_name,
+            message.enum_type,
+            nested_types,
+            oneof_fields,
+            &message.oneof_decl,
+            &fq_message_name,
+        );
+
+        if self.config.enable_type_names {
+            self.append_type_name(&message_name, &fq_message_name);
+        }
+    }
+
+    fn recursive_nested(
+        &mut self,
+        message_name: &str,
+        enum_type: Vec<EnumDescriptorProto>,
+        nested_types: Vec<(DescriptorProto, usize)>,
+        mut oneof_fields: OneofFields,
+        oneof_declarations: &[OneofDescriptorProto],
+        fq_message_name: &FullyQualifiedName,
+    ) {
+        if !enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
             self.buf.push_str("/// Nested message and enum types in `");
-            self.buf.push_str(&message_name);
+            self.buf.push_str(message_name);
             self.buf.push_str("`.\n");
             self.buf.push_str("pub mod ");
-            self.buf.push_str(&to_snake(&message_name));
+            self.buf.push_str(&to_snake(message_name));
             self.buf.push_str(" {\n");
-            self.type_path.push(message_name.clone());
+            self.type_path.push(message_name.to_string());
 
             self.path.push(3);
             for (nested_type, idx) in nested_types {
@@ -230,29 +253,25 @@ impl<'a> CodeGenerator<'a> {
             self.path.pop();
 
             self.path.push(4);
-            for (idx, nested_enum) in message.enum_type.into_iter().enumerate() {
+            for (idx, nested_enum) in enum_type.into_iter().enumerate() {
                 self.path.push(idx as i32);
                 self.append_enum(nested_enum);
                 self.path.pop();
             }
             self.path.pop();
 
-            for (idx, oneof) in message.oneof_decl.into_iter().enumerate() {
+            for (idx, oneof) in oneof_declarations.iter().enumerate() {
                 let idx = idx as i32;
                 // optional fields create a synthetic oneof that we want to skip
                 let fields = match oneof_fields.remove(&idx) {
                     Some(fields) => fields,
                     None => continue,
                 };
-                self.append_oneof(&fq_message_name, oneof, idx, fields);
+                self.append_oneof(fq_message_name, oneof, idx, fields);
             }
 
             self.type_path.pop();
             self.buf.push_str("}\n"); // end of module
-        }
-
-        if self.config.enable_type_names {
-            self.append_type_name(&message_name, &fq_message_name);
         }
     }
 
@@ -582,7 +601,7 @@ impl<'a> CodeGenerator<'a> {
     fn append_oneof(
         &mut self,
         fq_message_name: &FullyQualifiedName,
-        oneof: OneofDescriptorProto,
+        oneof: &OneofDescriptorProto,
         idx: i32,
         fields: Vec<(FieldDescriptorProto, usize)>,
     ) {
