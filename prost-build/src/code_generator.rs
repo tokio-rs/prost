@@ -93,7 +93,9 @@ impl<'a> CodeGenerator<'a> {
         code_gen.path.push(4);
         for (idx, message) in file.message_type.into_iter().enumerate() {
             code_gen.path.push(idx as i32);
-            code_gen.append_message(message);
+            if let Some(resolved_message) = code_gen.resolve_message(message) {
+                code_gen.buf.push_str(&resolved_message.to_string());
+            }
             code_gen.path.pop();
         }
         code_gen.path.pop();
@@ -101,7 +103,9 @@ impl<'a> CodeGenerator<'a> {
         code_gen.path.push(5);
         for (idx, desc) in file.enum_type.into_iter().enumerate() {
             code_gen.path.push(idx as i32);
-            code_gen.append_enum(desc);
+            if let Some(resolved_enum) = code_gen.resolve_enum(desc) {
+                code_gen.buf.push_str(&resolved_enum.to_string());
+            }
             code_gen.path.pop();
         }
         code_gen.path.pop();
@@ -122,7 +126,7 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_message(&mut self, message: DescriptorProto) {
+    fn resolve_message(&mut self, message: DescriptorProto) -> Option<TokenStream> {
         debug!("  message: {:?}", message.name());
 
         let message_name = message.name().to_string();
@@ -131,7 +135,7 @@ impl<'a> CodeGenerator<'a> {
 
         // Skip external types.
         if self.extern_paths.resolve_ident(&fq_message_name).is_some() {
-            return;
+            return None;
         }
 
         // Split the nested message types into a vector of normal nested message types, and a map
@@ -190,29 +194,10 @@ impl<'a> CodeGenerator<'a> {
             &message_name,
             &fq_message_name,
         );
-        let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
-        let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
-        let prost_path = self.prost_type_path("Message");
-        let maybe_skip_debug = self.resolve_skip_debug(&fq_message_name);
 
         let ident = to_syn_ident(&to_upper_camel(&message_name));
-        self.buf.push_str(&{
-            quote! {
-                #(#documentation)*
-                #(#(#type_attributes)*)*
-                #(#(#message_attributes)*)*
-                #[allow(clippy::derive_partial_eq_without_eq)]
-                #[derive(Clone, PartialEq, #prost_path)]
-                #maybe_skip_debug
-                pub struct #ident {
-                    #(#resolved_fields,)*
-                    #(#resolved_oneof_fields,)*
-                }
-            }
-            .to_string()
-        });
 
-        self.recursive_nested(
+        let nested = self.recursive_nested(
             &message_name,
             message.enum_type,
             nested_types,
@@ -221,9 +206,89 @@ impl<'a> CodeGenerator<'a> {
             &fq_message_name,
         );
 
-        if self.config.enable_type_names {
-            self.append_type_name(&message_name, &fq_message_name);
+        let maybe_type_name = self
+            .config
+            .enable_type_names
+            .then_some(self.resolve_type_name(&message_name, &fq_message_name));
+
+        let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
+        let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
+
+        let prost_path = self.prost_type_path("Message");
+        let maybe_skip_debug = self.resolve_skip_debug(&fq_message_name);
+
+        Some(quote! {
+            #(#documentation)*
+            #(#(#type_attributes)*)*
+            #(#(#message_attributes)*)*
+            #[allow(clippy::derive_partial_eq_without_eq)]
+            #[derive(Clone, PartialEq, #prost_path)]
+            #maybe_skip_debug
+            pub struct #ident {
+                #(#resolved_fields,)*
+                #(#resolved_oneof_fields,)*
+            }
+
+            #nested
+
+            #maybe_type_name
+        })
+    }
+
+    fn resolve_messages(
+        &mut self,
+        nested_types: Vec<(DescriptorProto, usize)>,
+    ) -> Vec<TokenStream> {
+        let mut messages = Vec::with_capacity(nested_types.len());
+
+        self.path.push(3);
+        for (nested_type, idx) in nested_types {
+            self.path.push(idx as i32);
+            if let Some(message) = self.resolve_message(nested_type) {
+                messages.push(message);
+            }
+            self.path.pop();
         }
+        self.path.pop();
+
+        messages
+    }
+
+    fn resolve_enums(&mut self, enum_type: Vec<EnumDescriptorProto>) -> Vec<TokenStream> {
+        let mut enums = Vec::with_capacity(enum_type.len());
+
+        self.path.push(4);
+        for (idx, nested_enum) in enum_type.into_iter().enumerate() {
+            self.path.push(idx as i32);
+            if let Some(resolved_enum) = self.resolve_enum(nested_enum) {
+                enums.push(resolved_enum);
+            }
+            self.path.pop();
+        }
+        self.path.pop();
+
+        enums
+    }
+
+    fn resolve_oneofs(
+        &mut self,
+        oneof_declarations: &[OneofDescriptorProto],
+        mut oneof_fields: OneofFields,
+        fq_message_name: &FullyQualifiedName,
+    ) -> Vec<TokenStream> {
+        let mut oneofs = Vec::with_capacity(oneof_declarations.len());
+
+        for (idx, oneof) in oneof_declarations.iter().enumerate() {
+            let idx = idx as i32;
+            // optional fields create a synthetic oneof that we want to skip
+            let fields = match oneof_fields.remove(&idx) {
+                Some(fields) => fields,
+                None => continue,
+            };
+            oneofs.push(self.append_oneof(fq_message_name, oneof, idx, fields));
+        }
+
+        oneofs
     }
 
     fn recursive_nested(
@@ -231,47 +296,38 @@ impl<'a> CodeGenerator<'a> {
         message_name: &str,
         enum_type: Vec<EnumDescriptorProto>,
         nested_types: Vec<(DescriptorProto, usize)>,
-        mut oneof_fields: OneofFields,
+        oneof_fields: OneofFields,
         oneof_declarations: &[OneofDescriptorProto],
         fq_message_name: &FullyQualifiedName,
-    ) {
+    ) -> Option<TokenStream> {
         if !enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
-            self.buf.push_str("/// Nested message and enum types in `");
-            self.buf.push_str(message_name);
-            self.buf.push_str("`.\n");
-            self.buf.push_str("pub mod ");
-            self.buf.push_str(&to_snake(message_name));
-            self.buf.push_str(" {\n");
+            let comment = syn::Attribute::parse_outer
+                .parse_str(&format!(
+                    "/// Nested message and enum types in `{}`.",
+                    message_name
+                ))
+                .expect("unable to parse comment");
+
+            let ident = to_syn_ident(&to_snake(message_name));
             self.type_path.push(message_name.to_string());
 
-            self.path.push(3);
-            for (nested_type, idx) in nested_types {
-                self.path.push(idx as i32);
-                self.append_message(nested_type);
-                self.path.pop();
-            }
-            self.path.pop();
-
-            self.path.push(4);
-            for (idx, nested_enum) in enum_type.into_iter().enumerate() {
-                self.path.push(idx as i32);
-                self.append_enum(nested_enum);
-                self.path.pop();
-            }
-            self.path.pop();
-
-            for (idx, oneof) in oneof_declarations.iter().enumerate() {
-                let idx = idx as i32;
-                // optional fields create a synthetic oneof that we want to skip
-                let fields = match oneof_fields.remove(&idx) {
-                    Some(fields) => fields,
-                    None => continue,
-                };
-                self.append_oneof(fq_message_name, oneof, idx, fields);
-            }
+            let resolved_messages = self.resolve_messages(nested_types);
+            let resolved_enums = self.resolve_enums(enum_type);
+            let resolved_oneofs =
+                self.resolve_oneofs(oneof_declarations, oneof_fields, fq_message_name);
 
             self.type_path.pop();
-            self.buf.push_str("}\n"); // end of module
+
+            Some(quote! {
+                #(#comment)*
+                pub mod #ident {
+                    #(#resolved_messages)*
+                    #(#resolved_enums)*
+                    #(#resolved_oneofs)*
+                }
+            })
+        } else {
+            None
         }
     }
 
@@ -338,34 +394,35 @@ impl<'a> CodeGenerator<'a> {
         resolved_onefields
     }
 
-    fn append_type_name(&mut self, message_name: &str, fq_message_name: &FullyQualifiedName) {
-        self.buf.push_str(&{
-            let name_path = self.prost_type_path("Name");
-            let message_name_syn = to_syn_ident(message_name);
-            let package_name = &self.package;
-            let string_path = self.prost_type_path("alloc::string::String");
-            let fully_qualified_name =
-                FullyQualifiedName::new(&self.package, &self.type_path, message_name);
-            let domain_name = self
-                .config
-                .type_name_domains
-                .get_first(fq_message_name.as_ref())
-                .map_or("", |name| name.as_str());
+    fn resolve_type_name(
+        &mut self,
+        message_name: &str,
+        fq_message_name: &FullyQualifiedName,
+    ) -> TokenStream {
+        let name_path = self.prost_type_path("Name");
+        let message_name_syn = to_syn_type(message_name);
+        let package_name = &self.package;
+        let string_path = self.prost_type_path("alloc::string::String");
+        let fully_qualified_name =
+            FullyQualifiedName::new(&self.package, &self.type_path, message_name);
+        let domain_name = self
+            .config
+            .type_name_domains
+            .get_first(fq_message_name.as_ref())
+            .map_or("", |name| name.as_str());
 
-            let fq_name_str = fully_qualified_name.as_ref().trim_start_matches('.');
-            let type_url = format!("{}/{}", domain_name, fq_name_str);
+        let fq_name_str = fully_qualified_name.as_ref().trim_start_matches('.');
+        let type_url = format!("{}/{}", domain_name, fq_name_str);
 
-            quote! {
-                impl #name_path for #message_name_syn {
-                    const NAME: &'static str = #message_name;
-                    const PACKAGE: &'static str = #package_name;
+        quote! {
+            impl #name_path for #message_name_syn {
+                const NAME: &'static str = #message_name;
+                const PACKAGE: &'static str = #package_name;
 
-                    fn full_name() -> #string_path { #fq_name_str.into() }
-                    fn type_url() -> #string_path { #type_url.into() }
-                }
+                fn full_name() -> #string_path { #fq_name_str.into() }
+                fn type_url() -> #string_path { #type_url.into() }
             }
-            .to_string()
-        });
+        }
     }
 
     fn resolve_enum_attributes(&self, fq_message_name: &FullyQualifiedName) -> TokenStream {
@@ -604,7 +661,7 @@ impl<'a> CodeGenerator<'a> {
         oneof: &OneofDescriptorProto,
         idx: i32,
         fields: Vec<(FieldDescriptorProto, usize)>,
-    ) {
+    ) -> TokenStream {
         self.path.push(8);
         self.path.push(idx);
         let documentation = self.resolve_docs(fq_message_name, None);
@@ -617,20 +674,17 @@ impl<'a> CodeGenerator<'a> {
         let enum_name = to_syn_ident(&to_upper_camel(oneof.name()));
         let variants = self.oneof_variants(&fields, fq_message_name, &oneof_name);
 
-        self.buf.push_str(&{
-            let one_of_path = self.prost_type_path("Oneof");
-            quote! {
-                #(#documentation)*
-                #enum_attributes
-                #[allow(clippy::derive_partial_eq_without_eq)]
-                #[derive(Clone, PartialEq, #one_of_path)]
-                #maybe_skip_debug
-                pub enum #enum_name {
-                    #(#variants,)*
-                }
+        let one_of_path = self.prost_type_path("Oneof");
+        quote! {
+            #(#documentation)*
+            #enum_attributes
+            #[allow(clippy::derive_partial_eq_without_eq)]
+            #[derive(Clone, PartialEq, #one_of_path)]
+            #maybe_skip_debug
+            pub enum #enum_name {
+                #(#variants,)*
             }
-            .to_string()
-        });
+        }
     }
 
     fn oneof_variants(
@@ -739,7 +793,7 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    fn append_enum(&mut self, desc: EnumDescriptorProto) {
+    fn resolve_enum(&mut self, desc: EnumDescriptorProto) -> Option<TokenStream> {
         debug!("  enum: {:?}", desc.name());
 
         let proto_enum_name = desc.name();
@@ -752,7 +806,7 @@ impl<'a> CodeGenerator<'a> {
             .resolve_ident(&fq_proto_enum_name)
             .is_some()
         {
-            return;
+            return None;
         }
 
         let enum_docs = self.resolve_docs(&fq_proto_enum_name, None);
@@ -784,39 +838,36 @@ impl<'a> CodeGenerator<'a> {
             .to_token_stream()
         });
 
-        self.buf.push_str(&{
-            quote! {
-                #(#enum_docs)*
-                #enum_attributes
-                #optional_debug
-                #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #prost_path)]
-                #[repr(i32)]
-                pub enum #enum_name_syn {
-                    #(#enum_variants,)*
+        Some(quote! {
+            #(#enum_docs)*
+            #enum_attributes
+            #optional_debug
+            #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #prost_path)]
+            #[repr(i32)]
+            pub enum #enum_name_syn {
+                #(#enum_variants,)*
+            }
+
+            impl #enum_name_syn {
+                /// String value of the enum field names used in the ProtoBuf definition.
+                ///
+                /// The values are not transformed in any way and thus are considered stable
+                /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+                pub fn as_str_name(&self) -> &'static str {
+                    match self {
+                        #(#arms_1,)*
+                    }
                 }
 
-                impl #enum_name_syn {
-                    /// String value of the enum field names used in the ProtoBuf definition.
-                    ///
-                    /// The values are not transformed in any way and thus are considered stable
-                    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-                    pub fn as_str_name(&self) -> &'static str {
-                        match self {
-                            #(#arms_1,)*
-                        }
-                    }
-
-                    /// Creates an enum from field names used in the ProtoBuf definition.
-                    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-                        match value {
-                            #(#arms_2,)*
-                            _ => None,
-                        }
+                /// Creates an enum from field names used in the ProtoBuf definition.
+                pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                    match value {
+                        #(#arms_2,)*
+                        _ => None,
                     }
                 }
             }
-            .to_string()
-        });
+        })
     }
 
     fn resolve_enum_variants(
