@@ -110,39 +110,49 @@ impl<'a> CodeGenerator<'a> {
             code_gen.package
         );
 
-        code_gen.path.push(4);
-        for (idx, message) in file.message_type.into_iter().enumerate() {
-            code_gen.path.push(idx as i32);
-            if let Some(resolved_message) = code_gen.resolve_message(message) {
-                code_gen.buf.push_str(&resolved_message.to_string());
+        code_gen.push_messages(file.message_type);
+        code_gen.push_enums(file.enum_type);
+        code_gen.push_services(file.service);
+    }
+
+    fn push_messages(&mut self, message_types: Vec<DescriptorProto>) {
+        self.path.push(4);
+        for (idx, message) in message_types.into_iter().enumerate() {
+            self.path.push(idx as i32);
+            if let Some(resolved_message) = self.resolve_message(message) {
+                self.buf.push_str(&resolved_message.to_string());
             }
-            code_gen.path.pop();
+            self.path.pop();
         }
-        code_gen.path.pop();
+        self.path.pop();
+    }
 
-        code_gen.path.push(5);
-        for (idx, desc) in file.enum_type.into_iter().enumerate() {
-            code_gen.path.push(idx as i32);
-            if let Some(resolved_enum) = code_gen.resolve_enum(desc) {
-                code_gen.buf.push_str(&resolved_enum.to_string());
+    fn push_enums(&mut self, enum_types: Vec<EnumDescriptorProto>) {
+        self.path.push(5);
+        for (idx, desc) in enum_types.into_iter().enumerate() {
+            self.path.push(idx as i32);
+            if let Some(resolved_enum) = self.resolve_enum(desc) {
+                self.buf.push_str(&resolved_enum.to_string());
             }
-            code_gen.path.pop();
+            self.path.pop();
         }
-        code_gen.path.pop();
+        self.path.pop();
+    }
 
-        if code_gen.config.service_generator.is_some() {
-            code_gen.path.push(6);
-            for (idx, service) in file.service.into_iter().enumerate() {
-                code_gen.path.push(idx as i32);
-                code_gen.push_service(service);
-                code_gen.path.pop();
+    fn push_services(&mut self, services: Vec<ServiceDescriptorProto>) {
+        if self.config.service_generator.is_some() {
+            self.path.push(6);
+            for (idx, service) in services.into_iter().enumerate() {
+                self.path.push(idx as i32);
+                self.push_service(service);
+                self.path.pop();
             }
 
-            if let Some(service_generator) = code_gen.config.service_generator.as_mut() {
-                service_generator.finalize(code_gen.buf);
+            if let Some(service_generator) = self.config.service_generator.as_mut() {
+                service_generator.finalize(self.buf);
             }
 
-            code_gen.path.pop();
+            self.path.pop();
         }
     }
 
