@@ -330,19 +330,6 @@ impl<'a> CodeGenerator<'a> {
             .then_some(quote! { #[prost(skip_debug)] })
     }
 
-    // TEMP: deprecate
-    fn append_field_attributes(
-        &mut self,
-        fully_qualified_name: &FullyQualifiedName,
-        field_name: &str,
-    ) {
-        self.buf.push_str(
-            &self
-                .resolve_field_attributes(fully_qualified_name, field_name)
-                .to_string(),
-        )
-    }
-
     fn resolve_field_attributes(
         &self,
         fully_qualified_name: &FullyQualifiedName,
@@ -445,16 +432,18 @@ impl<'a> CodeGenerator<'a> {
             to_syn_attribute_meta_value(&format!("default=\"{}\"", default_value))
         });
 
+        let field_attributes = self.resolve_field_attributes(fq_message_name, field.name());
+
         self.buf.push_str(&{
             quote! {
                 #(#documentation)*
                 #maybe_deprecated
                 #[prost(#field_type, #maybe_label #maybe_boxed tag=#field_number_string, #maybe_default)]
+                #field_attributes
             }
             .to_string()
         });
 
-        self.append_field_attributes(fq_message_name, field.name());
         self.buf.push_str("pub ");
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
