@@ -205,17 +205,15 @@ impl<'a> CodeGenerator<'a> {
         self.path.push(2);
         for (field, idx) in fields {
             self.path.push(idx as i32);
-            match field
+            let field = match field
                 .type_name
                 .as_ref()
                 .and_then(|type_name| map_types.get(type_name))
             {
-                Some((key, value)) => self.append_map_field(&fq_message_name, field, key, value),
-                None => self.buf.push_str(&format!(
-                    "{}\n",
-                    self.resolve_field(&fq_message_name, field)
-                )),
-            }
+                Some((key, value)) => self.resolve_map_field(&fq_message_name, field, key, value),
+                None => self.resolve_field(&fq_message_name, field),
+            };
+            self.buf.push_str(&field.to_string());
             self.path.pop();
         }
         self.path.pop();
@@ -230,7 +228,9 @@ impl<'a> CodeGenerator<'a> {
             };
 
             self.path.push(idx);
-            self.append_oneof_field(&message_name, &fq_message_name, oneof, fields);
+            let resolved_oneof_field =
+                self.resolve_oneof_field(&message_name, &fq_message_name, oneof, fields);
+            self.buf.push_str(&resolved_oneof_field.to_string());
             self.path.pop();
         }
         self.path.pop();
@@ -468,14 +468,13 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    // TEMP: return token stream instead
-    fn append_map_field(
+    fn resolve_map_field(
         &mut self,
         fq_message_name: &FullyQualifiedName,
         field: FieldDescriptorProto,
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
-    ) {
+    ) -> TokenStream {
         let key_ty = self.resolve_type(key, fq_message_name);
         let value_ty = self.resolve_type(value, fq_message_name);
 
@@ -508,25 +507,21 @@ impl<'a> CodeGenerator<'a> {
         let key_rust_type = to_syn_type_path(&key_ty);
         let value_rust_type = to_syn_type_path(&value_ty);
 
-        self.buf.push_str(&{
-            quote! {
-                #(#documentation)*
-                #[prost(#meta_name_value, tag=#field_number_string)]
-                #field_attributes
-                pub #field_name_syn: #map_rust_type<#key_rust_type, #value_rust_type>,
-            }
-            .to_string()
-        });
+        quote! {
+            #(#documentation)*
+            #[prost(#meta_name_value, tag=#field_number_string)]
+            #field_attributes
+            pub #field_name_syn: #map_rust_type<#key_rust_type, #value_rust_type>,
+        }
     }
 
-    // TEMP: return token stream instead
-    fn append_oneof_field(
+    fn resolve_oneof_field(
         &mut self,
         message_name: &str,
         fq_message_name: &FullyQualifiedName,
         oneof: &OneofDescriptorProto,
         fields: &[(FieldDescriptorProto, usize)],
-    ) {
+    ) -> TokenStream {
         let documentation = self.resolve_docs(fq_message_name, None);
         let oneof_name = format!(
             "{}::{}",
@@ -537,15 +532,13 @@ impl<'a> CodeGenerator<'a> {
         let field_attributes = self.resolve_field_attributes(fq_message_name, oneof.name());
         let field_name = to_syn_ident(&to_snake(oneof.name()));
         let oneof_type_name = to_syn_type_path(&oneof_name);
-        self.buf.push_str(&{
-            quote! {
-                #(#documentation)*
-                #[prost(oneof=#oneof_name, tags=#tags)]
-                #field_attributes
-                pub #field_name: ::core::option::Option<#oneof_type_name>,
-            }
-            .to_string()
-        });
+
+        quote! {
+            #(#documentation)*
+            #[prost(oneof=#oneof_name, tags=#tags)]
+            #field_attributes
+            pub #field_name: ::core::option::Option<#oneof_type_name>,
+        }
     }
 
     fn append_oneof(
