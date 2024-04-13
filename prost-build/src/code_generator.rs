@@ -50,14 +50,16 @@ pub struct CodeGenerator<'a> {
 }
 
 impl<'a> CodeGenerator<'a> {
-    pub fn generate(
-        config: &mut Config,
-        message_graph: &MessageGraph,
-        extern_paths: &ExternPaths,
-        file: FileDescriptorProto,
-        buf: &mut String,
-    ) {
-        let source_info = file.source_code_info.map(|mut s| {
+    fn new(
+        config: &'a mut Config,
+        message_graph: &'a MessageGraph,
+        extern_paths: &'a ExternPaths,
+        source_code_info: Option<SourceCodeInfo>,
+        package: Option<String>,
+        syntax: Option<String>,
+        buf: &'a mut String,
+    ) -> Self {
+        let source_info = source_code_info.map(|mut s| {
             s.location.retain(|loc| {
                 let len = loc.path.len();
                 len > 0 && len % 2 == 0
@@ -66,15 +68,15 @@ impl<'a> CodeGenerator<'a> {
             s
         });
 
-        let syntax = match file.syntax.as_ref().map(String::as_str) {
+        let syntax = match syntax.as_ref().map(String::as_str) {
             None | Some("proto2") => Syntax::Proto2,
             Some("proto3") => Syntax::Proto3,
             Some(s) => panic!("unknown syntax: {}", s),
         };
 
-        let mut code_gen = CodeGenerator {
+        Self {
             config,
-            package: file.package.unwrap_or_default(),
+            package: package.unwrap_or_default(),
             type_path: Vec::new(),
             source_info,
             syntax,
@@ -82,7 +84,25 @@ impl<'a> CodeGenerator<'a> {
             extern_paths,
             path: Vec::new(),
             buf,
-        };
+        }
+    }
+
+    pub fn generate(
+        config: &mut Config,
+        message_graph: &MessageGraph,
+        extern_paths: &ExternPaths,
+        file: FileDescriptorProto,
+        buf: &mut String,
+    ) {
+        let mut code_gen = CodeGenerator::new(
+            config,
+            message_graph,
+            extern_paths,
+            file.source_code_info,
+            file.package,
+            file.syntax,
+            buf,
+        );
 
         debug!(
             "file: {:?}, package: {:?}",
