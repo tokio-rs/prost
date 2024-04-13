@@ -20,7 +20,7 @@ use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
 use crate::ident::{
     strip_enum_prefix, to_snake, to_syn_attribute_meta, to_syn_attribute_meta_value, to_syn_ident,
-    to_syn_type_path, to_upper_camel,
+    to_syn_type, to_syn_type_path, to_upper_camel,
 };
 use crate::message_graph::MessageGraph;
 use crate::{Config, FullyQualifiedName};
@@ -211,7 +211,10 @@ impl<'a> CodeGenerator<'a> {
                 .and_then(|type_name| map_types.get(type_name))
             {
                 Some((key, value)) => self.append_map_field(&fq_message_name, field, key, value),
-                None => self.append_field(&fq_message_name, field),
+                None => self.buf.push_str(&format!(
+                    "{}\n",
+                    self.resolve_field(&fq_message_name, field)
+                )),
             }
             self.path.pop();
         }
@@ -343,8 +346,11 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    // TEMP: return token stream
-    fn append_field(&mut self, fq_message_name: &FullyQualifiedName, field: FieldDescriptorProto) {
+    fn resolve_field(
+        &self,
+        fq_message_name: &FullyQualifiedName,
+        field: FieldDescriptorProto,
+    ) -> TokenStream {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
         let optional = self.optional(&field);
@@ -364,7 +370,7 @@ impl<'a> CodeGenerator<'a> {
             .as_ref()
             .is_some_and(FieldOptions::deprecated)
             .then_some(quote! { #[deprecated] });
-        let field_type = to_syn_attribute_meta(&match type_ {
+        let field_type_attr = to_syn_attribute_meta(&match type_ {
             Type::Bytes => {
                 let bytes_type = self
                     .config
@@ -433,41 +439,33 @@ impl<'a> CodeGenerator<'a> {
         });
 
         let field_attributes = self.resolve_field_attributes(fq_message_name, field.name());
+        let field_identifier = to_syn_ident(&to_snake(field.name()));
 
-        self.buf.push_str(&{
-            quote! {
-                #(#documentation)*
-                #maybe_deprecated
-                #[prost(#field_type, #maybe_label #maybe_boxed tag=#field_number_string, #maybe_default)]
-                #field_attributes
-            }
-            .to_string()
-        });
-
-        self.buf.push_str("pub ");
-        self.buf.push_str(&to_snake(field.name()));
-        self.buf.push_str(": ");
-
-        if repeated {
-            self.buf
-                .push_str(&format!("{}::alloc::vec::Vec<", self.resolve_prost_path()));
+        let maybe_wrapped = if repeated {
+            Some(self.prost_type_path("alloc::vec::Vec"))
         } else if optional {
-            self.buf.push_str("::core::option::Option<");
+            Some(to_syn_type_path("::core::option::Option"))
+        } else {
+            None
+        };
+        let maybe_boxed_type = boxed.then_some(self.prost_type_path("alloc::boxed::Box"));
+
+        let inner_field_type = to_syn_type(&ty);
+
+        let field_type = match (maybe_wrapped, &maybe_boxed_type) {
+            (Some(wrapper), Some(boxed)) => quote! { #wrapper<#boxed<#inner_field_type>> },
+            (Some(wrapper), None) => quote! { #wrapper<#inner_field_type> },
+            (None, Some(boxed)) => quote! { #boxed<#inner_field_type> },
+            (None, None) => quote! { #inner_field_type },
+        };
+
+        quote! {
+            #(#documentation)*
+            #maybe_deprecated
+            #[prost(#field_type_attr, #maybe_label #maybe_boxed tag=#field_number_string, #maybe_default)]
+            #field_attributes
+            pub #field_identifier: #field_type,
         }
-        if boxed {
-            self.buf.push_str(&format!(
-                "{}::alloc::boxed::Box<",
-                self.resolve_prost_path()
-            ));
-        }
-        self.buf.push_str(&ty);
-        if boxed {
-            self.buf.push('>');
-        }
-        if repeated || optional {
-            self.buf.push('>');
-        }
-        self.buf.push_str(",\n");
     }
 
     // TEMP: return token stream instead
@@ -866,6 +864,7 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
+    // TODO: to syn::Type
     fn resolve_type(
         &self,
         field: &FieldDescriptorProto,

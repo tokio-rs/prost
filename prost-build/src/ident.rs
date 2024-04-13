@@ -67,12 +67,17 @@ pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
 }
 
 // TEMP: place behind trait
+// output `s` if it fails
 pub fn to_syn_ident(s: &str) -> syn::Ident {
     syn::parse_str(s).expect("unable to parse identifier")
 }
 
-pub fn to_syn_type_path(s: &str) -> syn::Type {
+pub fn to_syn_type_path(s: &str) -> syn::TypePath {
     syn::parse_str(s).expect("unable to parse type path")
+}
+
+pub fn to_syn_type(s: &str) -> syn::Type {
+    syn::parse_str(s).expect("unable to parse type")
 }
 
 pub fn to_syn_attribute_meta(s: &str) -> syn::Meta {
