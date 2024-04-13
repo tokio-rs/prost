@@ -34,6 +34,9 @@ enum Syntax {
     Proto3,
 }
 
+type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
+type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
+
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
     package: String,
@@ -135,7 +138,6 @@ impl<'a> CodeGenerator<'a> {
         // of the map field entry types. The path index of the nested message types is preserved so
         // that comments can be retrieved.
         type NestedTypes = Vec<(DescriptorProto, usize)>;
-        type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
         let (nested_types, map_types): (NestedTypes, MapTypes) = message
             .nested_type
             .into_iter()
@@ -166,7 +168,6 @@ impl<'a> CodeGenerator<'a> {
         // Split the fields into a vector of the normal fields, and oneof fields.
         // Path indexes are preserved so that comments can be retrieved.
         type Fields = Vec<(FieldDescriptorProto, usize)>;
-        type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
         let (fields, mut oneof_fields): (Fields, OneofFields) = message
             .field
             .into_iter()
@@ -182,10 +183,19 @@ impl<'a> CodeGenerator<'a> {
             });
 
         let documentation = self.resolve_docs(&fq_message_name, None);
+        let resolved_fields = self.resolve_message_fields(&fields, &map_types, &fq_message_name);
+        let resolved_oneof_fields = self.resolve_oneof_fields(
+            &message.oneof_decl,
+            &oneof_fields,
+            &message_name,
+            &fq_message_name,
+        );
         let type_attributes = self.config.type_attributes.get(fq_message_name.as_ref());
         let message_attributes = self.config.message_attributes.get(fq_message_name.as_ref());
         let prost_path = self.prost_type_path("Message");
         let maybe_skip_debug = self.resolve_skip_debug(&fq_message_name);
+
+        let ident = to_syn_ident(&to_upper_camel(&message_name));
         self.buf.push_str(&{
             quote! {
                 #(#documentation)*
@@ -194,48 +204,13 @@ impl<'a> CodeGenerator<'a> {
                 #[allow(clippy::derive_partial_eq_without_eq)]
                 #[derive(Clone, PartialEq, #prost_path)]
                 #maybe_skip_debug
+                pub struct #ident {
+                    #(#resolved_fields,)*
+                    #(#resolved_oneof_fields,)*
+                }
             }
             .to_string()
         });
-
-        self.buf.push_str("pub struct ");
-        self.buf.push_str(&to_upper_camel(&message_name));
-        self.buf.push_str(" {\n");
-
-        self.path.push(2);
-        for (field, idx) in fields {
-            self.path.push(idx as i32);
-            let field = match field
-                .type_name
-                .as_ref()
-                .and_then(|type_name| map_types.get(type_name))
-            {
-                Some((key, value)) => self.resolve_map_field(&fq_message_name, field, key, value),
-                None => self.resolve_field(&fq_message_name, field),
-            };
-            self.buf.push_str(&field.to_string());
-            self.path.pop();
-        }
-        self.path.pop();
-
-        self.path.push(8);
-        for (idx, oneof) in message.oneof_decl.iter().enumerate() {
-            let idx = idx as i32;
-
-            let fields = match oneof_fields.get_vec(&idx) {
-                Some(fields) => fields,
-                None => continue,
-            };
-
-            self.path.push(idx);
-            let resolved_oneof_field =
-                self.resolve_oneof_field(&message_name, &fq_message_name, oneof, fields);
-            self.buf.push_str(&resolved_oneof_field.to_string());
-            self.path.pop();
-        }
-        self.path.pop();
-
-        self.buf.push_str("}\n");
 
         if !message.enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
             self.buf.push_str("/// Nested message and enum types in `");
@@ -279,6 +254,69 @@ impl<'a> CodeGenerator<'a> {
         if self.config.enable_type_names {
             self.append_type_name(&message_name, &fq_message_name);
         }
+    }
+
+    fn resolve_message_fields(
+        &mut self,
+        fields: &[(FieldDescriptorProto, usize)],
+        map_types: &MapTypes,
+        fq_message_name: &FullyQualifiedName,
+    ) -> Vec<TokenStream> {
+        let mut resolved_fields = Vec::with_capacity(fields.len());
+
+        self.path.push(2);
+        for (field, idx) in fields {
+            self.path.push(*idx as i32);
+
+            let field = match field
+                .type_name
+                .as_ref()
+                .and_then(|type_name| map_types.get(type_name))
+            {
+                Some((key, value)) => self.resolve_map_field(fq_message_name, field, key, value),
+                None => self.resolve_field(fq_message_name, field),
+            };
+
+            resolved_fields.push(field);
+            self.path.pop();
+        }
+        self.path.pop();
+
+        resolved_fields
+    }
+
+    fn resolve_oneof_fields(
+        &mut self,
+        oneof_declarations: &[OneofDescriptorProto],
+        oneof_fields: &OneofFields,
+        message_name: &str,
+        fq_message_name: &FullyQualifiedName,
+    ) -> Vec<TokenStream> {
+        let mut resolved_onefields = Vec::with_capacity(oneof_declarations.len());
+
+        self.path.push(8);
+        for (idx, oneof) in oneof_declarations.iter().enumerate() {
+            let idx = idx as i32;
+
+            let fields = match oneof_fields.get_vec(&idx) {
+                Some(fields) => fields,
+                None => continue,
+            };
+
+            self.path.push(idx);
+
+            resolved_onefields.push(self.resolve_oneof_field(
+                message_name,
+                fq_message_name,
+                oneof,
+                fields,
+            ));
+
+            self.path.pop();
+        }
+        self.path.pop();
+
+        resolved_onefields
     }
 
     fn append_type_name(&mut self, message_name: &str, fq_message_name: &FullyQualifiedName) {
@@ -349,13 +387,13 @@ impl<'a> CodeGenerator<'a> {
     fn resolve_field(
         &self,
         fq_message_name: &FullyQualifiedName,
-        field: FieldDescriptorProto,
+        field: &FieldDescriptorProto,
     ) -> TokenStream {
         let type_ = field.r#type();
         let repeated = field.label == Some(Label::Repeated as i32);
-        let optional = self.optional(&field);
-        let ty = self.resolve_type(&field, fq_message_name);
-        let boxed = !repeated && self.should_box_field(&field, fq_message_name, fq_message_name);
+        let optional = self.optional(field);
+        let ty = self.resolve_type(field, fq_message_name);
+        let boxed = !repeated && self.should_box_field(field, fq_message_name, fq_message_name);
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -381,18 +419,18 @@ impl<'a> CodeGenerator<'a> {
 
                 Cow::from(format!(
                     "{}=\"{}\"",
-                    self.field_type_tag(&field),
+                    self.field_type_tag(field),
                     bytes_type.annotation()
                 ))
             }
-            _ => self.field_type_tag(&field),
+            _ => self.field_type_tag(field),
         });
         let maybe_label = {
             match field.label() {
                 Label::Optional => optional.then_some(quote! { optional, }),
                 Label::Required => Some(quote! { required, }),
                 Label::Repeated => Some(
-                    match can_pack(&field)
+                    match can_pack(field)
                         && !field
                             .options
                             .as_ref()
@@ -464,14 +502,14 @@ impl<'a> CodeGenerator<'a> {
             #maybe_deprecated
             #[prost(#field_type_attr, #maybe_label #maybe_boxed tag=#field_number_string, #maybe_default)]
             #field_attributes
-            pub #field_identifier: #field_type,
+            pub #field_identifier: #field_type
         }
     }
 
     fn resolve_map_field(
         &mut self,
         fq_message_name: &FullyQualifiedName,
-        field: FieldDescriptorProto,
+        field: &FieldDescriptorProto,
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) -> TokenStream {
@@ -511,7 +549,7 @@ impl<'a> CodeGenerator<'a> {
             #(#documentation)*
             #[prost(#meta_name_value, tag=#field_number_string)]
             #field_attributes
-            pub #field_name_syn: #map_rust_type<#key_rust_type, #value_rust_type>,
+            pub #field_name_syn: #map_rust_type<#key_rust_type, #value_rust_type>
         }
     }
 
@@ -537,7 +575,7 @@ impl<'a> CodeGenerator<'a> {
             #(#documentation)*
             #[prost(oneof=#oneof_name, tags=#tags)]
             #field_attributes
-            pub #field_name: ::core::option::Option<#oneof_type_name>,
+            pub #field_name: ::core::option::Option<#oneof_type_name>
         }
     }
 
