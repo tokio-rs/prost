@@ -37,6 +37,16 @@ enum Syntax {
     Proto3,
 }
 
+impl From<Option<&str>> for Syntax {
+    fn from(optional_str: Option<&str>) -> Self {
+        match optional_str {
+            None | Some("proto2") => Syntax::Proto2,
+            Some("proto3") => Syntax::Proto3,
+            Some(s) => panic!("unknown syntax: {}", s),
+        }
+    }
+}
+
 type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
 type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
 
@@ -71,18 +81,12 @@ impl<'a> CodeGenerator<'a> {
             s
         });
 
-        let syntax = match syntax.as_ref().map(String::as_str) {
-            None | Some("proto2") => Syntax::Proto2,
-            Some("proto3") => Syntax::Proto3,
-            Some(s) => panic!("unknown syntax: {}", s),
-        };
-
         Self {
             config,
             package: package.unwrap_or_default(),
             type_path: Vec::new(),
             source_info,
-            syntax,
+            syntax: syntax.as_ref().map(String::as_str).into(),
             message_graph,
             extern_paths,
             path: Vec::new(),
