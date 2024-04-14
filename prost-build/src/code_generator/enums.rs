@@ -158,3 +158,60 @@ impl CodeGenerator<'_> {
         variants
     }
 }
+
+use variant_mapping::EnumVariantMapping;
+mod variant_mapping {
+    use std::collections::HashSet;
+
+    use prost_types::EnumValueDescriptorProto;
+
+    use super::*;
+
+    pub(super) struct EnumVariantMapping<'a> {
+        pub(super) path_idx: usize,
+        pub(super) proto_name: &'a str,
+        pub(super) proto_number: i32,
+        pub(super) generated_variant_name: String,
+    }
+
+    impl EnumVariantMapping<'_> {
+        pub(super) fn build_enum_value_mappings<'a>(
+            generated_enum_name: &str,
+            do_strip_enum_prefix: bool,
+            enum_values: &'a [EnumValueDescriptorProto],
+        ) -> Vec<EnumVariantMapping<'a>> {
+            let mut numbers = HashSet::new();
+            let mut generated_names = HashMap::new();
+            let mut mappings = Vec::new();
+
+            for (idx, value) in enum_values.iter().enumerate() {
+                // Skip duplicate enum values. Protobuf allows this when the
+                // 'allow_alias' option is set.
+                if !numbers.insert(value.number()) {
+                    continue;
+                }
+
+                let mut generated_variant_name = to_upper_camel(value.name());
+                if do_strip_enum_prefix {
+                    generated_variant_name =
+                        strip_enum_prefix(generated_enum_name, &generated_variant_name);
+                }
+
+                if let Some(old_v) =
+                    generated_names.insert(generated_variant_name.to_owned(), value.name())
+                {
+                    panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
+                    generated_variant_name, old_v, value.name());
+                }
+
+                mappings.push(EnumVariantMapping {
+                    path_idx: idx,
+                    proto_name: value.name(),
+                    proto_number: value.number(),
+                    generated_variant_name,
+                })
+            }
+            mappings
+        }
+    }
+}
