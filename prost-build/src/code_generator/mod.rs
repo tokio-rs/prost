@@ -31,21 +31,8 @@ use c_escaping::unescape_c_escape_string;
 mod enums;
 mod services;
 
-#[derive(PartialEq)]
-enum Syntax {
-    Proto2,
-    Proto3,
-}
-
-impl From<Option<&str>> for Syntax {
-    fn from(optional_str: Option<&str>) -> Self {
-        match optional_str {
-            None | Some("proto2") => Syntax::Proto2,
-            Some("proto3") => Syntax::Proto3,
-            Some(s) => panic!("unknown syntax: {}", s),
-        }
-    }
-}
+mod syntax;
+use syntax::Syntax;
 
 type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
 type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
