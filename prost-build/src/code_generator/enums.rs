@@ -2,7 +2,7 @@ use super::*;
 
 impl CodeGenerator<'_> {
     pub(super) fn push_enums(&mut self, enum_types: Vec<EnumDescriptorProto>) {
-        self.path.push(5);
+        self.path.push(FileDescriptorProtoLocations::ENUM_TYPE);
         for (idx, desc) in enum_types.into_iter().enumerate() {
             self.path.push(idx as i32);
             if let Some(resolved_enum) = self.resolve_enum(desc) {

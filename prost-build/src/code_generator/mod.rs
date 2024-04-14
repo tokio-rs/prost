@@ -35,6 +35,18 @@ mod services;
 mod syntax;
 use syntax::Syntax;
 
+// IMPROVEMENT: would be nice to have this auto-generated
+use locations::FileDescriptorProtoLocations;
+mod locations {
+    pub(super) struct FileDescriptorProtoLocations;
+
+    impl FileDescriptorProtoLocations {
+        pub const MESSAGE_TYPE: i32 = 4;
+        pub const ENUM_TYPE: i32 = 5;
+        pub const SERVICE: i32 = 6;
+    }
+}
+
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
     package: String,

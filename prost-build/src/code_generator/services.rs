@@ -3,7 +3,7 @@ use super::*;
 impl CodeGenerator<'_> {
     pub(super) fn push_services(&mut self, services: Vec<ServiceDescriptorProto>) {
         if self.config.service_generator.is_some() {
-            self.path.push(6);
+            self.path.push(FileDescriptorProtoLocations::SERVICE);
             for (idx, service) in services.into_iter().enumerate() {
                 self.path.push(idx as i32);
                 self.push_service(service);

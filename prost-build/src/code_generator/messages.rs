@@ -7,7 +7,7 @@ type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
 
 impl CodeGenerator<'_> {
     pub(super) fn push_messages(&mut self, message_types: Vec<DescriptorProto>) {
-        self.path.push(4);
+        self.path.push(FileDescriptorProtoLocations::MESSAGE_TYPE);
         for (idx, message) in message_types.into_iter().enumerate() {
             self.path.push(idx as i32);
             if let Some(resolved_message) = self.resolve_message(message) {
