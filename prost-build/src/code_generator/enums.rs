@@ -39,7 +39,7 @@ impl CodeGenerator<'_> {
             self.config.strip_enum_prefix,
             &desc.value,
         );
-        let enum_variants = self.resolve_enum_variants(&variant_mappings, &fq_proto_enum_name);
+        let enum_variants = resolve_enum_variants(self, &variant_mappings, &fq_proto_enum_name);
         let enum_name_syn = to_syn_ident(&enum_name);
         let arms_1 = variant_mappings.iter().map(|variant| {
             syn::parse_str::<syn::Arm>(&format!(
@@ -58,7 +58,7 @@ impl CodeGenerator<'_> {
             .to_token_stream()
         });
 
-        Some(quote! {
+        return Some(quote! {
             #(#enum_docs)*
             #enum_attributes
             #optional_debug
@@ -87,7 +87,45 @@ impl CodeGenerator<'_> {
                     }
                 }
             }
-        })
+        });
+
+        fn resolve_enum_variants(
+            code_generator: &mut CodeGenerator<'_>,
+            variant_mappings: &[EnumVariantMapping],
+            fq_proto_enum_name: &FullyQualifiedName,
+        ) -> Vec<TokenStream> {
+            let mut variants = Vec::with_capacity(variant_mappings.len());
+
+            code_generator.path.push(EnumDescriptorLocations::VALUE);
+
+            for variant in variant_mappings.iter() {
+                code_generator.path.push(variant.path_idx as i32);
+
+                let documentation =
+                    code_generator.resolve_docs(fq_proto_enum_name, Some(variant.proto_name));
+
+                let field_attributes =
+                    code_generator.resolve_field_attributes(fq_proto_enum_name, variant.proto_name);
+
+                let variant = syn::parse_str::<syn::Variant>(&format!(
+                    "{} = {}",
+                    variant.generated_variant_name, variant.proto_number
+                ))
+                .expect("unable to parse enum variant");
+
+                variants.push(quote! {
+                    #(#documentation)*
+                    #field_attributes
+                    #variant
+                });
+
+                code_generator.path.pop();
+            }
+
+            code_generator.path.pop();
+
+            variants
+        }
     }
 
     pub(super) fn resolve_enum_attributes(
@@ -100,43 +138,6 @@ impl CodeGenerator<'_> {
             #(#(#type_attributes)*)*
             #(#(#enum_attributes)*)*
         }
-    }
-
-    fn resolve_enum_variants(
-        &mut self,
-        variant_mappings: &[EnumVariantMapping],
-        fq_proto_enum_name: &FullyQualifiedName,
-    ) -> Vec<TokenStream> {
-        let mut variants = Vec::with_capacity(variant_mappings.len());
-
-        self.path.push(2);
-
-        for variant in variant_mappings.iter() {
-            self.path.push(variant.path_idx as i32);
-
-            let documentation = self.resolve_docs(fq_proto_enum_name, Some(variant.proto_name));
-
-            let field_attributes =
-                self.resolve_field_attributes(fq_proto_enum_name, variant.proto_name);
-
-            let variant = syn::parse_str::<syn::Variant>(&format!(
-                "{} = {}",
-                variant.generated_variant_name, variant.proto_number
-            ))
-            .expect("unable to parse enum variant");
-
-            variants.push(quote! {
-                #(#documentation)*
-                #field_attributes
-                #variant
-            });
-
-            self.path.pop();
-        }
-
-        self.path.pop();
-
-        variants
     }
 }
 
