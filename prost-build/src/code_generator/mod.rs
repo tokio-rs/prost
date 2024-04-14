@@ -35,9 +35,6 @@ mod services;
 mod syntax;
 use syntax::Syntax;
 
-type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
-type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
-
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
     package: String,

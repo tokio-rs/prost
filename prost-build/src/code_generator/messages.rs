@@ -2,6 +2,9 @@ use super::*;
 
 mod oneof;
 
+type OneofFields = MultiMap<i32, (FieldDescriptorProto, usize)>;
+type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
+
 impl CodeGenerator<'_> {
     pub(super) fn push_messages(&mut self, message_types: Vec<DescriptorProto>) {
         self.path.push(4);
