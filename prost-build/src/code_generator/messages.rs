@@ -191,7 +191,7 @@ impl CodeGenerator<'_> {
         ) -> Vec<TokenStream> {
             let mut enums = Vec::with_capacity(enum_type.len());
 
-            codegen.path.push(4);
+            codegen.path.push(DescriptorLocations::ENUM_TYPE);
             for (idx, nested_enum) in enum_type.into_iter().enumerate() {
                 codegen.path.push(idx as i32);
                 if let Some(resolved_enum) = codegen.resolve_enum(nested_enum) {
