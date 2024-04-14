@@ -167,22 +167,41 @@ impl CodeGenerator<'_> {
             self.type_path.push(message_name.to_string());
 
             let resolved_messages = self.resolve_messages(nested_types);
-            let resolved_enums = self.resolve_enums(enum_type);
+            let resolved_enums = resolve_nested_enums(self, enum_type);
             let resolved_oneofs =
                 self.resolve_oneofs(oneof_declarations, oneof_fields, fq_message_name);
 
             self.type_path.pop();
 
-            Some(quote! {
+            return Some(quote! {
                 #(#comment)*
                 pub mod #ident {
                     #(#resolved_messages)*
                     #(#resolved_enums)*
                     #(#resolved_oneofs)*
                 }
-            })
+            });
         } else {
-            None
+            return None;
+        }
+
+        fn resolve_nested_enums(
+            codegen: &mut CodeGenerator<'_>,
+            enum_type: Vec<EnumDescriptorProto>,
+        ) -> Vec<TokenStream> {
+            let mut enums = Vec::with_capacity(enum_type.len());
+
+            codegen.path.push(4);
+            for (idx, nested_enum) in enum_type.into_iter().enumerate() {
+                codegen.path.push(idx as i32);
+                if let Some(resolved_enum) = codegen.resolve_enum(nested_enum) {
+                    enums.push(resolved_enum);
+                }
+                codegen.path.pop();
+            }
+            codegen.path.pop();
+
+            enums
         }
     }
 

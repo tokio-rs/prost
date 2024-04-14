@@ -13,26 +13,7 @@ impl CodeGenerator<'_> {
         self.path.pop();
     }
 
-    pub(super) fn resolve_enums(
-        &mut self,
-        enum_type: Vec<EnumDescriptorProto>,
-    ) -> Vec<TokenStream> {
-        let mut enums = Vec::with_capacity(enum_type.len());
-
-        self.path.push(4);
-        for (idx, nested_enum) in enum_type.into_iter().enumerate() {
-            self.path.push(idx as i32);
-            if let Some(resolved_enum) = self.resolve_enum(nested_enum) {
-                enums.push(resolved_enum);
-            }
-            self.path.pop();
-        }
-        self.path.pop();
-
-        enums
-    }
-
-    fn resolve_enum(&mut self, desc: EnumDescriptorProto) -> Option<TokenStream> {
+    pub(super) fn resolve_enum(&mut self, desc: EnumDescriptorProto) -> Option<TokenStream> {
         debug!("  enum: {:?}", desc.name());
 
         let proto_enum_name = desc.name();
