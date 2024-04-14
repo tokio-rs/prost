@@ -18,25 +18,6 @@ impl CodeGenerator<'_> {
         self.path.pop();
     }
 
-    fn resolve_messages(
-        &mut self,
-        nested_types: Vec<(DescriptorProto, usize)>,
-    ) -> Vec<TokenStream> {
-        let mut messages = Vec::with_capacity(nested_types.len());
-
-        self.path.push(3);
-        for (nested_type, idx) in nested_types {
-            self.path.push(idx as i32);
-            if let Some(message) = self.resolve_message(nested_type) {
-                messages.push(message);
-            }
-            self.path.pop();
-        }
-        self.path.pop();
-
-        messages
-    }
-
     fn resolve_message(&mut self, message: DescriptorProto) -> Option<TokenStream> {
         debug!("  message: {:?}", message.name());
 
@@ -166,7 +147,7 @@ impl CodeGenerator<'_> {
             let ident = to_syn_ident(&to_snake(message_name));
             self.type_path.push(message_name.to_string());
 
-            let resolved_messages = self.resolve_messages(nested_types);
+            let resolved_messages = resolve_nested_messages(self, nested_types);
             let resolved_enums = resolve_nested_enums(self, enum_type);
             let resolved_oneofs =
                 self.resolve_oneofs(oneof_declarations, oneof_fields, fq_message_name);
@@ -183,6 +164,25 @@ impl CodeGenerator<'_> {
             });
         } else {
             return None;
+        }
+
+        fn resolve_nested_messages(
+            code_generator: &mut CodeGenerator<'_>,
+            nested_types: Vec<(DescriptorProto, usize)>,
+        ) -> Vec<TokenStream> {
+            let mut messages = Vec::with_capacity(nested_types.len());
+
+            code_generator.path.push(DescriptorLocations::NESTED_TYPE);
+            for (nested_type, idx) in nested_types {
+                code_generator.path.push(idx as i32);
+                if let Some(message) = code_generator.resolve_message(nested_type) {
+                    messages.push(message);
+                }
+                code_generator.path.pop();
+            }
+            code_generator.path.pop();
+
+            messages
         }
 
         fn resolve_nested_enums(
