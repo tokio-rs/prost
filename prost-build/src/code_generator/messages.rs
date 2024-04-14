@@ -1,5 +1,7 @@
 use super::*;
 
+mod oneof;
+
 impl CodeGenerator<'_> {
     pub(super) fn push_messages(&mut self, message_types: Vec<DescriptorProto>) {
         self.path.push(4);
@@ -409,4 +411,130 @@ impl CodeGenerator<'_> {
             pub #field_name_syn: #map_rust_type<#key_rust_type, #value_rust_type>
         }
     }
+}
+
+// Helpers
+impl CodeGenerator<'_> {
+    fn resolve_skip_debug(&self, fq_message_name: &FullyQualifiedName) -> Option<TokenStream> {
+        self.should_skip_debug(fq_message_name)
+            .then_some(quote! { #[prost(skip_debug)] })
+    }
+
+    fn should_box_field(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &FullyQualifiedName,
+        first_field: &FullyQualifiedName,
+    ) -> bool {
+        ((matches!(field.r#type(), Type::Message | Type::Group))
+            && self
+                .message_graph
+                .is_nested(field.type_name(), fq_message_name.as_ref()))
+            || (self
+                .config
+                .boxed
+                .get_first_field(first_field, field.name())
+                .is_some())
+    }
+
+    // TODO: to syn::Type
+    fn resolve_type(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &FullyQualifiedName,
+    ) -> String {
+        match field.r#type() {
+            Type::Float => String::from("f32"),
+            Type::Double => String::from("f64"),
+            Type::Uint32 | Type::Fixed32 => String::from("u32"),
+            Type::Uint64 | Type::Fixed64 => String::from("u64"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+            Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
+            Type::Bool => String::from("bool"),
+            Type::String => format!("{}::alloc::string::String", self.resolve_prost_path()),
+            Type::Bytes => self
+                .config
+                .bytes_type
+                .get_first_field(fq_message_name, field.name())
+                .copied()
+                .unwrap_or_default()
+                .rust_type()
+                .to_owned(),
+            Type::Group | Type::Message => {
+                self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
+            }
+        }
+    }
+
+    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+        match field.r#type() {
+            Type::Enum => Cow::Owned(format!(
+                "enumeration({})",
+                self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
+            )),
+            _ => self.field_type_tag(field),
+        }
+    }
+
+    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+        match field.r#type() {
+            Type::Float => Cow::Borrowed("float"),
+            Type::Double => Cow::Borrowed("double"),
+            Type::Int32 => Cow::Borrowed("int32"),
+            Type::Int64 => Cow::Borrowed("int64"),
+            Type::Uint32 => Cow::Borrowed("uint32"),
+            Type::Uint64 => Cow::Borrowed("uint64"),
+            Type::Sint32 => Cow::Borrowed("sint32"),
+            Type::Sint64 => Cow::Borrowed("sint64"),
+            Type::Fixed32 => Cow::Borrowed("fixed32"),
+            Type::Fixed64 => Cow::Borrowed("fixed64"),
+            Type::Sfixed32 => Cow::Borrowed("sfixed32"),
+            Type::Sfixed64 => Cow::Borrowed("sfixed64"),
+            Type::Bool => Cow::Borrowed("bool"),
+            Type::String => Cow::Borrowed("string"),
+            Type::Bytes => Cow::Borrowed("bytes"),
+            Type::Group => Cow::Borrowed("group"),
+            Type::Message => Cow::Borrowed("message"),
+            Type::Enum => Cow::Owned(format!(
+                "enumeration=\"{}\"",
+                self.resolve_ident(&FullyQualifiedName::from_type_name(field.type_name()))
+            )),
+        }
+    }
+
+    fn optional(&self, field: &FieldDescriptorProto) -> bool {
+        if field.proto3_optional.unwrap_or(false) {
+            return true;
+        }
+
+        if field.label() != Label::Optional {
+            return false;
+        }
+
+        match field.r#type() {
+            Type::Message => true,
+            _ => self.syntax == Syntax::Proto2,
+        }
+    }
+}
+
+/// Returns `true` if the repeated field type can be packed.
+fn can_pack(field: &FieldDescriptorProto) -> bool {
+    matches!(
+        field.r#type(),
+        Type::Float
+            | Type::Double
+            | Type::Int32
+            | Type::Int64
+            | Type::Uint32
+            | Type::Uint64
+            | Type::Sint32
+            | Type::Sint64
+            | Type::Fixed32
+            | Type::Fixed64
+            | Type::Sfixed32
+            | Type::Sfixed64
+            | Type::Bool
+            | Type::Enum
+    )
 }
