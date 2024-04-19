@@ -213,7 +213,7 @@ impl CodeGenerator<'_> {
     ) -> Vec<TokenStream> {
         let mut resolved_fields = Vec::with_capacity(fields.len());
 
-        self.path.push(2);
+        self.path.push(DescriptorLocations::FIELD);
         for (field, idx) in fields {
             self.path.push(*idx as i32);
 

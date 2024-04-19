@@ -49,6 +49,7 @@ mod locations {
     pub(super) struct DescriptorLocations;
 
     impl DescriptorLocations {
+        pub const FIELD: i32 = 2;
         pub const NESTED_TYPE: i32 = 3;
         pub const ENUM_TYPE: i32 = 4;
         pub const ONEOF_DECL: i32 = 8;

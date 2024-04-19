@@ -122,7 +122,7 @@ impl CodeGenerator<'_> {
     ) -> Vec<TokenStream> {
         let mut variants = Vec::with_capacity(fields.len());
 
-        self.path.push(2);
+        self.path.push(DescriptorLocations::FIELD);
         for (field, idx) in fields {
             self.path.push((*idx).try_into().expect("idx overflow"));
             let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
