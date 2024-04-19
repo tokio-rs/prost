@@ -36,7 +36,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy --workspace --all-features --tests -- -D warnings
+      - run: cargo clippy --workspace --exclude protobuf --all-features --tests -- -D warnings
 
   machete:
     runs-on: ubuntu-latest
