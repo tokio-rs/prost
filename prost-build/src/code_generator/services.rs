@@ -24,7 +24,7 @@ impl CodeGenerator<'_> {
 
         let comments = self.comments_from_location().unwrap_or_default();
 
-        self.path.push(2);
+        self.path.push(ServiceDescriptorProtoLocations::METHOD);
         let methods = service
             .method
             .into_iter()

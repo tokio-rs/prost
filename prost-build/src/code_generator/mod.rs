@@ -36,7 +36,7 @@ mod syntax;
 use syntax::Syntax;
 
 // IMPROVEMENT: would be nice to have this auto-generated
-use locations::{DescriptorLocations, EnumDescriptorLocations, FileDescriptorProtoLocations};
+use locations::*;
 mod locations {
     pub(super) struct FileDescriptorProtoLocations;
 
@@ -57,6 +57,12 @@ mod locations {
 
     impl EnumDescriptorLocations {
         pub const VALUE: i32 = 2;
+    }
+
+    pub(super) struct ServiceDescriptorProtoLocations;
+
+    impl ServiceDescriptorProtoLocations {
+        pub const METHOD: i32 = 2;
     }
 }
 
