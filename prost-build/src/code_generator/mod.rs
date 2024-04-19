@@ -51,6 +51,7 @@ mod locations {
     impl DescriptorLocations {
         pub const NESTED_TYPE: i32 = 3;
         pub const ENUM_TYPE: i32 = 4;
+        pub const ONEOF_DECL: i32 = 8;
     }
 
     pub(super) struct EnumDescriptorLocations;

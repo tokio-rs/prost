@@ -31,7 +31,7 @@ impl CodeGenerator<'_> {
     ) -> Vec<TokenStream> {
         let mut resolved_onefields = Vec::with_capacity(oneof_declarations.len());
 
-        self.path.push(8);
+        self.path.push(DescriptorLocations::ONEOF_DECL);
         for (idx, oneof) in oneof_declarations.iter().enumerate() {
             let idx = idx as i32;
 
@@ -89,7 +89,7 @@ impl CodeGenerator<'_> {
         idx: i32,
         fields: Vec<(FieldDescriptorProto, usize)>,
     ) -> TokenStream {
-        self.path.push(8);
+        self.path.push(DescriptorLocations::ONEOF_DECL);
         self.path.push(idx);
         let documentation = self.resolve_docs(fq_message_name, None);
         self.path.pop();
