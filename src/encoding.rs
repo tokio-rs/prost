@@ -794,13 +794,15 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &String, buf: &mut B)
+    pub fn encode<S, B>(tag: u32, value: &S, buf: &mut B)
     where
+        S: AsRef<str>,
         B: BufMut,
     {
+        let slice = value.as_ref();
         encode_key(tag, WireType::LengthDelimited, buf);
-        encode_varint(value.len() as u64, buf);
-        buf.put_slice(value.as_bytes());
+        encode_varint(slice.len() as u64, buf);
+        buf.put_slice(slice.as_bytes());
     }
     pub fn merge<B>(
         wire_type: WireType,
@@ -876,20 +878,15 @@ pub mod string {
 pub trait BytesAdapter: sealed::BytesAdapter {}
 
 mod sealed {
-    use super::{Buf, BufMut};
+    use super::Buf;
 
-    pub trait BytesAdapter: Default + Sized + 'static {
+    pub trait BytesAdapter: Default + Sized + AsRef<[u8]> + 'static {
         fn len(&self) -> usize;
 
         /// Replace contents of this buffer with the contents of another buffer.
         fn replace_with<B>(&mut self, buf: B)
         where
             B: Buf;
-
-        /// Appends this buffer to the (contents of) other buffer.
-        fn append_to<B>(&self, buf: &mut B)
-        where
-            B: BufMut;
 
         fn is_empty(&self) -> bool {
             self.len() == 0
@@ -910,13 +907,6 @@ impl sealed::BytesAdapter for Bytes {
     {
         *self = buf.copy_to_bytes(buf.remaining());
     }
-
-    fn append_to<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
-        buf.put(self.clone())
-    }
 }
 
 impl BytesAdapter for Vec<u8> {}
@@ -934,13 +924,6 @@ impl sealed::BytesAdapter for Vec<u8> {
         self.reserve(buf.remaining());
         self.put(buf);
     }
-
-    fn append_to<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
-        buf.put(self.as_slice())
-    }
 }
 
 pub mod bytes {
@@ -948,12 +931,13 @@ pub mod bytes {
 
     pub fn encode<A, B>(tag: u32, value: &A, buf: &mut B)
     where
-        A: BytesAdapter,
+        A: AsRef<[u8]>,
         B: BufMut,
     {
+        let slice = value.as_ref();
         encode_key(tag, WireType::LengthDelimited, buf);
-        encode_varint(value.len() as u64, buf);
-        value.append_to(buf);
+        encode_varint(slice.len() as u64, buf);
+        buf.put_slice(slice);
     }
 
     pub fn merge<A, B>(
