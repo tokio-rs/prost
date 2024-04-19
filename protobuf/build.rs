@@ -131,7 +131,7 @@ fn apply_patches(src_dir: &Path) -> Result<()> {
         .arg("-p1")
         .arg("-i")
         .arg(patch_src)
-        .current_dir(&src_dir)
+        .current_dir(src_dir)
         .status()
         .context("failed to apply patch")?;
     // exit code: 0 means success; 1 means already applied
