@@ -12,7 +12,7 @@ use prost_types::{
     DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FieldOptions, FileDescriptorProto,
     OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
 };
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};

@@ -42,20 +42,18 @@ impl CodeGenerator<'_> {
         let enum_variants = resolve_enum_variants(self, &variant_mappings, &fq_proto_enum_name);
         let enum_name_syn = enum_name.parse_syn::<syn::Ident>();
         let arms_1 = variant_mappings.iter().map(|variant| {
-            syn::parse_str::<syn::Arm>(&format!(
+            format!(
                 "{}::{} => \"{}\"",
                 enum_name_syn, variant.generated_variant_name, variant.proto_name
-            ))
-            .expect("unable to parse enum arm")
-            .to_token_stream()
+            )
+            .parse_syn::<syn::Arm>()
         });
         let arms_2 = variant_mappings.iter().map(|variant| {
-            syn::parse_str::<syn::Arm>(&format!(
+            format!(
                 "\"{}\" => Some(Self::{})",
                 variant.proto_name, variant.generated_variant_name
-            ))
-            .expect("unable to parse enum arm")
-            .to_token_stream()
+            )
+            .parse_syn::<syn::Arm>()
         });
 
         return Some(quote! {
