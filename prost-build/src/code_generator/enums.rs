@@ -105,11 +105,11 @@ impl CodeGenerator<'_> {
                 let field_attributes =
                     code_generator.resolve_field_attributes(fq_proto_enum_name, variant.proto_name);
 
-                let variant = syn::parse_str::<syn::Variant>(&format!(
+                let variant = format!(
                     "{} = {}",
                     variant.generated_variant_name, variant.proto_number
-                ))
-                .expect("unable to parse enum variant");
+                )
+                .parse_syn::<syn::Variant>();
 
                 variants.push(quote! {
                     #(#documentation)*

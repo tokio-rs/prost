@@ -203,7 +203,6 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn prost_type_path(&self, item: &str) -> TypePath {
-        syn::parse_str(&format!("{}::{}", self.resolve_prost_path(), item))
-            .expect("unable to parse prost type path")
+        format!("{}::{}", self.resolve_prost_path(), item).parse_syn()
     }
 }
