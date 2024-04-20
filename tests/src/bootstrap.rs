@@ -92,6 +92,6 @@ fn bootstrap() {
             .unwrap();
     }
 
-    assert_eq!(protobuf, bootstrapped_protobuf);
-    assert_eq!(compiler, bootstrapped_compiler);
+    pretty_assertions::assert_eq!(protobuf, bootstrapped_protobuf);
+    pretty_assertions::assert_eq!(compiler, bootstrapped_compiler);
 }

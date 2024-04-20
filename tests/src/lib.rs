@@ -643,7 +643,7 @@ mod tests {
     #[test]
     fn test_default_string_escape() {
         let msg = default_string_escape::Person::default();
-        assert_eq!(msg.name, r#"["unknown"]"#);
+        assert_eq!(r#"["unknown"]"#, msg.name);
     }
 
     #[test]

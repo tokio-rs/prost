@@ -29,6 +29,7 @@ protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
 diff = "0.1"
+pretty_assertions = "1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
 

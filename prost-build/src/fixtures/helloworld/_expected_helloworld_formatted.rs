@@ -14,7 +14,8 @@ pub struct Response {
     pub say: ::prost::alloc::string::String,
 }
 #[some_enum_attr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum ServingStatus {
     Unknown = 0,

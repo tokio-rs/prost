@@ -139,6 +139,15 @@ use prost_types::FileDescriptorSet;
 mod ast;
 pub use crate::ast::{Comments, Method, Service};
 
+mod collections;
+pub(crate) use collections::{BytesType, MapType};
+
+mod fully_qualified_name;
+pub(crate) use fully_qualified_name::FullyQualifiedName;
+
+mod syn_helpers;
+pub(crate) use syn_helpers::SynHelpers;
+
 mod code_generator;
 mod extern_paths;
 mod ident;
@@ -194,28 +203,6 @@ pub trait ServiceGenerator {
     ///
     /// The default implementation is empty and does nothing.
     fn finalize_package(&mut self, _package: &str, _buf: &mut String) {}
-}
-
-/// The map collection type to output for Protobuf `map` fields.
-#[non_exhaustive]
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-enum MapType {
-    /// The [`std::collections::HashMap`] type.
-    #[default]
-    HashMap,
-    /// The [`std::collections::BTreeMap`] type.
-    BTreeMap,
-}
-
-/// The bytes collection type to output for Protobuf `bytes` fields.
-#[non_exhaustive]
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-enum BytesType {
-    /// The [`alloc::collections::Vec::<u8>`] type.
-    #[default]
-    Vec,
-    /// The [`bytes::Bytes`] type.
-    Bytes,
 }
 
 /// Compile `.proto` files into Rust files during a Cargo build.
@@ -306,12 +293,12 @@ mod tests {
     impl ServiceGenerator for ServiceTraitGenerator {
         fn generate(&mut self, service: Service, buf: &mut String) {
             // Generate a trait for the service.
-            service.comments.append_with_indent(0, buf);
+            service.comments.append_with_indent(buf);
             buf.push_str(&format!("trait {} {{\n", &service.name));
 
             // Generate the service methods.
             for method in service.methods {
-                method.comments.append_with_indent(1, buf);
+                method.comments.append_with_indent(buf);
                 buf.push_str(&format!(
                     "    fn {}(_: {}) -> {};\n",
                     method.name, method.input_type, method.output_type
@@ -428,11 +415,7 @@ mod tests {
         let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
             .replace("\r\n", "\n");
         let content = read_all_content(&out_file).replace("\r\n", "\n");
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
-        );
+        pretty_assertions::assert_eq!(expected_content, content,);
     }
 
     #[test]
@@ -518,11 +501,7 @@ mod tests {
             read_all_content("src/fixtures/field_attributes/_expected_field_attributes.rs")
                 .replace("\r\n", "\n");
 
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
-        );
+        pretty_assertions::assert_eq!(expected_content, content,);
     }
 
     #[test]

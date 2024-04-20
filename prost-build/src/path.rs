@@ -2,6 +2,8 @@
 
 use std::iter;
 
+use crate::FullyQualifiedName;
+
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
 #[derive(Debug, Default)]
 pub(crate) struct PathMap<T> {
@@ -35,8 +37,12 @@ impl<T> PathMap<T> {
 
     /// Returns the first value found matching the path `fq_path.field`
     /// If nothing matches the path, suffix paths will be tried, then prefix paths, then the global path
-    pub(crate) fn get_first_field<'a>(&'a self, fq_path: &'_ str, field: &'_ str) -> Option<&'a T> {
-        self.find_best_matching(&format!("{}.{}", fq_path, field))
+    pub(crate) fn get_first_field<'a>(
+        &'a self,
+        fq_path: &'_ FullyQualifiedName,
+        field: &'_ str,
+    ) -> Option<&'a T> {
+        self.find_best_matching(&format!("{}.{}", fq_path.as_ref(), field))
     }
 
     /// Removes all matchers from the path map.
@@ -195,27 +201,29 @@ mod tests {
     fn test_get_best() {
         let mut path_map = PathMap::default();
 
+        let fq_name = FullyQualifiedName::new("a", &["b"], "c");
+
         // worst is global
         path_map.insert(".".to_owned(), 1);
         assert_eq!(Some(&1), path_map.get_first(".a.b.c.d"));
         assert_eq!(Some(&1), path_map.get_first("b.c.d"));
-        assert_eq!(Some(&1), path_map.get_first_field(".a.b.c", "d"));
+        assert_eq!(Some(&1), path_map.get_first_field(&fq_name, "d"));
 
         // then prefix
         path_map.insert(".a.b".to_owned(), 2);
         assert_eq!(Some(&2), path_map.get_first(".a.b.c.d"));
-        assert_eq!(Some(&2), path_map.get_first_field(".a.b.c", "d"));
+        assert_eq!(Some(&2), path_map.get_first_field(&fq_name, "d"));
 
         // then suffix
         path_map.insert("c.d".to_owned(), 3);
         assert_eq!(Some(&3), path_map.get_first(".a.b.c.d"));
         assert_eq!(Some(&3), path_map.get_first("b.c.d"));
-        assert_eq!(Some(&3), path_map.get_first_field(".a.b.c", "d"));
+        assert_eq!(Some(&3), path_map.get_first_field(&fq_name, "d"));
 
         // best is full path
         path_map.insert(".a.b.c.d".to_owned(), 4);
         assert_eq!(Some(&4), path_map.get_first(".a.b.c.d"));
-        assert_eq!(Some(&4), path_map.get_first_field(".a.b.c", "d"));
+        assert_eq!(Some(&4), path_map.get_first_field(&fq_name, "d"));
     }
 
     #[test]
