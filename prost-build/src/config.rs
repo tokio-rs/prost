@@ -13,7 +13,6 @@ use log::trace;
 
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
-use syn::parse::Parser;
 use syn::Attribute;
 
 use crate::code_generator::CodeGenerator;
@@ -24,6 +23,7 @@ use crate::BytesType;
 use crate::MapType;
 use crate::Module;
 use crate::ServiceGenerator;
+use crate::SynHelpers;
 
 /// Configuration options for Protobuf code generation.
 ///
@@ -212,10 +212,8 @@ impl Config {
     {
         self.field_attributes.insert(
             path.as_ref().to_string(),
-            // TEMP: unwrap
-            Attribute::parse_outer
-                .parse_str(attribute.as_ref())
-                .unwrap(),
+            // TEMP(gibbz00): return error instead?
+            attribute.parse_outer_attributes(),
         );
         self
     }
@@ -266,10 +264,8 @@ impl Config {
     {
         self.type_attributes.insert(
             path.as_ref().to_string(),
-            // TEMP: unwrap
-            Attribute::parse_outer
-                .parse_str(attribute.as_ref())
-                .unwrap(),
+            // TEMP(gibbz00): return error instead?
+            attribute.parse_outer_attributes(),
         );
         self
     }
@@ -310,10 +306,8 @@ impl Config {
     {
         self.message_attributes.insert(
             path.as_ref().to_string(),
-            // TEMP: unwrap
-            Attribute::parse_outer
-                .parse_str(attribute.as_ref())
-                .unwrap(),
+            // TEMP(gibbz00): return error instead?
+            attribute.parse_outer_attributes(),
         );
         self
     }
@@ -364,10 +358,8 @@ impl Config {
     {
         self.enum_attributes.insert(
             path.as_ref().to_string(),
-            // TEMP unwrap:
-            Attribute::parse_outer
-                .parse_str(attribute.as_ref())
-                .unwrap(),
+            // TEMP(gibbz00): return error instead?
+            attribute.parse_outer_attributes(),
         );
         self
     }

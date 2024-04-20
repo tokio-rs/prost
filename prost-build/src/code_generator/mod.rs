@@ -13,7 +13,6 @@ use prost_types::{
     OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
 };
 use quote::{quote, ToTokens};
-use syn::parse::Parser;
 use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};
@@ -160,9 +159,7 @@ impl<'a> CodeGenerator<'a> {
 
         match comment_string.is_empty() {
             true => Vec::new(),
-            false => Attribute::parse_outer
-                .parse_str(&comment_string)
-                .expect("unable to parse comment attribute"),
+            false => comment_string.parse_outer_attributes(),
         }
     }
 

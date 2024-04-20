@@ -137,12 +137,8 @@ impl CodeGenerator<'_> {
         fq_message_name: &FullyQualifiedName,
     ) -> Option<TokenStream> {
         if !enum_type.is_empty() || !nested_types.is_empty() || !oneof_fields.is_empty() {
-            let comment = syn::Attribute::parse_outer
-                .parse_str(&format!(
-                    "/// Nested message and enum types in `{}`.",
-                    message_name
-                ))
-                .expect("unable to parse comment");
+            let comment = format!("/// Nested message and enum types in `{}`.", message_name)
+                .parse_outer_attributes();
 
             let ident = to_snake(message_name).parse_syn::<syn::Ident>();
             self.type_path.push(message_name.to_string());
