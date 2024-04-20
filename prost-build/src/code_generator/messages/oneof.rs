@@ -71,8 +71,8 @@ impl CodeGenerator<'_> {
         );
         let tags = fields.iter().map(|(field, _)| field.number()).join(", ");
         let field_attributes = self.resolve_field_attributes(fq_message_name, oneof.name());
-        let field_name = to_syn_ident(&to_snake(oneof.name()));
-        let oneof_type_name = to_syn_type_path(&oneof_name);
+        let field_name = to_snake(oneof.name()).parse_syn::<syn::Ident>();
+        let oneof_type_name = oneof_name.parse_syn::<syn::TypePath>();
 
         quote! {
             #(#documentation)*
@@ -98,7 +98,7 @@ impl CodeGenerator<'_> {
         let oneof_name = fq_message_name.join(oneof.name());
         let enum_attributes = self.resolve_enum_attributes(&oneof_name);
         let maybe_skip_debug = self.resolve_skip_debug(fq_message_name);
-        let enum_name = to_syn_ident(&to_upper_camel(oneof.name()));
+        let enum_name = to_upper_camel(oneof.name()).parse_syn::<syn::Ident>();
         let variants = self.oneof_variants(&fields, fq_message_name, &oneof_name);
 
         let one_of_path = self.prost_type_path("Oneof");
@@ -128,13 +128,13 @@ impl CodeGenerator<'_> {
             let documentation = self.resolve_docs(fq_message_name, Some(field.name()));
             self.path.pop();
 
-            let ty_tag = to_syn_attribute_meta(&self.field_type_tag(field));
+            let ty_tag = self.field_type_tag(field).parse_syn::<syn::Meta>();
             let field_number_string = field.number().to_string();
             let field_attributes = self.resolve_field_attributes(oneof_name, field.name());
             let enum_variant = {
                 let rust_type = self.resolve_type(field, fq_message_name);
-                let type_path = to_syn_type_path(&rust_type);
-                let field_name = to_syn_ident(&to_upper_camel(field.name()));
+                let type_path = rust_type.parse_syn::<syn::TypePath>();
+                let field_name = to_upper_camel(field.name()).parse_syn::<syn::Ident>();
 
                 let boxed = self.should_box_field(field, fq_message_name, oneof_name);
 

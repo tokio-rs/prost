@@ -18,11 +18,9 @@ use syn::{Attribute, TypePath};
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{
-    strip_enum_prefix, to_snake, to_syn_attribute_meta, to_syn_attribute_meta_value, to_syn_ident,
-    to_syn_type, to_syn_type_path, to_upper_camel,
-};
+use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
+use crate::SynHelpers;
 use crate::{Config, FullyQualifiedName};
 
 mod c_escaping;

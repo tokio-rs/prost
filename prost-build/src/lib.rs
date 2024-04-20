@@ -145,6 +145,9 @@ pub(crate) use collections::{BytesType, MapType};
 mod fully_qualified_name;
 pub(crate) use fully_qualified_name::FullyQualifiedName;
 
+mod syn_helpers;
+pub(crate) use syn_helpers::SynHelpers;
+
 mod code_generator;
 mod extern_paths;
 mod ident;

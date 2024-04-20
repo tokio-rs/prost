@@ -87,7 +87,7 @@ impl CodeGenerator<'_> {
             &fq_message_name,
         );
 
-        let ident = to_syn_ident(&to_upper_camel(&message_name));
+        let ident = to_upper_camel(&message_name).parse_syn::<syn::Ident>();
 
         let nested = self.recursive_nested(
             &message_name,
@@ -144,7 +144,7 @@ impl CodeGenerator<'_> {
                 ))
                 .expect("unable to parse comment");
 
-            let ident = to_syn_ident(&to_snake(message_name));
+            let ident = to_snake(message_name).parse_syn::<syn::Ident>();
             self.type_path.push(message_name.to_string());
 
             let resolved_messages = resolve_nested_messages(self, nested_types);
@@ -240,7 +240,7 @@ impl CodeGenerator<'_> {
         fq_message_name: &FullyQualifiedName,
     ) -> TokenStream {
         let name_path = self.prost_type_path("Name");
-        let message_name_syn = to_syn_type(message_name);
+        let message_name_syn = message_name.parse_syn::<syn::Type>();
         let package_name = &self.package;
         let string_path = self.prost_type_path("alloc::string::String");
         let fully_qualified_name =
@@ -289,7 +289,7 @@ impl CodeGenerator<'_> {
             .as_ref()
             .is_some_and(FieldOptions::deprecated)
             .then_some(quote! { #[deprecated] });
-        let field_type_attr = to_syn_attribute_meta(&match type_ {
+        let field_type_attr = match type_ {
             Type::Bytes => {
                 let bytes_type = self
                     .config
@@ -305,7 +305,9 @@ impl CodeGenerator<'_> {
                 ))
             }
             _ => self.field_type_tag(field),
-        });
+        }
+        .parse_syn::<syn::Meta>();
+
         let maybe_label = {
             match field.label() {
                 Label::Optional => optional.then_some(quote! { optional, }),
@@ -354,22 +356,22 @@ impl CodeGenerator<'_> {
                 }
                 _ => default.escape_default().to_string(),
             };
-            to_syn_attribute_meta_value(&format!("default=\"{}\"", default_value))
+            format!("default=\"{}\"", default_value).parse_syn::<syn::Meta>()
         });
 
         let field_attributes = self.resolve_field_attributes(fq_message_name, field.name());
-        let field_identifier = to_syn_ident(&to_snake(field.name()));
+        let field_identifier = to_snake(field.name()).parse_syn::<syn::Ident>();
 
         let maybe_wrapped = if repeated {
             Some(self.prost_type_path("alloc::vec::Vec"))
         } else if optional {
-            Some(to_syn_type_path("::core::option::Option"))
+            Some("::core::option::Option".parse_syn::<syn::TypePath>())
         } else {
             None
         };
         let maybe_boxed_type = boxed.then_some(self.prost_type_path("alloc::boxed::Box"));
 
-        let inner_field_type = to_syn_type(&ty);
+        let inner_field_type = ty.parse_syn::<syn::Type>();
 
         let field_type = match (maybe_wrapped, &maybe_boxed_type) {
             (Some(wrapper), Some(boxed)) => quote! { #wrapper<#boxed<#inner_field_type>> },
@@ -413,18 +415,14 @@ impl CodeGenerator<'_> {
             .unwrap_or_default();
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
-        let meta_name_value = to_syn_attribute_meta_value(&format!(
-            "{}=\"{}, {}\"",
-            map_type.annotation(),
-            key_tag,
-            value_tag
-        ));
+        let meta_name_value = format!("{}=\"{}, {}\"", map_type.annotation(), key_tag, value_tag)
+            .parse_syn::<syn::Meta>();
         let field_number_string = field.number().to_string();
         let field_attributes = self.resolve_field_attributes(fq_message_name, field.name());
-        let field_name_syn = to_syn_ident(&to_snake(field.name()));
-        let map_rust_type = to_syn_type_path(map_type.rust_type());
-        let key_rust_type = to_syn_type_path(&key_ty);
-        let value_rust_type = to_syn_type_path(&value_ty);
+        let field_name_syn = to_snake(field.name()).parse_syn::<syn::Ident>();
+        let map_rust_type = map_type.rust_type().parse_syn::<syn::TypePath>();
+        let key_rust_type = key_ty.parse_syn::<syn::TypePath>();
+        let value_rust_type = value_ty.parse_syn::<syn::TypePath>();
 
         quote! {
             #(#documentation)*

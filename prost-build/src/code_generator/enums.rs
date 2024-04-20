@@ -40,7 +40,7 @@ impl CodeGenerator<'_> {
             &desc.value,
         );
         let enum_variants = resolve_enum_variants(self, &variant_mappings, &fq_proto_enum_name);
-        let enum_name_syn = to_syn_ident(&enum_name);
+        let enum_name_syn = enum_name.parse_syn::<syn::Ident>();
         let arms_1 = variant_mappings.iter().map(|variant| {
             syn::parse_str::<syn::Arm>(&format!(
                 "{}::{} => \"{}\"",
