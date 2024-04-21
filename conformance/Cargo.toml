@@ -9,8 +9,8 @@ publish = false
 edition = "2018"
 
 [dependencies]
-bytes = "1"
-env_logger = { version = "0.10", default-features = false }
+bytes = { workspace = true }
+env_logger = { workspace = true }
 prost = { path = "../prost" }
 protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }
