@@ -1,12 +1,7 @@
 [package]
 name = "prost"
 version = "0.12.6"
-authors = [
-  "Dan Burkert <dan@danburkert.com>",
-  "Lucio Franco <luciofranco14@gmail.com>",
-  "Casper Meijn <casper@meijn.net>",
-  "Tokio Contributors <team@tokio.rs>",
-]
+authors.workspace = true
 license = "Apache-2.0"
 repository = "https://github.com/tokio-rs/prost"
 readme = "README.md"
