@@ -17,7 +17,7 @@ path = "../tests/src/lib.rs"
 [features]
 default = ["edition-2015", "std"]
 edition-2015 = []
-std = ["anyhow/std", "prost-types/std"]
+std = ["anyhow/std", "prost-types/std", "prost/std"]
 
 [dependencies]
 prost.workspace = true
