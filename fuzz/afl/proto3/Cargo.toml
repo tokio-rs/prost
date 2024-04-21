@@ -13,6 +13,7 @@ name = "reproduce"
 path = "src/reproduce.rs"
 
 [dependencies]
+protobuf.workspace = true
+tests.workspace = true
+
 afl = "0.4"
-protobuf = { path = "../../protobuf/" }
-tests = { path = "../../tests/" }

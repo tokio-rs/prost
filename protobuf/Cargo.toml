@@ -9,12 +9,13 @@ publish = false
 edition = "2018"
 
 [dependencies]
-prost = { path = "../prost" }
-prost-types = { path = "../prost-types" }
+prost.workspace = true
+prost-types.workspace = true
 
 [build-dependencies]
+prost-build.workspace = true
+
 anyhow = { workspace = true, features = ["std"] }
-prost-build = { path = "../prost-build" }
 tempfile.workspace = true
 
 # With libz-sys `1.1.8` the msrv has been bumped to 1.54. Since, this dep

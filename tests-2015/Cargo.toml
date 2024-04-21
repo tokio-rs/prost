@@ -20,20 +20,23 @@ edition-2015 = []
 std = ["anyhow/std"]
 
 [dependencies]
+prost.workspace = true
+prost-types.workspace = true
+protobuf.workspace = true
+
 anyhow.workspace = true
 bytes.workspace = true
 cfg-if.workspace = true
-prost = { path = "../prost" }
-prost-types = { path = "../prost-types" }
-protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
+prost-build.workspace = true
+
 diff.workspace = true
-prost-build = { path = "../prost-build" }
 tempfile.workspace = true
 
 [build-dependencies]
+prost-build.workspace = true
+protobuf.workspace = true
+
 cfg-if.workspace = true
 env_logger.workspace = true
-prost-build = { path = "../prost-build" }
-protobuf = { path = "../protobuf" }
