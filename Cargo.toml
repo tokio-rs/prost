@@ -31,6 +31,7 @@ authors = [
 ]
 license = "Apache-2.0"
 repository = "https://github.com/tokio-rs/prost"
+rust-version = "1.70"
 
 [profile.bench]
 debug = true

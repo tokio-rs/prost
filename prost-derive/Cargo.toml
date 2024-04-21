@@ -7,7 +7,7 @@ repository.workspace = true
 readme = "README.md"
 description = "Generate encoding and decoding implementations for Prost annotated types."
 edition = "2021"
-rust-version = "1.70"
+rust-version.workspace = true
 
 [lib]
 proc_macro = true
