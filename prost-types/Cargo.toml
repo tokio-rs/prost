@@ -2,10 +2,10 @@
 name = "prost-types"
 version = "0.12.4"
 authors = [
-    "Dan Burkert <dan@danburkert.com>",
-    "Lucio Franco <luciofranco14@gmail.com>",
-    "Casper Meijn <casper@meijn.net>",
-    "Tokio Contributors <team@tokio.rs>",
+  "Dan Burkert <dan@danburkert.com>",
+  "Lucio Franco <luciofranco14@gmail.com>",
+  "Casper Meijn <casper@meijn.net>",
+  "Tokio Contributors <team@tokio.rs>",
 ]
 license = "Apache-2.0"
 repository = "https://github.com/tokio-rs/prost"
