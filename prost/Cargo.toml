@@ -30,7 +30,7 @@ std = []
 
 [dependencies]
 bytes.workspace = true
-prost-derive = { version = "0.12.4", path = "../prost-derive", optional = true }
+prost-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion.workspace = true

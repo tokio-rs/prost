@@ -23,7 +23,7 @@ default = ["std"]
 std = ["prost/std"]
 
 [dependencies]
-prost = { version = "0.12.4", path = "../prost", default-features = false, features = ["prost-derive"] }
+prost = { workspace = true, features = ["prost-derive"] }
 
 [dev-dependencies]
 proptest.workspace = true

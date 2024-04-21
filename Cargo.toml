@@ -23,6 +23,13 @@ exclude = [
 resolver = "2"
 
 [workspace.dependencies]
+prost = { version = "0.12.4", path = "prost" }
+prost-build = { path = "prost-build" }
+prost-derive = { version = "0.12.4", path = "prost-derive" }
+prost-types = { path = "prost-types" }
+protobuf = { path = "protobuf" }
+tests = { path = "tests" }
+
 anyhow = { version = "1.0.45", default-features = false }
 bytes = { version = "1", default-features = false }
 cfg-if = "1"

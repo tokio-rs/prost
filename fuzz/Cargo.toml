@@ -12,9 +12,10 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
+protobuf.workspace = true
+tests.workspace = true
+
 libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
-protobuf = { path = "../protobuf" }
-tests = { path = "../tests" }
 
 [[bin]]
 name = "proto3"
