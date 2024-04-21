@@ -20,20 +20,20 @@ edition-2015 = []
 std = []
 
 [dependencies]
-anyhow = "1.0.1"
-bytes = "1"
-cfg-if = "1"
+anyhow = { workspace = true }
+bytes = { workspace = true }
+cfg-if = { workspace = true }
 prost = { path = "../prost" }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
-diff = "0.1"
+diff = { workspace = true }
 prost-build = { path = "../prost-build" }
-tempfile = "3"
+tempfile = { workspace = true }
 
 [build-dependencies]
-cfg-if = "1"
-env_logger = { version = "0.10", default-features = false }
+cfg-if = { workspace = true }
+env_logger = { workspace = true }
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }

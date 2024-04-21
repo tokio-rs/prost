@@ -19,8 +19,8 @@ rust-version = "1.70"
 proc_macro = true
 
 [dependencies]
-anyhow = "1.0.1"
-itertools = { version = ">=0.10, <=0.12", default-features = false, features = ["use_alloc"] }
-proc-macro2 = "1"
-quote = "1"
-syn = { version = "2", features = [ "extra-traits" ] }
+anyhow = { workspace = true }
+itertools = { workspace = true, features = ["use_alloc"] }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["extra-traits"] }
