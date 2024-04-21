@@ -695,19 +695,20 @@ impl<'a> CodeGenerator<'a> {
         self.path.push(2);
         if aliases.len() > 0 {
             self.push_indent();
-            self.buf.push_str("/// Aliases.\n");
-        }
-        for variant in &aliases {
-            self.push_indent();
-            self.buf.push_str("#[allow(non_upper_case_globals)]");
-            self.push_indent();
-            self.buf.push_str(&format!(
-                "pub const {}: {} = {}::{};\n",
-                variant.generated_variant_name,
-                enum_name,
-                enum_name,
-                variant.alias_of.as_ref().unwrap()
-            ));
+            self.buf.push_str("// Aliases.\n");
+            
+            for variant in &aliases {
+                self.push_indent();
+                self.buf.push_str("#[allow(non_upper_case_globals)]");
+                self.push_indent();
+                self.buf.push_str(&format!(
+                    "pub const {}: {} = {}::{};\n",
+                    variant.generated_variant_name,
+                    enum_name,
+                    enum_name,
+                    variant.alias_of.as_ref().unwrap()
+                ));
+            }
         }
         self.push_indent();
         self.buf.push_str(
