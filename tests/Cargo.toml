@@ -15,20 +15,20 @@ default = ["std"]
 std = []
 
 [dependencies]
-anyhow = { workspace = true }
+anyhow.workspace = true
 # bytes = "1"
-cfg-if = { workspace = true }
+cfg-if.workspace = true
 prost = { path = "../prost" }
 prost-types = { path = "../prost-types" }
 protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
-diff = { workspace = true }
+diff.workspace = true
 prost-build = { path = "../prost-build", features = ["cleanup-markdown"] }
-tempfile = { workspace = true }
+tempfile.workspace = true
 
 [build-dependencies]
-cfg-if = { workspace = true }
-env_logger = { workspace = true }
+cfg-if.workspace = true
+env_logger.workspace = true
 prost-build = { path = "../prost-build" }
 protobuf = { path = "../protobuf" }

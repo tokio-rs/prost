@@ -29,15 +29,15 @@ no-recursion-limit = []
 std = []
 
 [dependencies]
-bytes = { workspace = true }
+bytes.workspace = true
 prost-derive = { version = "0.12.4", path = "../prost-derive", optional = true }
 
 [dev-dependencies]
-criterion = { workspace = true }
-env_logger = { workspace = true }
-log = { workspace = true }
-proptest = { workspace = true }
-rand = { workspace = true }
+criterion.workspace = true
+env_logger.workspace = true
+log.workspace = true
+proptest.workspace = true
+rand.workspace = true
 
 [[bench]]
 name = "varint"
