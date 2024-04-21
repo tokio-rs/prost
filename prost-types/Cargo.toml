@@ -1,6 +1,6 @@
 [package]
 name = "prost-types"
-version = "0.12.6"
+version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
