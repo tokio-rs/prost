@@ -2,7 +2,7 @@
 name = "prost"
 version = "0.12.6"
 authors.workspace = true
-license = "Apache-2.0"
+license.workspace = true
 repository.workspace = true
 readme = "README.md"
 description = "A Protocol Buffers implementation for the Rust Language."
