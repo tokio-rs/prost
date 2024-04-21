@@ -15,7 +15,7 @@ cargo-fuzz = true
 protobuf.workspace = true
 tests.workspace = true
 
-libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
+libfuzzer-sys.workspace = true
 
 [[bin]]
 name = "proto3"
