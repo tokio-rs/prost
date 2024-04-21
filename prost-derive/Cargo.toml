@@ -1,11 +1,11 @@
 [package]
 name = "prost-derive"
+readme = "README.md"
+description = "Generate encoding and decoding implementations for Prost annotated types."
 version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
-description = "Generate encoding and decoding implementations for Prost annotated types."
 edition.workspace = true
 rust-version.workspace = true
 
