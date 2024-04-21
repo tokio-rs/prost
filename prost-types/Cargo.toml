@@ -9,7 +9,6 @@ authors = [
 ]
 license = "Apache-2.0"
 repository = "https://github.com/tokio-rs/prost"
-documentation = "https://docs.rs/prost-types"
 readme = "README.md"
 description = "Prost definitions of Protocol Buffers well known types."
 edition = "2021"
