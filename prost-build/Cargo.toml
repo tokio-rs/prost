@@ -21,16 +21,16 @@ format = ["dep:prettyplease", "dep:syn"]
 cleanup-markdown = ["dep:pulldown-cmark", "dep:pulldown-cmark-to-cmark"]
 
 [dependencies]
-bytes = { workspace = true }
-heck = { workspace = true }
+bytes.workspace = true
+heck.workspace = true
 itertools = { workspace = true, features = ["use_alloc"] }
-log = { workspace = true }
-multimap = { workspace = true }
-petgraph = { workspace = true }
+log.workspace = true
+multimap.workspace = true
+petgraph.workspace = true
 prost = { version = "0.12.4", path = "../prost", default-features = false }
 prost-types = { version = "0.12.4", path = "../prost-types", default-features = false }
-tempfile = { workspace = true }
-once_cell = { workspace = true }
+tempfile.workspace = true
+once_cell.workspace = true
 regex = { workspace = true, features = ["std", "unicode-bool"] }
 
 prettyplease = { workspace = true, optional = true }
@@ -41,4 +41,4 @@ pulldown-cmark = { workspace = true, optional = true }
 pulldown-cmark-to-cmark = { workspace = true, optional = true }
 
 [dev-dependencies]
-env_logger = { workspace = true }
+env_logger.workspace = true
