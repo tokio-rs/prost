@@ -21,20 +21,23 @@ path = "../tests/src/lib.rs"
 # [1]: https://github.com/rust-lang/cargo/pull/8074
 
 [dependencies]
-anyhow = { version = "1.0.45", default-features = false }
-bytes = { version = "1", default-features = false }
-cfg-if = "1"
-prost = { path = "..", default-features = false, features = ["derive"] }
-prost-types = { path = "../prost-types", default-features = false }
-protobuf = { path = "../protobuf" }
+prost = { workspace = true, features = ["derive"] }
+prost-types.workspace = true
+protobuf = { workspace = true }
+
+anyhow.workspace = true
+bytes.workspace = true
+cfg-if.workspace = true
 
 [dev-dependencies]
-diff = "0.1"
-prost-build = { path = "../prost-build" }
-tempfile = "3"
+prost-build.workspace = true
+
+diff.workspace = true
+tempfile.workspace = true
 
 [build-dependencies]
-cfg-if = "1"
-env_logger = { version = "0.10", default-features = false }
-prost-build = { path = "../prost-build" }
-protobuf = { path = "../protobuf" }
+prost-build.workspace = true
+protobuf.workspace = true
+
+cfg-if.workspace = true
+env_logger.workspace = true

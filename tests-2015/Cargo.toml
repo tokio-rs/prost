@@ -17,23 +17,26 @@ path = "../tests/src/lib.rs"
 [features]
 default = ["edition-2015", "std"]
 edition-2015 = []
-std = []
+std = ["anyhow/std", "prost-types/std", "prost/std"]
 
 [dependencies]
-anyhow = "1.0.1"
-bytes = "1"
-cfg-if = "1"
-prost = { path = ".." }
-prost-types = { path = "../prost-types" }
-protobuf = { path = "../protobuf" }
+prost.workspace = true
+prost-types.workspace = true
+protobuf.workspace = true
+
+anyhow.workspace = true
+bytes.workspace = true
+cfg-if.workspace = true
 
 [dev-dependencies]
-diff = "0.1"
-prost-build = { path = "../prost-build" }
-tempfile = "3"
+prost-build.workspace = true
+
+diff.workspace = true
+tempfile.workspace = true
 
 [build-dependencies]
-cfg-if = "1"
-env_logger = { version = "0.10", default-features = false }
-prost-build = { path = "../prost-build" }
-protobuf = { path = "../protobuf" }
+prost-build.workspace = true
+protobuf.workspace = true
+
+cfg-if.workspace = true
+env_logger.workspace = true

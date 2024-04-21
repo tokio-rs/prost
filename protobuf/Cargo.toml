@@ -9,24 +9,25 @@ publish = false
 edition = "2018"
 
 [dependencies]
-prost = { path = ".." }
-prost-types = { path = "../prost-types" }
+prost = { workspace = true, features = ["default"] }
+prost-types = { workspace = true, features = ["std"] }
 
 [build-dependencies]
-anyhow = "1.0.1"
-prost-build = { path = "../prost-build" }
-tempfile = "3"
+prost-build.workspace = true
+
+anyhow = { workspace = true, features = ["std"] }
+tempfile.workspace = true
 
 # With libz-sys `1.1.8` the msrv has been bumped to 1.54. Since, this dep
 # is not a dep of the actual prost crates we will force cargo to not include
 # the new version.
 #
 # https://github.com/rust-lang/libz-sys/issues/101
-libz-sys = { version = "1.1, < 1.1.7", optional = true }
+libz-sys = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.4", default-features = false }
-cfg-if = "1"
+criterion.workspace = true
+cfg-if.workspace = true
 
 [lib]
 # https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
