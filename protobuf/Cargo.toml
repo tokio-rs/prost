@@ -9,7 +9,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-prost = { path = ".." }
+prost = { path = "../prost" }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]
