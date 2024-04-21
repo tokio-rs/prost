@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 readme = "README.md"
 description = "Generate Prost annotated Rust types from Protocol Buffers files."
-edition = "2021"
+edition.workspace = true
 rust-version.workspace = true
 
 [features]

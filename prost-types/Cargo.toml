@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 readme = "README.md"
 description = "Prost definitions of Protocol Buffers well known types."
-edition = "2021"
+edition.workspace = true
 rust-version.workspace = true
 
 [lib]
