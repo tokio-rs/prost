@@ -26,7 +26,7 @@ resolver = "2"
 prost = { version = "0.12.4", path = "prost" }
 prost-build = { path = "prost-build" }
 prost-derive = { version = "0.12.4", path = "prost-derive" }
-prost-types = { path = "prost-types" }
+prost-types = { path = "prost-types", default-features = false }
 protobuf = { path = "protobuf" }
 tests = { path = "tests" }
 
