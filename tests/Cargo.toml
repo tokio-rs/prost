@@ -12,7 +12,7 @@ build = "src/build.rs"
 
 [features]
 default = ["std"]
-std = []
+std = ["anyhow/std"]
 
 [dependencies]
 anyhow.workspace = true

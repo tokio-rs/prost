@@ -17,7 +17,7 @@ path = "../tests/src/lib.rs"
 [features]
 default = ["edition-2015", "std"]
 edition-2015 = []
-std = []
+std = ["anyhow/std"]
 
 [dependencies]
 anyhow.workspace = true
