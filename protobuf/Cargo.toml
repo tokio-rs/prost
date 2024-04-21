@@ -10,7 +10,7 @@ edition = "2018"
 
 [dependencies]
 prost.workspace = true
-prost-types.workspace = true
+prost-types = { workspace = true, features = ["std"] }
 
 [build-dependencies]
 prost-build.workspace = true

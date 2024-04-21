@@ -12,7 +12,7 @@ build = "src/build.rs"
 
 [features]
 default = ["std"]
-std = ["anyhow/std"]
+std = ["anyhow/std", "prost-types/std"]
 
 [dependencies]
 prost.workspace = true

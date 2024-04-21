@@ -22,7 +22,7 @@ path = "../tests/src/lib.rs"
 
 [dependencies]
 prost = { workspace = true, features = ["derive"] }
-prost-types = { workspace = true, features = [] }
+prost-types.workspace = true
 protobuf = { workspace = true }
 
 anyhow.workspace = true
