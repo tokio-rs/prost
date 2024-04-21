@@ -27,7 +27,7 @@ itertools = { workspace = true, features = ["use_alloc"] }
 log.workspace = true
 multimap.workspace = true
 petgraph.workspace = true
-prost = { workspace = true, features = [] }
+prost = { workspace = true, features = ["default"] }
 prost-types = { workspace = true, features = ["std"] }
 tempfile.workspace = true
 once_cell.workspace = true

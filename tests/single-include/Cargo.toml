@@ -7,7 +7,7 @@ publish = false
 license = "MIT"
 
 [dependencies]
-prost.workspace = true
+prost = { workspace = true, features = ["default"] }
 
 [build-dependencies]
 prost-build.workspace = true
