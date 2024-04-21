@@ -29,6 +29,7 @@ authors = [
   "Casper Meijn <casper@meijn.net>",
   "Tokio Contributors <team@tokio.rs>",
 ]
+repository = "https://github.com/tokio-rs/prost"
 
 [profile.bench]
 debug = true
