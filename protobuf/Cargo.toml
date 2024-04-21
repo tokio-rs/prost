@@ -13,7 +13,7 @@ prost = { path = "../prost" }
 prost-types = { path = "../prost-types" }
 
 [build-dependencies]
-anyhow.workspace = true
+anyhow = { workspace = true, features = ["std"] }
 prost-build = { path = "../prost-build" }
 tempfile.workspace = true
 
