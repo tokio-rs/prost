@@ -17,19 +17,6 @@ static DATASET_PROTOS: &[&str] = &[
     "google_message1/proto2/benchmark_message1_proto2.proto",
     "google_message1/proto3/benchmark_message1_proto3.proto",
     "google_message2/benchmark_message2.proto",
-    "google_message3/benchmark_message3.proto",
-    "google_message3/benchmark_message3_1.proto",
-    "google_message3/benchmark_message3_2.proto",
-    "google_message3/benchmark_message3_3.proto",
-    "google_message3/benchmark_message3_4.proto",
-    "google_message3/benchmark_message3_5.proto",
-    "google_message3/benchmark_message3_6.proto",
-    "google_message3/benchmark_message3_7.proto",
-    "google_message3/benchmark_message3_8.proto",
-    "google_message4/benchmark_message4.proto",
-    "google_message4/benchmark_message4_1.proto",
-    "google_message4/benchmark_message4_2.proto",
-    "google_message4/benchmark_message4_3.proto",
 ];
 
 fn main() -> Result<()> {
