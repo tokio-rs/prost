@@ -14,16 +14,5 @@ anyhow = "1.0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
 
-[dev-dependencies]
-criterion = { version = "0.5", default-features = false }
-
-[lib]
-# https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
-bench = false
-
-[[bench]]
-name = "dataset"
-harness = false
-
 [package.metadata.cargo-machete]
-ignored = ["prost-types"]
+ignored = ["prost", "prost-types"]
