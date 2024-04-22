@@ -6,7 +6,7 @@ authors = [
     "Tokio Contributors <team@tokio.rs>",
 ]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 prost = { path = "../prost" }
