@@ -3,14 +3,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use cfg_if::cfg_if;
 use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
 
-use protobuf::benchmarks::{
-    dataset, google_message3::GoogleMessage3, google_message4::GoogleMessage4, proto2, proto3,
-    BenchmarkDataset,
-};
+use protobuf::benchmarks::{dataset, proto2, proto3, BenchmarkDataset};
 
 fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
     let mut f = File::open(dataset)?;
@@ -83,9 +79,6 @@ macro_rules! dataset {
 dataset!(google_message1_proto2, proto2::GoogleMessage1);
 dataset!(google_message1_proto3, proto3::GoogleMessage1);
 dataset!(google_message2, proto2::GoogleMessage2);
-dataset!(google_message3_1, GoogleMessage3);
-dataset!(google_message3_5, GoogleMessage3);
-dataset!(google_message4, GoogleMessage4);
 
 criterion_group!(
     dataset,
@@ -94,17 +87,4 @@ criterion_group!(
     google_message2,
 );
 
-criterion_group! {
-    name = slow;
-    config = Criterion::default().sample_size(10);
-    targets = google_message3_1, google_message3_5, google_message4
-}
-
-cfg_if! {
-    if #[cfg(debug_assertions)] {
-        // Disable 'slow' benchmarks for unoptimized test builds.
-        criterion_main!(dataset);
-    } else {
-        criterion_main!(dataset, slow);
-    }
-}
+criterion_main!(dataset);
