@@ -50,7 +50,7 @@ impl Timestamp {
     ///
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
     pub fn try_normalize(mut self) -> Result<Timestamp, Timestamp> {
-        let before = self.clone();
+        let before = self;
         self.normalize();
         // If the seconds value has changed, and is either i64::MIN or i64::MAX, then the timestamp
         // normalization overflowed.
@@ -201,7 +201,7 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
     type Error = TimestampError;
 
     fn try_from(mut timestamp: Timestamp) -> Result<std::time::SystemTime, Self::Error> {
-        let orig_timestamp = timestamp.clone();
+        let orig_timestamp = timestamp;
         timestamp.normalize();
 
         let system_time = if timestamp.seconds >= 0 {
@@ -211,8 +211,7 @@ impl TryFrom<Timestamp> for std::time::SystemTime {
                 timestamp
                     .seconds
                     .checked_neg()
-                    .ok_or_else(|| TimestampError::OutOfSystemRange(timestamp.clone()))?
-                    as u64,
+                    .ok_or(TimestampError::OutOfSystemRange(timestamp))? as u64,
             ))
         };
 
@@ -234,7 +233,7 @@ impl FromStr for Timestamp {
 
 impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        datetime::DateTime::from(self.clone()).fmt(f)
+        datetime::DateTime::from(*self).fmt(f)
     }
 }
 #[cfg(test)]
@@ -262,7 +261,7 @@ mod tests {
         ) {
             let mut timestamp = Timestamp { seconds, nanos };
             timestamp.normalize();
-            if let Ok(system_time) = SystemTime::try_from(timestamp.clone()) {
+            if let Ok(system_time) = SystemTime::try_from(timestamp) {
                 prop_assert_eq!(Timestamp::from(system_time), timestamp);
             }
         }
