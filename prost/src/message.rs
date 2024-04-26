@@ -21,24 +21,22 @@ pub trait Message: Debug + Send + Sync {
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    fn encode_raw<B>(&self, buf: &mut B)
+    fn encode_raw(&self, buf: &mut impl BufMut)
     where
-        B: BufMut,
         Self: Sized;
 
     /// Decodes a field from a buffer, and merges it into `self`.
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized;
 
     /// Returns the encoded length of the message without a length delimiter.
@@ -167,22 +165,16 @@ impl<M> Message for Box<M>
 where
     M: Message,
 {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
+    fn encode_raw(&self, buf: &mut impl BufMut) {
         (**self).encode_raw(buf)
     }
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-    {
+    ) -> Result<(), DecodeError> {
         (**self).merge_field(tag, wire_type, buf, ctx)
     }
     fn encoded_len(&self) -> usize {
