@@ -823,8 +823,8 @@ impl Config {
             self.write_includes(
                 modules.keys().collect(),
                 &mut file,
-                0,
                 if target_is_env { None } else { Some(&target) },
+                &file_names,
             )?;
             file.flush()?;
         }
@@ -952,67 +952,58 @@ impl Config {
         self.compile_fds(file_descriptor_set)
     }
 
-    fn write_includes(
+    pub(crate) fn write_includes(
         &self,
-        mut entries: Vec<&Module>,
-        outfile: &mut fs::File,
-        depth: usize,
+        mut modules: Vec<&Module>,
+        outfile: &mut impl Write,
         basepath: Option<&PathBuf>,
-    ) -> Result<usize> {
-        let mut written = 0;
-        entries.sort();
+        file_names: &HashMap<Module, String>,
+    ) -> Result<()> {
+        modules.sort();
 
-        while !entries.is_empty() {
-            let modident = entries[0].part(depth);
-            let matching: Vec<&Module> = entries
-                .iter()
-                .filter(|&v| v.part(depth) == modident)
-                .copied()
-                .collect();
-            {
-                // Will NLL sort this mess out?
-                let _temp = entries
-                    .drain(..)
-                    .filter(|&v| v.part(depth) != modident)
-                    .collect();
-                entries = _temp;
+        let mut stack = Vec::new();
+
+        for module in modules {
+            while !module.starts_with(&stack) {
+                stack.pop();
+                self.write_line(outfile, stack.len(), "}")?;
             }
-            self.write_line(outfile, depth, &format!("pub mod {} {{", modident))?;
-            let subwritten = self.write_includes(
-                matching
-                    .iter()
-                    .filter(|v| v.len() > depth + 1)
-                    .copied()
-                    .collect(),
-                outfile,
-                depth + 1,
-                basepath,
-            )?;
-            written += subwritten;
-            if subwritten != matching.len() {
-                let modname = matching[0].to_partial_file_name(..=depth);
-                if basepath.is_some() {
-                    self.write_line(
-                        outfile,
-                        depth + 1,
-                        &format!("include!(\"{}.rs\");", modname),
-                    )?;
-                } else {
-                    self.write_line(
-                        outfile,
-                        depth + 1,
-                        &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}.rs\"));", modname),
-                    )?;
-                }
-                written += 1;
+            while stack.len() < module.len() {
+                self.write_line(
+                    outfile,
+                    stack.len(),
+                    &format!("pub mod {} {{", module.part(stack.len())),
+                )?;
+                stack.push(module.part(stack.len()).to_owned());
             }
 
+            let file_name = file_names
+                .get(module)
+                .expect("every module should have a filename");
+
+            if basepath.is_some() {
+                self.write_line(
+                    outfile,
+                    stack.len(),
+                    &format!("include!(\"{}\");", file_name),
+                )?;
+            } else {
+                self.write_line(
+                    outfile,
+                    stack.len(),
+                    &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}\"));", file_name),
+                )?;
+            }
+        }
+
+        for depth in (0..stack.len()).rev() {
             self.write_line(outfile, depth, "}")?;
         }
-        Ok(written)
+
+        Ok(())
     }
 
-    fn write_line(&self, outfile: &mut fs::File, depth: usize, line: &str) -> Result<()> {
+    fn write_line(&self, outfile: &mut impl Write, depth: usize, line: &str) -> Result<()> {
         outfile.write_all(format!("{}{}\n", ("    ").to_owned().repeat(depth), line).as_bytes())
     }
 
