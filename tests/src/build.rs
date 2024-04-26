@@ -72,6 +72,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("no_shadowed_types.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("no_unused_results.proto")], includes)
         .unwrap();
 

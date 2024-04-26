@@ -43,6 +43,8 @@ mod generic_derive;
 #[cfg(test)]
 mod message_encoding;
 #[cfg(test)]
+mod no_shadowed_types;
+#[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
 #[cfg(feature = "std")]
