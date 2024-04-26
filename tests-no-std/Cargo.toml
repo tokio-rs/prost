@@ -24,7 +24,7 @@ path = "../tests/src/lib.rs"
 anyhow = { version = "1.0.45", default-features = false }
 bytes = { version = "1", default-features = false }
 cfg-if = "1"
-prost = { path = "..", default-features = false, features = ["derive"] }
+prost = { path = "../prost", default-features = false, features = ["derive"] }
 prost-types = { path = "../prost-types", default-features = false }
 protobuf = { path = "../protobuf" }
 
