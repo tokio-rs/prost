@@ -2,10 +2,10 @@
 name = "prost-types"
 version = "0.12.4"
 authors = [
-    "Dan Burkert <dan@danburkert.com>",
-    "Lucio Franco <luciofranco14@gmail.com>",
-    "Casper Meijn <casper@meijn.net>",
-    "Tokio Contributors <team@tokio.rs>",
+  "Dan Burkert <dan@danburkert.com>",
+  "Lucio Franco <luciofranco14@gmail.com>",
+  "Casper Meijn <casper@meijn.net>",
+  "Tokio Contributors <team@tokio.rs>",
 ]
 license = "Apache-2.0"
 repository = "https://github.com/tokio-rs/prost"
@@ -23,7 +23,7 @@ default = ["std"]
 std = ["prost/std"]
 
 [dependencies]
-prost = { version = "0.12.4", path = "..", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12.4", path = "../prost", default-features = false, features = ["prost-derive"] }
 
 [dev-dependencies]
 proptest = "1"
