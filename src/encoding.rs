@@ -1779,6 +1779,9 @@ mod test {
 
 
     #[test]
+    /// `decode_varint` accepts a `Buf`, which can be multiple concatinated buffers. 
+    /// This test ensures that future optimizations don't break the 
+    /// `decode_varint` for non-continuous memory.
     fn split_varint_decoding() {
         let mut test_values = Vec::<u64>::with_capacity(10 * 2);
         test_values.push(128);
