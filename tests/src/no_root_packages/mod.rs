@@ -16,6 +16,10 @@ pub mod widget {
     }
 }
 
+pub mod generated_include {
+    include!(concat!(env!("OUT_DIR"), "/no_root_packages/__.include.rs"));
+}
+
 #[test]
 fn test() {
     use prost::Message;
