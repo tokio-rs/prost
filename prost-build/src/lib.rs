@@ -274,7 +274,7 @@ pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use std::fs::{self, File};
+    use std::fs::File;
     use std::io::Read;
     use std::rc::Rc;
 
@@ -347,9 +347,11 @@ mod tests {
     #[test]
     fn smoke_test() {
         let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
         Config::new()
             .service_generator(Box::new(ServiceTraitGenerator))
-            .out_dir(std::env::temp_dir())
+            .out_dir(tempdir.path())
             .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
             .unwrap();
     }
@@ -357,6 +359,7 @@ mod tests {
     #[test]
     fn finalize_package() {
         let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
 
         let state = Rc::new(RefCell::new(MockState::default()));
         let gen = MockServiceGenerator::new(Rc::clone(&state));
@@ -364,7 +367,7 @@ mod tests {
         Config::new()
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
-            .out_dir(std::env::temp_dir())
+            .out_dir(tempdir.path())
             .compile_protos(
                 &[
                     "src/fixtures/helloworld/hello.proto",
@@ -383,11 +386,10 @@ mod tests {
     #[test]
     fn test_generate_message_attributes() {
         let _ = env_logger::try_init();
-
-        let out_dir = std::env::temp_dir();
+        let tempdir = tempfile::tempdir().unwrap();
 
         Config::new()
-            .out_dir(out_dir.clone())
+            .out_dir(tempdir.path())
             .message_attribute(".", "#[derive(derive_builder::Builder)]")
             .enum_attribute(".", "#[some_enum_attr(u8)]")
             .compile_protos(
@@ -396,11 +398,7 @@ mod tests {
             )
             .unwrap();
 
-        let out_file = out_dir
-            .join("helloworld.rs")
-            .as_path()
-            .display()
-            .to_string();
+        let out_file = tempdir.path().join("helloworld.rs");
         #[cfg(feature = "format")]
         let expected_content =
             read_all_content("src/fixtures/helloworld/_expected_helloworld_formatted.rs")
@@ -408,7 +406,7 @@ mod tests {
         #[cfg(not(feature = "format"))]
         let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
             .replace("\r\n", "\n");
-        let content = read_all_content(&out_file).replace("\r\n", "\n");
+        let content = read_all_content(out_file).replace("\r\n", "\n");
         assert_eq!(
             expected_content, content,
             "Unexpected content: \n{}",
@@ -422,18 +420,13 @@ mod tests {
         let state = Rc::new(RefCell::new(MockState::default()));
         let gen = MockServiceGenerator::new(Rc::clone(&state));
         let include_file = "_include.rs";
-        let out_dir = std::env::temp_dir()
-            .as_path()
-            .join("test_generate_no_empty_outputs");
-        let previously_empty_proto_path = out_dir.as_path().join(Path::new("google.protobuf.rs"));
-        // For reproducibility, ensure we start with the out directory created and empty
-        let _ = fs::remove_dir_all(&out_dir);
-        let _ = fs::create_dir(&out_dir);
+        let tempdir = tempfile::tempdir().unwrap();
+        let previously_empty_proto_path = tempdir.path().join(Path::new("google.protobuf.rs"));
 
         Config::new()
             .service_generator(Box::new(gen))
             .include_file(include_file)
-            .out_dir(&out_dir)
+            .out_dir(tempdir.path())
             .compile_protos(
                 &["src/fixtures/imports_empty/imports_empty.proto"],
                 &["src/fixtures/imports_empty"],
@@ -450,14 +443,7 @@ mod tests {
         } else {
             // The file wasn't generated so the result include file should not reference it
             let expected = read_all_content("src/fixtures/imports_empty/_expected_include.rs");
-            let actual = read_all_content(
-                out_dir
-                    .as_path()
-                    .join(Path::new(include_file))
-                    .display()
-                    .to_string()
-                    .as_str(),
-            );
+            let actual = read_all_content(tempdir.path().join(Path::new(include_file)));
             // Normalizes windows and Linux-style EOL
             let expected = expected.replace("\r\n", "\n");
             let actual = actual.replace("\r\n", "\n");
@@ -468,11 +454,10 @@ mod tests {
     #[test]
     fn test_generate_field_attributes() {
         let _ = env_logger::try_init();
-
-        let out_dir = std::env::temp_dir();
+        let tempdir = tempfile::tempdir().unwrap();
 
         Config::new()
-            .out_dir(out_dir.clone())
+            .out_dir(tempdir.path())
             .boxed("Container.data.foo")
             .boxed("Bar.qux")
             .compile_protos(
@@ -481,13 +466,9 @@ mod tests {
             )
             .unwrap();
 
-        let out_file = out_dir
-            .join("field_attributes.rs")
-            .as_path()
-            .display()
-            .to_string();
+        let out_file = tempdir.path().join("field_attributes.rs");
 
-        let content = read_all_content(&out_file).replace("\r\n", "\n");
+        let content = read_all_content(out_file).replace("\r\n", "\n");
 
         #[cfg(feature = "format")]
         let expected_content = read_all_content(
@@ -514,12 +495,12 @@ mod tests {
             let state = Rc::new(RefCell::new(MockState::default()));
             let gen = MockServiceGenerator::new(Rc::clone(&state));
             let include_file = "_include.rs";
-            let tmp_dir = std::env::temp_dir();
+            let tempdir = tempfile::tempdir().unwrap();
 
             Config::new()
                 .service_generator(Box::new(gen))
                 .include_file(include_file)
-                .out_dir(std::env::temp_dir())
+                .out_dir(tempdir.path())
                 .compile_protos(
                     &[
                         "src/fixtures/alphabet/a.proto",
@@ -534,14 +515,7 @@ mod tests {
                 .unwrap();
 
             let expected = read_all_content("src/fixtures/alphabet/_expected_include.rs");
-            let actual = read_all_content(
-                tmp_dir
-                    .as_path()
-                    .join(Path::new(include_file))
-                    .display()
-                    .to_string()
-                    .as_str(),
-            );
+            let actual = read_all_content(tempdir.path().join(Path::new(include_file)));
             // Normalizes windows and Linux-style EOL
             let expected = expected.replace("\r\n", "\n");
             let actual = actual.replace("\r\n", "\n");
@@ -550,7 +524,7 @@ mod tests {
         }
     }
 
-    fn read_all_content(filepath: &str) -> String {
+    fn read_all_content(filepath: impl AsRef<Path>) -> String {
         let mut f = File::open(filepath).unwrap();
         let mut content = String::new();
         f.read_to_string(&mut content).unwrap();
