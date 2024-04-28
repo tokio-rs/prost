@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::default;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
@@ -11,6 +8,7 @@ use std::process::Command;
 use log::debug;
 use log::trace;
 
+use prost::facade::*;
 use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 

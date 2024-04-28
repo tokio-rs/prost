@@ -1,4 +1,4 @@
-use alloc::string::ToString;
+use prost::facade::*;
 
 mod deprecated_field {
     // #![deny(unused_results)]

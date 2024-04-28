@@ -1,14 +1,9 @@
-use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-
 use criterion::{criterion_group, criterion_main, Criterion};
+use prost::facade::*;
 use prost::Message;
-
 use protobuf::benchmarks::{dataset, proto2, proto3, BenchmarkDataset};
 
-fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
+fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn std::error::Error>> {
     let mut f = File::open(dataset)?;
     let mut buf = Vec::new();
     f.read_to_end(&mut buf)?;

@@ -4,14 +4,14 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Message {
     #[prost(string, tag = "1")]
-    pub say: ::prost::alloc::string::String,
+    pub say: String,
 }
 #[derive(derive_builder::Builder)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Response {
     #[prost(string, tag = "1")]
-    pub say: ::prost::alloc::string::String,
+    pub say: String,
 }
 #[some_enum_attr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

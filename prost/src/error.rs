@@ -1,10 +1,6 @@
 //! Protobuf encoding and decoding errors.
 
-use alloc::borrow::Cow;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-
-use core::fmt;
+use crate::facade::*;
 
 /// A Protobuf message decoding error.
 ///

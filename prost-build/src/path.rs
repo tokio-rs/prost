@@ -1,6 +1,6 @@
 //! Utilities for working with Protobuf paths.
 
-use std::iter;
+use prost::facade::*;
 
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
 #[derive(Debug, Default)]

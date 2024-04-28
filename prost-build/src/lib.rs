@@ -131,9 +131,6 @@
 //!
 //! [`protobuf-src`]: https://docs.rs/protobuf-src
 
-use std::io::Result;
-use std::path::Path;
-
 use prost_types::FileDescriptorSet;
 
 mod ast;
@@ -153,6 +150,8 @@ pub use config::Config;
 
 mod module;
 pub use module::Module;
+
+use prost::facade::*;
 
 /// A service generator takes a service descriptor and generates Rust code.
 ///
@@ -241,7 +240,10 @@ pub trait ServiceGenerator {
 /// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 /// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
 /// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
-pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]) -> Result<()> {
+pub fn compile_protos(
+    protos: &[impl AsRef<Path>],
+    includes: &[impl AsRef<Path>],
+) -> io::Result<()> {
     Config::new().compile_protos(protos, includes)
 }
 
@@ -267,17 +269,12 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 ///   prost_build::compile_fds(file_descriptor_set)
 /// }
 /// ```
-pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
+pub fn compile_fds(fds: FileDescriptorSet) -> io::Result<()> {
     Config::new().compile_fds(fds)
 }
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
-    use std::fs::{self, File};
-    use std::io::Read;
-    use std::rc::Rc;
-
     use super::*;
 
     /// An example service generator that generates a trait with methods corresponding to the
@@ -374,7 +371,7 @@ mod tests {
             )
             .unwrap();
 
-        let state = state.borrow();
+        let state = RefCell::borrow(&state);
         assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
         assert_eq!(&state.package_names, &["helloworld"]);
         assert_eq!(state.finalized, 3);

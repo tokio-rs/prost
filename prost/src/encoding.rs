@@ -4,16 +4,9 @@
 
 #![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
-use alloc::collections::BTreeMap;
-use alloc::format;
-use alloc::string::String;
-use alloc::vec::Vec;
-use core::cmp::min;
-use core::mem;
-use core::str;
-
 use ::bytes::{Buf, BufMut, Bytes};
 
+use crate::facade::*;
 use crate::DecodeError;
 use crate::Message;
 
@@ -1420,11 +1413,6 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
-    use alloc::string::ToString;
-    use core::borrow::Borrow;
-    use core::fmt::Debug;
-    use core::u64;
-
     use ::bytes::BytesMut;
     use proptest::{prelude::*, test_runner::TestCaseResult};
 

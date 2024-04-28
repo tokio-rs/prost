@@ -143,11 +143,9 @@ pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
-use alloc::vec::Vec;
-
 use anyhow::anyhow;
 use prost::bytes::Buf;
-
+use prost::facade::*;
 use prost::Message;
 
 pub enum RoundtripResult {

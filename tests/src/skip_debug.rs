@@ -1,7 +1,6 @@
 //! Tests for skipping the default Debug implementation.
 
-use alloc::string::{String, ToString};
-use alloc::{fmt, format};
+use prost::facade::*;
 
 use crate::custom_debug::{msg, AnEnum, Msg};
 use crate::message_encoding::BasicEnumeration;

@@ -332,21 +332,21 @@ and the generated Rust code (`tutorial.rs`):
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Person {
     #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
+    pub name: String,
     /// Unique ID number for this person.
     #[prost(int32, tag="2")]
     pub id: i32,
     #[prost(string, tag="3")]
-    pub email: ::prost::alloc::string::String,
+    pub email: String,
     #[prost(message, repeated, tag="4")]
-    pub phones: ::prost::alloc::vec::Vec<person::PhoneNumber>,
+    pub phones: Vec<person::PhoneNumber>,
 }
 /// Nested message and enum types in `Person`.
 pub mod person {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PhoneNumber {
         #[prost(string, tag="1")]
-        pub number: ::prost::alloc::string::String,
+        pub number: String,
         #[prost(enumeration="PhoneType", tag="2")]
         pub r#type: i32,
     }
@@ -362,7 +362,7 @@ pub mod person {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AddressBook {
     #[prost(message, repeated, tag="1")]
-    pub people: ::prost::alloc::vec::Vec<Person>,
+    pub people: Vec<Person>,
 }
 ```
 

@@ -1,6 +1,5 @@
-use std::io::{self, Read, Write};
-
 use bytes::{Buf, BufMut};
+use prost::facade::*;
 use prost::Message;
 
 use protobuf::conformance::{

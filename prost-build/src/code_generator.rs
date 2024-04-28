@@ -1,11 +1,7 @@
-use std::ascii;
-use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
-use std::iter;
-
 use itertools::{Either, Itertools};
 use log::debug;
 use multimap::MultiMap;
+use prost::facade::*;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
@@ -87,6 +83,8 @@ impl<'a> CodeGenerator<'a> {
             path: Vec::new(),
             buf,
         };
+
+        code_gen.add_prelude();
 
         debug!(
             "file: {:?}, package: {:?}",
@@ -286,10 +284,6 @@ impl<'a> CodeGenerator<'a> {
             "const PACKAGE: &'static str = \"{}\";\n",
             self.package,
         ));
-
-        let prost_path = self.config.prost_path.as_deref().unwrap_or("::prost");
-        let string_path = format!("{prost_path}::alloc::string::String");
-
         let full_name = format!(
             "{}{}{}{}{message_name}",
             self.package.trim_matches('.'),
@@ -304,11 +298,11 @@ impl<'a> CodeGenerator<'a> {
             .map_or("", |name| name.as_str());
 
         self.buf.push_str(&format!(
-            r#"fn full_name() -> {string_path} {{ "{full_name}".into() }}"#,
+            r#"fn full_name() -> String {{ "{full_name}".into() }}"#,
         ));
 
         self.buf.push_str(&format!(
-            r#"fn type_url() -> {string_path} {{ "{domain_name}/{full_name}".into() }}"#,
+            r#"fn type_url() -> String {{ "{domain_name}/{full_name}".into() }}"#,
         ));
 
         self.depth -= 1;
@@ -479,17 +473,13 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str(&to_snake(field.name()));
         self.buf.push_str(": ");
 
-        let prost_path = prost_path(self.config);
-
         if repeated {
-            self.buf
-                .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
+            self.buf.push_str("Vec<");
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
         if boxed {
-            self.buf
-                .push_str(&format!("{}::alloc::boxed::Box<", prost_path));
+            self.buf.push_str("Box<");
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -644,11 +634,8 @@ impl<'a> CodeGenerator<'a> {
             );
 
             if boxed {
-                self.buf.push_str(&format!(
-                    "{}(::prost::alloc::boxed::Box<{}>),\n",
-                    to_upper_camel(field.name()),
-                    ty
-                ));
+                self.buf
+                    .push_str(&format!("{}(Box<{}>),\n", to_upper_camel(field.name()), ty));
             } else {
                 self.buf
                     .push_str(&format!("{}({}),\n", to_upper_camel(field.name()), ty));
@@ -911,6 +898,7 @@ impl<'a> CodeGenerator<'a> {
         self.buf.push_str("pub mod ");
         self.buf.push_str(&to_snake(module));
         self.buf.push_str(" {\n");
+        self.add_prelude();
 
         self.type_path.push(module.into());
 
@@ -935,7 +923,7 @@ impl<'a> CodeGenerator<'a> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", prost_path(self.config)),
+            Type::String => "String".to_string(),
             Type::Bytes => self
                 .config
                 .bytes_type
@@ -1055,6 +1043,12 @@ impl<'a> CodeGenerator<'a> {
             self.type_path.join("."),
             message_name,
         )
+    }
+
+    fn add_prelude(&mut self) {
+        self.buf.push_str("#[allow(unused_imports)]");
+        self.buf
+            .push_str(&format!("use {}::facade::*;", prost_path(self.config)));
     }
 }
 

@@ -207,7 +207,7 @@ impl Field {
         match self.kind {
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
             Kind::Optional(_) => quote!(::core::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
+            Kind::Repeated | Kind::Packed => quote!(Vec::new()),
         }
     }
 
@@ -251,7 +251,7 @@ impl Field {
             },
             Kind::Repeated | Kind::Packed => {
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#inner_ty>);
+                    struct #wrapper_name<'a>(&'a Vec<#inner_ty>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
@@ -418,7 +418,7 @@ impl BytesTy {
 
     fn rust_type(&self) -> TokenStream {
         match self {
-            BytesTy::Vec => quote! { ::prost::alloc::vec::Vec<u8> },
+            BytesTy::Vec => quote! { Vec<u8> },
             BytesTy::Bytes => quote! { ::prost::bytes::Bytes },
         }
     }
@@ -530,7 +530,7 @@ impl Ty {
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self) -> TokenStream {
         match self {
-            Ty::String => quote!(::prost::alloc::string::String),
+            Ty::String => quote!(String),
             Ty::Bytes(ty) => ty.rust_type(),
             _ => self.rust_ref_type(),
         }
@@ -781,7 +781,7 @@ impl DefaultValue {
     pub fn owned(&self) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(::prost::alloc::string::String::new())
+                quote!(String::new())
             }
             DefaultValue::String(ref value) => quote!(#value.into()),
             DefaultValue::Bytes(ref value) if value.is_empty() => {

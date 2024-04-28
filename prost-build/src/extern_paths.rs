@@ -1,8 +1,8 @@
-use std::collections::{hash_map, HashMap};
-
 use itertools::Itertools;
 
 use crate::ident::{to_snake, to_upper_camel};
+
+use prost::facade::*;
 
 fn validate_proto_path(path: &str) -> Result<(), String> {
     if path.chars().next().map(|c| c != '.').unwrap_or(true) {
@@ -37,7 +37,7 @@ impl ExternPaths {
             extern_paths.insert(".google.protobuf.BoolValue".to_string(), "bool".to_string())?;
             extern_paths.insert(
                 ".google.protobuf.BytesValue".to_string(),
-                "::prost::alloc::vec::Vec<u8>".to_string(),
+                "Vec<u8>".to_string(),
             )?;
             extern_paths.insert(
                 ".google.protobuf.DoubleValue".to_string(),
@@ -49,7 +49,7 @@ impl ExternPaths {
             extern_paths.insert(".google.protobuf.Int64Value".to_string(), "i64".to_string())?;
             extern_paths.insert(
                 ".google.protobuf.StringValue".to_string(),
-                "::prost::alloc::string::String".to_string(),
+                "String".to_string(),
             )?;
             extern_paths.insert(
                 ".google.protobuf.UInt32Value".to_string(),

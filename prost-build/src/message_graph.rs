@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-
 use petgraph::algo::has_path_connecting;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 
 use prost_types::{field_descriptor_proto, DescriptorProto, FileDescriptorProto};
+
+use prost::facade::*;
 
 /// `MessageGraph` builds a graph of messages whose edges correspond to nesting.
 /// The goal is to recognize when message types are recursively nested, so

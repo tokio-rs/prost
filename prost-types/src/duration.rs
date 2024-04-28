@@ -1,5 +1,7 @@
 use super::*;
 
+use core::time;
+
 #[cfg(feature = "std")]
 impl std::hash::Hash for Duration {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {

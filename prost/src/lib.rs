@@ -97,3 +97,6 @@ extern crate prost_derive;
 #[cfg(feature = "derive")]
 #[doc(hidden)]
 pub use prost_derive::*;
+
+#[doc(hidden)]
+pub mod facade;

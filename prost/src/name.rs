@@ -2,7 +2,7 @@
 
 use crate::Message;
 
-use alloc::{format, string::String};
+use crate::facade::*;
 
 /// Associate a type name with a [`Message`] type.
 pub trait Name: Message {

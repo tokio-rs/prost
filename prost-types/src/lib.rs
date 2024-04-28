@@ -25,14 +25,8 @@ mod datetime;
 #[rustfmt::skip]
 mod protobuf;
 
-use core::convert::TryFrom;
-use core::fmt;
-use core::str::FromStr;
-use core::time;
+use prost::facade::*;
 
-use prost::alloc::format;
-use prost::alloc::string::String;
-use prost::alloc::vec::Vec;
 use prost::{DecodeError, EncodeError, Message, Name};
 
 pub use protobuf::*;

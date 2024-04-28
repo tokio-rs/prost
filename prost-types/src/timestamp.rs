@@ -234,7 +234,7 @@ impl FromStr for Timestamp {
 
 impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        datetime::DateTime::from(self.clone()).fmt(f)
+        write!(f, "{}", datetime::DateTime::from(self.clone()))
     }
 }
 #[cfg(test)]

@@ -27,13 +27,6 @@ impl MapTy {
             MapTy::BTreeMap => Ident::new("btree_map", Span::call_site()),
         }
     }
-
-    fn lib(&self) -> TokenStream {
-        match self {
-            MapTy::HashMap => quote! { std },
-            MapTy::BTreeMap => quote! { prost::alloc },
-        }
-    }
 }
 
 fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
@@ -307,7 +300,7 @@ impl Field {
         let key_wrapper = fake_scalar(self.key_ty.clone()).debug(quote!(KeyWrapper));
         let key = self.key_ty.rust_type();
         let value_wrapper = self.value_ty.debug();
-        let libname = self.map_ty.lib();
+
         let fmt = quote! {
             fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 #key_wrapper
@@ -319,6 +312,9 @@ impl Field {
                 builder.finish()
             }
         };
+
+        // FIXME: facade import https://github.com/tokio-rs/prost/issues/939
+
         match &self.value_ty {
             ValueTy::Scalar(ty) => {
                 if let scalar::Ty::Bytes(_) = *ty {
@@ -334,14 +330,14 @@ impl Field {
 
                 let value = ty.rust_type();
                 quote! {
-                    struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);
+                    struct #wrapper_name<'a>(&'a ::prost::facade::#type_name<#key, #value>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         #fmt
                     }
                 }
             }
             ValueTy::Message => quote! {
-                struct #wrapper_name<'a, V: 'a>(&'a ::#libname::collections::#type_name<#key, V>);
+                struct #wrapper_name<'a, V: 'a>(&'a ::prost::facade::#type_name<#key, V>);
                 impl<'a, V> ::core::fmt::Debug for #wrapper_name<'a, V>
                 where
                     V: ::core::fmt::Debug + 'a,

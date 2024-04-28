@@ -1,7 +1,5 @@
-use alloc::vec;
-use alloc::{borrow::ToOwned, string::String, vec::Vec};
-
 use prost::bytes::Bytes;
+use prost::facade::*;
 use prost::{Enumeration, Message, Oneof};
 
 use crate::check_message;
@@ -216,7 +214,7 @@ fn check_tags_inferred() {
         three: vec![0.0, 1.0, 1.0],
         skip_to_nine: "nine".to_owned(),
         ten: 0,
-        eleven: ::alloc::collections::BTreeMap::new(),
+        eleven: BTreeMap::new(),
         back_to_five: vec![1, 0, 1],
         six: Basic::default(),
     };
@@ -230,7 +228,7 @@ fn check_tags_inferred() {
         six: Basic::default(),
         nine: "nine".to_owned(),
         ten: 0,
-        eleven: ::alloc::collections::BTreeMap::new(),
+        eleven: BTreeMap::new(),
     };
     check_serialize_equivalent(&tags_inferred, &tags_qualified);
 }
@@ -250,7 +248,7 @@ pub struct TagsInferred {
     #[prost(enumeration = "BasicEnumeration", default = "ONE")]
     pub ten: i32,
     #[prost(btree_map = "string, string")]
-    pub eleven: ::alloc::collections::BTreeMap<String, String>,
+    pub eleven: BTreeMap<String, String>,
 
     #[prost(tag = "5", bytes)]
     pub back_to_five: Vec<u8>,
@@ -278,7 +276,7 @@ pub struct TagsQualified {
     #[prost(tag = "10", enumeration = "BasicEnumeration", default = "ONE")]
     pub ten: i32,
     #[prost(tag = "11", btree_map = "string, string")]
-    pub eleven: ::alloc::collections::BTreeMap<String, String>,
+    pub eleven: BTreeMap<String, String>,
 }
 
 /// A prost message with default value.
@@ -354,24 +352,24 @@ pub struct Basic {
 
     #[prost(map = "int32, enumeration(BasicEnumeration)", tag = "6")]
     #[cfg(feature = "std")]
-    pub enumeration_map: ::std::collections::HashMap<i32, i32>,
+    pub enumeration_map: HashMap<i32, i32>,
 
     #[prost(hash_map = "string, string", tag = "7")]
     #[cfg(feature = "std")]
-    pub string_map: ::std::collections::HashMap<String, String>,
+    pub string_map: HashMap<String, String>,
 
     #[prost(btree_map = "int32, enumeration(BasicEnumeration)", tag = "10")]
-    pub enumeration_btree_map: prost::alloc::collections::BTreeMap<i32, i32>,
+    pub enumeration_btree_map: BTreeMap<i32, i32>,
 
     #[prost(btree_map = "string, string", tag = "11")]
-    pub string_btree_map: prost::alloc::collections::BTreeMap<String, String>,
+    pub string_btree_map: BTreeMap<String, String>,
 
     #[prost(oneof = "BasicOneof", tags = "8, 9")]
     pub oneof: Option<BasicOneof>,
 
     #[prost(map = "string, bytes", tag = "12")]
     #[cfg(feature = "std")]
-    pub bytes_map: ::std::collections::HashMap<String, Vec<u8>>,
+    pub bytes_map: HashMap<String, Vec<u8>>,
 }
 
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -388,10 +386,10 @@ pub struct Compound {
 
     #[prost(map = "sint32, message", tag = "4")]
     #[cfg(feature = "std")]
-    pub message_map: ::std::collections::HashMap<i32, Basic>,
+    pub message_map: HashMap<i32, Basic>,
 
     #[prost(btree_map = "sint32, message", tag = "5")]
-    pub message_btree_map: prost::alloc::collections::BTreeMap<i32, Basic>,
+    pub message_btree_map: BTreeMap<i32, Basic>,
 }
 
 #[allow(clippy::derive_partial_eq_without_eq)]

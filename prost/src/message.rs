@@ -1,13 +1,9 @@
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-
-use core::fmt::Debug;
-
 use bytes::{Buf, BufMut};
 
 use crate::encoding::{
     decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
 };
+use crate::facade::*;
 use crate::DecodeError;
 use crate::EncodeError;
 
