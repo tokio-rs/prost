@@ -601,16 +601,16 @@ impl<'a> CodeGenerator<'a> {
             to_snake(message_name),
             to_upper_camel(oneof.descriptor.name())
         );
-        let field_tags = oneof
-            .fields
-            .iter()
-            .map(|(field, _)| field.number())
-            .join(", ");
         self.append_doc(fq_message_name, None);
         self.push_indent();
         self.buf.push_str(&format!(
             "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
-            type_name, field_tags,
+            type_name,
+            oneof
+                .fields
+                .iter()
+                .map(|(field, _)| field.number())
+                .join(", "),
         ));
         self.append_field_attributes(fq_message_name, oneof.descriptor.name());
         self.push_indent();
