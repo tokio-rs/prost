@@ -23,11 +23,8 @@ use crate::Config;
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
 
-#[derive(PartialEq)]
-enum Syntax {
-    Proto2,
-    Proto3,
-}
+mod syntax;
+use syntax::Syntax;
 
 pub struct CodeGenerator<'a> {
     config: &'a mut Config,
@@ -69,18 +66,12 @@ impl<'a> CodeGenerator<'a> {
             s
         });
 
-        let syntax = match file.syntax.as_ref().map(String::as_str) {
-            None | Some("proto2") => Syntax::Proto2,
-            Some("proto3") => Syntax::Proto3,
-            Some(s) => panic!("unknown syntax: {}", s),
-        };
-
         let mut code_gen = CodeGenerator {
             config,
             package: file.package.unwrap_or_default(),
             type_path: Vec::new(),
             source_info,
-            syntax,
+            syntax: file.syntax.as_deref().into(),
             message_graph,
             extern_paths,
             depth: 0,
