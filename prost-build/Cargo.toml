@@ -11,7 +11,7 @@ license = "Apache-2.0"
 repository = "https://github.com/tokio-rs/prost"
 documentation = "https://docs.rs/prost-build"
 readme = "README.md"
-description = "A Protocol Buffers implementation for the Rust Language."
+description = "Generate Prost annotated Rust types from Protocol Buffers files."
 edition = "2021"
 rust-version = "1.70"
 
