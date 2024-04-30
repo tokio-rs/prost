@@ -45,9 +45,8 @@ pub trait Message: Debug + Send + Sync {
     /// Encodes the message to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
-    fn encode<B>(&self, buf: &mut B) -> Result<(), EncodeError>
+    fn encode(&self, buf: &mut impl BufMut) -> Result<(), EncodeError>
     where
-        B: BufMut,
         Self: Sized,
     {
         let required = self.encoded_len();
@@ -74,9 +73,8 @@ pub trait Message: Debug + Send + Sync {
     /// Encodes the message with a length-delimiter to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
-    fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<(), EncodeError>
+    fn encode_length_delimited(&self, buf: &mut impl BufMut) -> Result<(), EncodeError>
     where
-        B: BufMut,
         Self: Sized,
     {
         let len = self.encoded_len();
@@ -106,9 +104,8 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer.
     ///
     /// The entire buffer will be consumed.
-    fn decode<B>(mut buf: B) -> Result<Self, DecodeError>
+    fn decode(mut buf: impl Buf) -> Result<Self, DecodeError>
     where
-        B: Buf,
         Self: Default,
     {
         let mut message = Self::default();
@@ -116,9 +113,8 @@ pub trait Message: Debug + Send + Sync {
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
-    fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
+    fn decode_length_delimited(buf: impl Buf) -> Result<Self, DecodeError>
     where
-        B: Buf,
         Self: Default,
     {
         let mut message = Self::default();
@@ -129,9 +125,8 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge(&mut self, mut buf: impl Buf) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         let ctx = DecodeContext::default();
@@ -144,9 +139,8 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge_length_delimited(&mut self, mut buf: impl Buf) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         message::merge(
