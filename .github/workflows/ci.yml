@@ -59,6 +59,26 @@ jobs:
       - name: Check unused dependencies
         run: cargo machete
 
+  unused_dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc@${{ env.PROTOC_VERSION }}
+      - name: install ninja
+        uses: ./.github/actions/setup-ninja
+      - name: install cargo-udeps
+        uses: taiki-e/install-action@cargo-udeps
+      - name: cargo udeps
+        run: cargo +nightly udeps
+      - name: cargo udeps all-targets
+        run: cargo +nightly udeps --all-targets
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:

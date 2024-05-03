@@ -22,19 +22,16 @@ path = "../tests/src/lib.rs"
 
 [dependencies]
 anyhow = { version = "1.0.45", default-features = false }
-bytes = { version = "1", default-features = false }
 cfg-if = "1"
 prost = { path = "../prost", default-features = false, features = ["derive"] }
 prost-types = { path = "../prost-types", default-features = false }
-protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
-diff = "0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
+protobuf = { path = "../protobuf" }
 
 [build-dependencies]
 cfg-if = "1"
 env_logger = { version = "0.10", default-features = false }
 prost-build = { path = "../prost-build" }
-protobuf = { path = "../protobuf" }

@@ -13,7 +13,6 @@ extern crate alloc;
 cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate anyhow;
-        extern crate bytes;
         extern crate core;
         extern crate prost;
         extern crate prost_types;

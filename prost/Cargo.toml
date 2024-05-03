@@ -34,8 +34,6 @@ prost-derive = { version = "0.12.4", path = "../prost-derive", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.4", default-features = false }
-env_logger = { version = "0.10", default-features = false }
-log = "0.4"
 proptest = "1"
 rand = "0.8"
 
