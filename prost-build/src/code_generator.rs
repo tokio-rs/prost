@@ -1083,11 +1083,13 @@ impl<'a> CodeGenerator<'a> {
             .get_first_field(&config_path, field.name())
             .is_some()
         {
-            println!(
-                "cargo:warning=\
-                Field X is repeated and manually marked as boxed. \
-                This is deprecated and support will be removed in a later release"
-            );
+            if repeated {
+                println!(
+                    "cargo:warning=\
+                    Field X is repeated and manually marked as boxed. \
+                    This is deprecated and support will be removed in a later release"
+                );
+            }
             return true;
         }
         false
