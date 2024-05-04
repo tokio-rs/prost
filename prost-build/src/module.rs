@@ -41,7 +41,7 @@ impl Module {
 
     #[must_use]
     #[inline(always)]
-    pub fn starts_with(&self, needle: &[String]) -> bool
+    pub(crate) fn starts_with(&self, needle: &[String]) -> bool
     where
         String: PartialEq,
     {
