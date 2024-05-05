@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-types/0.12.2")]
+#![doc(html_root_url = "https://docs.rs/prost-types/0.12.5")]
 
 //! Protocol Buffers well-known types.
 //!
