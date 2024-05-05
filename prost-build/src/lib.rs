@@ -530,4 +530,32 @@ mod tests {
         f.read_to_string(&mut content).unwrap();
         content
     }
+
+    #[test]
+    fn write_includes() {
+        let modules = [
+            Module::from_protobuf_package_name("foo.bar.baz"),
+            Module::from_protobuf_package_name(""),
+            Module::from_protobuf_package_name("foo.bar"),
+            Module::from_protobuf_package_name("bar"),
+            Module::from_protobuf_package_name("foo"),
+            Module::from_protobuf_package_name("foo.bar.qux"),
+            Module::from_protobuf_package_name("foo.bar.a.b.c"),
+        ];
+
+        let file_names = modules
+            .iter()
+            .map(|m| (m.clone(), m.to_file_name_or("_.default")))
+            .collect();
+
+        let mut buf = Vec::new();
+        Config::new()
+            .default_package_filename("_.default")
+            .write_includes(modules.iter().collect(), &mut buf, None, &file_names)
+            .unwrap();
+        let expected =
+            read_all_content("src/fixtures/write_includes/_.includes.rs").replace("\r\n", "\n");
+        let actual = String::from_utf8(buf).unwrap();
+        assert_eq!(expected, actual);
+    }
 }

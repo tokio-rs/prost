@@ -178,6 +178,7 @@ fn main() {
     no_root_packages_config
         .out_dir(&no_root_packages)
         .default_package_filename("__.default")
+        .include_file("__.include.rs")
         .compile_protos(
             &[src.join("no_root_packages/widget_factory.proto")],
             &[src.join("no_root_packages")],

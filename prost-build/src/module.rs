@@ -1,5 +1,4 @@
 use std::fmt;
-use std::ops::RangeToInclusive;
 
 use crate::ident::to_snake;
 
@@ -40,6 +39,15 @@ impl Module {
         self.components.iter().map(|s| s.as_str())
     }
 
+    #[must_use]
+    #[inline(always)]
+    pub(crate) fn starts_with(&self, needle: &[String]) -> bool
+    where
+        String: PartialEq,
+    {
+        self.components.starts_with(needle)
+    }
+
     /// Format the module path into a filename for generated Rust code.
     ///
     /// If the module path is empty, `default` is used to provide the root of the filename.
@@ -63,10 +71,6 @@ impl Module {
     /// Whether the module's path contains any components.
     pub fn is_empty(&self) -> bool {
         self.components.is_empty()
-    }
-
-    pub(crate) fn to_partial_file_name(&self, range: RangeToInclusive<usize>) -> String {
-        self.components[range].join(".")
     }
 
     pub(crate) fn part(&self, idx: usize) -> &str {
