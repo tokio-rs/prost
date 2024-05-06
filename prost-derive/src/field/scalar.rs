@@ -306,18 +306,33 @@ impl Field {
                     }
                 }
                 Kind::Optional(ref default) => {
-                    let get_doc = format!(
+                    let get_doc_fallback = format!(
                         "Returns the enum value of `{}`, \
                          or the default if the field is unset or set to an invalid enum value.",
                         ident_str,
                     );
+                    let get_doc = format!(
+                        "Returns the enum value of `{}`, \
+                         or None if the field is unset or set to an invalid enum value.",
+                        ident_str,
+                    );
+                    let get_fallback =
+                        Ident::new(&format!("{}_fallback", ident_str), Span::call_site());
                     quote! {
-                        #[doc=#get_doc]
-                        pub fn #get(&self) -> #ty {
+                        #[doc=#get_doc_fallback]
+                        pub fn #get_fallback(&self) -> #ty {
                             self.#ident.and_then(|x| {
                                 let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
                             }).unwrap_or(#default)
+                        }
+
+                        #[doc=#get_doc]
+                        pub fn #get(&self) -> ::core::option::Option<#ty> {
+                            self.#ident.and_then(|x| {
+                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                result.ok()
+                            })
                         }
 
                         #[doc=#set_doc]
@@ -360,17 +375,36 @@ impl Field {
                 quote!(::core::option::Option::Some(ref val) => &val[..],)
             };
 
-            let get_doc = format!(
+            let match_some2 = if self.ty.is_numeric() {
+                quote!(::core::option::Option::Some(val) => Some(val),)
+            } else {
+                quote!(::core::option::Option::Some(ref val) => Some(&val[..]),)
+            };
+
+            let get_doc_fallback = format!(
                 "Returns the value of `{0}`, or the default value if `{0}` is unset.",
                 ident_str,
             );
+            let get_doc = format!(
+                "Returns the value of `{0}`, or None if `{0}` is unset.",
+                ident_str,
+            );
+            let get_fallback = Ident::new(&format!("{}_fallback", ident_str), Span::call_site());
 
             Some(quote! {
-                #[doc=#get_doc]
-                pub fn #get(&self) -> #ty {
+                #[doc=#get_doc_fallback]
+                pub fn #get_fallback(&self) -> #ty {
                     match self.#ident {
                         #match_some
                         ::core::option::Option::None => #default,
+                    }
+                }
+
+                #[doc=#get_doc]
+                pub fn #get(&self) -> ::core::option::Option<#ty> {
+                    match self.#ident {
+                        #match_some2
+                        ::core::option::Option::None => None,
                     }
                 }
             })
