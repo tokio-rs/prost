@@ -49,6 +49,7 @@ pub struct Config {
     pub(crate) skip_protoc_run: bool,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
+    pub(crate) oneof_enum_name: PathMap<String>,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -736,6 +737,25 @@ impl Config {
         self
     }
 
+    /// Set a custom name for a enum generated for a oneof field to avoid conflicts.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - a path matching any number of types.
+    /// For details about matching fields see [`btree_map`](#method.btree_map).
+    ///
+    /// **`enum_name` - a string that'll be used as a replacement for the original name. `prost`
+    /// uses the name of the `oneof` field for the resulting Rust enum, but sometimes that incurs conflicts.  
+    pub fn oneof_enum_name<P, A>(&mut self, path: P, enum_name: A) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        self.oneof_enum_name
+            .insert(path.as_ref().to_string(), enum_name.as_ref().to_string());
+        self
+    }
+
     // IMPROVEMENT: https://github.com/tokio-rs/prost/pull/1022/files#r1563818651
     /// Configures the code generator to format the output code via `prettyplease`.
     ///
@@ -1097,6 +1117,7 @@ impl default::Default for Config {
             skip_protoc_run: false,
             include_file: None,
             prost_path: None,
+            oneof_enum_name: PathMap::default(),
             #[cfg(feature = "format")]
             fmt: true,
         }

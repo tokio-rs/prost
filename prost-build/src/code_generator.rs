@@ -575,11 +575,8 @@ impl<'a> CodeGenerator<'a> {
         fq_message_name: &str,
         oneof: &OneofField,
     ) {
-        let type_name = format!(
-            "{}::{}",
-            to_snake(message_name),
-            to_upper_camel(oneof.descriptor.name())
-        );
+        let oneof_enum_name = self.oneof_enum_name(fq_message_name, oneof);
+        let type_name = format!("{}::{}", to_snake(message_name), oneof_enum_name);
         self.append_doc(fq_message_name, None);
         self.push_indent();
         self.buf.push_str(&format!(
@@ -608,6 +605,7 @@ impl<'a> CodeGenerator<'a> {
         self.path.pop();
 
         let oneof_name = format!("{}.{}", fq_message_name, oneof.descriptor.name());
+        let oneof_enum_name = self.oneof_enum_name(fq_message_name, oneof);
         self.append_type_attributes(&oneof_name);
         self.append_enum_attributes(&oneof_name);
         self.push_indent();
@@ -620,7 +618,7 @@ impl<'a> CodeGenerator<'a> {
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(&to_upper_camel(oneof.descriptor.name()));
+        self.buf.push_str(&oneof_enum_name);
         self.buf.push_str(" {\n");
 
         self.path.push(2);
@@ -1113,6 +1111,20 @@ impl<'a> CodeGenerator<'a> {
             self.type_path.join("."),
             message_name,
         )
+    }
+
+    fn oneof_enum_name(&self, fq_message_name: &str, oneof: &OneofField) -> String {
+        let oneof_name = format!("{}.{}", fq_message_name, oneof.descriptor.name());
+        let enum_name = self
+            .config
+            .oneof_enum_name
+            .get(&oneof_name)
+            .collect::<Vec<_>>();
+        if enum_name.is_empty() {
+            to_upper_camel(oneof.descriptor.name())
+        } else {
+            enum_name.last().unwrap().to_string()
+        }
     }
 }
 
