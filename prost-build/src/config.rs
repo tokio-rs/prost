@@ -1015,7 +1015,7 @@ impl Config {
     ///
     /// This is generally used when control over the output should not be managed by Prost,
     /// such as in a flow for a `protoc` code generating plugin. When compiling as part of a
-    /// `build.rs` file, instead use [`compile_protos()`].
+    /// `build.rs` file, instead use [`Self::compile_protos()`].
     pub fn generate(
         &mut self,
         requests: Vec<(Module, FileDescriptorProto)>,

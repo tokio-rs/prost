@@ -115,7 +115,7 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
-/// Issue https://github.com/tokio-rs/prost/issues/118
+/// Issue <https://github.com/tokio-rs/prost/issues/118>
 ///
 /// When a message contains an enum field with a default value, we
 /// must ensure that the appropriate name conventions are used.

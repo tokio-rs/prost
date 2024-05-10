@@ -257,8 +257,6 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 /// This function can be combined with a crate like [`protox`] which outputs a
 /// [`FileDescriptorSet`] and is a pure Rust implementation of `protoc`.
 ///
-/// [`protox`]: https://github.com/andrewhickman/protox
-///
 /// # Example
 /// ```rust,no_run
 /// # use prost_types::FileDescriptorSet;
@@ -269,6 +267,10 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 ///   prost_build::compile_fds(file_descriptor_set)
 /// }
 /// ```
+///
+/// [`protox`]: https://github.com/andrewhickman/protox
+/// [1]: https://doc.rust-lang.org/std/macro.include.html
+/// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
 pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
     Config::new().compile_fds(fds)
 }

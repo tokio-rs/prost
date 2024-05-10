@@ -1,6 +1,7 @@
 use log::debug;
 
 /// Based on [`google::protobuf::UnescapeCEscapeString`][1]
+///
 /// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/stubs/strutil.cc#L312-L322
 pub(super) fn unescape_c_escape_string(s: &str) -> Vec<u8> {
     let src = s.as_bytes();
