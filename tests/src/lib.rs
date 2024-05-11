@@ -553,13 +553,16 @@ mod tests {
     #[test]
     fn test_default_enum() {
         let msg = default_enum_value::Test::default();
-        assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
         assert_eq!(
-            msg.privacy_level_3(),
+            msg.privacy_level_1_fallback(),
+            default_enum_value::PrivacyLevel::One
+        );
+        assert_eq!(
+            msg.privacy_level_3_fallback(),
             default_enum_value::PrivacyLevel::PrivacyLevelThree
         );
         assert_eq!(
-            msg.privacy_level_4(),
+            msg.privacy_level_4_fallback(),
             default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour
         );
     }

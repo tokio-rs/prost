@@ -783,7 +783,7 @@ impl Config {
             .into_iter()
             .map(|descriptor| {
                 (
-                    Module::from_protobuf_package_name(descriptor.package()),
+                    Module::from_protobuf_package_name(descriptor.package_fallback()),
                     descriptor,
                 )
             })
@@ -1031,7 +1031,10 @@ impl Config {
         for (request_module, request_fd) in requests {
             // Only record packages that have services
             if !request_fd.service.is_empty() {
-                packages.insert(request_module.clone(), request_fd.package().to_string());
+                packages.insert(
+                    request_module.clone(),
+                    request_fd.package_fallback().to_string(),
+                );
             }
             let buf = modules
                 .entry(request_module.clone())
