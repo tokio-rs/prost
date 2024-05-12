@@ -61,7 +61,7 @@ impl<T> Eq for OpenEnum<T> {}
 
 impl<T> PartialOrd for OpenEnum<T> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.raw.partial_cmp(&other.raw)
+        Some(self.cmp(other))
     }
 }
 
