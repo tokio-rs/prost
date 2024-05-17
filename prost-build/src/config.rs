@@ -835,37 +835,31 @@ impl Config {
         Ok(())
     }
 
-    /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
-    /// configuration options.
-    ///
-    /// This method is like the `prost_build::compile_protos` function, with the added ability to
-    /// specify non-default code generation options. See that function for more information about
-    /// the arguments and generated outputs.
-    ///
-    /// The `protos` and `includes` arguments are ignored if `skip_protoc_run` is specified.
+    /// Loads `.proto` files as a `FileDescriptorSet`. This allows inspection of the descriptors
+    /// before calling `prost_build::compile_fds`. A possible use case it to compute `Config`
+    /// attributes by introspecting what is actually present in the `.proto` files before
+    /// generating the code.
     ///
     /// # Example `build.rs`
     ///
     /// ```rust,no_run
-    /// # use std::io::Result;
-    /// fn main() -> Result<()> {
-    ///   let mut prost_build = prost_build::Config::new();
-    ///   prost_build.btree_map(&["."]);
-    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
-    ///   Ok(())
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_build::Config;
+    /// fn main() -> std::io::Result<()> {
+    ///   let mut config = Config::new();
+    ///   let file_descriptor_set = config.load_fds(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///
+    ///   // Inspect file_descriptor_set and tweak config
+    ///
+    ///   config.compile_fds(file_descriptor_set)
     /// }
     /// ```
-    pub fn compile_protos(
+
+    pub fn load_fds(
         &mut self,
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
-    ) -> Result<()> {
-        // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
-        // according to [1] if any are output then those paths replace the default crate root,
-        // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
-        // this figured out.
-        // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
-
+    ) -> Result<FileDescriptorSet> {
         let tmp;
         let file_descriptor_set_path = if let Some(path) = &self.file_descriptor_set_path {
             path.clone()
@@ -951,6 +945,42 @@ impl Config {
                 format!("invalid FileDescriptorSet: {}", error),
             )
         })?;
+
+        Ok(file_descriptor_set)
+    }
+
+    /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
+    /// configuration options.
+    ///
+    /// This method is like the `prost_build::compile_protos` function, with the added ability to
+    /// specify non-default code generation options. See that function for more information about
+    /// the arguments and generated outputs.
+    ///
+    /// The `protos` and `includes` arguments are ignored if `skip_protoc_run` is specified.
+    ///
+    /// # Example `build.rs`
+    ///
+    /// ```rust,no_run
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    ///   prost_build.btree_map(&["."]);
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
+    /// }
+    /// ```
+    pub fn compile_protos(
+        &mut self,
+        protos: &[impl AsRef<Path>],
+        includes: &[impl AsRef<Path>],
+    ) -> Result<()> {
+        // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
+        // according to [1] if any are output then those paths replace the default crate root,
+        // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
+        // this figured out.
+        // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
+
+        let file_descriptor_set = self.load_fds(protos, includes)?;
 
         self.compile_fds(file_descriptor_set)
     }
