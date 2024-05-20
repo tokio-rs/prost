@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package no_shadowed_types;
+
+enum B {
+  DEFAULT = 0;
+  NON_DEFAULT = 1;
+}
+
+message A { B b = 1; }

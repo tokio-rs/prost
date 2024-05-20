@@ -174,19 +174,19 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
-            fn encode_raw<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+            fn encode_raw(&self, buf: &mut impl ::prost::bytes::BufMut) {
                 #(#encode)*
             }
 
             #[allow(unused_variables)]
-            fn merge_field<B>(
+            fn merge_field(
                 &mut self,
                 tag: u32,
                 wire_type: ::prost::encoding::WireType,
-                buf: &mut B,
+                buf: &mut impl ::prost::bytes::Buf,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
-            where B: ::prost::bytes::Buf {
+            {
                 #struct_name
                 match tag {
                     #(#merge)*
@@ -463,21 +463,21 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
-            pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+            pub fn encode(&self, buf: &mut impl ::prost::bytes::BufMut) {
                 match *self {
                     #(#encode,)*
                 }
             }
 
             /// Decodes an instance of the message from a buffer, and merges it into self.
-            pub fn merge<B>(
+            pub fn merge(
                 field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
                 wire_type: ::prost::encoding::WireType,
-                buf: &mut B,
+                buf: &mut impl ::prost::bytes::Buf,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
-            where B: ::prost::bytes::Buf {
+            {
                 match tag {
                     #(#merge,)*
                     _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
