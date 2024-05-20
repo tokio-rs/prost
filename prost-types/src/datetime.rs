@@ -614,7 +614,7 @@ mod tests {
             };
             assert_eq!(
                 expected,
-                format!("{}", DateTime::from(timestamp.clone())),
+                format!("{}", DateTime::from(timestamp)),
                 "timestamp: {:?}",
                 timestamp
             );

@@ -105,7 +105,7 @@ impl TryFrom<Duration> for time::Duration {
 
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut d = self.clone();
+        let mut d = *self;
         d.normalize();
         if self.seconds < 0 && self.nanos < 0 {
             write!(f, "-")?;
@@ -193,7 +193,7 @@ mod tests {
                 Ok(duration) => duration,
                 Err(_) => return Err(TestCaseError::reject("duration out of range")),
             };
-            prop_assert_eq!(time::Duration::try_from(prost_duration.clone()).unwrap(), std_duration);
+            prop_assert_eq!(time::Duration::try_from(prost_duration).unwrap(), std_duration);
 
             if std_duration != time::Duration::default() {
                 let neg_prost_duration = Duration {
@@ -220,7 +220,7 @@ mod tests {
                 Ok(duration) => duration,
                 Err(_) => return Err(TestCaseError::reject("duration out of range")),
             };
-            prop_assert_eq!(time::Duration::try_from(prost_duration.clone()).unwrap(), std_duration);
+            prop_assert_eq!(time::Duration::try_from(prost_duration).unwrap(), std_duration);
 
             if std_duration != time::Duration::default() {
                 let neg_prost_duration = Duration {

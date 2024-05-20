@@ -231,7 +231,12 @@ impl<'a> CodeGenerator<'a> {
         self.buf
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
-            "#[derive(Clone, PartialEq, {}::Message)]\n",
+            "#[derive(Clone, {}PartialEq, {}::Message)]\n",
+            if self.message_graph.can_message_derive_copy(&fq_message_name) {
+                "Copy, "
+            } else {
+                ""
+            },
             prost_path(self.config)
         ));
         self.append_skip_debug(&fq_message_name);
@@ -613,8 +618,14 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
+
+        let can_oneof_derive_copy = fields.iter().map(|(field, _idx)| field).all(|field| {
+            self.message_graph
+                .can_field_derive_copy(fq_message_name, field)
+        });
         self.buf.push_str(&format!(
-            "#[derive(Clone, PartialEq, {}::Oneof)]\n",
+            "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
+            if can_oneof_derive_copy { "Copy, " } else { "" },
             prost_path(self.config)
         ));
         self.append_skip_debug(fq_message_name);
