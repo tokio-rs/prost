@@ -619,9 +619,9 @@ impl<'a> CodeGenerator<'a> {
         self.buf
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
 
-        let can_oneof_derive_copy = fields.iter().map(|(field, _idx)| field).all(|field| {
+        let can_oneof_derive_copy = oneof.fields.iter().all(|field| {
             self.message_graph
-                .can_field_derive_copy(fq_message_name, field)
+                .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
