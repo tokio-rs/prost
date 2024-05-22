@@ -12,6 +12,24 @@ env:
   PROTOC_VERSION: 3.20.3
 
 jobs:
+  # Depends on all actions that are required for a "successful" CI run.
+  tests-pass:
+    name: all systems go
+    runs-on: ubuntu-latest
+    needs:
+      - rustfmt
+      - toml_validation
+      - clippy
+      - machete
+      - unused_dependencies
+      - test
+      - msrv
+      - minimal-versions
+      - kani
+      - no-std
+    steps:
+      - run: exit 0
+
   rustfmt:
     runs-on: ubuntu-latest
     steps:
