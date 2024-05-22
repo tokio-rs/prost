@@ -417,12 +417,11 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     if fields.iter().any(|(_, field)| field.tags().len() > 1) {
         panic!("variant with multiple tags"); // Not clear if this is possible, but good to be safe
     }
-    if let Some((duplicate_tag, _)) = fields
+    if let Some(duplicate_tag) = fields
         .iter()
         .flat_map(|(_, field)| field.tags())
-        .sorted_unstable()
-        .tuple_windows()
-        .find(|(a, b)| a == b)
+        .duplicates()
+        .next()
     {
         bail!(
             "invalid oneof {}: multiple variants have tag {}",
