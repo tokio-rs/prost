@@ -618,7 +618,7 @@ mod test {
             output
                 .expect_err("did not reject multiple tags on oneof variant")
                 .to_string(),
-            "unknown attribute(s): tags = \"5,6\""
+            "unknown attribute(s): #[prost(tags = \"5,6\")]"
         );
     }
 }

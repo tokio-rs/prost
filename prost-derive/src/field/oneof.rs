@@ -45,7 +45,10 @@ impl Field {
         };
 
         if !unknown_attrs.is_empty() {
-            bail!("unknown attribute(s) for message field: {}", quote!(#(#unknown_attrs),*));
+            bail!(
+                "unknown attribute(s) for message field: #[prost({})]",
+                quote!(#(#unknown_attrs),*)
+            );
         }
 
         let tags = match tags {

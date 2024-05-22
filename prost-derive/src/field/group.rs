@@ -39,7 +39,10 @@ impl Field {
         }
 
         if !unknown_attrs.is_empty() {
-            bail!("unknown attribute(s) for group field: {}", quote!(#(#unknown_attrs),*));
+            bail!(
+                "unknown attribute(s) for group field: #[prost({})]",
+                quote!(#(#unknown_attrs),*)
+            );
         }
 
         let tag = match tag.or(inferred_tag) {
