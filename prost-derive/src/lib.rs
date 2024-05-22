@@ -549,9 +549,10 @@ mod test {
                 b: Option<super::Whatever>,
             }
         ));
-        assert!(output.is_err());
         assert_eq!(
-            output.unwrap_err().to_string(),
+            output
+                .expect_err("did not reject colliding message fields")
+                .to_string(),
             "message Invalid has multiple fields with tag 1"
         );
     }
@@ -568,9 +569,10 @@ mod test {
                 C(bool),
             }
         ));
-        assert!(output.is_err());
         assert_eq!(
-            output.unwrap_err().to_string(),
+            output
+                .expect_err("did not reject colliding oneof variants")
+                .to_string(),
             "invalid oneof Invalid: multiple variants have tag 1"
         );
     }
@@ -583,8 +585,12 @@ mod test {
                 A(bool),
             }
         ));
-        assert!(output.is_err());
-        assert_eq!(output.unwrap_err().to_string(), "duplicate tag attributes: 1 and 2");
+        assert_eq!(
+            output
+                .expect_err("did not reject multiple tags on oneof variant")
+                .to_string(),
+            "duplicate tag attributes: 1 and 2"
+        );
 
         let output = try_oneof(quote!(
             enum What {
@@ -594,7 +600,12 @@ mod test {
             }
         ));
         assert!(output.is_err());
-        assert_eq!(output.unwrap_err().to_string(), "duplicate tag attributes: 3 and 4");
+        assert_eq!(
+            output
+                .expect_err("did not reject multiple tags on oneof variant")
+                .to_string(),
+            "duplicate tag attributes: 3 and 4"
+        );
 
         let output = try_oneof(quote!(
             enum What {
@@ -603,6 +614,11 @@ mod test {
             }
         ));
         assert!(output.is_err());
-        assert_eq!(output.unwrap_err().to_string(), "unknown attribute(s): tags = \"5,6\"");
+        assert_eq!(
+            output
+                .expect_err("did not reject multiple tags on oneof variant")
+                .to_string(),
+            "unknown attribute(s): tags = \"5,6\""
+        );
     }
 }
