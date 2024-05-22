@@ -414,8 +414,16 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     }
 
-    if fields.iter().any(|(_, field)| field.tags().len() > 1) {
-        panic!("variant with multiple tags"); // Not clear if this is possible, but good to be safe
+    for (variant_ident, field) in &fields {
+        // Not clear if this condition is reachable since multiple "tag" attributes are already
+        // rejected, but good to be safe
+        if field.tags().len() > 1 {
+            bail!(
+                "invalid oneof variant {}::{}: oneof variants may only have a single tag",
+                ident,
+                variant_ident
+            );
+        }
     }
     if let Some(duplicate_tag) = fields
         .iter()
@@ -565,5 +573,36 @@ mod test {
             output.unwrap_err().to_string(),
             "invalid oneof Invalid: multiple variants have tag 1"
         );
+    }
+
+    #[test]
+    fn test_rejects_multiple_tags_oneof_variant() {
+        let output = try_oneof(quote!(
+            enum What {
+                #[prost(bool, tag = "1", tag = "2")]
+                A(bool),
+            }
+        ));
+        assert!(output.is_err());
+        assert_eq!(output.unwrap_err().to_string(), "duplicate tag attributes: 1 and 2");
+
+        let output = try_oneof(quote!(
+            enum What {
+                #[prost(bool, tag = "3")]
+                #[prost(tag = "4")]
+                A(bool),
+            }
+        ));
+        assert!(output.is_err());
+        assert_eq!(output.unwrap_err().to_string(), "duplicate tag attributes: 3 and 4");
+
+        let output = try_oneof(quote!(
+            enum What {
+                #[prost(bool, tags = "5,6")]
+                A(bool),
+            }
+        ));
+        assert!(output.is_err());
+        assert_eq!(output.unwrap_err().to_string(), "unknown attribute(s): tags = \"5,6\"");
     }
 }
