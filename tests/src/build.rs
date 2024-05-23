@@ -72,6 +72,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("no_shadowed_types.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("no_unused_results.proto")], includes)
         .unwrap();
 
@@ -89,6 +93,10 @@ fn main() {
 
     config
         .compile_protos(&[src.join("deprecated_field.proto")], includes)
+        .unwrap();
+
+    config
+        .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
     config

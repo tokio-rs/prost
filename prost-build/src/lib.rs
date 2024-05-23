@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.12.5")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.12.6")]
 #![allow(clippy::option_as_ref_deref, clippy::format_push_string)]
 
 //! `prost-build` compiles `.proto` files into Rust.
@@ -149,7 +149,9 @@ mod message_graph;
 mod path;
 
 mod config;
-pub use config::Config;
+pub use config::{
+    error_message_protoc_not_found, protoc_from_env, protoc_include_from_env, Config,
+};
 
 mod module;
 pub use module::Module;

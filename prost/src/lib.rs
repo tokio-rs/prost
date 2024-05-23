@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost/0.12.5")]
+#![doc(html_root_url = "https://docs.rs/prost/0.12.6")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../README.md")]
 
@@ -36,10 +36,7 @@ const RECURSION_LIMIT: u32 = 100;
 ///
 /// An error will be returned if the buffer does not have sufficient capacity to encode the
 /// delimiter.
-pub fn encode_length_delimiter<B>(length: usize, buf: &mut B) -> Result<(), EncodeError>
-where
-    B: BufMut,
-{
+pub fn encode_length_delimiter(length: usize, buf: &mut impl BufMut) -> Result<(), EncodeError> {
     let length = length as u64;
     let required = encoded_len_varint(length);
     let remaining = buf.remaining_mut();
@@ -69,10 +66,7 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///    input is required to decode the full delimiter.
 ///  * If the supplied buffer contains more than 10 bytes, then the buffer contains an invalid
 ///    delimiter, and typically the buffer should be considered corrupt.
-pub fn decode_length_delimiter<B>(mut buf: B) -> Result<usize, DecodeError>
-where
-    B: Buf,
-{
+pub fn decode_length_delimiter(mut buf: impl Buf) -> Result<usize, DecodeError> {
     let length = decode_varint(&mut buf)?;
     if length > usize::max_value() as u64 {
         return Err(DecodeError::new(

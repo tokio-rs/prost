@@ -12,6 +12,24 @@ env:
   PROTOC_VERSION: 3.20.3
 
 jobs:
+  # Depends on all actions that are required for a "successful" CI run.
+  tests-pass:
+    name: all systems go
+    runs-on: ubuntu-latest
+    needs:
+      - rustfmt
+      - toml_validation
+      - clippy
+      - machete
+      - unused_dependencies
+      - test
+      - msrv
+      - minimal-versions
+      - kani
+      - no-std
+    steps:
+      - run: exit 0
+
   rustfmt:
     runs-on: ubuntu-latest
     steps:
@@ -85,7 +103,6 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - "1.70"
         os:
           - ubuntu-latest
           - macos-latest
@@ -114,6 +131,21 @@ jobs:
         run: cargo test --doc
       - name: test doc no-default-features
         run: cargo test -p prost-build -p prost-derive -p prost-types --doc --no-default-features
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc@${{ env.PROTOC_VERSION }}
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: Swatinem/rust-cache@v2
+      - name: check with no-default-features
+        run: cargo hack --rust-version --no-private --no-dev-deps check --no-default-features
+      - name: check with all-features
+        run: cargo hack --rust-version --no-private --no-dev-deps check --all-features
 
   minimal-versions:
     runs-on: ubuntu-latest

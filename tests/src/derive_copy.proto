@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package derive_copy;
+
+message EmptyMsg {}
+
+message IntegerMsg {
+  int32 field1 = 1;
+  int64 field2 = 2;
+  uint32 field3 = 3;
+  uint64 field4 = 4;
+  sint32 field5 = 5;
+  sint64 field6 = 6;
+  fixed32 field7 = 7;
+  fixed64 field8 = 8;
+  sfixed32 field9 = 9;
+  sfixed64 field10 = 10;
+}
+
+message FloatMsg {
+  double field1 = 1;
+  float field2 = 2;
+}
+
+message BoolMsg { bool field1 = 1; }
+
+enum AnEnum {
+  A = 0;
+  B = 1;
+};
+
+message EnumMsg { AnEnum field1 = 1; }
+
+message OneOfMsg {
+  oneof data {
+    int32 field1 = 1;
+    int64 field2 = 2;
+  }
+}
+
+message ComposedMsg {
+  IntegerMsg field1 = 1;
+  EnumMsg field2 = 2;
+  OneOfMsg field3 = 3;
+}
+
+message WellKnownMsg {
+  google.protobuf.Timestamp timestamp = 1;
+}
