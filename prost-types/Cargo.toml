@@ -19,11 +19,12 @@ rust-version = "1.70"
 doctest = false
 
 [features]
-default = ["std"]
+default = ["std", "derive"]
 std = ["prost/std"]
+derive = ["prost/derive"]
 
 [dependencies]
-prost = { version = "0.12.6", path = "../prost", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12.6", path = "../prost", default-features = false }
 
 [dev-dependencies]
 proptest = "1"
