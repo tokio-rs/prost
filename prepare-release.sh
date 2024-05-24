@@ -24,21 +24,21 @@ sed -i -E "s/${PROST_CRATE_MATCHER} = \"${VERSION_MATCHER}\"/\1 = \"${MINOR}\"/"
 
 # Update html_root_url attributes.
 sed -i -E "s~html_root_url = \"https://docs\.rs/${PROST_CRATE_MATCHER}/$VERSION_MATCHER\"~html_root_url = \"https://docs.rs/\1/${VERSION}\"~" \
-  "$DIR/src/lib.rs" \
+  "$DIR/prost/src/lib.rs" \
   "$DIR/prost-derive/src/lib.rs" \
   "$DIR/prost-build/src/lib.rs" \
   "$DIR/prost-types/src/lib.rs"
 
 # Update Cargo.toml version fields.
 sed -i -E "s/^version = \"${VERSION_MATCHER}\"$/version = \"${VERSION}\"/" \
-  "$DIR/Cargo.toml" \
+  "$DIR/prost/Cargo.toml" \
   "$DIR/prost-derive/Cargo.toml" \
   "$DIR/prost-build/Cargo.toml" \
   "$DIR/prost-types/Cargo.toml"
 
 # Update Cargo.toml dependency versions.
 sed -i -E "s/^${PROST_CRATE_MATCHER} = \{ version = \"${VERSION_MATCHER}\"/\1 = { version = \"${VERSION}\"/" \
-  "$DIR/Cargo.toml" \
+  "$DIR/prost/Cargo.toml" \
   "$DIR/prost-derive/Cargo.toml" \
   "$DIR/prost-build/Cargo.toml" \
   "$DIR/prost-types/Cargo.toml"
