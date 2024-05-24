@@ -413,17 +413,10 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     }
 
-    for (variant_ident, field) in &fields {
-        // Not clear if this condition is reachable since multiple "tag" attributes are already
-        // rejected, but good to be safe
-        if field.tags().len() > 1 {
-            bail!(
-                "invalid oneof variant {}::{}: oneof variants may only have a single tag",
-                ident,
-                variant_ident
-            );
-        }
-    }
+    // Oneof variants cannot be oneofs themselves, so it's impossible to have a field with multiple
+    // tags.
+    assert!(fields.iter().all(|(_, field)| field.tags().len() == 1));
+
     if let Some(duplicate_tag) = fields
         .iter()
         .flat_map(|(_, field)| field.tags())
