@@ -90,12 +90,11 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
     let fields = fields;
 
-    if let Some((duplicate_tag, _)) = fields
+    if let Some(duplicate_tag) = fields
         .iter()
         .flat_map(|(_, field)| field.tags())
-        .sorted_unstable()
-        .tuple_windows()
-        .find(|(a, b)| a == b)
+        .duplicates()
+        .next()
     {
         bail!(
             "message {} has multiple fields with tag {}",
