@@ -72,6 +72,10 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("no_shadowed_types.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("no_unused_results.proto")], includes)
         .unwrap();
 
@@ -80,11 +84,19 @@ fn main() {
         .unwrap();
 
     config
+        .compile_protos(&[src.join("enum_keyword_variant.proto")], includes)
+        .unwrap();
+
+    config
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 
     config
         .compile_protos(&[src.join("deprecated_field.proto")], includes)
+        .unwrap();
+
+    config
+        .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
     config
@@ -155,7 +167,7 @@ fn main() {
 
     prost_build::Config::new()
         .enable_type_names()
-        .type_name_domain(&[".type_names.Foo"], "tests")
+        .type_name_domain([".type_names.Foo"], "tests")
         .compile_protos(&[src.join("type_names.proto")], includes)
         .unwrap();
 
@@ -174,6 +186,7 @@ fn main() {
     no_root_packages_config
         .out_dir(&no_root_packages)
         .default_package_filename("__.default")
+        .include_file("__.include.rs")
         .compile_protos(
             &[src.join("no_root_packages/widget_factory.proto")],
             &[src.join("no_root_packages")],

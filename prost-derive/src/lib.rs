@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.12.2")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.12.6")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -7,8 +7,7 @@ extern crate proc_macro;
 
 use anyhow::{bail, Error};
 use itertools::Itertools;
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
@@ -19,7 +18,7 @@ mod field;
 use crate::field::Field;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
-    let input: DeriveInput = syn::parse(input)?;
+    let input: DeriveInput = syn::parse2(input)?;
 
     let ident = input.ident;
 
@@ -88,29 +87,31 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
     // See: https://developers.google.com/protocol-buffers/docs/encoding#order
-    fields.sort_by_key(|&(_, ref field)| field.tags().into_iter().min().unwrap());
+    fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
     let fields = fields;
 
-    let mut tags = fields
+    if let Some(duplicate_tag) = fields
         .iter()
-        .flat_map(|&(_, ref field)| field.tags())
-        .collect::<Vec<_>>();
-    let num_tags = tags.len();
-    tags.sort_unstable();
-    tags.dedup();
-    if tags.len() != num_tags {
-        bail!("message {} has fields with duplicate tags", ident);
-    }
+        .flat_map(|(_, field)| field.tags())
+        .duplicates()
+        .next()
+    {
+        bail!(
+            "message {} has multiple fields with tag {}",
+            ident,
+            duplicate_tag
+        )
+    };
 
     let encoded_len = fields
         .iter()
-        .map(|&(ref field_ident, ref field)| field.encoded_len(quote!(self.#field_ident)));
+        .map(|(field_ident, field)| field.encoded_len(quote!(self.#field_ident)));
 
     let encode = fields
         .iter()
-        .map(|&(ref field_ident, ref field)| field.encode(quote!(self.#field_ident)));
+        .map(|(field_ident, field)| field.encode(quote!(self.#field_ident)));
 
-    let merge = fields.iter().map(|&(ref field_ident, ref field)| {
+    let merge = fields.iter().map(|(field_ident, field)| {
         let merge = field.merge(quote!(value));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
         let tags = Itertools::intersperse(tags, quote!(|));
@@ -136,7 +137,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let clear = fields
         .iter()
-        .map(|&(ref field_ident, ref field)| field.clear(quote!(self.#field_ident)));
+        .map(|(field_ident, field)| field.clear(quote!(self.#field_ident)));
 
     let default = if is_struct {
         let default = fields.iter().map(|(field_ident, field)| {
@@ -158,7 +159,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let methods = fields
         .iter()
-        .flat_map(|&(ref field_ident, ref field)| field.methods(field_ident))
+        .flat_map(|(field_ident, field)| field.methods(field_ident))
         .collect::<Vec<_>>();
     let methods = if methods.is_empty() {
         quote!()
@@ -174,19 +175,19 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
-            fn encode_raw<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+            fn encode_raw(&self, buf: &mut impl ::prost::bytes::BufMut) {
                 #(#encode)*
             }
 
             #[allow(unused_variables)]
-            fn merge_field<B>(
+            fn merge_field(
                 &mut self,
                 tag: u32,
                 wire_type: ::prost::encoding::WireType,
-                buf: &mut B,
+                buf: &mut impl ::prost::bytes::Buf,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
-            where B: ::prost::bytes::Buf {
+            {
                 #struct_name
                 match tag {
                     #(#merge)*
@@ -213,7 +214,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = if skip_debug {
         expanded
     } else {
-        let debugs = unsorted_fields.iter().map(|&(ref field_ident, ref field)| {
+        let debugs = unsorted_fields.iter().map(|(field_ident, field)| {
             let wrapper = field.debug(quote!(self.#field_ident));
             let call = if is_struct {
                 quote!(builder.field(stringify!(#field_ident), &wrapper))
@@ -251,16 +252,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         #methods
     };
 
-    Ok(expanded.into())
+    Ok(expanded)
 }
 
 #[proc_macro_derive(Message, attributes(prost))]
-pub fn message(input: TokenStream) -> TokenStream {
-    try_message(input).unwrap()
+pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    try_message(input.into()).unwrap().into()
 }
 
 fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
-    let input: DeriveInput = syn::parse(input)?;
+    let input: DeriveInput = syn::parse2(input)?;
     let ident = input.ident;
 
     let generics = &input.generics;
@@ -300,16 +301,14 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     let default = variants[0].0.clone();
 
-    let is_valid = variants
+    let is_valid = variants.iter().map(|(_, value)| quote!(#value => true));
+    let from = variants
         .iter()
-        .map(|&(_, ref value)| quote!(#value => true));
-    let from = variants.iter().map(
-        |&(ref variant, ref value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
-    );
+        .map(|(variant, value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)));
 
-    let try_from = variants.iter().map(
-        |&(ref variant, ref value)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)),
-    );
+    let try_from = variants
+        .iter()
+        .map(|(variant, value)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)));
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!(
@@ -361,16 +360,16 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    Ok(expanded.into())
+    Ok(expanded)
 }
 
 #[proc_macro_derive(Enumeration, attributes(prost))]
-pub fn enumeration(input: TokenStream) -> TokenStream {
-    try_enumeration(input).unwrap()
+pub fn enumeration(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    try_enumeration(input.into()).unwrap().into()
 }
 
 fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
-    let input: DeriveInput = syn::parse(input)?;
+    let input: DeriveInput = syn::parse2(input)?;
 
     let ident = input.ident;
 
@@ -414,31 +413,29 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     }
 
-    let mut tags = fields
+    // Oneof variants cannot be oneofs themselves, so it's impossible to have a field with multiple
+    // tags.
+    assert!(fields.iter().all(|(_, field)| field.tags().len() == 1));
+
+    if let Some(duplicate_tag) = fields
         .iter()
-        .flat_map(|&(ref variant_ident, ref field)| -> Result<u32, Error> {
-            if field.tags().len() > 1 {
-                bail!(
-                    "invalid oneof variant {}::{}: oneof variants may only have a single tag",
-                    ident,
-                    variant_ident
-                );
-            }
-            Ok(field.tags()[0])
-        })
-        .collect::<Vec<_>>();
-    tags.sort_unstable();
-    tags.dedup();
-    if tags.len() != fields.len() {
-        panic!("invalid oneof {}: variants have duplicate tags", ident);
+        .flat_map(|(_, field)| field.tags())
+        .duplicates()
+        .next()
+    {
+        bail!(
+            "invalid oneof {}: multiple variants have tag {}",
+            ident,
+            duplicate_tag
+        );
     }
 
-    let encode = fields.iter().map(|&(ref variant_ident, ref field)| {
+    let encode = fields.iter().map(|(variant_ident, field)| {
         let encode = field.encode(quote!(*value));
         quote!(#ident::#variant_ident(ref value) => { #encode })
     });
 
-    let merge = fields.iter().map(|&(ref variant_ident, ref field)| {
+    let merge = fields.iter().map(|(variant_ident, field)| {
         let tag = field.tags()[0];
         let merge = field.merge(quote!(value));
         quote! {
@@ -457,7 +454,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     });
 
-    let encoded_len = fields.iter().map(|&(ref variant_ident, ref field)| {
+    let encoded_len = fields.iter().map(|(variant_ident, field)| {
         let encoded_len = field.encoded_len(quote!(*value));
         quote!(#ident::#variant_ident(ref value) => #encoded_len)
     });
@@ -465,21 +462,21 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
-            pub fn encode<B>(&self, buf: &mut B) where B: ::prost::bytes::BufMut {
+            pub fn encode(&self, buf: &mut impl ::prost::bytes::BufMut) {
                 match *self {
                     #(#encode,)*
                 }
             }
 
             /// Decodes an instance of the message from a buffer, and merges it into self.
-            pub fn merge<B>(
+            pub fn merge(
                 field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
                 wire_type: ::prost::encoding::WireType,
-                buf: &mut B,
+                buf: &mut impl ::prost::bytes::Buf,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
-            where B: ::prost::bytes::Buf {
+            {
                 match tag {
                     #(#merge,)*
                     _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
@@ -499,7 +496,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = if skip_debug {
         expanded
     } else {
-        let debug = fields.iter().map(|&(ref variant_ident, ref field)| {
+        let debug = fields.iter().map(|(variant_ident, field)| {
             let wrapper = field.debug(quote!(*value));
             quote!(#ident::#variant_ident(ref value) => {
                 let wrapper = #wrapper;
@@ -521,10 +518,99 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
-    Ok(expanded.into())
+    Ok(expanded)
 }
 
 #[proc_macro_derive(Oneof, attributes(prost))]
-pub fn oneof(input: TokenStream) -> TokenStream {
-    try_oneof(input).unwrap()
+pub fn oneof(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    try_oneof(input.into()).unwrap().into()
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{try_message, try_oneof};
+    use quote::quote;
+
+    #[test]
+    fn test_rejects_colliding_message_fields() {
+        let output = try_message(quote!(
+            struct Invalid {
+                #[prost(bool, tag = "1")]
+                a: bool,
+                #[prost(oneof = "super::Whatever", tags = "4, 5, 1")]
+                b: Option<super::Whatever>,
+            }
+        ));
+        assert_eq!(
+            output
+                .expect_err("did not reject colliding message fields")
+                .to_string(),
+            "message Invalid has multiple fields with tag 1"
+        );
+    }
+
+    #[test]
+    fn test_rejects_colliding_oneof_variants() {
+        let output = try_oneof(quote!(
+            pub enum Invalid {
+                #[prost(bool, tag = "1")]
+                A(bool),
+                #[prost(bool, tag = "3")]
+                B(bool),
+                #[prost(bool, tag = "1")]
+                C(bool),
+            }
+        ));
+        assert_eq!(
+            output
+                .expect_err("did not reject colliding oneof variants")
+                .to_string(),
+            "invalid oneof Invalid: multiple variants have tag 1"
+        );
+    }
+
+    #[test]
+    fn test_rejects_multiple_tags_oneof_variant() {
+        let output = try_oneof(quote!(
+            enum What {
+                #[prost(bool, tag = "1", tag = "2")]
+                A(bool),
+            }
+        ));
+        assert_eq!(
+            output
+                .expect_err("did not reject multiple tags on oneof variant")
+                .to_string(),
+            "duplicate tag attributes: 1 and 2"
+        );
+
+        let output = try_oneof(quote!(
+            enum What {
+                #[prost(bool, tag = "3")]
+                #[prost(tag = "4")]
+                A(bool),
+            }
+        ));
+        assert!(output.is_err());
+        assert_eq!(
+            output
+                .expect_err("did not reject multiple tags on oneof variant")
+                .to_string(),
+            "duplicate tag attributes: 3 and 4"
+        );
+
+        let output = try_oneof(quote!(
+            enum What {
+                #[prost(bool, tags = "5,6")]
+                A(bool),
+            }
+        ));
+        assert!(output.is_err());
+        assert_eq!(
+            output
+                .expect_err("did not reject multiple tags on oneof variant")
+                .to_string(),
+            "unknown attribute(s): #[prost(tags = \"5,6\")]"
+        );
+    }
 }

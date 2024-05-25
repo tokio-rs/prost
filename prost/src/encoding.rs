@@ -9,7 +9,6 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::min;
-use core::convert::TryFrom;
 use core::mem;
 use core::str;
 use core::u32;
@@ -23,10 +22,7 @@ use crate::Message;
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
-pub fn encode_varint<B>(mut value: u64, buf: &mut B)
-where
-    B: BufMut,
-{
+pub fn encode_varint(mut value: u64, buf: &mut impl BufMut) {
     // Varints are never more than 10 bytes
     for _ in 0..10 {
         if value < 0x80 {
@@ -41,10 +37,7 @@ where
 
 /// Decodes a LEB128-encoded variable length integer from the buffer.
 #[inline]
-pub fn decode_varint<B>(buf: &mut B) -> Result<u64, DecodeError>
-where
-    B: Buf,
-{
+pub fn decode_varint(buf: &mut impl Buf) -> Result<u64, DecodeError> {
     let bytes = buf.chunk();
     let len = bytes.len();
     if len == 0 {
@@ -164,10 +157,7 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
 /// [1]: https://github.com/protocolbuffers/protobuf-go/blob/v1.27.1/encoding/protowire/wire.go#L358
 #[inline(never)]
 #[cold]
-fn decode_varint_slow<B>(buf: &mut B) -> Result<u64, DecodeError>
-where
-    B: Buf,
-{
+fn decode_varint_slow(buf: &mut impl Buf) -> Result<u64, DecodeError> {
     let mut value = 0;
     for count in 0..min(10, buf.remaining()) {
         let byte = buf.get_u8();
@@ -302,10 +292,7 @@ impl TryFrom<u64> for WireType {
 /// Encodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline]
-pub fn encode_key<B>(tag: u32, wire_type: WireType, buf: &mut B)
-where
-    B: BufMut,
-{
+pub fn encode_key(tag: u32, wire_type: WireType, buf: &mut impl BufMut) {
     debug_assert!((MIN_TAG..=MAX_TAG).contains(&tag));
     let key = (tag << 3) | wire_type as u32;
     encode_varint(u64::from(key), buf);
@@ -314,10 +301,7 @@ where
 /// Decodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline(always)]
-pub fn decode_key<B>(buf: &mut B) -> Result<(u32, WireType), DecodeError>
-where
-    B: Buf,
-{
+pub fn decode_key(buf: &mut impl Buf) -> Result<(u32, WireType), DecodeError> {
     let key = decode_varint(buf)?;
     if key > u64::from(u32::MAX) {
         return Err(DecodeError::new(format!("invalid key value: {}", key)));
@@ -381,15 +365,12 @@ where
     Ok(())
 }
 
-pub fn skip_field<B>(
+pub fn skip_field(
     wire_type: WireType,
     tag: u32,
-    buf: &mut B,
+    buf: &mut impl Buf,
     ctx: DecodeContext,
-) -> Result<(), DecodeError>
-where
-    B: Buf,
-{
+) -> Result<(), DecodeError> {
     ctx.limit_reached()?;
     let len = match wire_type {
         WireType::Varint => decode_varint(buf).map(|_| 0)?,
@@ -422,10 +403,7 @@ where
 /// Helper macro which emits an `encode_repeated` function for the type.
 macro_rules! encode_repeated {
     ($ty:ty) => {
-        pub fn encode_repeated<B>(tag: u32, values: &[$ty], buf: &mut B)
-        where
-            B: BufMut,
-        {
+        pub fn encode_repeated(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
             for value in values {
                 encode(tag, value, buf);
             }
@@ -439,15 +417,12 @@ macro_rules! merge_repeated_numeric {
      $wire_type:expr,
      $merge:ident,
      $merge_repeated:ident) => {
-        pub fn $merge_repeated<B>(
+        pub fn $merge_repeated(
             wire_type: WireType,
             values: &mut Vec<$ty>,
-            buf: &mut B,
+            buf: &mut impl Buf,
             ctx: DecodeContext,
-        ) -> Result<(), DecodeError>
-        where
-            B: Buf,
-        {
+        ) -> Result<(), DecodeError> {
             if wire_type == WireType::LengthDelimited {
                 // Packed.
                 merge_loop(values, buf, ctx, |values, buf, ctx| {
@@ -487,12 +462,12 @@ macro_rules! varint {
          pub mod $proto_ty {
             use crate::encoding::*;
 
-            pub fn encode<B>(tag: u32, $to_uint64_value: &$ty, buf: &mut B) where B: BufMut {
+            pub fn encode(tag: u32, $to_uint64_value: &$ty, buf: &mut impl BufMut) {
                 encode_key(tag, WireType::Varint, buf);
                 encode_varint($to_uint64, buf);
             }
 
-            pub fn merge<B>(wire_type: WireType, value: &mut $ty, buf: &mut B, _ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf {
+            pub fn merge(wire_type: WireType, value: &mut $ty, buf: &mut impl Buf, _ctx: DecodeContext) -> Result<(), DecodeError> {
                 check_wire_type(WireType::Varint, wire_type)?;
                 let $from_uint64_value = decode_varint(buf)?;
                 *value = $from_uint64;
@@ -501,7 +476,7 @@ macro_rules! varint {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed<B>(tag: u32, values: &[$ty], buf: &mut B) where B: BufMut {
+            pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
                 if values.is_empty() { return; }
 
                 encode_key(tag, WireType::LengthDelimited, buf);
@@ -610,23 +585,17 @@ macro_rules! fixed_width {
         pub mod $proto_ty {
             use crate::encoding::*;
 
-            pub fn encode<B>(tag: u32, value: &$ty, buf: &mut B)
-            where
-                B: BufMut,
-            {
+            pub fn encode(tag: u32, value: &$ty, buf: &mut impl BufMut) {
                 encode_key(tag, $wire_type, buf);
                 buf.$put(*value);
             }
 
-            pub fn merge<B>(
+            pub fn merge(
                 wire_type: WireType,
                 value: &mut $ty,
-                buf: &mut B,
+                buf: &mut impl Buf,
                 _ctx: DecodeContext,
-            ) -> Result<(), DecodeError>
-            where
-                B: Buf,
-            {
+            ) -> Result<(), DecodeError> {
                 check_wire_type($wire_type, wire_type)?;
                 if buf.remaining() < $width {
                     return Err(DecodeError::new("buffer underflow"));
@@ -637,10 +606,7 @@ macro_rules! fixed_width {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed<B>(tag: u32, values: &[$ty], buf: &mut B)
-            where
-                B: BufMut,
-            {
+            pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
                 if values.is_empty() {
                     return;
                 }
@@ -760,15 +726,12 @@ macro_rules! length_delimited {
     ($ty:ty) => {
         encode_repeated!($ty);
 
-        pub fn merge_repeated<B>(
+        pub fn merge_repeated(
             wire_type: WireType,
             values: &mut Vec<$ty>,
-            buf: &mut B,
+            buf: &mut impl Buf,
             ctx: DecodeContext,
-        ) -> Result<(), DecodeError>
-        where
-            B: Buf,
-        {
+        ) -> Result<(), DecodeError> {
             check_wire_type(WireType::LengthDelimited, wire_type)?;
             let mut value = Default::default();
             merge(wire_type, &mut value, buf, ctx)?;
@@ -795,23 +758,18 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    pub fn encode<B>(tag: u32, value: &String, buf: &mut B)
-    where
-        B: BufMut,
-    {
+    pub fn encode(tag: u32, value: &String, buf: &mut impl BufMut) {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value.as_bytes());
     }
-    pub fn merge<B>(
+
+    pub fn merge(
         wire_type: WireType,
         value: &mut String,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-    {
+    ) -> Result<(), DecodeError> {
         // ## Unsafety
         //
         // `string::merge` reuses `bytes::merge`, with an additional check of utf-8
@@ -883,14 +841,10 @@ mod sealed {
         fn len(&self) -> usize;
 
         /// Replace contents of this buffer with the contents of another buffer.
-        fn replace_with<B>(&mut self, buf: B)
-        where
-            B: Buf;
+        fn replace_with(&mut self, buf: impl Buf);
 
         /// Appends this buffer to the (contents of) other buffer.
-        fn append_to<B>(&self, buf: &mut B)
-        where
-            B: BufMut;
+        fn append_to(&self, buf: &mut impl BufMut);
 
         fn is_empty(&self) -> bool {
             self.len() == 0
@@ -905,17 +859,11 @@ impl sealed::BytesAdapter for Bytes {
         Buf::remaining(self)
     }
 
-    fn replace_with<B>(&mut self, mut buf: B)
-    where
-        B: Buf,
-    {
+    fn replace_with(&mut self, mut buf: impl Buf) {
         *self = buf.copy_to_bytes(buf.remaining());
     }
 
-    fn append_to<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
+    fn append_to(&self, buf: &mut impl BufMut) {
         buf.put(self.clone())
     }
 }
@@ -927,19 +875,13 @@ impl sealed::BytesAdapter for Vec<u8> {
         Vec::len(self)
     }
 
-    fn replace_with<B>(&mut self, buf: B)
-    where
-        B: Buf,
-    {
+    fn replace_with(&mut self, buf: impl Buf) {
         self.clear();
         self.reserve(buf.remaining());
         self.put(buf);
     }
 
-    fn append_to<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
+    fn append_to(&self, buf: &mut impl BufMut) {
         buf.put(self.as_slice())
     }
 }
@@ -947,26 +889,18 @@ impl sealed::BytesAdapter for Vec<u8> {
 pub mod bytes {
     use super::*;
 
-    pub fn encode<A, B>(tag: u32, value: &A, buf: &mut B)
-    where
-        A: BytesAdapter,
-        B: BufMut,
-    {
+    pub fn encode(tag: u32, value: &impl BytesAdapter, buf: &mut impl BufMut) {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         value.append_to(buf);
     }
 
-    pub fn merge<A, B>(
+    pub fn merge(
         wire_type: WireType,
-        value: &mut A,
-        buf: &mut B,
+        value: &mut impl BytesAdapter,
+        buf: &mut impl Buf,
         _ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        A: BytesAdapter,
-        B: Buf,
-    {
+    ) -> Result<(), DecodeError> {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
@@ -990,16 +924,12 @@ pub mod bytes {
         Ok(())
     }
 
-    pub(super) fn merge_one_copy<A, B>(
+    pub(super) fn merge_one_copy(
         wire_type: WireType,
-        value: &mut A,
-        buf: &mut B,
+        value: &mut impl BytesAdapter,
+        buf: &mut impl Buf,
         _ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        A: BytesAdapter,
-        B: Buf,
-    {
+    ) -> Result<(), DecodeError> {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
@@ -1056,10 +986,9 @@ pub mod bytes {
 pub mod message {
     use super::*;
 
-    pub fn encode<M, B>(tag: u32, msg: &M, buf: &mut B)
+    pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
     where
         M: Message,
-        B: BufMut,
     {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(msg.encoded_len() as u64, buf);
@@ -1089,25 +1018,23 @@ pub mod message {
         )
     }
 
-    pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
+    pub fn encode_repeated<M>(tag: u32, messages: &[M], buf: &mut impl BufMut)
     where
         M: Message,
-        B: BufMut,
     {
         for msg in messages {
             encode(tag, msg, buf);
         }
     }
 
-    pub fn merge_repeated<M, B>(
+    pub fn merge_repeated<M>(
         wire_type: WireType,
         messages: &mut Vec<M>,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message + Default,
-        B: Buf,
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut msg = M::default();
@@ -1142,26 +1069,24 @@ pub mod message {
 pub mod group {
     use super::*;
 
-    pub fn encode<M, B>(tag: u32, msg: &M, buf: &mut B)
+    pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
     where
         M: Message,
-        B: BufMut,
     {
         encode_key(tag, WireType::StartGroup, buf);
         msg.encode_raw(buf);
         encode_key(tag, WireType::EndGroup, buf);
     }
 
-    pub fn merge<M, B>(
+    pub fn merge<M>(
         tag: u32,
         wire_type: WireType,
         msg: &mut M,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message,
-        B: Buf,
     {
         check_wire_type(WireType::StartGroup, wire_type)?;
 
@@ -1179,26 +1104,24 @@ pub mod group {
         }
     }
 
-    pub fn encode_repeated<M, B>(tag: u32, messages: &[M], buf: &mut B)
+    pub fn encode_repeated<M>(tag: u32, messages: &[M], buf: &mut impl BufMut)
     where
         M: Message,
-        B: BufMut,
     {
         for msg in messages {
             encode(tag, msg, buf);
         }
     }
 
-    pub fn merge_repeated<M, B>(
+    pub fn merge_repeated<M>(
         tag: u32,
         wire_type: WireType,
         messages: &mut Vec<M>,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         M: Message + Default,
-        B: Buf,
     {
         check_wire_type(WireType::StartGroup, wire_type)?;
         let mut msg = M::default();
@@ -1423,15 +1346,16 @@ pub mod btree_map {
 
 #[cfg(test)]
 mod test {
+    #[cfg(not(feature = "std"))]
     use alloc::string::ToString;
     use core::borrow::Borrow;
     use core::fmt::Debug;
     use core::u64;
 
-    use ::bytes::{Bytes, BytesMut};
+    use ::bytes::BytesMut;
     use proptest::{prelude::*, test_runner::TestCaseResult};
 
-    use crate::encoding::*;
+    use super::*;
 
     pub fn check_type<T, B>(
         value: T,
@@ -1616,11 +1540,14 @@ mod test {
 
             assert_eq!(encoded_len_varint(value), encoded.len());
 
-            let roundtrip_value = decode_varint(&mut encoded.clone()).expect("decoding failed");
+            // See: https://github.com/tokio-rs/prost/pull/1008 for copying reasoning.
+            let mut encoded_copy = encoded;
+            let roundtrip_value = decode_varint(&mut encoded_copy).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
+            let mut encoded_copy = encoded;
             let roundtrip_value =
-                decode_varint_slow(&mut encoded.clone()).expect("slow decoding failed");
+                decode_varint_slow(&mut encoded_copy).expect("slow decoding failed");
             assert_eq!(value, roundtrip_value);
         }
 
@@ -1679,13 +1606,18 @@ mod test {
         );
     }
 
+    const U64_MAX_PLUS_ONE: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
+
     #[test]
     fn varint_overflow() {
-        let u64_max_plus_one: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x02];
+        let mut copy = U64_MAX_PLUS_ONE;
+        decode_varint(&mut copy).expect_err("decoding u64::MAX + 1 succeeded");
+    }
 
-        decode_varint(&mut u64_max_plus_one.clone()).expect_err("decoding u64::MAX + 1 succeeded");
-        decode_varint_slow(&mut u64_max_plus_one.clone())
-            .expect_err("slow decoding u64::MAX + 1 succeeded");
+    #[test]
+    fn variant_slow_overflow() {
+        let mut copy = U64_MAX_PLUS_ONE;
+        decode_varint_slow(&mut copy).expect_err("slow decoding u64::MAX + 1 succeeded");
     }
 
     /// This big bowl o' macro soup generates an encoding property test for each combination of map

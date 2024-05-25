@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::fmt;
 
 use anyhow::{anyhow, bail, Error};
@@ -47,10 +46,11 @@ impl Field {
             None => return Ok(None),
         };
 
-        match unknown_attrs.len() {
-            0 => (),
-            1 => bail!("unknown attribute: {:?}", unknown_attrs[0]),
-            _ => bail!("unknown attributes: {:?}", unknown_attrs),
+        if !unknown_attrs.is_empty() {
+            bail!(
+                "unknown attribute(s): #[prost({})]",
+                quote!(#(#unknown_attrs),*)
+            );
         }
 
         let tag = match tag.or(inferred_tag) {
@@ -272,7 +272,7 @@ impl Field {
     pub fn methods(&self, ident: &TokenStream) -> Option<TokenStream> {
         let mut ident_str = ident.to_string();
         if ident_str.starts_with("r#") {
-            ident_str = ident_str[2..].to_owned();
+            ident_str = ident_str.split_off(2);
         }
 
         // Prepend `get_` for getter methods of tuple structs.

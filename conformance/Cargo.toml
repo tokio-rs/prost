@@ -2,15 +2,15 @@
 name = "conformance"
 version = "0.0.0"
 authors = [
-    "Dan Burkert <dan@danburkert.com>",
-    "Tokio Contributors <team@tokio.rs>",
+  "Dan Burkert <dan@danburkert.com>",
+  "Tokio Contributors <team@tokio.rs>",
 ]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 bytes = "1"
-env_logger = { version = "0.10", default-features = false }
-prost = { path = ".." }
+env_logger = { version = "0.11", default-features = false }
+prost = { path = "../prost" }
 protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }

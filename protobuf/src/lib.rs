@@ -26,35 +26,8 @@ pub mod benchmarks {
                 "/share/dataset.google_message2.pb"
             ))
         }
-
-        pub fn google_message3_1() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_1.pb"
-            ))
-        }
-
-        pub fn google_message3_5() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message3_5.pb"
-            ))
-        }
-
-        pub fn google_message4() -> &'static Path {
-            Path::new(concat!(
-                env!("PROTOBUF"),
-                "/share/dataset.google_message4.pb"
-            ))
-        }
     }
 
-    pub mod google_message3 {
-        include!(concat!(env!("OUT_DIR"), "/benchmarks.google_message3.rs"));
-    }
-    pub mod google_message4 {
-        include!(concat!(env!("OUT_DIR"), "/benchmarks.google_message4.rs"));
-    }
     pub mod proto2 {
         include!(concat!(env!("OUT_DIR"), "/benchmarks.proto2.rs"));
     }

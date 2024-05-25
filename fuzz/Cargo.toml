@@ -2,18 +2,17 @@
 name = "fuzz"
 version = "0.0.0"
 authors = [
-    "Dan Burkert <dan@danburkert.com>",
-    "Tokio Contributors <team@tokio.rs>",
+  "Dan Burkert <dan@danburkert.com>",
+  "Tokio Contributors <team@tokio.rs>",
 ]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
-protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }
 
 [[bin]]

@@ -1,9 +1,13 @@
 //! Tests for skipping the default Debug implementation.
 
+use std::fmt;
+
+use prost::alloc::format;
+#[cfg(not(feature = "std"))]
+use prost::alloc::string::String;
+
 use crate::custom_debug::{msg, AnEnum, Msg};
 use crate::message_encoding::BasicEnumeration;
-use prost::alloc::{format, string::String};
-use std::fmt;
 
 /// A special case with a tuple struct
 #[test]

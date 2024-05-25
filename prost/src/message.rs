@@ -1,8 +1,9 @@
+#[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
 use core::fmt::Debug;
-use core::usize;
 
 use bytes::{Buf, BufMut};
 
@@ -20,24 +21,22 @@ pub trait Message: Debug + Send + Sync {
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    fn encode_raw<B>(&self, buf: &mut B)
+    fn encode_raw(&self, buf: &mut impl BufMut)
     where
-        B: BufMut,
         Self: Sized;
 
     /// Decodes a field from a buffer, and merges it into `self`.
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized;
 
     /// Returns the encoded length of the message without a length delimiter.
@@ -46,9 +45,8 @@ pub trait Message: Debug + Send + Sync {
     /// Encodes the message to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
-    fn encode<B>(&self, buf: &mut B) -> Result<(), EncodeError>
+    fn encode(&self, buf: &mut impl BufMut) -> Result<(), EncodeError>
     where
-        B: BufMut,
         Self: Sized,
     {
         let required = self.encoded_len();
@@ -75,9 +73,8 @@ pub trait Message: Debug + Send + Sync {
     /// Encodes the message with a length-delimiter to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
-    fn encode_length_delimited<B>(&self, buf: &mut B) -> Result<(), EncodeError>
+    fn encode_length_delimited(&self, buf: &mut impl BufMut) -> Result<(), EncodeError>
     where
-        B: BufMut,
         Self: Sized,
     {
         let len = self.encoded_len();
@@ -107,9 +104,8 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer.
     ///
     /// The entire buffer will be consumed.
-    fn decode<B>(mut buf: B) -> Result<Self, DecodeError>
+    fn decode(mut buf: impl Buf) -> Result<Self, DecodeError>
     where
-        B: Buf,
         Self: Default,
     {
         let mut message = Self::default();
@@ -117,9 +113,8 @@ pub trait Message: Debug + Send + Sync {
     }
 
     /// Decodes a length-delimited instance of the message from the buffer.
-    fn decode_length_delimited<B>(buf: B) -> Result<Self, DecodeError>
+    fn decode_length_delimited(buf: impl Buf) -> Result<Self, DecodeError>
     where
-        B: Buf,
         Self: Default,
     {
         let mut message = Self::default();
@@ -130,9 +125,8 @@ pub trait Message: Debug + Send + Sync {
     /// Decodes an instance of the message from a buffer, and merges it into `self`.
     ///
     /// The entire buffer will be consumed.
-    fn merge<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge(&mut self, mut buf: impl Buf) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         let ctx = DecodeContext::default();
@@ -145,9 +139,8 @@ pub trait Message: Debug + Send + Sync {
 
     /// Decodes a length-delimited instance of the message from buffer, and
     /// merges it into `self`.
-    fn merge_length_delimited<B>(&mut self, mut buf: B) -> Result<(), DecodeError>
+    fn merge_length_delimited(&mut self, mut buf: impl Buf) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         message::merge(
@@ -166,22 +159,16 @@ impl<M> Message for Box<M>
 where
     M: Message,
 {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
+    fn encode_raw(&self, buf: &mut impl BufMut) {
         (**self).encode_raw(buf)
     }
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-    {
+    ) -> Result<(), DecodeError> {
         (**self).merge_field(tag, wire_type, buf, ctx)
     }
     fn encoded_len(&self) -> usize {

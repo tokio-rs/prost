@@ -38,10 +38,11 @@ impl Field {
             return Ok(None);
         }
 
-        match unknown_attrs.len() {
-            0 => (),
-            1 => bail!("unknown attribute for group field: {:?}", unknown_attrs[0]),
-            _ => bail!("unknown attributes for group field: {:?}", unknown_attrs),
+        if !unknown_attrs.is_empty() {
+            bail!(
+                "unknown attribute(s) for group field: #[prost({})]",
+                quote!(#(#unknown_attrs),*)
+            );
         }
 
         let tag = match tag.or(inferred_tag) {

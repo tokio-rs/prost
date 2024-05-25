@@ -12,6 +12,23 @@ env:
   PROTOC_VERSION: 3.20.3
 
 jobs:
+  # Depends on all actions that are required for a "successful" CI run.
+  tests-pass:
+    name: all systems go
+    runs-on: ubuntu-latest
+    needs:
+      - rustfmt
+      - toml_validation
+      - clippy
+      - machete
+      - unused_dependencies
+      - test
+      - msrv
+      - minimal-versions
+      - kani
+      - no-std
+    steps:
+      - run: exit 0
 
   rustfmt:
     runs-on: ubuntu-latest
@@ -22,6 +39,35 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all --check
 
+  toml_validation:
+    runs-on: ubuntu-latest
+    container:
+      image: tamasfe/taplo:0.8.1
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: taplo lint
+        run: taplo lint
+      - name: taplo fmt
+        run: taplo fmt --check --diff
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc@${{ env.PROTOC_VERSION }}
+      - name: install ninja
+        uses: ./.github/actions/setup-ninja
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --workspace --exclude protobuf --all-features --tests -- -D warnings
+
   machete:
     runs-on: ubuntu-latest
     steps:
@@ -31,19 +77,40 @@ jobs:
       - name: Check unused dependencies
         run: cargo machete
 
+  unused_dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc@${{ env.PROTOC_VERSION }}
+      - name: install ninja
+        uses: ./.github/actions/setup-ninja
+      - name: install cargo-udeps
+        uses: taiki-e/install-action@cargo-udeps
+      - name: cargo udeps
+        run: cargo +nightly udeps
+      - name: cargo udeps all-targets
+        run: cargo +nightly udeps --all-targets
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         toolchain:
           - stable
-          - "1.70"
         os:
           - ubuntu-latest
           - macos-latest
           - windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       - name: install toolchain (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@master
         with:
@@ -56,14 +123,29 @@ jobs:
         uses: ./.github/actions/setup-ninja
       - uses: Swatinem/rust-cache@v2
       - name: test
-        run: cargo test --workspace --all-targets
+        run: cargo test --all-targets
       - name: test no-default-features
         run: cargo test -p prost-build -p prost-derive -p prost-types --all-targets --no-default-features
       # Run doc tests separately: https://github.com/rust-lang/cargo/issues/6669
       - name: test doc
-        run: cargo test --workspace --doc
+        run: cargo test --doc
       - name: test doc no-default-features
         run: cargo test -p prost-build -p prost-derive -p prost-types --doc --no-default-features
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install protoc
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc@${{ env.PROTOC_VERSION }}
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: Swatinem/rust-cache@v2
+      - name: check with no-default-features
+        run: cargo hack --rust-version --no-private --no-dev-deps check --no-default-features
+      - name: check with all-features
+        run: cargo hack --rust-version --no-private --no-dev-deps check --all-features
 
   minimal-versions:
     runs-on: ubuntu-latest
@@ -73,7 +155,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@cargo-minimal-versions
-      - run: cargo minimal-versions --no-private check --workspace --all-features
+      - run: cargo minimal-versions --no-private check --all-features
 
   kani:
     runs-on: ubuntu-latest
@@ -110,7 +192,7 @@ jobs:
         with:
           crate: cargo-no-std-check
       - name: prost cargo-no-std-check
-        run: cargo no-std-check --manifest-path Cargo.toml --no-default-features
+        run: cargo no-std-check --manifest-path prost/Cargo.toml --no-default-features
       - name: prost-types cargo-no-std-check
         run: cargo no-std-check --manifest-path prost-types/Cargo.toml --no-default-features
       # prost-build depends on prost with --no-default-features, but when
