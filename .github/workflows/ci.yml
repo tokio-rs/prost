@@ -27,6 +27,7 @@ jobs:
       - minimal-versions
       - kani
       - no-std
+      - check-readme
     steps:
       - run: exit 0
 
@@ -202,3 +203,15 @@ jobs:
       # prost's default features to compile.
       - name: prost-build check
         run: cargo check --manifest-path prost-build/Cargo.toml
+
+  check-readme:
+    name: Check README
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify that both READMEs are identical
+        run: diff README.md prost/README.md
+
+      - name: Verify that Prost version is up to date in README
+        working-directory: prost
+        run: grep -q "$(sed '/^version = /!d' Cargo.toml | head -n1)" README.md
