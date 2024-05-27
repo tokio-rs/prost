@@ -632,10 +632,7 @@ mod tests {
             Ok(PrivacyLevel::PrivacyLevelprivacyLevelFour),
             PrivacyLevel::try_from(4)
         );
-        assert_eq!(
-            Err(prost::DecodeError::new("invalid enumeration value")),
-            PrivacyLevel::try_from(5)
-        );
+        assert_eq!(Err(prost::UnknownEnumValue(5)), PrivacyLevel::try_from(5));
 
         assert_eq!(
             Ok(ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery),

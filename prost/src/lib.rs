@@ -17,7 +17,7 @@ mod types;
 #[doc(hidden)]
 pub mod encoding;
 
-pub use crate::error::{DecodeError, EncodeError};
+pub use crate::error::{DecodeError, EncodeError, UnknownEnumValue};
 pub use crate::message::Message;
 pub use crate::name::Name;
 
