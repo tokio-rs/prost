@@ -219,10 +219,9 @@ impl Field {
                 struct #wrap_name<'a>(&'a ::prost::OpenEnum<#ty>);
                 impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
                     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                        let res = self.0.known_or(());
-                        match res {
-                            Err(_) => ::core::fmt::Debug::fmt(&self.0, f),
-                            Ok(en) => ::core::fmt::Debug::fmt(&en, f),
+                        match self.0.known() {
+                            Some(en) => ::core::fmt::Debug::fmt(&en, f),
+                            None => ::core::fmt::Debug::fmt(&self.0, f),
                         }
                     }
                 }
