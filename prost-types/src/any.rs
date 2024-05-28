@@ -19,22 +19,21 @@ impl Any {
         M: Default + Name + Sized,
     {
         let expected_type_url = M::type_url();
+        let actual_type_url = &self.type_url;
 
         if let (Some(expected), Some(actual)) = (
             TypeUrl::new(&expected_type_url),
-            TypeUrl::new(&self.type_url),
+            TypeUrl::new(actual_type_url),
         ) {
             if expected == actual {
                 return M::decode(self.value.as_slice());
             }
         }
 
-        let mut err = DecodeError::new(format!(
-            "expected type URL: \"{}\" (got: \"{}\")",
-            expected_type_url, &self.type_url
-        ));
-        err.push("unexpected type URL", "type_url");
-        Err(err)
+        Err(DecodeError::new_unexpected_type_url(
+            actual_type_url,
+            expected_type_url,
+        ))
     }
 }
 
