@@ -390,15 +390,35 @@ mod tests {
         let _ = env_logger::try_init();
         let tempdir = tempfile::tempdir().unwrap();
 
-        Config::new()
+        let mut config = Config::new();
+        config
             .out_dir(tempdir.path())
+            // Add attributes to all messages and enums
             .message_attribute(".", "#[derive(derive_builder::Builder)]")
-            .enum_attribute(".", "#[some_enum_attr(u8)]")
-            .compile_protos(
+            .enum_attribute(".", "#[some_enum_attr(u8)]");
+
+        let fds = config
+            .load_fds(
                 &["src/fixtures/helloworld/hello.proto"],
                 &["src/fixtures/helloworld"],
             )
             .unwrap();
+
+        // Add custom attributes to messages that are service inputs or outputs.
+        for file in &fds.file {
+            for service in &file.service {
+                for method in &service.method {
+                    if let Some(input) = &method.input_type {
+                        config.message_attribute(input, "#[derive(custom_proto::Input)]");
+                    }
+                    if let Some(output) = &method.output_type {
+                        config.message_attribute(output, "#[derive(custom_proto::Output)]");
+                    }
+                }
+            }
+        }
+
+        config.compile_fds(fds).unwrap();
 
         let out_file = tempdir.path().join("helloworld.rs");
         #[cfg(feature = "format")]

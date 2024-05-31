@@ -836,7 +836,7 @@ impl Config {
     }
 
     /// Loads `.proto` files as a [`FileDescriptorSet`]. This allows inspection of the descriptors
-    /// before calling [`Config::compile_fds`]. This could be used to change [`Config`] 
+    /// before calling [`Config::compile_fds`]. This could be used to change [`Config`]
     /// attributes after introspecting what is actually present in the `.proto` files.
     ///
     /// # Example `build.rs`
@@ -848,7 +848,19 @@ impl Config {
     ///   let mut config = Config::new();
     ///   let file_descriptor_set = config.load_fds(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
     ///
-    ///   // Inspect file_descriptor_set and tweak config
+    ///   // Add custom attributes to messages that are service inputs or outputs.
+    ///   for file in &file_descriptor_set.file {
+    ///       for service in &file.service {
+    ///           for method in &service.method {
+    ///               if let Some(input) = &method.input_type {
+    ///                   config.message_attribute(input, "#[derive(custom_proto::Input)]");
+    ///               }
+    ///               if let Some(output) = &method.output_type {
+    ///                   config.message_attribute(output, "#[derive(custom_proto::Output)]");
+    ///               }
+    ///           }
+    ///       }
+    ///   }
     ///
     ///   config.compile_fds(file_descriptor_set)
     /// }
