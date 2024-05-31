@@ -835,10 +835,9 @@ impl Config {
         Ok(())
     }
 
-    /// Loads `.proto` files as a `FileDescriptorSet`. This allows inspection of the descriptors
-    /// before calling `prost_build::compile_fds`. A possible use case it to compute `Config`
-    /// attributes by introspecting what is actually present in the `.proto` files before
-    /// generating the code.
+    /// Loads `.proto` files as a [`FileDescriptorSet`]. This allows inspection of the descriptors
+    /// before calling [`Config::compile_fds`]. This could be used to change [`Config`] 
+    /// attributes after introspecting what is actually present in the `.proto` files.
     ///
     /// # Example `build.rs`
     ///
