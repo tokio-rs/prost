@@ -27,7 +27,7 @@ pub trait Name: Message {
     /// Type URL for this [`Message`], which by default is the full name with a
     /// leading slash, but may also include a leading domain name, e.g.
     /// `type.googleapis.com/google.profile.Person`.
-    /// This can be used when serializing with the [`Any`] type.
+    /// This can be used when serializing into the `google.protobuf.Any` type.
     fn type_url() -> String {
         format!("/{}", Self::full_name())
     }
