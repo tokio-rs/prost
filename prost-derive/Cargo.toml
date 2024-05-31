@@ -1,19 +1,13 @@
 [package]
 name = "prost-derive"
-version = "0.12.6"
-authors = [
-  "Dan Burkert <dan@danburkert.com>",
-  "Lucio Franco <luciofranco14@gmail.com>",
-  "Casper Meijn <casper@meijn.net>",
-  "Tokio Contributors <team@tokio.rs>",
-]
-license = "Apache-2.0"
-repository = "https://github.com/tokio-rs/prost"
-documentation = "https://docs.rs/prost-derive"
 readme = "README.md"
 description = "Generate encoding and decoding implementations for Prost annotated types."
-edition = "2021"
-rust-version = "1.70"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 proc_macro = true

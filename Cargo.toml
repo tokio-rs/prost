@@ -22,5 +22,18 @@ exclude = [
 
 resolver = "2"
 
+[workspace.package]
+version = "0.12.6"
+authors = [
+  "Dan Burkert <dan@danburkert.com>",
+  "Lucio Franco <luciofranco14@gmail.com>",
+  "Casper Meijn <casper@meijn.net>",
+  "Tokio Contributors <team@tokio.rs>",
+]
+license = "Apache-2.0"
+repository = "https://github.com/tokio-rs/prost"
+rust-version = "1.70"
+edition = "2021"
+
 [profile.bench]
 debug = true
