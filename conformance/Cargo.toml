@@ -9,5 +9,6 @@ authors.workspace = true
 bytes = "1"
 env_logger = { version = "0.11", default-features = false }
 prost = { path = "../prost" }
+prost-types = { path = "../prost-types", features = ["any-v2"] }
 protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }

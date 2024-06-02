@@ -128,12 +128,14 @@ pub mod default_string_escape {
 }
 
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 use anyhow::anyhow;
-use prost::bytes::Buf;
-
-use prost::Message;
+use prost::{
+    bytes::Buf,
+    serde::{DeserializerConfigBuilder, SerdeMessage, SerializerConfig},
+    Message,
+};
 
 pub enum RoundtripResult {
     /// The roundtrip succeeded.
@@ -228,6 +230,136 @@ where
     }
 
     RoundtripResult::Ok(buf1)
+}
+
+pub enum RoundtripInput<'a> {
+    Protobuf(&'a [u8]),
+    Json(&'a str),
+}
+
+pub enum RoundtripOutputType {
+    Protobuf,
+    Json,
+}
+
+pub enum RoundtripResult2 {
+    /// The roundtrip to protobuf succeeded.
+    Protobuf(Vec<u8>),
+    /// The roundtrip to json succeeded.
+    Json(String),
+    /// The data could not be encoded. This could indicate a bug in prost,
+    /// or it could indicate that the data was invalid (eg. violating message invariants).
+    EncodeError(anyhow::Error),
+    /// The data could not be decoded. This could indicate a bug in prost,
+    /// or it could indicate that the input was bogus.
+    DecodeError(anyhow::Error),
+    /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
+    Error(anyhow::Error),
+}
+
+pub fn roundtrip2<M>(
+    input: RoundtripInput<'_>,
+    output_ty: RoundtripOutputType,
+    ignore_unknown_fields: bool,
+) -> RoundtripResult2
+where
+    M: Message + SerdeMessage + Default,
+{
+    let serializer_config = SerializerConfig::default();
+    let deserializer_config = DeserializerConfigBuilder::default()
+        .ignore_unknown_fields(ignore_unknown_fields)
+        .build();
+
+    // Try to decode a message from the data. If decoding fails, continue.
+    let all_types = match input {
+        RoundtripInput::Protobuf(data) => match M::decode(data) {
+            Ok(all_types) => all_types,
+            Err(err) => return RoundtripResult2::DecodeError(err.into()),
+        },
+        RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
+            Ok(all_types) => all_types,
+            Err(err) => return RoundtripResult2::DecodeError(err.into()),
+        },
+    };
+
+    let mid_protobuf;
+    let mid_json;
+    let mid_input = match output_ty {
+        RoundtripOutputType::Protobuf => {
+            mid_protobuf = all_types.encode_to_vec();
+
+            let encoded_len = all_types.encoded_len();
+            if encoded_len != mid_protobuf.len() {
+                return RoundtripResult2::Error(anyhow!(
+                    "expected encoded len ({}) did not match actual encoded len ({})",
+                    encoded_len,
+                    mid_protobuf.len()
+                ));
+            }
+
+            RoundtripInput::Protobuf(&mid_protobuf)
+        }
+        RoundtripOutputType::Json => {
+            mid_json = match serializer_config.with(&all_types).to_string() {
+                Ok(val) => val,
+                Err(err) => {
+                    return if err.is_data() {
+                        RoundtripResult2::EncodeError(err.into())
+                    } else {
+                        RoundtripResult2::Error(err.into())
+                    }
+                }
+            };
+            RoundtripInput::Json(&mid_json)
+        }
+    };
+
+    let final_all_types = match mid_input {
+        RoundtripInput::Protobuf(data) => match M::decode(data) {
+            Ok(all_types) => all_types,
+            Err(err) => return RoundtripResult2::DecodeError(err.into()),
+        },
+        RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
+            Ok(all_types) => all_types,
+            Err(err) => {
+                return if err.is_data() {
+                    RoundtripResult2::EncodeError(err.into())
+                } else {
+                    RoundtripResult2::Error(err.into())
+                }
+            }
+        },
+    };
+
+    match output_ty {
+        RoundtripOutputType::Protobuf => {
+            let encoded = final_all_types.encode_to_vec();
+
+            let encoded_len = final_all_types.encoded_len();
+            if encoded_len != encoded.len() {
+                return RoundtripResult2::Error(anyhow!(
+                    "expected encoded len ({}) did not match actual encoded len ({})",
+                    encoded_len,
+                    encoded.len()
+                ));
+            }
+
+            RoundtripResult2::Protobuf(encoded)
+        }
+        RoundtripOutputType::Json => {
+            let json = match serializer_config.with(&final_all_types).to_string() {
+                Ok(val) => val,
+                Err(err) => {
+                    return if err.is_data() {
+                        RoundtripResult2::EncodeError(err.into())
+                    } else {
+                        RoundtripResult2::Error(err.into())
+                    }
+                }
+            };
+            RoundtripResult2::Json(json)
+        }
+    }
 }
 
 /// Generic roundtrip serialization check for messages.

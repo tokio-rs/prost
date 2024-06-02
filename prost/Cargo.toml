@@ -16,15 +16,22 @@ rust-version.workspace = true
 bench = false
 
 [features]
-default = ["derive", "std"]
+default = ["derive", "std", "serde", "serde-json"]
 derive = ["dep:prost-derive"]
 prost-derive = ["derive"]     # deprecated, please use derive feature instead
 no-recursion-limit = []
 std = []
 
+serde = ["dep:serde", "dep:base64"]
+serde-json = ["serde", "dep:serde_json"]
+
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.13.3", path = "../prost-derive", optional = true }
+
+base64 = { version = "0.21.4", optional = true }
+serde = { version = "1.0.189", optional = true }
+serde_json = { version = "1.0.107", features = ["float_roundtrip"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }

@@ -112,6 +112,11 @@ impl Timestamp {
 
         Timestamp::try_from(date_time)
     }
+
+    #[cfg(feature = "any-v2")]
+    pub(crate) fn from_json_str(s: &str) -> Result<Timestamp, TimestampError> {
+        datetime::parse_timestamp(s, true).ok_or(TimestampError::ParseFailure)
+    }
 }
 
 impl Name for Timestamp {
@@ -233,7 +238,7 @@ impl FromStr for Timestamp {
     type Err = TimestampError;
 
     fn from_str(s: &str) -> Result<Timestamp, TimestampError> {
-        datetime::parse_timestamp(s).ok_or(TimestampError::ParseFailure)
+        datetime::parse_timestamp(s, false).ok_or(TimestampError::ParseFailure)
     }
 }
 

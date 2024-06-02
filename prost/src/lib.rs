@@ -14,6 +14,9 @@ mod message;
 mod name;
 mod types;
 
+#[cfg(feature = "serde")]
+pub mod serde;
+
 #[doc(hidden)]
 pub mod encoding;
 

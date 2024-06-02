@@ -1,6 +1,6 @@
 //! Utility functions for working with identifiers.
 
-use heck::{ToSnakeCase, ToUpperCamelCase};
+use heck::{ToShoutySnakeCase, ToSnakeCase, ToUpperCamelCase};
 
 pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
     let ident = s.as_ref();
@@ -64,6 +64,26 @@ pub fn strip_enum_prefix(prefix: &str, name: &str) -> String {
         name
     };
     sanitize_identifier(stripped)
+}
+
+pub enum IdentKind<'a> {
+    MessageField { field: &'a str },
+    OneOfVariant { variant: &'a str },
+    EnumVariant { ty: &'a str, variant: &'a str },
+}
+
+pub fn is_stable_ident_for_json(proto_name: &str, kind: IdentKind<'_>) -> bool {
+    match kind {
+        IdentKind::MessageField { field } => field == proto_name,
+        IdentKind::OneOfVariant { variant } => {
+            let variant = variant.to_snake_case();
+            variant == proto_name
+        }
+        IdentKind::EnumVariant { ty, variant } => {
+            let enum_name = format!("{}_{}", ty, variant).to_shouty_snake_case();
+            enum_name == proto_name
+        }
+    }
 }
 
 #[cfg(test)]

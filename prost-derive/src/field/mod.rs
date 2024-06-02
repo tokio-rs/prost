@@ -1,8 +1,8 @@
 mod group;
-mod map;
-mod message;
+pub mod map;
+pub mod message;
 mod oneof;
-mod scalar;
+pub mod scalar;
 
 use std::fmt;
 use std::slice;
@@ -10,7 +10,7 @@ use std::slice;
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::punctuated::Punctuated;
+use syn::{punctuated::Punctuated, LitStr};
 use syn::{Attribute, Expr, ExprLit, Lit, LitBool, LitInt, Meta, MetaNameValue, Token};
 
 #[derive(Clone)]
@@ -68,6 +68,7 @@ impl Field {
         } else if let Some(field) = message::Field::new_oneof(&attrs)? {
             Field::Message(field)
         } else if let Some(field) = map::Field::new_oneof(&attrs)? {
+            // FIXME: oneofs don't support repeated fields (which includes maps).
             Field::Map(field)
         } else if let Some(field) = group::Field::new_oneof(&attrs)? {
             Field::Group(field)
@@ -172,6 +173,32 @@ impl Field {
             _ => None,
         }
     }
+
+    pub fn json(&self) -> Option<Option<&Json>> {
+        match self {
+            Self::Scalar(scalar::Field { json, .. })
+            | Self::Message(message::Field { json, .. })
+            | Self::Group(group::Field { json, .. })
+            | Self::Map(map::Field { json, .. }) => Some(json.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn is_required(&self) -> bool {
+        matches!(
+            self,
+            Self::Scalar(scalar::Field {
+                kind: scalar::Kind::Required(_),
+                ..
+            }) | Field::Message(message::Field {
+                label: Label::Required,
+                ..
+            }) | Field::Group(group::Field {
+                label: Label::Required,
+                ..
+            })
+        )
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -225,7 +252,7 @@ impl fmt::Display for Label {
 }
 
 /// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
-fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
+pub fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
     let mut result = Vec::new();
     for attr in attrs.iter() {
         if let Meta::List(meta_list) = &attr.meta {
@@ -351,5 +378,53 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .collect::<Result<Vec<u32>, _>>()
             .map(Some),
         _ => bail!("invalid tag attribute: {:?}", attr),
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Json {
+    pub proto_name: Option<String>,
+    pub proto_alt_names: Vec<String>,
+    pub json_name: Option<String>,
+}
+
+impl Json {
+    pub fn from_attr(attr: &Meta) -> Result<Option<Json>, Error> {
+        let Meta::List(meta_list) = attr else {
+            return Ok(None);
+        };
+        if !meta_list.path.is_ident("json") {
+            return Ok(None);
+        }
+
+        let mut proto_name = None;
+        let mut proto_alt_names = vec![];
+        let mut json_name = None;
+
+        meta_list.parse_nested_meta(|meta| {
+            if meta.path.is_ident("proto_name") {
+                let _ = meta.input.parse::<Token![=]>()?;
+                let value = meta.input.parse::<LitStr>()?.value();
+                if proto_name.is_none() {
+                    proto_name = Some(value);
+                } else {
+                    proto_alt_names.push(value);
+                }
+                return Ok(());
+            }
+            if meta.path.is_ident("json_name") {
+                let _ = meta.input.parse::<Token![=]>()?;
+                json_name = Some(meta.input.parse::<LitStr>()?.value());
+                return Ok(());
+            }
+
+            Err(meta.error("unrecognized attributes"))
+        })?;
+
+        Ok(Some(Json {
+            proto_name,
+            proto_alt_names,
+            json_name,
+        }))
     }
 }

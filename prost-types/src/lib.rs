@@ -45,6 +45,13 @@ pub mod compiler;
 mod datetime;
 #[rustfmt::skip]
 mod protobuf;
+#[cfg(feature = "serde")]
+#[doc(hidden)]
+pub mod serde;
+#[cfg(feature = "any-v2")]
+pub mod any_v2;
+#[cfg(feature = "any-v2")]
+mod smallbox;
 
 use core::convert::TryFrom;
 use core::fmt;
@@ -57,6 +64,9 @@ use prost::alloc::vec::Vec;
 use prost::{DecodeError, EncodeError, Message, Name};
 
 pub use protobuf::*;
+
+#[cfg(feature = "any-v2")]
+pub use any_v2::ProstAny as Any;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
