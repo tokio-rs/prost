@@ -175,7 +175,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
-            fn encode_raw(&self, buf: &mut impl ::prost::bytes::BufMut) {
+            fn encode_raw(&self, buf: &mut (impl ::prost::bytes::BufMut + ?Sized)) {
                 #(#encode)*
             }
 
@@ -462,7 +462,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
-            pub fn encode(&self, buf: &mut impl ::prost::bytes::BufMut) {
+            pub fn encode(&self, buf: &mut (impl ::prost::bytes::BufMut + ?Sized)) {
                 match *self {
                     #(#encode,)*
                 }

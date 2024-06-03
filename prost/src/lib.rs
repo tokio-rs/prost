@@ -36,7 +36,7 @@ const RECURSION_LIMIT: u32 = 100;
 ///
 /// An error will be returned if the buffer does not have sufficient capacity to encode the
 /// delimiter.
-pub fn encode_length_delimiter(length: usize, buf: &mut impl BufMut) -> Result<(), EncodeError> {
+pub fn encode_length_delimiter(length: usize, buf: &mut (impl BufMut + ?Sized)) -> Result<(), EncodeError> {
     let length = length as u64;
     let required = encoded_len_varint(length);
     let remaining = buf.remaining_mut();

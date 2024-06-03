@@ -21,7 +21,7 @@ pub trait Message: Debug + Send + Sync {
     ///
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
-    fn encode_raw(&self, buf: &mut impl BufMut)
+    fn encode_raw(&self, buf: &mut (impl BufMut + ?Sized))
     where
         Self: Sized;
 
@@ -45,7 +45,7 @@ pub trait Message: Debug + Send + Sync {
     /// Encodes the message to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
-    fn encode(&self, buf: &mut impl BufMut) -> Result<(), EncodeError>
+    fn encode(&self, buf: &mut (impl BufMut + ?Sized)) -> Result<(), EncodeError>
     where
         Self: Sized,
     {
@@ -73,7 +73,7 @@ pub trait Message: Debug + Send + Sync {
     /// Encodes the message with a length-delimiter to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
-    fn encode_length_delimited(&self, buf: &mut impl BufMut) -> Result<(), EncodeError>
+    fn encode_length_delimited(&self, buf: &mut (impl BufMut + ?Sized)) -> Result<(), EncodeError>
     where
         Self: Sized,
     {
@@ -159,7 +159,7 @@ impl<M> Message for Box<M>
 where
     M: Message,
 {
-    fn encode_raw(&self, buf: &mut impl BufMut) {
+    fn encode_raw(&self, buf: &mut (impl BufMut + ?Sized)) {
         (**self).encode_raw(buf)
     }
     fn merge_field(
