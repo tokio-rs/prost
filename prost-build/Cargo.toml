@@ -17,7 +17,7 @@ cleanup-markdown = ["dep:pulldown-cmark", "dep:pulldown-cmark-to-cmark"]
 [dependencies]
 bytes = { version = "1", default-features = false }
 heck = { version = ">=0.4, <=0.5" }
-itertools = { version = ">=0.10, <=0.12", default-features = false, features = ["use_alloc"] }
+itertools = { version = ">=0.10, <=0.13.0", default-features = false, features = ["use_alloc"] }
 log = "0.4.4"
 multimap = { version = ">=0.8, <=0.10", default-features = false }
 petgraph = { version = "0.6", default-features = false }
