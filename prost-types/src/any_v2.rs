@@ -307,9 +307,16 @@ impl Message for ProstAny {
                 }
             }
             Inner::Dyn(value) => {
-                prost::encoding::encode_key(2u32, prost::encoding::WireType::LengthDelimited, buf);
-                prost::encoding::encode_varint(value.as_message().encoded_len() as u64, buf);
-                value.encode_to_buf(buf);
+                let msg_len = value.as_message().encoded_len();
+                if msg_len != 0 {
+                    prost::encoding::encode_key(
+                        2u32,
+                        prost::encoding::WireType::LengthDelimited,
+                        buf,
+                    );
+                    prost::encoding::encode_varint(msg_len as u64, buf);
+                    value.encode_to_buf(buf);
+                }
             }
             Inner::Json(_) => {
                 let res = self.deserialize_and_cache(|value| {
@@ -380,7 +387,10 @@ impl Message for ProstAny {
                 }
             }
             Inner::Dyn(value) => {
-                len += prost::encoding::message::encoded_len(2u32, value.as_message());
+                let msg = value.as_message();
+                if msg.encoded_len() != 0 {
+                    len += prost::encoding::message::encoded_len(2u32, msg);
+                }
             }
             Inner::Json(_) => {
                 let res = self.deserialize_and_cache(|value| {
@@ -652,46 +662,6 @@ pub struct AnyTypeDescriptor {
 }
 
 impl AnyTypeDescriptor {
-    // #[allow(private_bounds)]
-    // pub fn for_well_known_type<T>() -> Self
-    // where
-    //     T: 'static + Message + Default + Clone,
-    //     T: prost::serde::private::CustomSerialize,
-    //     T: for<'de> prost::serde::private::CustomDeserialize<'de>,
-    //     WellKnownWrapper<T>: AnyValue,
-    // {
-    //     fn deserialize_protobuf<T: 'static + Message + Default + Clone>(
-    //         _type_url: &str,
-    //         data: &[u8],
-    //     ) -> Result<Box<dyn AnyValue>, prost::DecodeError>
-    //     where
-    //         WellKnownWrapper<T>: AnyValue,
-    //     {
-    //         Ok(Box::new(WellKnownWrapper(T::decode(data)?)) as _)
-    //     }
-
-    //     fn deserialize_json<T: 'static + Message + Default + Clone>(
-    //         _type_url: &str,
-    //         val: &JsonValue,
-    //         config: &prost::serde::DeserializerConfig,
-    //     ) -> Result<Box<dyn AnyValue>, prost::DecodeError>
-    //     where
-    //         WellKnownWrapper<T>: AnyValue,
-    //         T: for<'de> prost::serde::private::CustomDeserialize<'de>,
-    //     {
-    //         let val = config
-    //             .deserialize_from_value::<T>(val)
-    //             .map_err(|err| prost::DecodeError::new(err.to_string()))?;
-
-    //         Ok(Box::new(WellKnownWrapper(val.0)) as _)
-    //     }
-
-    //     Self {
-    //         deserialize_protobuf: deserialize_protobuf::<T>,
-    //         deserialize_json: deserialize_json::<T>,
-    //     }
-    // }
-
     pub fn for_type<T>() -> Self
     where
         T: 'static + Message + SerdeMessage + Default + PartialEq + Clone,
