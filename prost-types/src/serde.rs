@@ -1,4 +1,7 @@
-use core::fmt::{self, Display};
+use core::{
+    collections::BTreeMap,
+    fmt::{self, Display},
+};
 
 use prost::serde::{
     de::{CustomDeserialize, DesWithConfig},
@@ -6,7 +9,6 @@ use prost::serde::{
     ser::{CustomSerialize, SerWithConfig},
     DeserializerConfig, SerializerConfig,
 };
-use std::collections::BTreeMap;
 
 use crate::{value, Duration, FieldMask, ListValue, NullValue, Struct, Timestamp, Value};
 

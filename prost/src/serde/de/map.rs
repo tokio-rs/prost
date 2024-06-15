@@ -51,7 +51,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<K, V, KD, VD> DeserializeInto<std::collections::BTreeMap<K, V>> for MapDeserializer<KD, VD>
+impl<K, V, KD, VD> DeserializeInto<alloc::collections::BTreeMap<K, V>> for MapDeserializer<KD, VD>
 where
     K: Ord,
     KD: DeserializeInto<K>,
@@ -61,7 +61,7 @@ where
     fn deserialize_into<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
         config: &DeserializerConfig,
-    ) -> Result<std::collections::BTreeMap<K, V>, D::Error> {
+    ) -> Result<alloc::collections::BTreeMap<K, V>, D::Error> {
         struct Visitor<'c, K, V, KD, VD>(&'c DeserializerConfig, PhantomData<(K, V, KD, VD)>);
 
         impl<'c, 'de, K, V, KD, VD> serde::de::Visitor<'de> for Visitor<'c, K, V, KD, VD>
@@ -70,7 +70,7 @@ where
             KD: DeserializeInto<K>,
             VD: DeserializeInto<V>,
         {
-            type Value = std::collections::BTreeMap<K, V>;
+            type Value = alloc::collections::BTreeMap<K, V>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("a map")
@@ -80,7 +80,7 @@ where
             where
                 A: serde::de::MapAccess<'de>,
             {
-                let mut inner = std::collections::BTreeMap::new();
+                let mut inner = alloc::collections::BTreeMap::new();
 
                 while let Some(key) = map.next_key_seed(DesIntoWithConfig::<KD, K>::new(self.0))? {
                     let val = map.next_value_seed(DesIntoWithConfig::<VD, V>::new(self.0))?;
