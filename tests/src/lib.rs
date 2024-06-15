@@ -333,18 +333,43 @@ where
 
     match output_ty {
         RoundtripOutputType::Protobuf => {
-            let encoded = final_all_types.encode_to_vec();
-
             let encoded_len = final_all_types.encoded_len();
-            if encoded_len != encoded.len() {
+
+            let encoded_1 = final_all_types.encode_to_vec();
+            if encoded_1.len() != encoded_len {
                 return RoundtripResult2::Error(anyhow!(
                     "expected encoded len ({}) did not match actual encoded len ({})",
                     encoded_len,
-                    encoded.len()
+                    encoded_1.len()
                 ));
             }
 
-            RoundtripResult2::Protobuf(encoded)
+            let mut encoded_2 = vec![];
+            if let Err(error) = final_all_types.encode(&mut encoded_2) {
+                return RoundtripResult2::Error(error.into());
+            }
+            if encoded_2.len() != encoded_len {
+                return RoundtripResult2::Error(anyhow!(
+                    "expected encoded len ({}) did not match actual encoded len ({})",
+                    encoded_len,
+                    encoded_2.len()
+                ));
+            }
+
+            if let RoundtripInput::Protobuf(mid_input) = mid_input {
+                if encoded_1 != mid_input {
+                    return RoundtripResult2::Error(anyhow!(
+                        "roundtripped encoded buffers (1) do not match"
+                    ));
+                }
+                if encoded_2 != mid_input {
+                    return RoundtripResult2::Error(anyhow!(
+                        "roundtripped encoded buffers (2) do not match"
+                    ));
+                }
+            }
+
+            RoundtripResult2::Protobuf(encoded_1)
         }
         RoundtripOutputType::Json => {
             let json = match serializer_config.with(&final_all_types).to_string() {
