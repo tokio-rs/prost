@@ -3,14 +3,13 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::Meta;
 
-use crate::field::{bool_attr, set_bool, set_option, tag_attr, word_attr, Json, Label};
+use crate::field::{set_bool, set_option, tag_attr, word_attr, Json, Label};
 
 #[derive(Clone)]
 pub struct Field {
     pub label: Label,
     pub tag: u32,
     pub json: Option<Json>,
-    pub is_well_known_ty: bool,
 }
 
 impl Field {
@@ -20,7 +19,6 @@ impl Field {
         let mut tag = None;
         let mut boxed = false;
         let mut json = None;
-        let mut is_well_known_ty = None;
 
         let mut unknown_attrs = Vec::new();
 
@@ -31,12 +29,6 @@ impl Field {
                 set_bool(&mut boxed, "duplicate boxed attribute")?;
             } else if let Some(j) = Json::from_attr(attr)? {
                 set_option(&mut json, j, "duplicate json attributes")?;
-            } else if let Some(w) = bool_attr("well_known_type", attr)? {
-                set_option(
-                    &mut is_well_known_ty,
-                    w,
-                    "duplicate well_known_type attributes",
-                )?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {
@@ -62,13 +54,10 @@ impl Field {
             None => bail!("message field is missing a tag attribute"),
         };
 
-        let is_well_known_ty = is_well_known_ty.unwrap_or(false);
-
         Ok(Some(Field {
             label: label.unwrap_or(Label::Optional),
             tag,
             json,
-            is_well_known_ty,
         }))
     }
 

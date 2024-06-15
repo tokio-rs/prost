@@ -33,5 +33,5 @@ pub use super::de::{
     BoolDeserializer, BytesDeserializer, CustomDeserialize, DefaultDeserializer, DesIntoWithConfig,
     DesWithConfig, DeserializeEnum, DeserializeInto, DeserializeOneOf, EnumDeserializer,
     FloatDeserializer, ForwardDeserializer, IntDeserializer, MapDeserializer, MessageDeserializer,
-    OneOfDeserializer, OptionDeserializer, VecDeserializer, WellKnownDeserializer,
+    OneOfDeserializer, OptionDeserializer, VecDeserializer,
 };

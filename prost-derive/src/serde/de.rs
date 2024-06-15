@@ -458,11 +458,7 @@ fn deserializer_for_field(field: &Field) -> Result<TokenStream, Error> {
             }
         }
         Field::Message(message) => {
-            let inner = if message.is_well_known_ty {
-                quote! { _private::WellKnownDeserializer<::prost_types::serde::DesWellKnown<_>> }
-            } else {
-                quote! { _private::MessageDeserializer }
-            };
+            let inner = quote! { _private::MessageDeserializer };
             match message.label {
                 field::Label::Optional => quote! {
                     _private::OptionDeserializer<#inner>
@@ -478,15 +474,7 @@ fn deserializer_for_field(field: &Field) -> Result<TokenStream, Error> {
             let val_deserializer = match &map.value_ty {
                 field::map::ValueTy::Scalar(ty) => deserializer_for_ty(ty, false),
                 field::map::ValueTy::Message => {
-                    if map.is_value_well_known_ty {
-                        quote! {
-                            _private::DefaultDeserializer<_private::WellKnownDeserializer<
-                                ::prost_types::serde::DesWellKnown<_>
-                            >>
-                        }
-                    } else {
-                        quote! { _private::DefaultDeserializer<_private::MessageDeserializer> }
-                    }
+                    quote! { _private::DefaultDeserializer<_private::MessageDeserializer> }
                 }
             };
             quote! {

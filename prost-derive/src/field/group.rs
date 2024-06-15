@@ -143,7 +143,6 @@ impl Field {
             label: self.label,
             tag: self.tag,
             json: self.json.clone(),
-            is_well_known_ty: false,
         })
     }
 }
