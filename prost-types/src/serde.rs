@@ -1,8 +1,6 @@
-use core::{
-    collections::BTreeMap,
-    fmt::{self, Display},
-};
+use core::fmt::{self, Display};
 
+use prost::alloc::collections::BTreeMap;
 use prost::serde::{
     de::{CustomDeserialize, DesWithConfig},
     private::{self, DeserializeEnum, _serde},
