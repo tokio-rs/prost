@@ -19,11 +19,11 @@ pub mod compiler;
 mod datetime;
 #[rustfmt::skip]
 mod protobuf;
+#[cfg(feature = "any-v2")]
+pub mod any_v2;
 #[cfg(feature = "serde")]
 #[doc(hidden)]
 pub mod serde;
-#[cfg(feature = "any-v2")]
-pub mod any_v2;
 #[cfg(feature = "any-v2")]
 mod smallbox;
 

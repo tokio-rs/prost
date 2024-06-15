@@ -229,6 +229,7 @@ pub struct SerMappedMapItems<'a, C, V, M>(pub &'a C, pub fn(&'a V) -> M);
 impl<'a, C, K, V, M> CustomSerialize for SerMappedMapItems<'a, C, V, M>
 where
     &'a C: IntoIterator<Item = (&'a K, &'a V)>,
+    // FIXME: We should add `+ Ord` the the bounds below to support `BTreeMap` maps.
     K: Eq + Hash + Display + 'a,
     M: CustomSerialize,
 {
