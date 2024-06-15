@@ -137,112 +137,20 @@ use prost::{
     Message,
 };
 
-pub enum RoundtripResult {
-    /// The roundtrip succeeded.
-    Ok(Vec<u8>),
-    /// The data could not be decoded. This could indicate a bug in prost,
-    /// or it could indicate that the input was bogus.
-    DecodeError(prost::DecodeError),
-    /// Re-encoding or validating the data failed.  This indicates a bug in `prost`.
-    Error(anyhow::Error),
-}
-
-impl RoundtripResult {
-    /// Unwrap the roundtrip result.
-    pub fn unwrap(self) -> Vec<u8> {
-        match self {
-            RoundtripResult::Ok(buf) => buf,
-            RoundtripResult::DecodeError(error) => {
-                panic!("failed to decode the roundtrip data: {}", error)
-            }
-            RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
-        }
-    }
-
-    /// Unwrap the roundtrip result. Panics if the result was a validation or re-encoding error.
-    pub fn unwrap_error(self) -> Result<Vec<u8>, prost::DecodeError> {
-        match self {
-            RoundtripResult::Ok(buf) => Ok(buf),
-            RoundtripResult::DecodeError(error) => Err(error),
-            RoundtripResult::Error(error) => panic!("failed roundtrip: {}", error),
-        }
-    }
-}
-
-/// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
-/// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
-pub fn roundtrip<M>(data: &[u8]) -> RoundtripResult
-where
-    M: Message + Default,
-{
-    // Try to decode a message from the data. If decoding fails, continue.
-    let all_types = match M::decode(data) {
-        Ok(all_types) => all_types,
-        Err(error) => return RoundtripResult::DecodeError(error),
-    };
-
-    let encoded_len = all_types.encoded_len();
-
-    // TODO: Reenable this once sign-extension in negative int32s is figured out.
-    // assert!(encoded_len <= data.len(), "encoded_len: {}, len: {}, all_types: {:?}",
-    //         encoded_len, data.len(), all_types);
-
-    let mut buf1 = Vec::new();
-    if let Err(error) = all_types.encode(&mut buf1) {
-        return RoundtripResult::Error(anyhow!(error));
-    }
-    let buf1 = buf1;
-    if encoded_len != buf1.len() {
-        return RoundtripResult::Error(anyhow!(
-            "expected encoded len ({}) did not match actual encoded len ({})",
-            encoded_len,
-            buf1.len()
-        ));
-    }
-
-    let roundtrip = match M::decode(buf1.as_slice()) {
-        Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(anyhow!(error)),
-    };
-
-    let mut buf2 = Vec::new();
-    if let Err(error) = roundtrip.encode(&mut buf2) {
-        return RoundtripResult::Error(anyhow!(error));
-    }
-    let buf2 = buf2;
-    let buf3 = roundtrip.encode_to_vec();
-
-    /*
-    // Useful for debugging:
-    eprintln!(" data: {:?}", data.iter().map(|x| format!("0x{:x}", x)).collect::<Vec<_>>());
-    eprintln!(" buf1: {:?}", buf1.iter().map(|x| format!("0x{:x}", x)).collect::<Vec<_>>());
-    eprintln!("a: {:?}\nb: {:?}", all_types, roundtrip);
-    */
-
-    if buf1 != buf2 {
-        return RoundtripResult::Error(anyhow!("roundtripped encoded buffers do not match"));
-    }
-
-    if buf1 != buf3 {
-        return RoundtripResult::Error(anyhow!(
-            "roundtripped encoded buffers do not match with `encode_to_vec`"
-        ));
-    }
-
-    RoundtripResult::Ok(buf1)
-}
-
+#[derive(Debug, Clone, Copy)]
 pub enum RoundtripInput<'a> {
     Protobuf(&'a [u8]),
     Json(&'a str),
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum RoundtripOutputType {
     Protobuf,
     Json,
 }
 
-pub enum RoundtripResult2 {
+#[derive(Debug)]
+pub enum RoundtripResult {
     /// The roundtrip to protobuf succeeded.
     Protobuf(Vec<u8>),
     /// The roundtrip to json succeeded.
@@ -257,11 +165,45 @@ pub enum RoundtripResult2 {
     Error(anyhow::Error),
 }
 
-pub fn roundtrip2<M>(
+impl RoundtripResult {
+    pub fn unwrap(self) -> RoundtripOutput {
+        match self {
+            Self::Json(json) => RoundtripOutput::Json(json),
+            Self::Protobuf(data) => RoundtripOutput::Protobuf(data),
+            Self::EncodeError(error) => {
+                panic!("failed to encode the roundtrip data: {}", error)
+            }
+            Self::DecodeError(error) => {
+                panic!("failed to decode the roundtrip data: {}", error)
+            }
+            Self::Error(error) => panic!("failed roundtrip: {}", error),
+        }
+    }
+
+    /// Unwrap the roundtrip result. Panics if the result was a validation or re-encoding error.
+    pub fn unwrap_error(self) -> RoundtripResult {
+        match self {
+            Self::Error(error) => panic!("failed roundtrip: {}", error),
+            result => result,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum RoundtripOutput {
+    /// The roundtrip to protobuf succeeded.
+    Protobuf(Vec<u8>),
+    /// The roundtrip to json succeeded.
+    Json(String),
+}
+
+/// Tests round-tripping a message type. The message should be compiled with `BTreeMap` fields,
+/// otherwise the comparison may fail due to inconsistent `HashMap` entry encoding ordering.
+pub fn roundtrip<M>(
     input: RoundtripInput<'_>,
     output_ty: RoundtripOutputType,
     ignore_unknown_fields: bool,
-) -> RoundtripResult2
+) -> RoundtripResult
 where
     M: Message + SerdeMessage + Default,
 {
@@ -274,11 +216,11 @@ where
     let all_types = match input {
         RoundtripInput::Protobuf(data) => match M::decode(data) {
             Ok(all_types) => all_types,
-            Err(err) => return RoundtripResult2::DecodeError(err.into()),
+            Err(err) => return RoundtripResult::DecodeError(err.into()),
         },
         RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
             Ok(all_types) => all_types,
-            Err(err) => return RoundtripResult2::DecodeError(err.into()),
+            Err(err) => return RoundtripResult::DecodeError(err.into()),
         },
     };
 
@@ -289,8 +231,20 @@ where
             mid_protobuf = all_types.encode_to_vec();
 
             let encoded_len = all_types.encoded_len();
+
+            // TODO: Reenable this once sign-extension in negative int32s is figured out.
+            // if let RoundtripInput::Protobuf(data) = input {
+            //     assert!(
+            //         encoded_len <= data.len(),
+            //         "encoded_len: {}, len: {}, all_types: {:?}",
+            //         encoded_len,
+            //         data.len(),
+            //         all_types
+            //     );
+            // }
+
             if encoded_len != mid_protobuf.len() {
-                return RoundtripResult2::Error(anyhow!(
+                return RoundtripResult::Error(anyhow!(
                     "expected encoded len ({}) did not match actual encoded len ({})",
                     encoded_len,
                     mid_protobuf.len()
@@ -304,9 +258,9 @@ where
                 Ok(val) => val,
                 Err(err) => {
                     return if err.is_data() {
-                        RoundtripResult2::EncodeError(err.into())
+                        RoundtripResult::EncodeError(err.into())
                     } else {
-                        RoundtripResult2::Error(err.into())
+                        RoundtripResult::Error(err.into())
                     }
                 }
             };
@@ -317,15 +271,15 @@ where
     let final_all_types = match mid_input {
         RoundtripInput::Protobuf(data) => match M::decode(data) {
             Ok(all_types) => all_types,
-            Err(err) => return RoundtripResult2::DecodeError(err.into()),
+            Err(err) => return RoundtripResult::DecodeError(err.into()),
         },
         RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
             Ok(all_types) => all_types,
             Err(err) => {
                 return if err.is_data() {
-                    RoundtripResult2::EncodeError(err.into())
+                    RoundtripResult::EncodeError(err.into())
                 } else {
-                    RoundtripResult2::Error(err.into())
+                    RoundtripResult::Error(err.into())
                 }
             }
         },
@@ -337,19 +291,19 @@ where
 
             let encoded_1 = final_all_types.encode_to_vec();
             if encoded_1.len() != encoded_len {
-                return RoundtripResult2::Error(anyhow!(
+                return RoundtripResult::Error(anyhow!(
                     "expected encoded len ({}) did not match actual encoded len ({})",
                     encoded_len,
                     encoded_1.len()
                 ));
             }
 
-            let mut encoded_2 = vec![];
+            let mut encoded_2 = alloc::vec![];
             if let Err(error) = final_all_types.encode(&mut encoded_2) {
-                return RoundtripResult2::Error(error.into());
+                return RoundtripResult::Error(error.into());
             }
             if encoded_2.len() != encoded_len {
-                return RoundtripResult2::Error(anyhow!(
+                return RoundtripResult::Error(anyhow!(
                     "expected encoded len ({}) did not match actual encoded len ({})",
                     encoded_len,
                     encoded_2.len()
@@ -358,33 +312,44 @@ where
 
             if let RoundtripInput::Protobuf(mid_input) = mid_input {
                 if encoded_1 != mid_input {
-                    return RoundtripResult2::Error(anyhow!(
+                    return RoundtripResult::Error(anyhow!(
                         "roundtripped encoded buffers (1) do not match"
                     ));
                 }
                 if encoded_2 != mid_input {
-                    return RoundtripResult2::Error(anyhow!(
+                    return RoundtripResult::Error(anyhow!(
                         "roundtripped encoded buffers (2) do not match"
                     ));
                 }
             }
 
-            RoundtripResult2::Protobuf(encoded_1)
+            RoundtripResult::Protobuf(encoded_1)
         }
         RoundtripOutputType::Json => {
             let json = match serializer_config.with(&final_all_types).to_string() {
                 Ok(val) => val,
                 Err(err) => {
                     return if err.is_data() {
-                        RoundtripResult2::EncodeError(err.into())
+                        RoundtripResult::EncodeError(err.into())
                     } else {
-                        RoundtripResult2::Error(err.into())
+                        RoundtripResult::Error(err.into())
                     }
                 }
             };
-            RoundtripResult2::Json(json)
+            RoundtripResult::Json(json)
         }
     }
+}
+
+pub fn roundtrip_proto<M>(input: &[u8]) -> RoundtripResult
+where
+    M: Message + SerdeMessage + Default,
+{
+    roundtrip::<M>(
+        RoundtripInput::Protobuf(input),
+        RoundtripOutputType::Protobuf,
+        false,
+    )
 }
 
 /// Generic roundtrip serialization check for messages.
@@ -459,7 +424,7 @@ mod tests {
         ];
 
         for msg in msgs {
-            roundtrip::<TestAllTypesProto3>(msg).unwrap();
+            roundtrip_proto::<TestAllTypesProto3>(msg).unwrap();
         }
     }
 
@@ -535,7 +500,7 @@ mod tests {
 
         let mut buf = Vec::new();
         msg.encode(&mut buf).expect("encode");
-        roundtrip::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
+        roundtrip_proto::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
     }
 
     #[test]

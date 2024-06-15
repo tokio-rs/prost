@@ -9,7 +9,7 @@ use protobuf::conformance::{
 };
 use protobuf::test_messages::proto2::TestAllTypesProto2;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
-use tests::{roundtrip2, RoundtripInput, RoundtripOutputType, RoundtripResult2};
+use tests::{roundtrip, RoundtripInput, RoundtripOutputType, RoundtripResult};
 
 fn main() -> io::Result<()> {
     env_logger::init();
@@ -106,10 +106,10 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
 
     let roundtrip = match &*request.message_type {
         "protobuf_test_messages.proto2.TestAllTypesProto2" => {
-            roundtrip2::<TestAllTypesProto2>(input, output_ty, ignore_unknown_fields)
+            roundtrip::<TestAllTypesProto2>(input, output_ty, ignore_unknown_fields)
         }
         "protobuf_test_messages.proto3.TestAllTypesProto3" => {
-            roundtrip2::<TestAllTypesProto3>(input, output_ty, ignore_unknown_fields)
+            roundtrip::<TestAllTypesProto3>(input, output_ty, ignore_unknown_fields)
         }
         _ => {
             return conformance_response::Result::ParseError(format!(
@@ -120,15 +120,15 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     };
 
     match roundtrip {
-        RoundtripResult2::Protobuf(buf) => conformance_response::Result::ProtobufPayload(buf),
-        RoundtripResult2::Json(buf) => conformance_response::Result::JsonPayload(buf),
-        RoundtripResult2::EncodeError(error) => {
+        RoundtripResult::Protobuf(buf) => conformance_response::Result::ProtobufPayload(buf),
+        RoundtripResult::Json(buf) => conformance_response::Result::JsonPayload(buf),
+        RoundtripResult::EncodeError(error) => {
             conformance_response::Result::SerializeError(error.to_string())
         }
-        RoundtripResult2::DecodeError(error) => {
+        RoundtripResult::DecodeError(error) => {
             conformance_response::Result::ParseError(error.to_string())
         }
-        RoundtripResult2::Error(error) => {
+        RoundtripResult::Error(error) => {
             conformance_response::Result::RuntimeError(error.to_string())
         }
     }
