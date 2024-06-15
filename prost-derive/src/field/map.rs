@@ -4,7 +4,7 @@ use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::{Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Token};
 
-use crate::field::{bool_attr, scalar, set_option, tag_attr, Json};
+use crate::field::{scalar, set_option, tag_attr, Json};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -53,7 +53,6 @@ pub struct Field {
     pub value_ty: ValueTy,
     pub tag: u32,
     pub json: Option<Json>,
-    pub is_value_well_known_ty: bool,
 }
 
 impl Field {
@@ -61,19 +60,12 @@ impl Field {
         let mut types = None;
         let mut tag = None;
         let mut json = None;
-        let mut is_value_well_known_ty = None;
 
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(j) = Json::from_attr(attr)? {
                 set_option(&mut json, j, "duplicate json attributes")?;
-            } else if let Some(w) = bool_attr("well_known_type", attr)? {
-                set_option(
-                    &mut is_value_well_known_ty,
-                    w,
-                    "duplicate well_known_type attributes",
-                )?;
             } else if let Some(map_ty) = attr
                 .path()
                 .get_ident()
@@ -121,14 +113,6 @@ impl Field {
             }
         }
 
-        if let Some((_, _, ValueTy::Scalar(_))) = &types {
-            if is_value_well_known_ty.is_some() {
-                bail!("invalid map attribute: `well_known_type` only works with message types");
-            }
-        }
-
-        let is_value_well_known_ty = is_value_well_known_ty.unwrap_or(false);
-
         Ok(match (types, tag.or(inferred_tag)) {
             (Some((map_ty, key_ty, value_ty)), Some(tag)) => Some(Field {
                 map_ty,
@@ -136,7 +120,6 @@ impl Field {
                 value_ty,
                 tag,
                 json,
-                is_value_well_known_ty,
             }),
             _ => None,
         })

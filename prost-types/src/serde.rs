@@ -1,287 +1,14 @@
 use core::fmt::{self, Display};
 
-use prost::{
-    bytes,
-    serde::{
-        de::{CustomDeserialize, DesWithConfig, UnpackWellKnown},
-        private::{self, DeserializeEnum, DeserializeInto, _serde},
-        ser::{CustomSerialize, SerWithConfig},
-        DeserializerConfig, SerializerConfig,
-    },
+use prost::serde::{
+    de::{CustomDeserialize, DesWithConfig},
+    private::{self, DeserializeEnum, _serde},
+    ser::{CustomSerialize, SerWithConfig},
+    DeserializerConfig, SerializerConfig,
 };
 use std::collections::BTreeMap;
 
 use crate::{value, Duration, FieldMask, ListValue, NullValue, Struct, Timestamp, Value};
-
-// Due to the orphan rules we can't really implement prost::serde::CustomSerialize for our
-// well-known types that are primitives. So we have to use a local wrapper type instead.
-pub struct SerWellKnown<'a, T: ?Sized>(pub &'a T);
-
-pub struct DesWellKnown<T>(pub T);
-
-impl<T> UnpackWellKnown for DesWellKnown<T> {
-    type Target = T;
-
-    #[inline]
-    fn unpack(self) -> Self::Target {
-        self.0
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, ()> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        use _serde::ser::SerializeMap;
-        serializer.serialize_map(None)?.end()
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<()> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, _config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        struct Visitor;
-
-        impl<'de> _serde::de::Visitor<'de> for Visitor {
-            type Value = ();
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("an empty message")
-            }
-
-            #[inline]
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: _serde::de::MapAccess<'de>,
-            {
-                if map.next_key::<_serde::de::IgnoredAny>()?.is_some() {
-                    return Err(<A::Error as _serde::de::Error>::invalid_length(
-                        1,
-                        &"an empty map",
-                    ));
-                }
-                Ok(())
-            }
-        }
-
-        deserializer.deserialize_map(Visitor).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, bool> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        serializer.serialize_bool(*self.0)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<bool> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::ForwardDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, i32> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        serializer.serialize_i32(*self.0)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<i32> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::IntDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, u32> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        serializer.serialize_u32(*self.0)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<u32> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::IntDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, i64> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        private::SerAsDisplay(self.0).serialize(serializer, config)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<i64> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::IntDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, u64> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        private::SerAsDisplay(self.0).serialize(serializer, config)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<u64> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::IntDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, str> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        serializer.serialize_str(self.0)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, String> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        serializer.serialize_str(self.0)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<String> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::ForwardDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, Vec<u8>> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        private::SerBytesAsBase64(self.0).serialize(serializer, config)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<Vec<u8>> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::BytesDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, bytes::Bytes> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        private::SerBytesAsBase64(self.0).serialize(serializer, config)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<bytes::Bytes> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::BytesDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, f32> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        private::SerFloat32(self.0).serialize(serializer, config)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<f32> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::FloatDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, f64> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        private::SerFloat64(self.0).serialize(serializer, config)
-    }
-}
-
-impl<'de> CustomDeserialize<'de> for DesWellKnown<f64> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        private::FloatDeserializer::deserialize_into(deserializer, config).map(DesWellKnown)
-    }
-}
 
 impl CustomSerialize for NullValue {
     #[inline]
@@ -330,23 +57,23 @@ impl DeserializeEnum for NullValue {
     }
 }
 
-impl CustomSerialize for SerWellKnown<'_, Duration> {
+impl CustomSerialize for Duration {
     #[inline]
     fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
         S: _serde::Serializer,
     {
-        if !self.0.is_valid() {
+        if !self.is_valid() {
             return Err(<S::Error as _serde::ser::Error>::custom(format!(
                 "duration is invalid: d={:?}",
-                self.0
+                self
             )));
         }
-        private::SerAsDisplay(self.0).serialize(serializer, config)
+        private::SerAsDisplay(self).serialize(serializer, config)
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<Duration> {
+impl<'de> CustomDeserialize<'de> for Duration {
     #[inline]
     fn deserialize<D>(deserializer: D, _config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -375,21 +102,21 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<Duration> {
             }
         }
 
-        deserializer.deserialize_str(Visitor).map(DesWellKnown)
+        deserializer.deserialize_str(Visitor)
     }
 }
 
-impl CustomSerialize for SerWellKnown<'_, Timestamp> {
+impl CustomSerialize for Timestamp {
     #[inline]
     fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
         S: _serde::Serializer,
     {
-        private::SerAsDisplay(self.0).serialize(serializer, config)
+        private::SerAsDisplay(self).serialize(serializer, config)
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<Timestamp> {
+impl<'de> CustomDeserialize<'de> for Timestamp {
     #[inline]
     fn deserialize<D>(deserializer: D, _config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -414,11 +141,11 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<Timestamp> {
             }
         }
 
-        deserializer.deserialize_str(Visitor).map(DesWellKnown)
+        deserializer.deserialize_str(Visitor)
     }
 }
 
-impl CustomSerialize for SerWellKnown<'_, FieldMask> {
+impl CustomSerialize for FieldMask {
     #[inline]
     fn serialize<S>(&self, serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
@@ -439,11 +166,11 @@ impl CustomSerialize for SerWellKnown<'_, FieldMask> {
             }
         }
 
-        serializer.collect_str(&FieldMaskAsDisplay(self.0))
+        serializer.collect_str(&FieldMaskAsDisplay(self))
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<FieldMask> {
+impl<'de> CustomDeserialize<'de> for FieldMask {
     #[inline]
     fn deserialize<D>(deserializer: D, _config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -490,26 +217,26 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<FieldMask> {
             }
         }
 
-        deserializer.deserialize_str(Visitor).map(DesWellKnown)
+        deserializer.deserialize_str(Visitor)
     }
 }
 
-impl CustomSerialize for SerWellKnown<'_, Struct> {
+impl CustomSerialize for Struct {
     fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
         S: _serde::Serializer,
     {
         use _serde::ser::SerializeMap;
 
-        let mut map = serializer.serialize_map(Some(self.0.fields.len()))?;
-        for (key, value) in &self.0.fields {
-            map.serialize_entry(key, &SerWithConfig(&SerWellKnown(value), config))?;
+        let mut map = serializer.serialize_map(Some(self.fields.len()))?;
+        for (key, value) in &self.fields {
+            map.serialize_entry(key, &SerWithConfig(value, config))?;
         }
         map.end()
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<Struct> {
+impl<'de> CustomDeserialize<'de> for Struct {
     #[inline]
     fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -533,13 +260,11 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<Struct> {
             }
         }
 
-        deserializer
-            .deserialize_map(Visitor(config))
-            .map(DesWellKnown)
+        deserializer.deserialize_map(Visitor(config))
     }
 }
 
-impl CustomSerialize for SerWellKnown<'_, crate::protobuf::Any> {
+impl CustomSerialize for crate::protobuf::Any {
     fn serialize<S>(&self, _serializer: S, _config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
         S: _serde::Serializer,
@@ -548,7 +273,7 @@ impl CustomSerialize for SerWellKnown<'_, crate::protobuf::Any> {
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<crate::protobuf::Any> {
+impl<'de> CustomDeserialize<'de> for crate::protobuf::Any {
     #[inline]
     fn deserialize<D>(_deserializer: D, _config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -558,50 +283,27 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<crate::protobuf::Any> {
     }
 }
 
-#[cfg(feature = "any-v2")]
-impl CustomSerialize for SerWellKnown<'_, crate::any_v2::ProstAny> {
+impl CustomSerialize for Value {
     fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
         S: _serde::Serializer,
     {
-        CustomSerialize::serialize(&self.0, serializer, config)
-    }
-}
-
-#[cfg(feature = "any-v2")]
-impl<'de> CustomDeserialize<'de> for DesWellKnown<crate::any_v2::ProstAny> {
-    #[inline]
-    fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
-    where
-        D: _serde::Deserializer<'de>,
-    {
-        Ok(Self(
-            <crate::any_v2::ProstAny as CustomDeserialize<'_>>::deserialize(deserializer, config)?,
-        ))
-    }
-}
-
-impl CustomSerialize for SerWellKnown<'_, Value> {
-    fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
-    where
-        S: _serde::Serializer,
-    {
-        match self.0.kind.as_ref() {
+        match self.kind.as_ref() {
             Some(value::Kind::NullValue(_)) | None => serializer.serialize_none(),
             Some(value::Kind::NumberValue(val)) => serializer.serialize_f64(*val),
             Some(value::Kind::StringValue(val)) => serializer.serialize_str(val),
             Some(value::Kind::BoolValue(val)) => serializer.serialize_bool(*val),
             Some(value::Kind::StructValue(val)) => {
-                CustomSerialize::serialize(&SerWellKnown(val), serializer, config)
+                CustomSerialize::serialize(val, serializer, config)
             }
             Some(value::Kind::ListValue(val)) => {
-                CustomSerialize::serialize(&SerWellKnown(val), serializer, config)
+                CustomSerialize::serialize(val, serializer, config)
             }
         }
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<Value> {
+impl<'de> CustomDeserialize<'de> for Value {
     #[inline]
     fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -709,9 +411,7 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<Value> {
             }
         }
 
-        deserializer
-            .deserialize_any(Visitor(config))
-            .map(DesWellKnown)
+        deserializer.deserialize_any(Visitor(config))
     }
 
     #[inline]
@@ -720,22 +420,17 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<Value> {
     }
 }
 
-impl CustomSerialize for SerWellKnown<'_, ListValue> {
+impl CustomSerialize for ListValue {
     #[inline]
     fn serialize<S>(&self, serializer: S, config: &SerializerConfig) -> Result<S::Ok, S::Error>
     where
         S: _serde::Serializer,
     {
-        serializer.collect_seq(
-            self.0
-                .values
-                .iter()
-                .map(|value| SerWithConfig(SerWellKnown(value), config)),
-        )
+        serializer.collect_seq(self.values.iter().map(|value| SerWithConfig(value, config)))
     }
 }
 
-impl<'de> CustomDeserialize<'de> for DesWellKnown<ListValue> {
+impl<'de> CustomDeserialize<'de> for ListValue {
     #[inline]
     fn deserialize<D>(deserializer: D, config: &DeserializerConfig) -> Result<Self, D::Error>
     where
@@ -759,9 +454,7 @@ impl<'de> CustomDeserialize<'de> for DesWellKnown<ListValue> {
             }
         }
 
-        deserializer
-            .deserialize_seq(Visitor(config))
-            .map(DesWellKnown)
+        deserializer.deserialize_seq(Visitor(config))
     }
 }
 
@@ -773,10 +466,8 @@ where
     A: _serde::de::SeqAccess<'de>,
 {
     let mut values = vec![];
-    while let Some(value) =
-        seq.next_element_seed(DesWithConfig::<DesWellKnown<Value>>::new(config))?
-    {
-        values.push(value.0);
+    while let Some(value) = seq.next_element_seed(DesWithConfig::<Value>::new(config))? {
+        values.push(value);
     }
     Ok(ListValue { values })
 }
@@ -787,8 +478,8 @@ where
 {
     let mut fields = BTreeMap::new();
     while let Some(key) = map.next_key::<String>()? {
-        let value = map.next_value_seed(DesWithConfig::<DesWellKnown<Value>>::new(config))?;
-        fields.insert(key, value.0);
+        let value = map.next_value_seed(DesWithConfig::<Value>::new(config))?;
+        fields.insert(key, value);
     }
     Ok(Struct { fields })
 }

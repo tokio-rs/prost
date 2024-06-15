@@ -417,7 +417,7 @@ impl CodeGenerator<'_> {
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
         let boxed = self.boxed(&field.descriptor, fq_message_name, None);
-        let (ty, is_well_known_ty) = self.resolve_type(&field.descriptor, fq_message_name);
+        let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -468,10 +468,6 @@ impl CodeGenerator<'_> {
                     self.buf.push_str(", packed=\"false\"");
                 }
             }
-        }
-
-        if is_well_known_ty {
-            self.buf.push_str(", well_known_type");
         }
 
         if boxed {
@@ -562,8 +558,8 @@ impl CodeGenerator<'_> {
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) {
-        let (key_ty, _is_key_well_known_ty) = self.resolve_type(key, fq_message_name);
-        let (value_ty, is_value_well_known_ty) = self.resolve_type(value, fq_message_name);
+        let key_ty = self.resolve_type(key, fq_message_name);
+        let value_ty = self.resolve_type(value, fq_message_name);
 
         debug!(
             "    map field: {:?}, key type: {:?}, value type: {:?}",
@@ -598,17 +594,12 @@ impl CodeGenerator<'_> {
             Default::default()
         };
 
-        let is_well_known_attr = is_value_well_known_ty
-            .then_some(", well_known_type")
-            .unwrap_or_default();
-
         self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\"{}{})]\n",
+            "#[prost({}=\"{}, {}\", tag=\"{}\"{})]\n",
             map_type.annotation(),
             key_tag,
             value_tag,
             field.descriptor.number(),
-            is_well_known_attr,
             json_attr
         ));
         self.append_field_attributes(fq_message_name, field.descriptor.name());
@@ -692,11 +683,7 @@ impl CodeGenerator<'_> {
             self.path.pop();
 
             let ty_tag = self.field_type_tag(&field.descriptor);
-            let (ty, is_well_known_ty) = self.resolve_type(&field.descriptor, fq_message_name);
-
-            let well_known_ty_attr = is_well_known_ty
-                .then_some(", well_known_type")
-                .unwrap_or_default();
+            let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
             let json_attr = if !ident::is_stable_ident_for_json(
                 proto_field_name,
@@ -711,10 +698,9 @@ impl CodeGenerator<'_> {
 
             self.push_indent();
             self.buf.push_str(&format!(
-                "#[prost({}, tag=\"{}\"{}{})]\n",
+                "#[prost({}, tag=\"{}\"{})]\n",
                 ty_tag,
                 field.descriptor.number(),
-                well_known_ty_attr,
                 json_attr
             ));
             self.append_field_attributes(&oneof_name, proto_field_name);
@@ -970,9 +956,8 @@ impl CodeGenerator<'_> {
                 let name = method.name.take().unwrap();
                 let input_proto_type = method.input_type.take().unwrap();
                 let output_proto_type = method.output_type.take().unwrap();
-                let (input_type, _is_input_type_well_known) = self.resolve_ident(&input_proto_type);
-                let (output_type, _is_output_type_well_known) =
-                    self.resolve_ident(&output_proto_type);
+                let input_type = self.resolve_ident(&input_proto_type);
+                let output_type = self.resolve_ident(&output_proto_type);
                 let client_streaming = method.client_streaming();
                 let server_streaming = method.server_streaming();
 
@@ -1035,8 +1020,8 @@ impl CodeGenerator<'_> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> (String, bool) {
-        let scalar_ty = match field.r#type() {
+    fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+        match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
@@ -1053,19 +1038,16 @@ impl CodeGenerator<'_> {
                 .unwrap_or_default()
                 .rust_type()
                 .to_owned(),
-            Type::Group | Type::Message => return self.resolve_ident(field.type_name()),
-        };
-
-        // Scalar types are never well-known types.
-        (scalar_ty, false)
+            Type::Group | Type::Message => self.resolve_ident(field.type_name()),
+        }
     }
 
-    fn resolve_ident(&self, pb_ident: &str) -> (String, bool) {
+    fn resolve_ident(&self, pb_ident: &str) -> String {
         // protoc should always give fully qualified identifiers.
         assert_eq!(".", &pb_ident[..1]);
 
         if let Some(resolved) = self.extern_paths.resolve_ident(pb_ident) {
-            return (resolved.rust_path, resolved.is_well_known);
+            return resolved.rust_path;
         }
 
         let mut local_path = self
@@ -1091,13 +1073,11 @@ impl CodeGenerator<'_> {
             ident_path.next();
         }
 
-        let resolved = local_path
+        local_path
             .map(|_| "super".to_string())
             .chain(ident_path.map(to_snake))
             .chain(iter::once(to_upper_camel(ident_type)))
-            .join("::");
-
-        (resolved, false)
+            .join("::")
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
@@ -1121,7 +1101,7 @@ impl CodeGenerator<'_> {
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
                 "enumeration={:?}",
-                self.resolve_ident(field.type_name()).0
+                self.resolve_ident(field.type_name())
             )),
         }
     }
@@ -1130,7 +1110,7 @@ impl CodeGenerator<'_> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
-                self.resolve_ident(field.type_name()).0
+                self.resolve_ident(field.type_name())
             )),
             _ => self.field_type_tag(field),
         }

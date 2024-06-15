@@ -13,7 +13,6 @@ mod oneof;
 mod option;
 mod scalar;
 mod vec;
-mod well_known;
 
 /// This is an extended and cut-down version of serde's [serde::Deserialize].
 ///
@@ -122,7 +121,6 @@ pub use option::OptionDeserializer;
 pub use r#enum::{DeserializeEnum, EnumDeserializer};
 pub use scalar::{BoolDeserializer, FloatDeserializer, IntDeserializer};
 pub use vec::VecDeserializer;
-pub use well_known::{UnpackWellKnown, WellKnownDeserializer};
 
 mod size_hint {
     use core::{cmp, mem};

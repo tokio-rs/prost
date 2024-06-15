@@ -13,6 +13,8 @@ pub mod ser;
 #[doc(hidden)]
 pub mod de;
 
+pub mod types;
+
 pub trait SerdeMessage: CustomSerialize + for<'de> CustomDeserialize<'de> {}
 
 impl<T> SerdeMessage for T where T: CustomSerialize + for<'de> CustomDeserialize<'de> {}

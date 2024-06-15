@@ -76,82 +76,6 @@ impl<T: 'static + Message + SerdeMessage + PartialEq + Clone> AnyValue for T {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-struct WellKnownWrapper<T>(T);
-
-impl<T: Message> Message for WellKnownWrapper<T> {
-    fn encode_raw(&self, buf: &mut impl BufMut)
-    where
-        Self: Sized,
-    {
-        self.0.encode_raw(buf)
-    }
-
-    fn merge_field(
-        &mut self,
-        tag: u32,
-        wire_type: prost::encoding::WireType,
-        buf: &mut impl Buf,
-        ctx: prost::encoding::DecodeContext,
-    ) -> Result<(), prost::DecodeError>
-    where
-        Self: Sized,
-    {
-        self.0.merge_field(tag, wire_type, buf, ctx)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.0.encoded_len()
-    }
-
-    fn clear(&mut self) {
-        self.0.clear();
-    }
-}
-
-impl<T: 'static + Message + PartialEq + Clone> AnyValue for WellKnownWrapper<T>
-where
-    for<'a> crate::serde::SerWellKnown<'a, T>: prost::serde::private::CustomSerialize,
-{
-    fn as_any(&self) -> &(dyn CoreAny + Send + Sync) {
-        &self.0 as _
-    }
-
-    fn as_mut_any(&mut self) -> &mut (dyn CoreAny + Send + Sync) {
-        &mut self.0 as _
-    }
-
-    fn as_message(&self) -> &(dyn Message + Send + Sync) {
-        &self.0 as _
-    }
-
-    fn as_mut_message(&mut self) -> &mut (dyn Message + Send + Sync) {
-        &mut self.0 as _
-    }
-
-    fn clone_value(&self) -> Box<dyn AnyValue> {
-        Box::new(self.clone()) as _
-    }
-
-    fn cmp_any(&self, other: &dyn AnyValue) -> bool {
-        other.as_any().downcast_ref::<WellKnownWrapper<T>>() == Some(self)
-    }
-
-    fn as_erased_serialize<'a>(
-        &'a self,
-        config: &'a prost::serde::SerializerConfig,
-    ) -> SmallBox<dyn erased_serde::Serialize + 'a> {
-        smallbox!(prost::serde::private::SerWithConfig(
-            crate::serde::SerWellKnown(&self.0),
-            config,
-        ))
-    }
-
-    fn encode_to_buf(&self, mut buf: &mut dyn BufMut) {
-        self.0.encode_raw(&mut buf)
-    }
-}
-
 impl<T: 'static + Message> private::Sealed for T {}
 
 #[derive(Debug)]
@@ -270,19 +194,6 @@ impl ProstAny {
         Self {
             type_url: T::type_url(),
             inner: Inner::Dyn(Box::new(msg) as _),
-            cached: CACHED_INIT,
-        }
-    }
-
-    #[allow(private_bounds)]
-    pub fn from_well_known<T>(val: T) -> Self
-    where
-        T: 'static + Message + Name + Clone,
-        WellKnownWrapper<T>: AnyValue,
-    {
-        Self {
-            type_url: crate::type_url_for::<T>(),
-            inner: Inner::Dyn(Box::new(WellKnownWrapper(val)) as _),
             cached: CACHED_INIT,
         }
     }
@@ -689,14 +600,11 @@ impl TypeRegistry {
 
     fn insert_well_known_msg_type<T>(&mut self, type_path: &str)
     where
-        T: 'static + Message + Default + Clone,
-        for<'a> crate::serde::SerWellKnown<'a, T>: prost::serde::private::CustomSerialize,
-        crate::serde::DesWellKnown<T>: for<'de> prost::serde::private::CustomDeserialize<'de>,
-        WellKnownWrapper<T>: AnyValue,
+        T: 'static + Message + SerdeMessage + Default + PartialEq + Clone,
     {
         let _ = self.message_types.insert(
             format!("type.googleapis.com/{type_path}"),
-            AnyTypeDescriptor::for_well_known_type::<T>(),
+            AnyTypeDescriptor::for_type::<T>(),
         );
     }
 
@@ -744,45 +652,45 @@ pub struct AnyTypeDescriptor {
 }
 
 impl AnyTypeDescriptor {
-    #[allow(private_bounds)]
-    pub fn for_well_known_type<T>() -> Self
-    where
-        T: 'static + Message + Default + Clone,
-        for<'a> crate::serde::SerWellKnown<'a, T>: prost::serde::private::CustomSerialize,
-        crate::serde::DesWellKnown<T>: for<'de> prost::serde::private::CustomDeserialize<'de>,
-        WellKnownWrapper<T>: AnyValue,
-    {
-        fn deserialize_protobuf<T: 'static + Message + Default + Clone>(
-            _type_url: &str,
-            data: &[u8],
-        ) -> Result<Box<dyn AnyValue>, prost::DecodeError>
-        where
-            WellKnownWrapper<T>: AnyValue,
-        {
-            Ok(Box::new(WellKnownWrapper(T::decode(data)?)) as _)
-        }
+    // #[allow(private_bounds)]
+    // pub fn for_well_known_type<T>() -> Self
+    // where
+    //     T: 'static + Message + Default + Clone,
+    //     T: prost::serde::private::CustomSerialize,
+    //     T: for<'de> prost::serde::private::CustomDeserialize<'de>,
+    //     WellKnownWrapper<T>: AnyValue,
+    // {
+    //     fn deserialize_protobuf<T: 'static + Message + Default + Clone>(
+    //         _type_url: &str,
+    //         data: &[u8],
+    //     ) -> Result<Box<dyn AnyValue>, prost::DecodeError>
+    //     where
+    //         WellKnownWrapper<T>: AnyValue,
+    //     {
+    //         Ok(Box::new(WellKnownWrapper(T::decode(data)?)) as _)
+    //     }
 
-        fn deserialize_json<T: 'static + Message + Default + Clone>(
-            _type_url: &str,
-            val: &JsonValue,
-            config: &prost::serde::DeserializerConfig,
-        ) -> Result<Box<dyn AnyValue>, prost::DecodeError>
-        where
-            WellKnownWrapper<T>: AnyValue,
-            crate::serde::DesWellKnown<T>: for<'de> prost::serde::private::CustomDeserialize<'de>,
-        {
-            let val = config
-                .deserialize_from_value::<crate::serde::DesWellKnown<T>>(val)
-                .map_err(|err| prost::DecodeError::new(err.to_string()))?;
+    //     fn deserialize_json<T: 'static + Message + Default + Clone>(
+    //         _type_url: &str,
+    //         val: &JsonValue,
+    //         config: &prost::serde::DeserializerConfig,
+    //     ) -> Result<Box<dyn AnyValue>, prost::DecodeError>
+    //     where
+    //         WellKnownWrapper<T>: AnyValue,
+    //         T: for<'de> prost::serde::private::CustomDeserialize<'de>,
+    //     {
+    //         let val = config
+    //             .deserialize_from_value::<T>(val)
+    //             .map_err(|err| prost::DecodeError::new(err.to_string()))?;
 
-            Ok(Box::new(WellKnownWrapper(val.0)) as _)
-        }
+    //         Ok(Box::new(WellKnownWrapper(val.0)) as _)
+    //     }
 
-        Self {
-            deserialize_protobuf: deserialize_protobuf::<T>,
-            deserialize_json: deserialize_json::<T>,
-        }
-    }
+    //     Self {
+    //         deserialize_protobuf: deserialize_protobuf::<T>,
+    //         deserialize_json: deserialize_json::<T>,
+    //     }
+    // }
 
     pub fn for_type<T>() -> Self
     where
