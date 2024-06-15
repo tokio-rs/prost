@@ -26,6 +26,7 @@ struct ExternPathEntry {
 #[derive(Debug)]
 pub struct ResolvedPath {
     pub rust_path: String,
+    #[allow(dead_code)]
     pub is_well_known: bool,
 }
 

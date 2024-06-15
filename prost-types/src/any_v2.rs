@@ -92,6 +92,7 @@ pub struct ProstAny {
     cached: RwLock<Option<Box<dyn AnyValue>>>,
 }
 
+#[allow(clippy::declare_interior_mutable_const)]
 const CACHED_INIT: RwLock<Option<Box<dyn AnyValue>>> = RwLock::new(None);
 
 impl Clone for ProstAny {
@@ -228,9 +229,9 @@ impl ProstAny {
         }
     }
 
-    pub fn deserialize_any_in_place<'a, 'b>(
+    pub fn deserialize_any_in_place<'a>(
         &'a mut self,
-        serde_config: Option<&'b prost::serde::DeserializerConfig>,
+        serde_config: Option<&prost::serde::DeserializerConfig>,
     ) -> Result<&'a mut dyn AnyValue, prost::DecodeError> {
         // This doesn't work due to
         // https://rust-lang.github.io/rfcs/2094-nll.html#problem-case-3-conditional-control-flow-across-functions.
@@ -645,20 +646,34 @@ impl TypeRegistry {
     }
 }
 
-impl TypeResolver for TypeRegistry {
-    fn resolve_message_type<'a>(&'a self, type_url: &str) -> Result<&'a AnyTypeDescriptor, ()> {
-        self.message_types.get(type_url).ok_or(())
+impl Default for TypeRegistry {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
     }
 }
 
+impl TypeResolver for TypeRegistry {
+    fn resolve_message_type<'a>(
+        &'a self,
+        type_url: &str,
+    ) -> Result<&'a AnyTypeDescriptor, TypeResolverError> {
+        self.message_types.get(type_url).ok_or(TypeResolverError)
+    }
+}
+
+type DeserializeProtobufFn = fn(&str, &[u8]) -> Result<Box<dyn AnyValue>, prost::DecodeError>;
+
+type DeserializeJsonFn = fn(
+    &str,
+    &JsonValue,
+    &prost::serde::DeserializerConfig,
+) -> Result<Box<dyn AnyValue>, prost::DecodeError>;
+
 #[derive(Debug, Clone)]
 pub struct AnyTypeDescriptor {
-    deserialize_protobuf: fn(&str, &[u8]) -> Result<Box<dyn AnyValue>, prost::DecodeError>,
-    deserialize_json: fn(
-        &str,
-        &JsonValue,
-        &prost::serde::DeserializerConfig,
-    ) -> Result<Box<dyn AnyValue>, prost::DecodeError>,
+    deserialize_protobuf: DeserializeProtobufFn,
+    deserialize_json: DeserializeJsonFn,
 }
 
 impl AnyTypeDescriptor {
@@ -700,8 +715,14 @@ pub fn default_type_resolver() -> Arc<dyn TypeResolver> {
         .clone()
 }
 
+#[derive(Debug)]
+pub struct TypeResolverError;
+
 pub trait TypeResolver {
-    fn resolve_message_type<'a>(&'a self, type_url: &str) -> Result<&'a AnyTypeDescriptor, ()>;
+    fn resolve_message_type<'a>(
+        &'a self,
+        type_url: &str,
+    ) -> Result<&'a AnyTypeDescriptor, TypeResolverError>;
 }
 
 thread_local! {
@@ -715,10 +736,10 @@ where
     struct TypeResolverGuard(Option<Arc<dyn TypeResolver>>);
     impl Drop for TypeResolverGuard {
         fn drop(&mut self) {
-            CURRENT_TYPE_RESOLVER.set(self.0.take());
+            CURRENT_TYPE_RESOLVER.with(|current| *current.borrow_mut() = self.0.take());
         }
     }
-    let _guard = TypeResolverGuard(CURRENT_TYPE_RESOLVER.replace(resolver));
+    let _guard = TypeResolverGuard(CURRENT_TYPE_RESOLVER.with(|current| current.replace(resolver)));
     f()
 }
 
@@ -727,7 +748,7 @@ pub fn with_default_type_resolver<R, F: FnOnce() -> R>(f: F) -> R {
 }
 
 fn has_type_resolver_set() -> bool {
-    CURRENT_TYPE_RESOLVER.with_borrow(|type_resolver| type_resolver.is_some())
+    CURRENT_TYPE_RESOLVER.with(|type_resolver| type_resolver.borrow().is_some())
 }
 
 fn has_known_value_json_mapping(type_url: &str) -> bool {
