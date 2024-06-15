@@ -131,31 +131,21 @@ pub fn impl_for_message(
 
                     match message.label {
                         Label::Required => {
-                            let value = if message.is_well_known_ty {
-                                quote! { &::prost_types::serde::SerWellKnown(&__self.#field_ident) }
-                            } else {
-                                quote! { &__self.#field_ident }
-                            };
                             ser_stmts.append_all(quote! {
                                 _serde::ser::SerializeStruct::serialize_field(
                                     &mut __serde_state,
                                     #json_field_name,
-                                    &_private::SerWithConfig(#value, __config)
+                                    &_private::SerWithConfig(&__self.#field_ident, __config)
                                 )?;
                             });
                         }
                         Label::Optional => {
-                            let value = if message.is_well_known_ty {
-                                quote! { &::prost_types::serde::SerWellKnown(__val) }
-                            } else {
-                                quote! { __val }
-                            };
                             ser_stmts.append_all(quote! {
                                 if let _private::Option::Some(__val) = &__self.#field_ident {
                                     _serde::ser::SerializeStruct::serialize_field(
                                         &mut __serde_state,
                                         #json_field_name,
-                                        &_private::SerWithConfig(#value, __config)
+                                        &_private::SerWithConfig(__val, __config)
                                     )?;
                                 } else {
                                     if __config.emit_nulled_optional_fields {
@@ -169,16 +159,6 @@ pub fn impl_for_message(
                             });
                         }
                         Label::Repeated => {
-                            let value = if message.is_well_known_ty {
-                                quote! {
-                                    _private::SerMappedVecItems(
-                                        &__self.#field_ident,
-                                        ::prost_types::serde::SerWellKnown,
-                                    )
-                                }
-                            } else {
-                                quote! { &__self.#field_ident }
-                            };
                             ser_stmts.append_all(quote! {
                                 if __config.emit_fields_with_default_value
                                     || !_private::is_default_value(&__self.#field_ident)
@@ -186,7 +166,7 @@ pub fn impl_for_message(
                                     _serde::ser::SerializeStruct::serialize_field(
                                         &mut __serde_state,
                                         #json_field_name,
-                                        &_private::SerWithConfig(#value, __config)
+                                        &_private::SerWithConfig(&__self.#field_ident, __config)
                                     )?;
                                 }
                             });
@@ -198,13 +178,7 @@ pub fn impl_for_message(
 
                     let wrapper = match &map.value_ty {
                         ValueTy::Scalar(ty) => wrapper_for_ty(ty),
-                        ValueTy::Message => {
-                            if map.is_value_well_known_ty {
-                                quote! { ::prost_types::serde::SerWellKnown }
-                            } else {
-                                quote! { _private::SerIdentity }
-                            }
-                        }
+                        ValueTy::Message => quote! { _private::SerIdentity },
                     };
 
                     ser_stmts.append_all(quote! {
@@ -339,17 +313,12 @@ pub fn impl_for_oneof(
                         )
                     }
                 }
-                Field::Message(message) => {
-                    let value = if message.is_well_known_ty {
-                        quote! { &::prost_types::serde::SerWellKnown(__val) }
-                    } else {
-                        quote! { __val }
-                    };
+                Field::Message(_) => {
                     quote! {
                         Self::#field_ident(__val) => __serializer.serialize_field(
                             #json_field_name,
                             &_private::SerWithConfig(
-                                #value,
+                                __val,
                                 __config,
                             ),
                         )
