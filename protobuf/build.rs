@@ -37,11 +37,13 @@ fn main() -> Result<()> {
     }
 
     let conformance_proto_dir = src_dir.join("conformance");
-    prost_build::compile_protos(
-        &[conformance_proto_dir.join("conformance.proto")],
-        &[conformance_proto_dir],
-    )
-    .unwrap();
+    prost_build::Config::new()
+        .enable_serde()
+        .compile_protos(
+            &[conformance_proto_dir.join("conformance.proto")],
+            &[conformance_proto_dir],
+        )
+        .unwrap();
 
     let proto_dir = src_dir.join("src");
 
@@ -51,6 +53,7 @@ fn main() -> Result<()> {
     // values.
     prost_build::Config::new()
         .btree_map(["."])
+        .enable_serde()
         .compile_protos(
             &[
                 proto_dir.join("google/protobuf/test_messages_proto2.proto"),
