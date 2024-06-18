@@ -666,6 +666,8 @@ impl CodeGenerator<'_> {
             self.message_graph
                 .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
+
+        self.push_indent();
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
             if can_oneof_derive_copy { "Copy, " } else { "" },
@@ -836,7 +838,7 @@ impl CodeGenerator<'_> {
                     .map(|proto_name| format!("proto_name = \"{proto_name}\""))
                     .join(", ");
 
-                self.buf.push_str(&format!("#[prost(json({names}))]"));
+                self.buf.push_str(&format!("#[prost(json({names}))]\n"));
             };
 
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
