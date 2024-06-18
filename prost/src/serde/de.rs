@@ -111,7 +111,8 @@ where
 }
 
 // Re-export all deserializers.
-pub use bytes::BytesDeserializer;
+// FIXME: Remove the `self::` when we've bumped the MSRV to 1.72.
+pub use self::bytes::BytesDeserializer;
 pub use default::DefaultDeserializer;
 pub use forward::ForwardDeserializer;
 pub use map::MapDeserializer;
