@@ -384,9 +384,11 @@ impl CodeGenerator<'_> {
     }
 
     fn append_serde(&mut self) {
-        push_indent(self.buf, self.depth);
-        self.buf.push_str("#[prost(serde)]");
-        self.buf.push('\n');
+        if self.config.enable_serde {
+            push_indent(self.buf, self.depth);
+            self.buf.push_str("#[prost(serde)]");
+            self.buf.push('\n');
+        }
     }
 
     fn append_enum_attributes(&mut self, fq_message_name: &str) {
@@ -512,12 +514,14 @@ impl CodeGenerator<'_> {
         let rust_field_name = &field.rust_name();
         let proto_field_name = field.descriptor.name();
 
-        if !ident::is_stable_ident_for_json(
+        let field_name_is_stable_for_json = ident::is_stable_ident_for_json(
             proto_field_name,
             IdentKind::MessageField {
                 field: rust_field_name,
             },
-        ) {
+        );
+
+        if self.config.enable_serde && !field_name_is_stable_for_json {
             self.buf
                 .push_str(&format!(", json(proto_name = \"{}\")", proto_field_name));
         }
@@ -583,12 +587,14 @@ impl CodeGenerator<'_> {
         let rust_field_name = &field.rust_name();
         let proto_field_name = field.descriptor.name();
 
-        let json_attr = if !ident::is_stable_ident_for_json(
+        let field_name_is_stable_for_json = ident::is_stable_ident_for_json(
             proto_field_name,
             IdentKind::MessageField {
                 field: rust_field_name,
             },
-        ) {
+        );
+
+        let json_attr = if self.config.enable_serde && !field_name_is_stable_for_json {
             format!(", json(proto_name = \"{}\")", proto_field_name)
         } else {
             Default::default()
@@ -685,12 +691,14 @@ impl CodeGenerator<'_> {
             let ty_tag = self.field_type_tag(&field.descriptor);
             let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
-            let json_attr = if !ident::is_stable_ident_for_json(
+            let variant_name_is_stable_for_json = ident::is_stable_ident_for_json(
                 proto_field_name,
                 IdentKind::OneOfVariant {
                     variant: rust_variant_name,
                 },
-            ) {
+            );
+
+            let json_attr = if self.config.enable_serde && !variant_name_is_stable_for_json {
                 format!(", json(proto_name = \"{}\")", proto_field_name)
             } else {
                 Default::default()
@@ -809,15 +817,18 @@ impl CodeGenerator<'_> {
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
 
-            let emit_proto_names = !variant.proto_aliases.is_empty()
-                || !ident::is_stable_ident_for_json(
-                    variant.proto_name,
-                    IdentKind::EnumVariant {
-                        ty: &enum_name,
-                        variant: &variant.generated_variant_name,
-                    },
-                );
-            if emit_proto_names {
+            let variant_name_is_stable_for_json = ident::is_stable_ident_for_json(
+                variant.proto_name,
+                IdentKind::EnumVariant {
+                    ty: &enum_name,
+                    variant: &variant.generated_variant_name,
+                },
+            );
+
+            let emit_proto_names =
+                !variant.proto_aliases.is_empty() || !variant_name_is_stable_for_json;
+
+            if self.config.enable_serde && emit_proto_names {
                 self.push_indent();
 
                 let names = iter::once(variant.proto_name)

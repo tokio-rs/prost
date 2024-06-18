@@ -16,7 +16,7 @@ rust-version.workspace = true
 bench = false
 
 [features]
-default = ["derive", "std", "serde", "serde-json"]
+default = ["derive", "std"]
 derive = ["dep:prost-derive"]
 prost-derive = ["derive"]                          # deprecated, please use derive feature instead
 no-recursion-limit = []
