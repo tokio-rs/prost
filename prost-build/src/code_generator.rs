@@ -234,6 +234,7 @@ impl<'a> CodeGenerator<'a> {
         self.push_indent();
         self.buf
             .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
+        self.push_indent();
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Message)]\n",
             if self.message_graph.can_message_derive_copy(&fq_message_name) {
@@ -670,6 +671,8 @@ impl<'a> CodeGenerator<'a> {
             self.message_graph
                 .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
+
+        self.push_indent();
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
             if can_oneof_derive_copy { "Copy, " } else { "" },
@@ -840,7 +843,7 @@ impl<'a> CodeGenerator<'a> {
                     .map(|proto_name| format!("proto_name = \"{proto_name}\""))
                     .join(", ");
 
-                self.buf.push_str(&format!("#[prost(json({names}))]"));
+                self.buf.push_str(&format!("#[prost(json({names}))]\n"));
             };
 
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
