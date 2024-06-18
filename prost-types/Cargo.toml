@@ -13,7 +13,7 @@ rust-version.workspace = true
 doctest = false
 
 [features]
-default = ["std", "serde", "any-v2"]
+default = ["std"]
 std = ["prost/std"]
 serde = ["prost/serde"]
 any-v2 = ["std", "serde", "prost/serde-json", "dep:serde", "dep:erased-serde"]
