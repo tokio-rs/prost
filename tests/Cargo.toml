@@ -11,6 +11,9 @@ build = "src/build.rs"
 default = ["std"]
 std = []
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2015"))'] }
+
 [dependencies]
 anyhow = "1.0.1"
 cfg-if = "1"
