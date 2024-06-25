@@ -7,6 +7,15 @@ authors.workspace = true
 
 build = "../tests/src/build.rs"
 
+[features]
+default = []
+# This crate shares code with `tests-2015` crate. Define this feature, but 
+# never enable it for this crate.
+edition-2015 = []
+# This crate shares code with `tests` crate. Define this feature, but 
+# never enable it for this crate.
+std = []
+
 [lib]
 doctest = false
 path = "../tests/src/lib.rs"

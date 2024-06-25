@@ -17,6 +17,9 @@ path = "../tests/src/lib.rs"
 [features]
 default = ["std"]
 std = []
+# This crate shares code with `tests-2015` crate. Define this feature, but 
+# never enable it for this crate.
+edition-2015 = []
 
 [dependencies]
 anyhow = "1.0.1"
