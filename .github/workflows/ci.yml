@@ -10,7 +10,7 @@ on:
 
 env:
   PROTOC_VERSION: 3.20.3
-  clippy_rust_version: 1.78
+  clippy_rust_version: 1.79
 
 jobs:
   # Depends on all actions that are required for a "successful" CI run.
