@@ -10,6 +10,7 @@ on:
 
 env:
   PROTOC_VERSION: 3.20.3
+  clippy_rust_version: 1.78
 
 jobs:
   # Depends on all actions that are required for a "successful" CI run.
@@ -67,6 +68,7 @@ jobs:
         uses: ./.github/actions/setup-ninja
       - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ env.clippy_rust_version }}
           components: clippy
       - run: cargo clippy --workspace --exclude protobuf --all-features --tests -- -D warnings
 
