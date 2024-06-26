@@ -3,6 +3,7 @@ use prost::alloc::vec;
 use prost::alloc::{borrow::ToOwned, string::String, vec::Vec};
 
 use prost::bytes::Bytes;
+use prost::OpenEnum;
 use prost::{Enumeration, Message, Oneof};
 
 use crate::check_message;
@@ -216,7 +217,7 @@ fn check_tags_inferred() {
         two: Some(42),
         three: vec![0.0, 1.0, 1.0],
         skip_to_nine: "nine".to_owned(),
-        ten: 0,
+        ten: BasicEnumeration::ZERO.into(),
         eleven: ::alloc::collections::BTreeMap::new(),
         back_to_five: vec![1, 0, 1],
         six: Basic::default(),
@@ -230,7 +231,7 @@ fn check_tags_inferred() {
         five: vec![1, 0, 1],
         six: Basic::default(),
         nine: "nine".to_owned(),
-        ten: 0,
+        ten: BasicEnumeration::ZERO.into(),
         eleven: ::alloc::collections::BTreeMap::new(),
     };
     check_serialize_equivalent(&tags_inferred, &tags_qualified);
@@ -249,7 +250,7 @@ pub struct TagsInferred {
     #[prost(tag = "9", string, required)]
     pub skip_to_nine: String,
     #[prost(enumeration = "BasicEnumeration", default = "ONE")]
-    pub ten: i32,
+    pub ten: OpenEnum<BasicEnumeration>,
     #[prost(btree_map = "string, string")]
     pub eleven: ::alloc::collections::BTreeMap<String, String>,
 
@@ -277,7 +278,7 @@ pub struct TagsQualified {
     #[prost(tag = "9", string, required)]
     pub nine: String,
     #[prost(tag = "10", enumeration = "BasicEnumeration", default = "ONE")]
-    pub ten: i32,
+    pub ten: OpenEnum<BasicEnumeration>,
     #[prost(tag = "11", btree_map = "string, string")]
     pub eleven: ::alloc::collections::BTreeMap<String, String>,
 }
@@ -302,13 +303,13 @@ pub struct DefaultValues {
     pub bytes_buf: Bytes,
 
     #[prost(enumeration = "BasicEnumeration", tag = "4", default = "ONE")]
-    pub enumeration: i32,
+    pub enumeration: OpenEnum<BasicEnumeration>,
 
     #[prost(enumeration = "BasicEnumeration", optional, tag = "5", default = "TWO")]
-    pub optional_enumeration: Option<i32>,
+    pub optional_enumeration: Option<OpenEnum<BasicEnumeration>>,
 
     #[prost(enumeration = "BasicEnumeration", repeated, tag = "6")]
-    pub repeated_enumeration: Vec<i32>,
+    pub repeated_enumeration: Vec<OpenEnum<BasicEnumeration>>,
 }
 
 #[test]
@@ -319,7 +320,7 @@ fn check_default_values() {
     assert_eq!(&default.string, "forty two");
     assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
     assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
-    assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
+    assert_eq!(default.enumeration, BasicEnumeration::ONE.into());
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);
     assert_eq!(0, default.encoded_len());
@@ -351,18 +352,18 @@ pub struct Basic {
     pub optional_string: Option<String>,
 
     #[prost(enumeration = "BasicEnumeration", tag = "5")]
-    pub enumeration: i32,
+    pub enumeration: OpenEnum<BasicEnumeration>,
 
     #[prost(map = "int32, enumeration(BasicEnumeration)", tag = "6")]
     #[cfg(feature = "std")]
-    pub enumeration_map: ::std::collections::HashMap<i32, i32>,
+    pub enumeration_map: ::std::collections::HashMap<i32, OpenEnum<BasicEnumeration>>,
 
     #[prost(hash_map = "string, string", tag = "7")]
     #[cfg(feature = "std")]
     pub string_map: ::std::collections::HashMap<String, String>,
 
     #[prost(btree_map = "int32, enumeration(BasicEnumeration)", tag = "10")]
-    pub enumeration_btree_map: prost::alloc::collections::BTreeMap<i32, i32>,
+    pub enumeration_btree_map: prost::alloc::collections::BTreeMap<i32, OpenEnum<BasicEnumeration>>,
 
     #[prost(btree_map = "string, string", tag = "11")]
     pub string_btree_map: prost::alloc::collections::BTreeMap<String, String>,
