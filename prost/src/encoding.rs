@@ -11,8 +11,6 @@ use alloc::vec::Vec;
 use core::cmp::min;
 use core::mem;
 use core::str;
-use core::u32;
-use core::usize;
 
 use ::bytes::{Buf, BufMut, Bytes};
 
@@ -1350,7 +1348,6 @@ mod test {
     use alloc::string::ToString;
     use core::borrow::Borrow;
     use core::fmt::Debug;
-    use core::u64;
 
     use ::bytes::BytesMut;
     use proptest::{prelude::*, test_runner::TestCaseResult};
