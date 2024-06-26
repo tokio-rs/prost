@@ -58,6 +58,10 @@ impl Duration {
         // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
         //               "invalid duration: {:?}", self);
     }
+
+    pub fn is_valid(&self) -> bool {
+        self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000
+    }
 }
 
 impl Name for Duration {
@@ -107,7 +111,7 @@ impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = *self;
         d.normalize();
-        if self.seconds < 0 && self.nanos < 0 {
+        if self.seconds < 0 && self.nanos <= 0 || self.seconds <= 0 && self.nanos < 0 {
             write!(f, "-")?;
         }
         write!(f, "{}", d.seconds.abs())?;

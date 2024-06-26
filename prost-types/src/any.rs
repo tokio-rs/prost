@@ -1,7 +1,7 @@
 use super::*;
 
-impl Any {
-    /// Serialize the given message type `M` as [`Any`].
+impl protobuf::Any {
+    /// Serialize the given message type `M` as [`protobuf::Any`].
     pub fn from_msg<M>(msg: &M) -> Result<Self, EncodeError>
     where
         M: Name,
@@ -9,10 +9,10 @@ impl Any {
         let type_url = M::type_url();
         let mut value = Vec::new();
         Message::encode(msg, &mut value)?;
-        Ok(Any { type_url, value })
+        Ok(Self { type_url, value })
     }
 
-    /// Decode the given message type `M` from [`Any`], validating that it has
+    /// Decode the given message type `M` from [`protobuf::Any`], validating that it has
     /// the expected type URL.
     pub fn to_msg<M>(&self) -> Result<M, DecodeError>
     where
@@ -38,7 +38,7 @@ impl Any {
     }
 }
 
-impl Name for Any {
+impl Name for protobuf::Any {
     const PACKAGE: &'static str = PACKAGE;
     const NAME: &'static str = "Any";
 
@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn check_any_serialization() {
         let message = Timestamp::date(2000, 1, 1).unwrap();
-        let any = Any::from_msg(&message).unwrap();
+        let any = protobuf::Any::from_msg(&message).unwrap();
         assert_eq!(
             &any.type_url,
             "type.googleapis.com/google.protobuf.Timestamp"

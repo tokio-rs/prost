@@ -8,6 +8,7 @@ authors.workspace = true
 [dependencies]
 bytes = "1"
 env_logger = { version = "0.11", default-features = false }
-prost = { path = "../prost" }
+prost = { path = "../prost", features = ["serde", "serde-json"] }
+prost-types = { path = "../prost-types", features = ["serde", "any-v2"] }
 protobuf = { path = "../protobuf" }
 tests = { path = "../tests" }
