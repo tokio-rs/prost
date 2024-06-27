@@ -21,10 +21,12 @@ derive = ["dep:prost-derive"]
 prost-derive = ["derive"]     # deprecated, please use derive feature instead
 no-recursion-limit = []
 std = []
+smallstring = ["compact_str"]
 
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.12.6", path = "../prost-derive", optional = true }
+compact_str = { version = "0.8.0-beta", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }
