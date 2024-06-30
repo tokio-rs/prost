@@ -1,8 +1,8 @@
 use crate::protobuf::Value;
 use crate::value;
 use crate::String;
-use ::prost::alloc::collections::BTreeMap;
 use crate::Vec;
+use ::prost::alloc::collections::BTreeMap;
 
 impl From<value::Kind> for Value {
     fn from(value: value::Kind) -> Self {
@@ -57,8 +57,6 @@ impl From<Vec<Value>> for Value {
 
 impl From<BTreeMap<String, Value>> for Value {
     fn from(value: BTreeMap<String, Value>) -> Self {
-        value::Kind::StructValue(crate::protobuf::Struct {
-            fields: value
-        }).into()
+        value::Kind::StructValue(crate::protobuf::Struct { fields: value }).into()
     }
 }
