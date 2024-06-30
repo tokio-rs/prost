@@ -19,7 +19,7 @@ macro_rules! impl_number_value {
         }
     };
 }
-a
+
 impl_number_value!(u8);
 impl_number_value!(u16);
 impl_number_value!(u32);
