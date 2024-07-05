@@ -5,6 +5,7 @@ use core::fmt;
 
 use crate::Duration;
 use crate::Timestamp;
+use crate::TimestampError;
 
 /// A point in time, represented as a date and time in the UTC timezone.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -497,9 +498,7 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
             ..DateTime::default()
         };
 
-        ensure!(date_time.is_valid());
-
-        return Some(Timestamp::from(date_time));
+        return Timestamp::try_from(date_time).ok();
     }
 
     // Accept either 'T' or ' ' as delimiter between date and time.
@@ -529,9 +528,7 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
         nanos,
     };
 
-    ensure!(date_time.is_valid());
-
-    let Timestamp { seconds, nanos } = Timestamp::from(date_time);
+    let Timestamp { seconds, nanos } = Timestamp::try_from(date_time).ok()?;
 
     let seconds =
         seconds.checked_sub(i64::from(offset_hour) * 3600 + i64::from(offset_minute) * 60)?;
@@ -570,14 +567,19 @@ pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
     Some(Duration { seconds, nanos })
 }
 
-impl From<DateTime> for Timestamp {
-    fn from(date_time: DateTime) -> Timestamp {
+impl TryFrom<DateTime> for Timestamp {
+    type Error = TimestampError;
+
+    fn try_from(date_time: DateTime) -> Result<Timestamp, TimestampError> {
+        if !date_time.is_valid() {
+            return Err(TimestampError::InvalidDateTime);
+        }
         let seconds = date_time_to_seconds(&date_time);
         let nanos = date_time.nanos;
-        Timestamp {
+        Ok(Timestamp {
             seconds,
             nanos: nanos as i32,
-        }
+        })
     }
 }
 
@@ -585,6 +587,7 @@ impl From<DateTime> for Timestamp {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use prost::alloc::format;
 
     #[test]
     fn test_min_max() {
@@ -729,8 +732,8 @@ mod tests {
 
         // Leap day
         assert_eq!(
-            "2020-02-29T01:02:03.00Z".parse::<Timestamp>().unwrap(),
-            Timestamp::from(DateTime {
+            "2020-02-29T01:02:03.00Z".parse::<Timestamp>(),
+            Timestamp::try_from(DateTime {
                 year: 2020,
                 month: 2,
                 day: 29,
@@ -738,7 +741,7 @@ mod tests {
                 minute: 2,
                 second: 3,
                 nanos: 0,
-            }),
+            })
         );
 
         // Test extensions to RFC 3339.
@@ -829,6 +832,94 @@ mod tests {
         assert!("1️⃣s".parse::<Duration>().is_err());
     }
 
+    #[test]
+    fn check_invalid_datetimes() {
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: i64::from_le_bytes([178, 2, 0, 0, 0, 0, 0, 128]),
+                month: 2,
+                day: 2,
+                hour: 8,
+                minute: 58,
+                second: 8,
+                nanos: u32::from_le_bytes([0, 0, 0, 50]),
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: i64::from_le_bytes([132, 7, 0, 0, 0, 0, 0, 128]),
+                month: 2,
+                day: 2,
+                hour: 8,
+                minute: 58,
+                second: 8,
+                nanos: u32::from_le_bytes([0, 0, 0, 50]),
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: i64::from_le_bytes([80, 96, 32, 240, 99, 0, 32, 180]),
+                month: 1,
+                day: 18,
+                hour: 19,
+                minute: 26,
+                second: 8,
+                nanos: u32::from_le_bytes([0, 0, 0, 50]),
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: DateTime::MIN.year - 1,
+                month: 0,
+                day: 0,
+                hour: 0,
+                minute: 0,
+                second: 0,
+                nanos: 0,
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: i64::MIN,
+                month: 0,
+                day: 0,
+                hour: 0,
+                minute: 0,
+                second: 0,
+                nanos: 0,
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: DateTime::MAX.year + 1,
+                month: u8::MAX,
+                day: u8::MAX,
+                hour: u8::MAX,
+                minute: u8::MAX,
+                second: u8::MAX,
+                nanos: u32::MAX,
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+        assert_eq!(
+            Timestamp::try_from(DateTime {
+                year: i64::MAX,
+                month: u8::MAX,
+                day: u8::MAX,
+                hour: u8::MAX,
+                minute: u8::MAX,
+                second: u8::MAX,
+                nanos: u32::MAX,
+            }),
+            Err(TimestampError::InvalidDateTime)
+        );
+    }
+
     proptest! {
         #[cfg(feature = "std")]
         #[test]
@@ -859,6 +950,51 @@ mod tests {
                 &duration.to_string().parse::<Duration>().unwrap(),
                 "{}", duration.to_string()
             );
+        }
+
+        #[test]
+        fn check_timestamp_roundtrip_with_date_time(
+            seconds in i64::arbitrary(),
+            nanos in i32::arbitrary(),
+        ) {
+            let timestamp = Timestamp { seconds, nanos };
+            let date_time = DateTime::from(timestamp);
+            let roundtrip = Timestamp::try_from(date_time).unwrap();
+
+            let mut normalized_timestamp = timestamp;
+            normalized_timestamp.normalize();
+
+            prop_assert_eq!(normalized_timestamp, roundtrip);
+        }
+
+        #[test]
+        fn check_date_time_roundtrip_with_timestamp(
+            year in i64::arbitrary(),
+            month in u8::arbitrary(),
+            day in u8::arbitrary(),
+            hour in u8::arbitrary(),
+            minute in u8::arbitrary(),
+            second in u8::arbitrary(),
+            nanos in u32::arbitrary(),
+        ) {
+            let date_time = DateTime {
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                nanos
+            };
+
+            if date_time.is_valid() {
+                let timestamp = Timestamp::try_from(date_time).unwrap();
+                let roundtrip = DateTime::from(timestamp);
+
+                prop_assert_eq!(date_time, roundtrip);
+            } else {
+                prop_assert_eq!(Timestamp::try_from(date_time), Err(TimestampError::InvalidDateTime));
+            }
         }
     }
 }

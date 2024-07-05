@@ -99,11 +99,7 @@ impl Timestamp {
             nanos,
         };
 
-        if date_time.is_valid() {
-            Ok(Timestamp::from(date_time))
-        } else {
-            Err(TimestampError::InvalidDateTime)
-        }
+        Timestamp::try_from(date_time)
     }
 }
 
