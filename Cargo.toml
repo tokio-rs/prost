@@ -23,7 +23,7 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-version = "0.12.6"
+version = "0.13.0"
 authors = [
   "Dan Burkert <dan@danburkert.com>",
   "Lucio Franco <luciofranco14@gmail.com>",
