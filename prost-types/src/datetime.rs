@@ -771,6 +771,19 @@ mod tests {
             "2020-06-15 00:01:02.123 +0800".parse::<Timestamp>(),
             Timestamp::date_time_nanos(2020, 6, 14, 16, 1, 2, 123_000_000),
         );
+
+        // Regression tests
+        assert_eq!(
+            "-11111111-z".parse::<Timestamp>(),
+            Err(crate::TimestampError::ParseFailure),
+        );
+        assert_eq!(
+            "1900-01-10".parse::<Timestamp>(),
+            Ok(Timestamp {
+                seconds: -2208211200,
+                nanos: 0
+            }),
+        );
     }
 
     #[test]
