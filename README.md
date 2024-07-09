@@ -380,9 +380,9 @@ the `std` features in `prost` and `prost-types`:
 
 ```ignore
 [dependencies]
-prost = { version = "0.13.0", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.13.1", default-features = false, features = ["prost-derive"] }
 # Only necessary if using Protobuf well-known types:
-prost-types = { version = "0.13.0", default-features = false }
+prost-types = { version = "0.13.1", default-features = false }
 ```
 
 Additionally, configure `prost-build` to output `BTreeMap`s instead of `HashMap`s
