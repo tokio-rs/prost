@@ -1,4 +1,14 @@
+# Prost version 0.13.1
+
+_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## Bug fixes
+
+* Enum variant named Error causes ambiguous item (#1098)
+
 # PROST version 0.13.0
+
+**note**: this version was yanked in favor of 0.13.1
 
 _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
