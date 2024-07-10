@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     let out_dir =
         &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
 
-    let src_dir = PathBuf::from("../third_party/protobuf");
+    let src_dir = PathBuf::from("../third_party/protobuf").canonicalize()?;
     if !src_dir.join("cmake").exists() {
         anyhow::bail!(
             "protobuf sources are not checked out; Try `git submodule update --init --recursive`"
@@ -35,6 +35,10 @@ fn main() -> Result<()> {
 
     if !protobuf_dir.exists() {
         apply_patches(&src_dir)?;
+
+        let build_dir = &out_dir.join(format!("build-protobuf-{}", version));
+        fs::create_dir_all(build_dir).expect("failed to create build directory");
+
         let tempdir = tempfile::Builder::new()
             .prefix("protobuf")
             .tempdir_in(out_dir)
@@ -42,7 +46,7 @@ fn main() -> Result<()> {
 
         let prefix_dir = &tempdir.path().join("prefix");
         fs::create_dir(prefix_dir).expect("failed to create prefix directory");
-        install_conformance_test_runner(&src_dir, prefix_dir)?;
+        install_conformance_test_runner(&src_dir, build_dir, prefix_dir)?;
         install_protos(&src_dir, prefix_dir)?;
         install_datasets(&src_dir, prefix_dir)?;
         fs::rename(prefix_dir, protobuf_dir).context("failed to move protobuf dir")?;
@@ -128,23 +132,27 @@ fn apply_patches(src_dir: &Path) -> Result<()> {
 }
 
 #[cfg(windows)]
-fn install_conformance_test_runner(_: &Path, _: &Path) -> Result<()> {
+fn install_conformance_test_runner(_: &Path, _: &Path, _: &Path) -> Result<()> {
     // The conformance test runner does not support Windows [1].
     // [1]: https://github.com/protocolbuffers/protobuf/tree/master/conformance#portability
     Ok(())
 }
 
 #[cfg(not(windows))]
-fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
+fn install_conformance_test_runner(
+    src_dir: &Path,
+    build_dir: &Path,
+    prefix_dir: &Path,
+) -> Result<()> {
     // Build and install protoc, the protobuf libraries, and the conformance test runner.
     let rc = Command::new("cmake")
         .arg("-GNinja")
-        .arg("cmake/")
+        .arg(src_dir.join("cmake"))
         .arg("-DCMAKE_BUILD_TYPE=DEBUG")
         .arg(&format!("-DCMAKE_INSTALL_PREFIX={}", prefix_dir.display()))
         .arg("-Dprotobuf_BUILD_CONFORMANCE=ON")
         .arg("-Dprotobuf_BUILD_TESTS=OFF")
-        .current_dir(src_dir)
+        .current_dir(build_dir)
         .status()
         .context("failed to execute CMake")?;
     assert!(rc.success(), "protobuf CMake failed");
@@ -155,14 +163,14 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<
         .arg("-j")
         .arg(&num_jobs)
         .arg("install")
-        .current_dir(src_dir)
+        .current_dir(build_dir)
         .status()
         .context("failed to execute ninja protobuf")?;
     ensure!(rc.success(), "failed to make protobuf");
 
     // Install the conformance-test-runner binary, since it isn't done automatically.
     fs::copy(
-        src_dir.join("conformance_test_runner"),
+        build_dir.join("conformance_test_runner"),
         prefix_dir.join("bin").join("conformance-test-runner"),
     )
     .context("failed to move conformance-test-runner")?;
