@@ -10,7 +10,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [lib]
-proc_macro = true
+proc-macro = true
 
 [dependencies]
 anyhow = "1.0.1"
