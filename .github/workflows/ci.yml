@@ -9,7 +9,7 @@ on:
 
 
 env:
-  PROTOC_VERSION: '3.20.3'
+  PROTOC_VERSION: '3.22.5'
   clippy_rust_version: '1.80'
 
 jobs:
