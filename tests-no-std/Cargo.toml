@@ -11,6 +11,9 @@ build = "../tests/src/build.rs"
 doctest = false
 path = "../tests/src/lib.rs"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2015", "std"))'] }
+
 # Compile the `tests` crate *without* the std feature, which is implicitly
 # omitted from the default crate features. It would be easier to do something
 # like `cargo test -p tests --no-default-features`, but that currently does not
