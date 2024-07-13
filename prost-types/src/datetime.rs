@@ -330,6 +330,9 @@ fn parse_two_digit_numeric(s: &str) -> Option<(u8, &str)> {
     if s.len() < 2 {
         return None;
     }
+    if s.starts_with('+') {
+        return None;
+    }
     let (digits, s) = s.split_at(2);
     Some((digits.parse().ok()?, s))
 }
@@ -784,6 +787,11 @@ mod tests {
                 nanos: 0
             }),
         );
+        // Leading '+' in two-digit numbers
+        assert_eq!(
+            "19+1-+2-+3T+4:+5:+6Z".parse::<Timestamp>(),
+            Err(crate::TimestampError::ParseFailure),
+        )
     }
 
     #[test]
