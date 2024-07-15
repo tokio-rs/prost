@@ -1,6 +1,9 @@
 //! Utility functions and types for encoding and decoding Protobuf types.
 //!
-//! Meant to be used only from `Message` implementations.
+//! This module contains the encoding and decoding primatives for Protobuf as described in
+//! <https://protobuf.dev/programming-guides/encoding/>.
+//!
+//! This module is `pub`, but is only for prost internal use. The `prost-derive` crate needs access for its `Message` implementations.
 
 #![allow(clippy::implicit_hasher, clippy::ptr_arg)]
 
