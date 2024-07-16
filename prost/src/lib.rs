@@ -23,7 +23,7 @@ pub use crate::name::Name;
 
 use bytes::{Buf, BufMut};
 
-use crate::encoding::{decode_varint, encode_varint, encoded_len_varint};
+use crate::encoding::varint::{decode_varint, encode_varint, encoded_len_varint};
 
 // See `encoding::DecodeContext` for more info.
 // 100 is the default recursion limit in the C++ implementation.

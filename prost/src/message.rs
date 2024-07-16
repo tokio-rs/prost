@@ -7,9 +7,8 @@ use core::fmt::Debug;
 
 use bytes::{Buf, BufMut};
 
-use crate::encoding::{
-    decode_key, encode_varint, encoded_len_varint, message, DecodeContext, WireType,
-};
+use crate::encoding::varint::{encode_varint, encoded_len_varint};
+use crate::encoding::{decode_key, message, DecodeContext, WireType};
 use crate::DecodeError;
 use crate::EncodeError;
 
