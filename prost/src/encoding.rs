@@ -19,6 +19,11 @@ use crate::Message;
 pub mod varint;
 pub use varint::{decode_varint, encode_varint, encoded_len_varint};
 
+pub mod length_delimiter;
+pub use length_delimiter::{
+    decode_length_delimiter, encode_length_delimiter, length_delimiter_len,
+};
+
 /// Additional information passed to every decode/merge function.
 ///
 /// The context should be passed by value and can be freely cloned. When passing
