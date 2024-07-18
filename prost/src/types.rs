@@ -12,10 +12,10 @@ use alloc::vec::Vec;
 
 use ::bytes::{Buf, BufMut, Bytes};
 
+use crate::encoding::wire_type::WireType;
 use crate::{
     encoding::{
-        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64,
-        DecodeContext, WireType,
+        bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64, DecodeContext,
     },
     DecodeError, Message,
 };
