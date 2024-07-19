@@ -16,6 +16,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 tests = { path = "../tests" }
+protobuf = { path = "../protobuf" }
 
 [[bin]]
 name = "proto3"
