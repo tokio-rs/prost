@@ -14,7 +14,7 @@ authors = [
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
+libfuzzer-sys = "0.4"
 tests = { path = "../tests" }
 
 [[bin]]
