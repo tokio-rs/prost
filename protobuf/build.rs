@@ -13,12 +13,6 @@ static TEST_PROTOS: &[&str] = &[
     "unittest_import_public.proto",
 ];
 
-static DATASET_PROTOS: &[&str] = &[
-    "google_message1/proto2/benchmark_message1_proto2.proto",
-    "google_message1/proto3/benchmark_message1_proto3.proto",
-    "google_message2/benchmark_message2.proto",
-];
-
 fn main() -> Result<()> {
     let out_dir =
         &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
@@ -44,20 +38,10 @@ fn main() -> Result<()> {
         fs::create_dir(prefix_dir).expect("failed to create prefix directory");
         install_conformance_test_runner(&src_dir, prefix_dir)?;
         install_protos(&src_dir, prefix_dir)?;
-        install_datasets(&src_dir, prefix_dir)?;
         fs::rename(prefix_dir, protobuf_dir).context("failed to move protobuf dir")?;
     }
 
     let include_dir = &protobuf_dir.join("include");
-    let benchmarks_include_dir = &include_dir.join("benchmarks");
-    let datasets_include_dir = &benchmarks_include_dir.join("datasets");
-    let mut benchmark_protos = vec![benchmarks_include_dir.join("benchmarks.proto")];
-    benchmark_protos.extend(
-        DATASET_PROTOS
-            .iter()
-            .map(|proto| datasets_include_dir.join(proto)),
-    );
-    prost_build::compile_protos(&benchmark_protos, &[benchmarks_include_dir]).unwrap();
 
     let conformance_include_dir = include_dir.join("conformance");
     prost_build::compile_protos(
@@ -197,50 +181,6 @@ fn install_protos(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
         conformance_include_dir.join("conformance.proto"),
     )
     .expect("failed to move conformance.proto");
-
-    // Move the benchmark datasets to the install directory.
-    let benchmarks_src_dir = &src_dir.join("benchmarks");
-    let benchmarks_include_dir = &include_dir.join("benchmarks");
-    let datasets_src_dir = &benchmarks_src_dir.join("datasets");
-    let datasets_include_dir = &benchmarks_include_dir.join("datasets");
-    fs::create_dir(benchmarks_include_dir).expect("failed to create benchmarks include directory");
-    fs::copy(
-        benchmarks_src_dir.join("benchmarks.proto"),
-        benchmarks_include_dir.join("benchmarks.proto"),
-    )
-    .expect("failed to move benchmarks.proto");
-    for proto in DATASET_PROTOS.iter().map(Path::new) {
-        let dir = &datasets_include_dir.join(proto.parent().unwrap());
-        fs::create_dir_all(dir)
-            .with_context(|| format!("unable to create directory {}", dir.display()))?;
-        fs::copy(
-            datasets_src_dir.join(proto),
-            datasets_include_dir.join(proto),
-        )
-        .with_context(|| format!("failed to move {}", proto.display()))?;
-    }
-
-    Ok(())
-}
-
-fn install_datasets(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
-    let share_dir = &prefix_dir.join("share");
-    fs::create_dir(share_dir).expect("failed to create share directory");
-    for dataset in &[
-        Path::new("google_message1")
-            .join("proto2")
-            .join("dataset.google_message1_proto2.pb"),
-        Path::new("google_message1")
-            .join("proto3")
-            .join("dataset.google_message1_proto3.pb"),
-        Path::new("google_message2").join("dataset.google_message2.pb"),
-    ] {
-        fs::copy(
-            src_dir.join("benchmarks").join("datasets").join(dataset),
-            share_dir.join(dataset.file_name().unwrap()),
-        )
-        .with_context(|| format!("failed to move {}", dataset.display()))?;
-    }
 
     Ok(())
 }

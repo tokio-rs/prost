@@ -1,21 +1,39 @@
-use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-
 use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
+use std::error::Error;
 
-use protobuf::benchmarks::{dataset, proto2, proto3, BenchmarkDataset};
+pub mod benchmarks {
+    include!(concat!(env!("OUT_DIR"), "/benchmarks.rs"));
 
-fn load_dataset(dataset: &Path) -> Result<BenchmarkDataset, Box<dyn Error>> {
-    let mut f = File::open(dataset)?;
-    let mut buf = Vec::new();
-    f.read_to_end(&mut buf)?;
-    Ok(BenchmarkDataset::decode(buf.as_slice())?)
+    pub mod dataset {
+        pub fn google_message1_proto2() -> &'static [u8] {
+            include_bytes!("../../third_party/old_protobuf_benchmarks/datasets/google_message1/proto2/dataset.google_message1_proto2.pb")
+        }
+
+        pub fn google_message1_proto3() -> &'static [u8] {
+            include_bytes!("../../third_party/old_protobuf_benchmarks/datasets/google_message1/proto3/dataset.google_message1_proto3.pb")
+        }
+
+        pub fn google_message2() -> &'static [u8] {
+            include_bytes!("../../third_party/old_protobuf_benchmarks/datasets/google_message2/dataset.google_message2.pb")
+        }
+    }
+
+    pub mod proto2 {
+        include!(concat!(env!("OUT_DIR"), "/benchmarks.proto2.rs"));
+    }
+    pub mod proto3 {
+        include!(concat!(env!("OUT_DIR"), "/benchmarks.proto3.rs"));
+    }
 }
 
-fn benchmark_dataset<M>(criterion: &mut Criterion, name: &str, dataset: &'static Path)
+use crate::benchmarks::BenchmarkDataset;
+
+fn load_dataset(dataset: &[u8]) -> Result<BenchmarkDataset, Box<dyn Error>> {
+    Ok(BenchmarkDataset::decode(dataset)?)
+}
+
+fn benchmark_dataset<M>(criterion: &mut Criterion, name: &str, dataset: &'static [u8])
 where
     M: prost::Message + Default + 'static,
 {
@@ -71,14 +89,24 @@ where
 macro_rules! dataset {
     ($name: ident, $ty: ty) => {
         fn $name(criterion: &mut Criterion) {
-            benchmark_dataset::<$ty>(criterion, stringify!($name), dataset::$name());
+            benchmark_dataset::<$ty>(
+                criterion,
+                stringify!($name),
+                crate::benchmarks::dataset::$name(),
+            );
         }
     };
 }
 
-dataset!(google_message1_proto2, proto2::GoogleMessage1);
-dataset!(google_message1_proto3, proto3::GoogleMessage1);
-dataset!(google_message2, proto2::GoogleMessage2);
+dataset!(
+    google_message1_proto2,
+    crate::benchmarks::proto2::GoogleMessage1
+);
+dataset!(
+    google_message1_proto3,
+    crate::benchmarks::proto3::GoogleMessage1
+);
+dataset!(google_message2, crate::benchmarks::proto2::GoogleMessage2);
 
 criterion_group!(
     dataset,
