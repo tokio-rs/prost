@@ -2,8 +2,13 @@
 name = "fuzz"
 version = "0.0.0"
 publish = false
-edition.workspace = true
-authors.workspace = true
+edition = "2021"
+authors = [
+  "Dan Burkert <dan@danburkert.com>",
+  "Lucio Franco <luciofranco14@gmail.com>",
+  "Casper Meijn <casper@meijn.net>",
+  "Tokio Contributors <team@tokio.rs>",
+]
 
 [package.metadata]
 cargo-fuzz = true
