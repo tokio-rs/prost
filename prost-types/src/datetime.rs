@@ -261,8 +261,10 @@ fn parse_nanos(s: &str) -> Option<(u32, &str)> {
 
     // Parse the nanoseconds, if present.
     let (nanos, s) = if let Some(s) = parse_char(s, b'.') {
-        let (digits, s) = parse_digits(s);
-        ensure!(digits.len() <= 9);
+        let (mut digits, s) = parse_digits(s);
+        if digits.len() > 9 {
+            digits = digits.split_at(9).0;
+        }
         let nanos = 10u32.pow(9 - digits.len() as u32) * digits.parse::<u32>().ok()?;
         (nanos, s)
     } else {
@@ -794,7 +796,13 @@ mod tests {
         assert_eq!(
             "19+1-+2-+3T+4:+5:+6Z".parse::<Timestamp>(),
             Err(crate::TimestampError::ParseFailure),
-        )
+        );
+
+        // Very long seconds fraction
+        assert_eq!(
+            "1343-08-16 18:33:44.1666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666660404z".parse::<Timestamp>(),
+            Timestamp::date_time_nanos(1343, 8, 16, 18, 33, 44, 166_666_666),
+        );
     }
 
     #[test]
