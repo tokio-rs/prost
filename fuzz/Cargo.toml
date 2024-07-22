@@ -2,15 +2,21 @@
 name = "fuzz"
 version = "0.0.0"
 publish = false
-edition.workspace = true
-authors.workspace = true
+edition = "2021"
+authors = [
+  "Dan Burkert <dan@danburkert.com>",
+  "Lucio Franco <luciofranco14@gmail.com>",
+  "Casper Meijn <casper@meijn.net>",
+  "Tokio Contributors <team@tokio.rs>",
+]
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
+libfuzzer-sys = "0.4"
 tests = { path = "../tests" }
+protobuf = { path = "../protobuf" }
 
 [[bin]]
 name = "proto3"
