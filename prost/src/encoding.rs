@@ -20,7 +20,7 @@ use crate::Message;
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
-pub fn encode_varint(mut value: u64, buf: &mut impl BufMut) {
+pub fn encode_varint(mut value: u64, buf: &mut (impl BufMut + ?Sized)) {
     // Varints are never more than 10 bytes
     for _ in 0..10 {
         if value < 0x80 {
@@ -290,7 +290,7 @@ impl TryFrom<u64> for WireType {
 /// Encodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline]
-pub fn encode_key(tag: u32, wire_type: WireType, buf: &mut impl BufMut) {
+pub fn encode_key(tag: u32, wire_type: WireType, buf: &mut (impl BufMut + ?Sized)) {
     debug_assert!((MIN_TAG..=MAX_TAG).contains(&tag));
     let key = (tag << 3) | wire_type as u32;
     encode_varint(u64::from(key), buf);
@@ -401,7 +401,7 @@ pub fn skip_field(
 /// Helper macro which emits an `encode_repeated` function for the type.
 macro_rules! encode_repeated {
     ($ty:ty) => {
-        pub fn encode_repeated(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
+        pub fn encode_repeated(tag: u32, values: &[$ty], buf: &mut (impl BufMut + ?Sized)) {
             for value in values {
                 encode(tag, value, buf);
             }
@@ -460,7 +460,7 @@ macro_rules! varint {
          pub mod $proto_ty {
             use crate::encoding::*;
 
-            pub fn encode(tag: u32, $to_uint64_value: &$ty, buf: &mut impl BufMut) {
+            pub fn encode(tag: u32, $to_uint64_value: &$ty, buf: &mut (impl BufMut + ?Sized)) {
                 encode_key(tag, WireType::Varint, buf);
                 encode_varint($to_uint64, buf);
             }
@@ -474,7 +474,7 @@ macro_rules! varint {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
+            pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut (impl BufMut + ?Sized)) {
                 if values.is_empty() { return; }
 
                 encode_key(tag, WireType::LengthDelimited, buf);
@@ -583,7 +583,7 @@ macro_rules! fixed_width {
         pub mod $proto_ty {
             use crate::encoding::*;
 
-            pub fn encode(tag: u32, value: &$ty, buf: &mut impl BufMut) {
+            pub fn encode(tag: u32, value: &$ty, buf: &mut (impl BufMut + ?Sized)) {
                 encode_key(tag, $wire_type, buf);
                 buf.$put(*value);
             }
@@ -604,7 +604,7 @@ macro_rules! fixed_width {
 
             encode_repeated!($ty);
 
-            pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
+            pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut (impl BufMut + ?Sized)) {
                 if values.is_empty() {
                     return;
                 }
@@ -756,7 +756,7 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    pub fn encode(tag: u32, value: &String, buf: &mut impl BufMut) {
+    pub fn encode(tag: u32, value: &String, buf: &mut (impl BufMut + ?Sized)) {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value.as_bytes());
@@ -842,7 +842,7 @@ mod sealed {
         fn replace_with(&mut self, buf: impl Buf);
 
         /// Appends this buffer to the (contents of) other buffer.
-        fn append_to(&self, buf: &mut impl BufMut);
+        fn append_to(&self, buf: &mut (impl BufMut + ?Sized));
 
         fn is_empty(&self) -> bool {
             self.len() == 0
@@ -861,8 +861,8 @@ impl sealed::BytesAdapter for Bytes {
         *self = buf.copy_to_bytes(buf.remaining());
     }
 
-    fn append_to(&self, buf: &mut impl BufMut) {
-        buf.put(self.clone())
+    fn append_to(&self, buf: &mut (impl BufMut + ?Sized)) {
+        buf.put_slice(self)
     }
 }
 
@@ -879,15 +879,15 @@ impl sealed::BytesAdapter for Vec<u8> {
         self.put(buf);
     }
 
-    fn append_to(&self, buf: &mut impl BufMut) {
-        buf.put(self.as_slice())
+    fn append_to(&self, buf: &mut (impl BufMut + ?Sized)) {
+        buf.put_slice(self.as_slice())
     }
 }
 
 pub mod bytes {
     use super::*;
 
-    pub fn encode(tag: u32, value: &impl BytesAdapter, buf: &mut impl BufMut) {
+    pub fn encode(tag: u32, value: &impl BytesAdapter, buf: &mut (impl BufMut + ?Sized)) {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         value.append_to(buf);
@@ -984,7 +984,7 @@ pub mod bytes {
 pub mod message {
     use super::*;
 
-    pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
+    pub fn encode<M>(tag: u32, msg: &M, buf: &mut (impl BufMut + ?Sized))
     where
         M: Message,
     {
@@ -1016,7 +1016,7 @@ pub mod message {
         )
     }
 
-    pub fn encode_repeated<M>(tag: u32, messages: &[M], buf: &mut impl BufMut)
+    pub fn encode_repeated<M>(tag: u32, messages: &[M], buf: &mut (impl BufMut + ?Sized))
     where
         M: Message,
     {
@@ -1067,7 +1067,7 @@ pub mod message {
 pub mod group {
     use super::*;
 
-    pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
+    pub fn encode<M>(tag: u32, msg: &M, buf: &mut (impl BufMut + ?Sized))
     where
         M: Message,
     {
@@ -1102,7 +1102,7 @@ pub mod group {
         }
     }
 
-    pub fn encode_repeated<M>(tag: u32, messages: &[M], buf: &mut impl BufMut)
+    pub fn encode_repeated<M>(tag: u32, messages: &[M], buf: &mut (impl BufMut + ?Sized))
     where
         M: Message,
     {
@@ -1164,7 +1164,7 @@ macro_rules! map {
         ) where
             K: Default + Eq + Hash + Ord,
             V: Default + PartialEq,
-            B: BufMut,
+            B: BufMut + ?Sized,
             KE: Fn(u32, &K, &mut B),
             KL: Fn(u32, &K) -> usize,
             VE: Fn(u32, &V, &mut B),
@@ -1232,7 +1232,7 @@ macro_rules! map {
         ) where
             K: Default + Eq + Hash + Ord,
             V: PartialEq,
-            B: BufMut,
+            B: BufMut + ?Sized,
             KE: Fn(u32, &K, &mut B),
             KL: Fn(u32, &K) -> usize,
             VE: Fn(u32, &V, &mut B),
