@@ -4,14 +4,29 @@ use bytes::{Buf, BufMut};
 use prost::Message;
 
 use protobuf::conformance::{
-    conformance_request, conformance_response, ConformanceRequest, ConformanceResponse, WireFormat,
+    conformance_request, conformance_response, ConformanceRequest, ConformanceResponse,
+    TestCategory, WireFormat,
 };
 use protobuf::test_messages::proto2::TestAllTypesProto2;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
-use tests::{roundtrip, RoundtripResult};
+use tests::{roundtrip, RoundtripInput, RoundtripOutputType, RoundtripResult};
 
 fn main() -> io::Result<()> {
     env_logger::init();
+
+    let mut registry = prost_types::any_v2::TypeRegistry::new_with_well_known_types();
+    registry.insert_msg_type_for_type_url::<TestAllTypesProto2>(
+        "type.googleapis.com/protobuf_test_messages.proto2.TestAllTypesProto2",
+    );
+    registry.insert_msg_type_for_type_url::<TestAllTypesProto3>(
+        "type.googleapis.com/protobuf_test_messages.proto3.TestAllTypesProto3",
+    );
+
+    let type_resolver = registry.into_type_resolver();
+    prost_types::any_v2::with_type_resolver(Some(type_resolver), entrypoint)
+}
+
+fn entrypoint() -> io::Result<()> {
     let mut bytes = vec![0; 4];
 
     loop {
@@ -49,15 +64,10 @@ fn main() -> io::Result<()> {
 }
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
-    match request.requested_output_format() {
+    let output_ty = match request.requested_output_format() {
         WireFormat::Unspecified => {
             return conformance_response::Result::ParseError(
                 "output format unspecified".to_string(),
-            );
-        }
-        WireFormat::Json => {
-            return conformance_response::Result::Skipped(
-                "JSON output is not supported".to_string(),
             );
         }
         WireFormat::Jspb => {
@@ -70,16 +80,13 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 "TEXT_FORMAT output is not supported".to_string(),
             );
         }
-        WireFormat::Protobuf => (),
+        WireFormat::Protobuf => RoundtripOutputType::Protobuf,
+        WireFormat::Json => RoundtripOutputType::Json,
     };
 
-    let buf = match request.payload {
+    let input = match &request.payload {
         None => return conformance_response::Result::ParseError("no payload".to_string()),
-        Some(conformance_request::Payload::JsonPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "JSON input is not supported".to_string(),
-            );
-        }
+
         Some(conformance_request::Payload::JspbPayload(_)) => {
             return conformance_response::Result::Skipped(
                 "JSON input is not supported".to_string(),
@@ -90,12 +97,20 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 "JSON input is not supported".to_string(),
             );
         }
-        Some(conformance_request::Payload::ProtobufPayload(buf)) => buf,
+        Some(conformance_request::Payload::ProtobufPayload(buf)) => RoundtripInput::Protobuf(buf),
+        Some(conformance_request::Payload::JsonPayload(buf)) => RoundtripInput::Json(buf),
     };
 
-    let roundtrip = match request.message_type.as_str() {
-        "protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip::<TestAllTypesProto2>(&buf),
-        "protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip::<TestAllTypesProto3>(&buf),
+    let ignore_unknown_fields =
+        request.test_category() == TestCategory::JsonIgnoreUnknownParsingTest;
+
+    let roundtrip = match &*request.message_type {
+        "protobuf_test_messages.proto2.TestAllTypesProto2" => {
+            roundtrip::<TestAllTypesProto2>(input, output_ty, ignore_unknown_fields)
+        }
+        "protobuf_test_messages.proto3.TestAllTypesProto3" => {
+            roundtrip::<TestAllTypesProto3>(input, output_ty, ignore_unknown_fields)
+        }
         _ => {
             return conformance_response::Result::ParseError(format!(
                 "unknown message type: {}",
@@ -105,7 +120,11 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     };
 
     match roundtrip {
-        RoundtripResult::Ok(buf) => conformance_response::Result::ProtobufPayload(buf),
+        RoundtripResult::Protobuf(buf) => conformance_response::Result::ProtobufPayload(buf),
+        RoundtripResult::Json(buf) => conformance_response::Result::JsonPayload(buf),
+        RoundtripResult::EncodeError(error) => {
+            conformance_response::Result::SerializeError(error.to_string())
+        }
         RoundtripResult::DecodeError(error) => {
             conformance_response::Result::ParseError(error.to_string())
         }

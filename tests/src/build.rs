@@ -25,6 +25,7 @@ fn main() {
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
     let mut config = prost_build::Config::new();
+    config.enable_serde();
     config.btree_map(["."]);
     // Tests for custom attributes
     config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
@@ -128,12 +129,14 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .enable_serde()
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&[src.join("proto3_presence.proto")], includes)
         .unwrap();
 
     {
         let mut config = prost_build::Config::new();
+        config.enable_serde();
         config.disable_comments(["."]);
 
         config
@@ -152,6 +155,7 @@ fn main() {
     std::fs::create_dir_all(&out_path).unwrap();
 
     prost_build::Config::new()
+        .enable_serde()
         .bytes(["."])
         .out_dir(out_path)
         .include_file("wellknown_include.rs")
@@ -166,6 +170,7 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .enable_serde()
         .enable_type_names()
         .type_name_domain([".type_names.Foo"], "tests")
         .compile_protos(&[src.join("type_names.proto")], includes)
@@ -184,6 +189,7 @@ fn main() {
     fs::create_dir_all(&no_root_packages).expect("failed to create prefix directory");
     let mut no_root_packages_config = prost_build::Config::new();
     no_root_packages_config
+        .enable_serde()
         .out_dir(&no_root_packages)
         .default_package_filename("__.default")
         .include_file("__.include.rs")
@@ -199,6 +205,7 @@ fn main() {
     fs::create_dir_all(&no_root_packages_with_default).expect("failed to create prefix directory");
     let mut no_root_packages_config = prost_build::Config::new();
     no_root_packages_config
+        .enable_serde()
         .out_dir(&no_root_packages_with_default)
         .compile_protos(
             &[src.join("no_root_packages/widget_factory.proto")],

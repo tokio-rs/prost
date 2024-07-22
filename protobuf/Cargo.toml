@@ -6,8 +6,8 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-prost = { path = "../prost" }
-prost-types = { path = "../prost-types" }
+prost = { path = "../prost", features = ["serde"] }
+prost-types = { path = "../prost-types", features = ["serde", "any-v2"] }
 
 [build-dependencies]
 anyhow = "1.0.1"

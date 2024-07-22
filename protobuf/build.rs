@@ -48,11 +48,13 @@ fn main() -> Result<()> {
     let include_dir = &protobuf_dir.join("include");
 
     let conformance_include_dir = include_dir.join("conformance");
-    prost_build::compile_protos(
-        &[conformance_include_dir.join("conformance.proto")],
-        &[conformance_include_dir],
-    )
-    .unwrap();
+    prost_build::Config::new()
+        .enable_serde()
+        .compile_protos(
+            &[conformance_include_dir.join("conformance.proto")],
+            &[conformance_include_dir],
+        )
+        .unwrap();
 
     let test_includes = &include_dir.join("google").join("protobuf");
 
@@ -62,6 +64,7 @@ fn main() -> Result<()> {
     // values.
     prost_build::Config::new()
         .btree_map(["."])
+        .enable_serde()
         .compile_protos(
             &[
                 test_includes.join("test_messages_proto2.proto"),
@@ -103,6 +106,7 @@ fn apply_patches(src_dir: &Path) -> Result<()> {
     patch_src.push("fix-conformance_test_runner-cmake-build.patch");
 
     let rc = Command::new("patch")
+        .arg("--forward")
         .arg("-p1")
         .arg("-i")
         .arg(patch_src)
