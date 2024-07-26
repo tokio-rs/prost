@@ -310,9 +310,6 @@ fn parse_offset(s: &str) -> Option<(i8, i8, &str)> {
             (minute, s)
         };
 
-        // '-00:00' indicates an unknown local offset.
-        ensure!(is_positive || hour > 0 || minute > 0);
-
         ensure!(hour < 24 && minute < 60);
 
         let hour = hour as i8;
