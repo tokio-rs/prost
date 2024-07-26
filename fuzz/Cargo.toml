@@ -35,3 +35,10 @@ path = "fuzzers/parse_date.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "parse_duration"
+path = "fuzzers/parse_duration.rs"
+test = false
+doc = false
+bench = false
