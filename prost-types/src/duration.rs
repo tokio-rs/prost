@@ -107,7 +107,7 @@ impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = *self;
         d.normalize();
-        if self.seconds < 0 && self.nanos < 0 {
+        if self.seconds < 0 || self.nanos < 0 {
             write!(f, "-")?;
         }
         write!(f, "{}", d.seconds.abs())?;
@@ -236,6 +236,98 @@ mod tests {
                 )
             }
         }
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_duration_from_str() {
+        assert_eq!(
+            Duration::from_str("0s"),
+            Ok(Duration {
+                seconds: 0,
+                nanos: 0
+            })
+        );
+        assert_eq!(
+            Duration::from_str("123s"),
+            Ok(Duration {
+                seconds: 123,
+                nanos: 0
+            })
+        );
+        assert_eq!(
+            Duration::from_str("0.123s"),
+            Ok(Duration {
+                seconds: 0,
+                nanos: 123_000_000
+            })
+        );
+        assert_eq!(
+            Duration::from_str("-123s"),
+            Ok(Duration {
+                seconds: -123,
+                nanos: 0
+            })
+        );
+        assert_eq!(
+            Duration::from_str("-0.123s"),
+            Ok(Duration {
+                seconds: 0,
+                nanos: -123_000_000
+            })
+        );
+        assert_eq!(
+            Duration::from_str("22041211.6666666666666s"),
+            Ok(Duration {
+                seconds: 22041211,
+                nanos: 666_666_666
+            })
+        );
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_format_duration() {
+        assert_eq!(
+            "0s",
+            Duration {
+                seconds: 0,
+                nanos: 0
+            }
+            .to_string()
+        );
+        assert_eq!(
+            "123s",
+            Duration {
+                seconds: 123,
+                nanos: 0
+            }
+            .to_string()
+        );
+        assert_eq!(
+            "0.123s",
+            Duration {
+                seconds: 0,
+                nanos: 123_000_000
+            }
+            .to_string()
+        );
+        assert_eq!(
+            "-123s",
+            Duration {
+                seconds: -123,
+                nanos: 0
+            }
+            .to_string()
+        );
+        assert_eq!(
+            "-0.123s",
+            Duration {
+                seconds: 0,
+                nanos: -123_000_000
+            }
+            .to_string()
+        );
     }
 
     #[cfg(feature = "std")]
