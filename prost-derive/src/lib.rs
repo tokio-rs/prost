@@ -183,7 +183,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             fn merge_field(
                 &mut self,
                 tag: u32,
-                wire_type: ::prost::encoding::WireType,
+                wire_type: ::prost::encoding::wire_type::WireType,
                 buf: &mut impl ::prost::bytes::Buf,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>
@@ -472,7 +472,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             pub fn merge(
                 field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
-                wire_type: ::prost::encoding::WireType,
+                wire_type: ::prost::encoding::wire_type::WireType,
                 buf: &mut impl ::prost::bytes::Buf,
                 ctx: ::prost::encoding::DecodeContext,
             ) -> ::core::result::Result<(), ::prost::DecodeError>

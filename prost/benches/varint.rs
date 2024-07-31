@@ -2,7 +2,7 @@ use std::mem;
 
 use bytes::Buf;
 use criterion::{Criterion, Throughput};
-use prost::encoding::{decode_varint, encode_varint, encoded_len_varint};
+use prost::encoding::varint::{decode_varint, encode_varint, encoded_len_varint};
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 
 fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>) {
