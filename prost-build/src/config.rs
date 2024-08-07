@@ -44,6 +44,7 @@ pub struct Config {
     pub(crate) enable_type_names: bool,
     pub(crate) type_name_domains: PathMap<String>,
     pub(crate) protoc_args: Vec<OsString>,
+    pub(crate) protoc_executable: PathBuf,
     pub(crate) disable_comments: PathMap<()>,
     pub(crate) skip_debug: PathMap<()>,
     pub(crate) skip_protoc_run: bool,
@@ -703,6 +704,30 @@ impl Config {
         self
     }
 
+    /// Set the path to `protoc` executable to be used by `prost-build`
+    ///
+    /// Use the provided path to find `protoc`. This can either be a file name which is
+    /// searched for in the `PATH` or an aboslute path to use a specific executable.
+    ///
+    /// # Example `build.rs`
+    ///
+    /// ```rust,no_run
+    /// # use std::io::Result;
+    /// fn main() -> Result<()> {
+    ///   let mut prost_build = prost_build::Config::new();
+    ///   prost_build.protoc_executable("protoc-27.1");
+    ///   prost_build.compile_protos(&["src/frontend.proto", "src/backend.proto"], &["src"])?;
+    ///   Ok(())
+    /// }
+    /// ```
+    pub fn protoc_executable<S>(&mut self, executable: S) -> &mut Self
+    where
+        S: Into<PathBuf>,
+    {
+        self.protoc_executable = executable.into();
+        self
+    }
+
     /// Configures the optional module filename for easy inclusion of all generated Rust files
     ///
     /// If set, generates a file (inside the `OUT_DIR` or `out_dir()` as appropriate) which contains
@@ -878,9 +903,7 @@ impl Config {
         };
 
         if !self.skip_protoc_run {
-            let protoc = protoc_from_env();
-
-            let mut cmd = Command::new(protoc.clone());
+            let mut cmd = Command::new(&self.protoc_executable);
             cmd.arg("--include_imports")
                 .arg("--include_source_info")
                 .arg("-o")
@@ -920,7 +943,7 @@ impl Config {
             )),
             Err(err) => return Err(Error::new(
                 err.kind(),
-                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &protoc, err),
+                format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {:?}): {}", &self.protoc_executable, err),
             )),
             Ok(output) => output,
         };
@@ -1145,6 +1168,7 @@ impl default::Default for Config {
             enable_type_names: false,
             type_name_domains: PathMap::default(),
             protoc_args: Vec::new(),
+            protoc_executable: protoc_from_env(),
             disable_comments: PathMap::default(),
             skip_debug: PathMap::default(),
             skip_protoc_run: false,

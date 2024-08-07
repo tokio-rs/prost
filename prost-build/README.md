@@ -7,17 +7,6 @@
 a Cargo build. See the crate [documentation](https://docs.rs/prost-build/) for examples
 of how to integrate `prost-build` into a Cargo project.
 
-## `protoc`
-
-`prost-build` uses `protoc` to parse the proto files. There are two ways to make `protoc`
-available for `prost-build`:
-
-* Include `protoc` in your `PATH`. This can be done by following the [`protoc` install instructions].
-* Pass the `PROTOC=<my/path/to/protoc>` environment variable with the path to
-  `protoc`.
-
-[`protoc` install instructions]: https://github.com/protocolbuffers/protobuf#protocol-compiler-installation
-
 ## License
 
 `prost-build` is distributed under the terms of the Apache License (Version 2.0).
