@@ -36,12 +36,16 @@ fn main() -> Result<()> {
         fs::rename(prefix_dir, protobuf_dir).context("failed to move protobuf dir")?;
     }
 
+    let protoc_executable = protobuf_dir.join("bin").join("protoc");
+
     let conformance_proto_dir = src_dir.join("conformance");
-    prost_build::compile_protos(
-        &[conformance_proto_dir.join("conformance.proto")],
-        &[conformance_proto_dir],
-    )
-    .unwrap();
+    prost_build::Config::new()
+        .protoc_executable(&protoc_executable)
+        .compile_protos(
+            &[conformance_proto_dir.join("conformance.proto")],
+            &[conformance_proto_dir],
+        )
+        .unwrap();
 
     let proto_dir = src_dir.join("src");
 
@@ -50,6 +54,7 @@ fn main() -> Result<()> {
     // compare based on the Rust PartialEq implementations is difficult, due to presence of NaN
     // values.
     prost_build::Config::new()
+        .protoc_executable(&protoc_executable)
         .btree_map(["."])
         .compile_protos(
             &[
