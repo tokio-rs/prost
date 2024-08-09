@@ -7,4 +7,3 @@ use tests::roundtrip;
 fuzz_target!(|data: &[u8]| {
     let _ = roundtrip::<TestAllTypesProto2>(data).unwrap_error();
 });
-
