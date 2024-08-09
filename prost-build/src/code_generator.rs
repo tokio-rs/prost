@@ -228,8 +228,6 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&fq_message_name);
         self.append_message_attributes(&fq_message_name);
         self.push_indent();
-        self.buf
-            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Message)]\n",
             if self.message_graph.can_message_derive_copy(&fq_message_name) {
@@ -616,8 +614,6 @@ impl<'a> CodeGenerator<'a> {
         self.append_type_attributes(&oneof_name);
         self.append_enum_attributes(&oneof_name);
         self.push_indent();
-        self.buf
-            .push_str("#[allow(clippy::derive_partial_eq_without_eq)]\n");
 
         let can_oneof_derive_copy = oneof.fields.iter().all(|field| {
             self.message_graph

@@ -27,7 +27,6 @@ fn tuple_struct_custom_debug() {
     assert_eq!(format!("{:?}", NewType(42)), "NewType(custom_debug)");
 }
 
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, prost::Oneof)]
 #[prost(skip_debug)]
 pub enum OneofWithEnumCustomDebug {
