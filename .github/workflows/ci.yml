@@ -206,7 +206,7 @@ jobs:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: install cargo-no-std-check
-        uses: baptiste0928/cargo-install@v2
+        uses: baptiste0928/cargo-install@v3
         with:
           crate: cargo-no-std-check
       - name: prost cargo-no-std-check
