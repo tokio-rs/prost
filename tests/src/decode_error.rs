@@ -56,7 +56,6 @@ fn test_decode_error_length_delimiter_too_large() {
     );
 }
 
-#[cfg(not(feature = "no-recursion-limit"))]
 #[test]
 fn test_decode_error_recursion_limit_reached() {
     let recursve_message = {
