@@ -2,13 +2,8 @@
 name = "fuzz"
 version = "0.0.0"
 publish = false
-edition = "2021"
-authors = [
-  "Dan Burkert <dan@danburkert.com>",
-  "Lucio Franco <luciofranco14@gmail.com>",
-  "Casper Meijn <casper@meijn.net>",
-  "Tokio Contributors <team@tokio.rs>",
-]
+edition.workspace = true
+authors.workspace = true
 
 [package.metadata]
 cargo-fuzz = true
@@ -21,7 +16,13 @@ protobuf = { path = "../protobuf" }
 [[bin]]
 name = "proto3"
 path = "fuzzers/proto3.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "proto2"
 path = "fuzzers/proto2.rs"
+test = false
+doc = false
+bench = false
