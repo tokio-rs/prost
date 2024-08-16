@@ -5,19 +5,11 @@ use std::process::Command;
 
 use anyhow::{ensure, Context, Result};
 
-static TEST_PROTOS: &[&str] = &[
-    "test_messages_proto2.proto",
-    "test_messages_proto3.proto",
-    "unittest.proto",
-    "unittest_import.proto",
-    "unittest_import_public.proto",
-];
-
 fn main() -> Result<()> {
     let out_dir =
         &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
 
-    let src_dir = PathBuf::from("../third_party/protobuf").canonicalize()?;
+    let src_dir = std::path::absolute(PathBuf::from("../third_party/protobuf"))?;
     if !src_dir.join("cmake").exists() {
         anyhow::bail!(
             "protobuf sources are not checked out; Try `git submodule update --init --recursive`"
@@ -41,20 +33,17 @@ fn main() -> Result<()> {
         let prefix_dir = &tempdir.path().join("prefix");
         fs::create_dir(prefix_dir).expect("failed to create prefix directory");
         install_conformance_test_runner(&src_dir, build_dir, prefix_dir)?;
-        install_protos(&src_dir, prefix_dir)?;
         fs::rename(prefix_dir, protobuf_dir).context("failed to move protobuf dir")?;
     }
 
-    let include_dir = &protobuf_dir.join("include");
-
-    let conformance_include_dir = include_dir.join("conformance");
+    let conformance_proto_dir = src_dir.join("conformance");
     prost_build::compile_protos(
-        &[conformance_include_dir.join("conformance.proto")],
-        &[conformance_include_dir],
+        &[conformance_proto_dir.join("conformance.proto")],
+        &[conformance_proto_dir],
     )
     .unwrap();
 
-    let test_includes = &include_dir.join("google").join("protobuf");
+    let proto_dir = src_dir.join("src");
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
@@ -64,11 +53,11 @@ fn main() -> Result<()> {
         .btree_map(["."])
         .compile_protos(
             &[
-                test_includes.join("test_messages_proto2.proto"),
-                test_includes.join("test_messages_proto3.proto"),
-                test_includes.join("unittest.proto"),
+                proto_dir.join("google/protobuf/test_messages_proto2.proto"),
+                proto_dir.join("google/protobuf/test_messages_proto3.proto"),
+                proto_dir.join("google/protobuf/unittest.proto"),
             ],
-            &[include_dir],
+            &[proto_dir],
         )
         .unwrap();
 
@@ -158,37 +147,6 @@ fn install_conformance_test_runner(
         prefix_dir.join("bin").join("conformance-test-runner"),
     )
     .context("failed to move conformance-test-runner")?;
-
-    Ok(())
-}
-
-fn install_protos(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
-    let include_dir = prefix_dir.join("include");
-
-    // Move test protos to the prefix directory.
-    let test_include_dir = &include_dir.join("google").join("protobuf");
-    fs::create_dir_all(test_include_dir).expect("failed to create test include directory");
-    for proto in TEST_PROTOS {
-        fs::copy(
-            src_dir
-                .join("src")
-                .join("google")
-                .join("protobuf")
-                .join(proto),
-            test_include_dir.join(proto),
-        )
-        .with_context(|| format!("failed to move {}", proto))?;
-    }
-
-    // Move conformance.proto to the install directory.
-    let conformance_include_dir = &include_dir.join("conformance");
-    fs::create_dir(conformance_include_dir)
-        .expect("failed to create conformance include directory");
-    fs::copy(
-        src_dir.join("conformance").join("conformance.proto"),
-        conformance_include_dir.join("conformance.proto"),
-    )
-    .expect("failed to move conformance.proto");
 
     Ok(())
 }
