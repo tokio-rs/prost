@@ -12,6 +12,8 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 tests = { path = "../tests" }
 protobuf = { path = "../protobuf" }
+prost-types = { path = "../prost-types" }
+chrono = "0.4"
 
 [[bin]]
 name = "proto3"
@@ -23,6 +25,13 @@ bench = false
 [[bin]]
 name = "proto2"
 path = "fuzzers/proto2.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_date"
+path = "fuzzers/parse_date.rs"
 test = false
 doc = false
 bench = false
