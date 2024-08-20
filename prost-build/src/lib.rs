@@ -101,7 +101,14 @@
 //! ## Sourcing `protoc`
 //!
 //! `prost-build` depends on the Protocol Buffers compiler, `protoc`, to parse `.proto` files into
-//! a representation that can be transformed into Rust. If set, `prost-build` uses the `PROTOC`
+//! a representation that can be transformed into Rust.
+//!
+//! The easiest way for `prost-build` to find `protoc` is to install it in your `PATH`.
+//! This can be done by following the [`protoc` install instructions]. `prost-build` will search
+//! the current path for `protoc` or `protoc.exe`.
+//!
+//! When `protoc` is installed in a different location, set `PROTOC` to the path of the executable.
+//! If set, `prost-build` uses the `PROTOC`
 //! for locating `protoc`. For example, on a macOS system where Protobuf is installed
 //! with Homebrew, set the environment variables to:
 //!
@@ -109,15 +116,13 @@
 //! PROTOC=/usr/local/bin/protoc
 //! ```
 //!
-//! and in a typical Linux installation:
+//! Alternatively, the path to `protoc` execuatable can be explicitly set
+//! via [`Config::protoc_executable()`].
 //!
-//! ```bash
-//! PROTOC=/usr/bin/protoc
-//! ```
-//!
-//! If no `PROTOC` environment variable is set then `prost-build` will search the
-//! current path for `protoc` or `protoc.exe`. If `prost-build` can not find `protoc`
+//! If `prost-build` can not find `protoc`
 //! via these methods the `compile_protos` method will fail.
+//!
+//! [`protoc` install instructions]: https://github.com/protocolbuffers/protobuf#protocol-compiler-installation
 //!
 //! ### Compiling `protoc` from source
 //!
