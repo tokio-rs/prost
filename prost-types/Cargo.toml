@@ -21,3 +21,6 @@ prost = { version = "0.13.1", path = "../prost", default-features = false, featu
 
 [dev-dependencies]
 proptest = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

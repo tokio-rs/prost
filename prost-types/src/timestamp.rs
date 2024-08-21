@@ -231,6 +231,27 @@ impl fmt::Display for Timestamp {
         datetime::DateTime::from(*self).fmt(f)
     }
 }
+
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    #[cfg(feature = "std")]
+    #[kani::proof]
+    #[kani::unwind(3)]
+    fn check_timestamp_roundtrip_via_system_time() {
+        let seconds = kani::any();
+        let nanos = kani::any();
+
+        let mut timestamp = Timestamp { seconds, nanos };
+        timestamp.normalize();
+
+        if let Ok(system_time) = std::time::SystemTime::try_from(timestamp) {
+            assert_eq!(Timestamp::from(system_time), timestamp);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,18 +268,6 @@ mod tests {
             system_time in SystemTime::arbitrary(),
         ) {
             prop_assert_eq!(SystemTime::try_from(Timestamp::from(system_time)).unwrap(), system_time);
-        }
-
-        #[test]
-        fn check_timestamp_roundtrip_via_system_time(
-            seconds in i64::arbitrary(),
-            nanos in i32::arbitrary(),
-        ) {
-            let mut timestamp = Timestamp { seconds, nanos };
-            timestamp.normalize();
-            if let Ok(system_time) = SystemTime::try_from(timestamp) {
-                prop_assert_eq!(Timestamp::from(system_time), timestamp);
-            }
         }
     }
 
