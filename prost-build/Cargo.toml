@@ -32,8 +32,8 @@ prettyplease = { version = "0.2", optional = true }
 syn = { version = "2", features = ["full"], optional = true }
 
 # These two must be kept in sync, used for `cleanup-markdown` feature.
-pulldown-cmark = { version = "0.9.1", optional = true, default-features = false }
-pulldown-cmark-to-cmark = { version = "10.0.1", optional = true }
+pulldown-cmark = { version = "0.12", optional = true, default-features = false }
+pulldown-cmark-to-cmark = { version = "16", optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.11", default-features = false }
