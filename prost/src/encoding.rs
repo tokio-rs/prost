@@ -844,7 +844,7 @@ pub mod message {
     #[inline]
     pub fn encoded_len<M>(tag: u32, msg: &M) -> usize
     where
-        M: Message,
+        M: ?Sized + Message,
     {
         let len = msg.encoded_len();
         key_len(tag) + encoded_len_varint(len as u64) + len

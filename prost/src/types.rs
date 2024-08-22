@@ -17,7 +17,7 @@ use crate::{
     encoding::{
         bool, bytes, double, float, int32, int64, skip_field, string, uint32, uint64, DecodeContext,
     },
-    DecodeError, Message,
+    DecodeError, Message, Name,
 };
 
 /// `google.protobuf.BoolValue`
@@ -52,6 +52,11 @@ impl Message for bool {
     }
 }
 
+impl Name for bool {
+    const NAME: &'static str = "BoolValue";
+    const PACKAGE: &'static str = "google.protobuf";
+}
+
 /// `google.protobuf.UInt32Value`
 impl Message for u32 {
     fn encode_raw(&self, buf: &mut impl BufMut) {
@@ -82,6 +87,11 @@ impl Message for u32 {
     fn clear(&mut self) {
         *self = 0;
     }
+}
+
+impl Name for u32 {
+    const NAME: &'static str = "UInt32Value";
+    const PACKAGE: &'static str = "google.protobuf";
 }
 
 /// `google.protobuf.UInt64Value`
@@ -116,6 +126,11 @@ impl Message for u64 {
     }
 }
 
+impl Name for u64 {
+    const NAME: &'static str = "UInt64Value";
+    const PACKAGE: &'static str = "google.protobuf";
+}
+
 /// `google.protobuf.Int32Value`
 impl Message for i32 {
     fn encode_raw(&self, buf: &mut impl BufMut) {
@@ -146,6 +161,11 @@ impl Message for i32 {
     fn clear(&mut self) {
         *self = 0;
     }
+}
+
+impl Name for i32 {
+    const NAME: &'static str = "Int32Value";
+    const PACKAGE: &'static str = "google.protobuf";
 }
 
 /// `google.protobuf.Int64Value`
@@ -180,6 +200,11 @@ impl Message for i64 {
     }
 }
 
+impl Name for i64 {
+    const NAME: &'static str = "Int64Value";
+    const PACKAGE: &'static str = "google.protobuf";
+}
+
 /// `google.protobuf.FloatValue`
 impl Message for f32 {
     fn encode_raw(&self, buf: &mut impl BufMut) {
@@ -210,6 +235,11 @@ impl Message for f32 {
     fn clear(&mut self) {
         *self = 0.0;
     }
+}
+
+impl Name for f32 {
+    const NAME: &'static str = "FloatValue";
+    const PACKAGE: &'static str = "google.protobuf";
 }
 
 /// `google.protobuf.DoubleValue`
@@ -244,6 +274,11 @@ impl Message for f64 {
     }
 }
 
+impl Name for f64 {
+    const NAME: &'static str = "DoubleValue";
+    const PACKAGE: &'static str = "google.protobuf";
+}
+
 /// `google.protobuf.StringValue`
 impl Message for String {
     fn encode_raw(&self, buf: &mut impl BufMut) {
@@ -274,6 +309,11 @@ impl Message for String {
     fn clear(&mut self) {
         self.clear();
     }
+}
+
+impl Name for String {
+    const NAME: &'static str = "StringValue";
+    const PACKAGE: &'static str = "google.protobuf";
 }
 
 /// `google.protobuf.BytesValue`
@@ -308,6 +348,11 @@ impl Message for Vec<u8> {
     }
 }
 
+impl Name for Vec<u8> {
+    const NAME: &'static str = "BytesValue";
+    const PACKAGE: &'static str = "google.protobuf";
+}
+
 /// `google.protobuf.BytesValue`
 impl Message for Bytes {
     fn encode_raw(&self, buf: &mut impl BufMut) {
@@ -340,6 +385,11 @@ impl Message for Bytes {
     }
 }
 
+impl Name for Bytes {
+    const NAME: &'static str = "BytesValue";
+    const PACKAGE: &'static str = "google.protobuf";
+}
+
 /// `google.protobuf.Empty`
 impl Message for () {
     fn encode_raw(&self, _buf: &mut impl BufMut) {}
@@ -356,4 +406,9 @@ impl Message for () {
         0
     }
     fn clear(&mut self) {}
+}
+
+impl Name for () {
+    const NAME: &'static str = "Empty";
+    const PACKAGE: &'static str = "google.protobuf";
 }

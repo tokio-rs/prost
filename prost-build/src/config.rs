@@ -52,6 +52,7 @@ pub struct Config {
     pub(crate) prost_path: Option<String>,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
+    pub(crate) enable_serde: bool,
 }
 
 impl Config {
@@ -1126,6 +1127,14 @@ impl Config {
             *buf = with_generated;
         }
     }
+
+    /// Configures the code generator to also emit serde compatible serialization impls.
+    ///
+    /// Defaults to `false`.
+    pub fn enable_serde(&mut self) -> &mut Self {
+        self.enable_serde = true;
+        self
+    }
 }
 
 /// Write a slice as the entire contents of a file.
@@ -1176,6 +1185,7 @@ impl default::Default for Config {
             prost_path: None,
             #[cfg(feature = "format")]
             fmt: true,
+            enable_serde: false,
         }
     }
 }

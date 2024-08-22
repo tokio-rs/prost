@@ -316,7 +316,7 @@ fn check_default_values() {
     assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
-    assert_eq!(&default.repeated_enumeration, &[]);
+    assert_eq!(default.repeated_enumeration, &[] as &[i32]);
     assert_eq!(0, default.encoded_len());
 }
 

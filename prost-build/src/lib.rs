@@ -359,6 +359,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
 
         Config::new()
+            .enable_serde()
             .service_generator(Box::new(ServiceTraitGenerator))
             .out_dir(tempdir.path())
             .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
@@ -374,6 +375,7 @@ mod tests {
         let gen = MockServiceGenerator::new(Rc::clone(&state));
 
         Config::new()
+            .enable_serde()
             .service_generator(Box::new(gen))
             .include_file("_protos.rs")
             .out_dir(tempdir.path())
@@ -398,6 +400,8 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
 
         let mut config = Config::new();
+        config.enable_serde();
+
         config
             .out_dir(tempdir.path())
             // Add attributes to all messages and enums
@@ -453,6 +457,7 @@ mod tests {
         let previously_empty_proto_path = tempdir.path().join(Path::new("google.protobuf.rs"));
 
         Config::new()
+            .enable_serde()
             .service_generator(Box::new(gen))
             .include_file(include_file)
             .out_dir(tempdir.path())
@@ -486,6 +491,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
 
         Config::new()
+            .enable_serde()
             .out_dir(tempdir.path())
             .boxed("Container.data.foo")
             .boxed("Bar.qux")
@@ -527,6 +533,7 @@ mod tests {
             let tempdir = tempfile::tempdir().unwrap();
 
             Config::new()
+                .enable_serde()
                 .service_generator(Box::new(gen))
                 .include_file(include_file)
                 .out_dir(tempdir.path())
@@ -579,6 +586,7 @@ mod tests {
 
         let mut buf = Vec::new();
         Config::new()
+            .enable_serde()
             .default_package_filename("_.default")
             .write_includes(modules.iter().collect(), &mut buf, None, &file_names)
             .unwrap();

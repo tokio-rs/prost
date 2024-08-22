@@ -136,7 +136,7 @@ fn test_decode_error_invalid_string() {
 
 #[test]
 fn test_decode_error_any() {
-    use prost_types::{Any, Timestamp};
+    use prost_types::{AnyV1 as Any, Timestamp};
 
     let msg = Any {
         type_url: "non-existing-url".to_string(),
