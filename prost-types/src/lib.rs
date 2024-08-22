@@ -67,6 +67,8 @@ pub use protobuf::*;
 
 #[cfg(feature = "any-v2")]
 pub use any_v2::ProstAny as Any;
+#[cfg(feature = "any-v2")]
+pub use protobuf::Any as AnyV1;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions
