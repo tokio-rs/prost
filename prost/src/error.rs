@@ -145,8 +145,7 @@ impl fmt::Display for DecodeErrorKind {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for DecodeError {}
+impl core::error::Error for DecodeError {}
 
 #[cfg(feature = "std")]
 impl From<DecodeError> for std::io::Error {
@@ -196,8 +195,7 @@ impl fmt::Display for EncodeError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for EncodeError {}
+impl core::error::Error for EncodeError {}
 
 #[cfg(feature = "std")]
 impl From<EncodeError> for std::io::Error {
@@ -220,8 +218,7 @@ impl fmt::Display for UnknownEnumValue {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for UnknownEnumValue {}
+impl core::error::Error for UnknownEnumValue {}
 
 #[cfg(test)]
 mod test {
