@@ -667,7 +667,6 @@ impl<'a> CodeGenerator<'a> {
                 .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
 
-        self.push_indent();
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
             if can_oneof_derive_copy { "Copy, " } else { "" },
