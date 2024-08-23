@@ -173,69 +173,72 @@ impl FromStr for Duration {
         datetime::parse_duration(s).ok_or(DurationError::ParseFailure)
     }
 }
-#[cfg(test)]
-mod tests {
+
+#[cfg(kani)]
+mod proofs {
     use super::*;
 
     #[cfg(feature = "std")]
-    use proptest::prelude::*;
+    #[kani::proof]
+    fn check_duration_roundtrip() {
+        let seconds = kani::any();
+        let nanos = kani::any();
+        kani::assume(nanos < 1_000_000_000);
+        let std_duration = std::time::Duration::new(seconds, nanos);
+        let Ok(prost_duration) = Duration::try_from(std_duration) else {
+            // Test case not valid: duration out of range
+            return;
+        };
+        assert_eq!(
+            time::Duration::try_from(prost_duration).unwrap(),
+            std_duration
+        );
 
-    #[cfg(feature = "std")]
-    proptest! {
-        #[test]
-        fn check_duration_roundtrip(
-            seconds in u64::arbitrary(),
-            nanos in 0u32..1_000_000_000u32,
-        ) {
-            let std_duration = time::Duration::new(seconds, nanos);
-            let prost_duration = match Duration::try_from(std_duration) {
-                Ok(duration) => duration,
-                Err(_) => return Err(TestCaseError::reject("duration out of range")),
+        if std_duration != time::Duration::default() {
+            let neg_prost_duration = Duration {
+                seconds: -prost_duration.seconds,
+                nanos: -prost_duration.nanos,
             };
-            prop_assert_eq!(time::Duration::try_from(prost_duration).unwrap(), std_duration);
 
-            if std_duration != time::Duration::default() {
-                let neg_prost_duration = Duration {
-                    seconds: -prost_duration.seconds,
-                    nanos: -prost_duration.nanos,
-                };
-
-                prop_assert!(
-                    matches!(
-                        time::Duration::try_from(neg_prost_duration),
-                        Err(DurationError::NegativeDuration(d)) if d == std_duration,
-                    )
-                )
-            }
-        }
-
-        #[test]
-        fn check_duration_roundtrip_nanos(
-            nanos in u32::arbitrary(),
-        ) {
-            let seconds = 0;
-            let std_duration = std::time::Duration::new(seconds, nanos);
-            let prost_duration = match Duration::try_from(std_duration) {
-                Ok(duration) => duration,
-                Err(_) => return Err(TestCaseError::reject("duration out of range")),
-            };
-            prop_assert_eq!(time::Duration::try_from(prost_duration).unwrap(), std_duration);
-
-            if std_duration != time::Duration::default() {
-                let neg_prost_duration = Duration {
-                    seconds: -prost_duration.seconds,
-                    nanos: -prost_duration.nanos,
-                };
-
-                prop_assert!(
-                    matches!(
-                        time::Duration::try_from(neg_prost_duration),
-                        Err(DurationError::NegativeDuration(d)) if d == std_duration,
-                    )
-                )
-            }
+            assert!(matches!(
+                time::Duration::try_from(neg_prost_duration),
+                Err(DurationError::NegativeDuration(d)) if d == std_duration,
+            ))
         }
     }
+
+    #[cfg(feature = "std")]
+    #[kani::proof]
+    fn check_duration_roundtrip_nanos() {
+        let seconds = 0;
+        let nanos = kani::any();
+        let std_duration = std::time::Duration::new(seconds, nanos);
+        let Ok(prost_duration) = Duration::try_from(std_duration) else {
+            // Test case not valid: duration out of range
+            return;
+        };
+        assert_eq!(
+            time::Duration::try_from(prost_duration).unwrap(),
+            std_duration
+        );
+
+        if std_duration != time::Duration::default() {
+            let neg_prost_duration = Duration {
+                seconds: -prost_duration.seconds,
+                nanos: -prost_duration.nanos,
+            };
+
+            assert!(matches!(
+                time::Duration::try_from(neg_prost_duration),
+                Err(DurationError::NegativeDuration(d)) if d == std_duration,
+            ))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 
     #[cfg(feature = "std")]
     #[test]
