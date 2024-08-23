@@ -204,7 +204,7 @@ where
 
     let mut buf1 = Vec::new();
     if let Err(error) = all_types.encode(&mut buf1) {
-        return RoundtripResult::Error(error.into());
+        return RoundtripResult::Error(anyhow!(error));
     }
     let buf1 = buf1;
     if encoded_len != buf1.len() {
@@ -217,12 +217,12 @@ where
 
     let roundtrip = match M::decode(buf1.as_slice()) {
         Ok(roundtrip) => roundtrip,
-        Err(error) => return RoundtripResult::Error(anyhow::Error::new(error)),
+        Err(error) => return RoundtripResult::Error(anyhow!(error)),
     };
 
     let mut buf2 = Vec::new();
     if let Err(error) = roundtrip.encode(&mut buf2) {
-        return RoundtripResult::Error(error.into());
+        return RoundtripResult::Error(anyhow!(error));
     }
     let buf2 = buf2;
     let buf3 = roundtrip.encode_to_vec();

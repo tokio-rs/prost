@@ -220,6 +220,8 @@ jobs:
       # prost's default features to compile.
       - name: prost-build check
         run: cargo check --manifest-path prost-build/Cargo.toml
+      - name: tests-no-std cargo-no-std-check
+        run: cargo no-std-check --manifest-path tests-no-std/Cargo.toml
 
   check-readme:
     name: Check README
