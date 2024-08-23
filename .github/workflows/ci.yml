@@ -180,7 +180,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify with Kani
-        uses: model-checking/kani-github-action@v0.32
+        uses: model-checking/kani-github-action@v1.1
         with:
           args: |
             -p prost-types
