@@ -3,15 +3,21 @@ runs:
   steps:
     - name: install ninja
       if: runner.os == 'macOS'
-      run: brew install ninja
+      run: |
+        brew install ninja
+        echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
       shell: bash
 
     - name: install ninja
       if: runner.os == 'Windows'
-      run: choco install ninja
+      run: |
+        choco install ninja
+        echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
       shell: bash
 
     - name: install ninja
       if: runner.os == 'Linux'
-      run: sudo apt-get install ninja-build
+      run: |
+        sudo apt-get install ninja-build
+        echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
       shell: bash

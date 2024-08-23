@@ -118,35 +118,19 @@ fn install_conformance_test_runner(
     prefix_dir: &Path,
 ) -> Result<()> {
     // Build and install protoc, the protobuf libraries, and the conformance test runner.
-    let rc = Command::new("cmake")
-        .arg("-GNinja")
-        .arg(src_dir.join("cmake"))
-        .arg("-DCMAKE_BUILD_TYPE=DEBUG")
-        .arg(format!("-DCMAKE_INSTALL_PREFIX={}", prefix_dir.display()))
-        .arg("-Dprotobuf_BUILD_CONFORMANCE=ON")
-        .arg("-Dprotobuf_BUILD_TESTS=OFF")
-        .current_dir(build_dir)
-        .status()
-        .context("failed to execute CMake")?;
-    assert!(rc.success(), "protobuf CMake failed");
-
-    let num_jobs = env::var("NUM_JOBS").context("NUM_JOBS environment variable not set")?;
-
-    let rc = Command::new("ninja")
-        .arg("-j")
-        .arg(&num_jobs)
-        .arg("install")
-        .current_dir(build_dir)
-        .status()
-        .context("failed to execute ninja protobuf")?;
-    ensure!(rc.success(), "failed to make protobuf");
+    cmake::Config::new(src_dir.join("cmake"))
+        .define("CMAKE_INSTALL_PREFIX", prefix_dir)
+        .define("protobuf_BUILD_CONFORMANCE", "ON")
+        .define("protobuf_BUILD_TESTS", "OFF")
+        .out_dir(build_dir)
+        .build();
 
     // Install the conformance-test-runner binary, since it isn't done automatically.
     fs::copy(
-        build_dir.join("conformance_test_runner"),
+        build_dir.join("build").join("conformance_test_runner"),
         prefix_dir.join("bin").join("conformance-test-runner"),
     )
-    .context("failed to move conformance-test-runner")?;
+    .context("failed to copy conformance-test-runner")?;
 
     Ok(())
 }

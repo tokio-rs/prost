@@ -13,6 +13,7 @@ prost-types = { path = "../prost-types" }
 anyhow = "1.0.1"
 prost-build = { path = "../prost-build" }
 tempfile = "3"
+cmake = "0.1.51"
 
 [package.metadata.cargo-machete]
 ignored = ["prost", "prost-types"]
