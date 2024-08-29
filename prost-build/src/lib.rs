@@ -289,6 +289,32 @@ mod tests {
 
     use super::*;
 
+    macro_rules! assert_eq_fixture_file {
+        ($expected_path:expr, $actual_path:expr) => {{
+            let actual = std::fs::read_to_string($actual_path).unwrap();
+
+            // Normalizes windows and Linux-style EOL
+            let actual = actual.replace("\r\n", "\n");
+
+            assert_eq_fixture_contents!($expected_path, actual);
+        }};
+    }
+
+    macro_rules! assert_eq_fixture_contents {
+        ($expected_path:expr, $actual:expr) => {{
+            let expected = std::fs::read_to_string($expected_path).unwrap();
+
+            // Normalizes windows and Linux-style EOL
+            let expected = expected.replace("\r\n", "\n");
+
+            if expected != $actual {
+                std::fs::write($expected_path, &$actual).unwrap();
+            }
+
+            assert_eq!(expected, $actual);
+        }};
+    }
+
     /// An example service generator that generates a trait with methods corresponding to the
     /// service methods.
     struct ServiceTraitGenerator;
@@ -427,19 +453,13 @@ mod tests {
 
         config.compile_fds(fds).unwrap();
 
-        let out_file = tempdir.path().join("helloworld.rs");
-        #[cfg(feature = "format")]
-        let expected_content =
-            read_all_content("src/fixtures/helloworld/_expected_helloworld_formatted.rs")
-                .replace("\r\n", "\n");
-        #[cfg(not(feature = "format"))]
-        let expected_content = read_all_content("src/fixtures/helloworld/_expected_helloworld.rs")
-            .replace("\r\n", "\n");
-        let content = read_all_content(out_file).replace("\r\n", "\n");
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/helloworld/_expected_helloworld_formatted.rs"
+            } else {
+                "src/fixtures/helloworld/_expected_helloworld.rs"
+            },
+            tempdir.path().join("helloworld.rs")
         );
     }
 
@@ -471,12 +491,10 @@ mod tests {
             assert!(!contents.is_empty());
         } else {
             // The file wasn't generated so the result include file should not reference it
-            let expected = read_all_content("src/fixtures/imports_empty/_expected_include.rs");
-            let actual = read_all_content(tempdir.path().join(Path::new(include_file)));
-            // Normalizes windows and Linux-style EOL
-            let expected = expected.replace("\r\n", "\n");
-            let actual = actual.replace("\r\n", "\n");
-            assert_eq!(expected, actual);
+            assert_eq_fixture_file!(
+                "src/fixtures/imports_empty/_expected_include.rs",
+                tempdir.path().join(Path::new(include_file))
+            );
         }
     }
 
@@ -495,24 +513,13 @@ mod tests {
             )
             .unwrap();
 
-        let out_file = tempdir.path().join("field_attributes.rs");
-
-        let content = read_all_content(out_file).replace("\r\n", "\n");
-
-        #[cfg(feature = "format")]
-        let expected_content = read_all_content(
-            "src/fixtures/field_attributes/_expected_field_attributes_formatted.rs",
-        )
-        .replace("\r\n", "\n");
-        #[cfg(not(feature = "format"))]
-        let expected_content =
-            read_all_content("src/fixtures/field_attributes/_expected_field_attributes.rs")
-                .replace("\r\n", "\n");
-
-        assert_eq!(
-            expected_content, content,
-            "Unexpected content: \n{}",
-            content
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/field_attributes/_expected_field_attributes_formatted.rs"
+            } else {
+                "src/fixtures/field_attributes/_expected_field_attributes.rs"
+            },
+            tempdir.path().join("field_attributes.rs")
         );
     }
 
@@ -543,21 +550,11 @@ mod tests {
                 )
                 .unwrap();
 
-            let expected = read_all_content("src/fixtures/alphabet/_expected_include.rs");
-            let actual = read_all_content(tempdir.path().join(Path::new(include_file)));
-            // Normalizes windows and Linux-style EOL
-            let expected = expected.replace("\r\n", "\n");
-            let actual = actual.replace("\r\n", "\n");
-
-            assert_eq!(expected, actual);
+            assert_eq_fixture_file!(
+                "src/fixtures/alphabet/_expected_include.rs",
+                tempdir.path().join(Path::new(include_file))
+            );
         }
-    }
-
-    fn read_all_content(filepath: impl AsRef<Path>) -> String {
-        let mut f = File::open(filepath).unwrap();
-        let mut content = String::new();
-        f.read_to_string(&mut content).unwrap();
-        content
     }
 
     #[test]
@@ -582,9 +579,7 @@ mod tests {
             .default_package_filename("_.default")
             .write_includes(modules.iter().collect(), &mut buf, None, &file_names)
             .unwrap();
-        let expected =
-            read_all_content("src/fixtures/write_includes/_.includes.rs").replace("\r\n", "\n");
         let actual = String::from_utf8(buf).unwrap();
-        assert_eq!(expected, actual);
+        assert_eq_fixture_contents!("src/fixtures/write_includes/_.includes.rs", actual);
     }
 }

@@ -1,12 +1,24 @@
-// protoc on Windows outputs \r\n line endings.
-#![cfg(not(windows))]
 #![cfg(feature = "std")]
 
-use std::fs;
-use std::io::Read;
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+
+macro_rules! assert_eq_bootstrapped_file {
+    ($expected_path:expr, $actual_path:expr) => {{
+        let expected = std::fs::read_to_string($expected_path).unwrap();
+        let actual = std::fs::read_to_string($actual_path).unwrap();
+
+        // Normalizes windows and Linux-style EOL
+        let expected = expected.replace("\r\n", "\n");
+        let actual = actual.replace("\r\n", "\n");
+
+        if expected != actual {
+            std::fs::write($expected_path, &actual).unwrap();
+        }
+
+        assert_eq!(expected, actual);
+    }};
+}
 
 /// Test which bootstraps protobuf.rs and compiler.rs from the .proto definitions in the Protobuf
 /// repo. Ensures that the checked-in compiled versions are up-to-date.
@@ -49,49 +61,19 @@ fn bootstrap() {
         )
         .unwrap();
 
-    let mut bootstrapped_protobuf = String::new();
-    fs::File::open(tempdir.path().join("google.protobuf.rs"))
-        .unwrap()
-        .read_to_string(&mut bootstrapped_protobuf)
-        .unwrap();
-
-    let mut bootstrapped_compiler = String::new();
-    fs::File::open(tempdir.path().join("google.protobuf.compiler.rs"))
-        .unwrap()
-        .read_to_string(&mut bootstrapped_compiler)
-        .unwrap();
-
     let src = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("no parent")
         .join("prost-types")
         .join("src");
 
-    let mut protobuf = String::new();
-    fs::File::open(src.join("protobuf.rs"))
-        .unwrap()
-        .read_to_string(&mut protobuf)
-        .unwrap();
+    assert_eq_bootstrapped_file!(
+        src.join("protobuf.rs"),
+        tempdir.path().join("google.protobuf.rs")
+    );
 
-    let mut compiler = String::new();
-    fs::File::open(src.join("compiler.rs"))
-        .unwrap()
-        .read_to_string(&mut compiler)
-        .unwrap();
-
-    if protobuf != bootstrapped_protobuf {
-        fs::File::create(src.join("protobuf.rs"))
-            .unwrap()
-            .write_all(bootstrapped_protobuf.as_bytes())
-            .unwrap();
-    }
-    if compiler != bootstrapped_compiler {
-        fs::File::create(src.join("compiler.rs"))
-            .unwrap()
-            .write_all(bootstrapped_compiler.as_bytes())
-            .unwrap();
-    }
-
-    assert_eq!(protobuf, bootstrapped_protobuf);
-    assert_eq!(compiler, bootstrapped_compiler);
+    assert_eq_bootstrapped_file!(
+        src.join("compiler.rs"),
+        tempdir.path().join("google.protobuf.compiler.rs")
+    );
 }
