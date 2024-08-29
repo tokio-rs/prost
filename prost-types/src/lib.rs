@@ -7,6 +7,32 @@
 //!
 //! See the [Protobuf reference][1] for more information about well-known types.
 //!
+//! ## Any
+//!
+//! The well-known [`Any`] type contains an arbitrary serialized message along with a URL that
+//! describes the type of the serialized message. Every message that also implements [`Name`]
+//! can be serialized to and deserialized from [`Any`].
+//!
+//! ### Serialization
+//!
+//! A message can be serialized using [`Any::from_msg`].
+//!
+//! ```rust
+//! let message = Timestamp::date(2000, 1, 1).unwrap();
+//! let any = Any::from_msg(&message).unwrap();
+//! ```
+//!
+//! ### Deserialization
+//!
+//! A message can be deserialized using [`Any::to_msg`].
+//!
+//! ```rust
+//! # let message = Timestamp::date(2000, 1, 1).unwrap();
+//! # let any = Any::from_msg(&message).unwrap();
+//! #
+//! let message = any.to_msg::<Timestamp>().unwrap();
+//! ```
+//!
 //! ## Feature Flags
 //! - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
 //!
