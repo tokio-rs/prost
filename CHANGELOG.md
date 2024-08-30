@@ -1,3 +1,57 @@
+# Prost version 0.13.2
+
+_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## Features
+
+- prost-build: Add protoc executable path to Config (#1126)
+- prost-build: Extract file descriptor loading from compile_protos() (#1067)
+
+## Bug Fixes
+
+- prost-types: Fix date-time parsing (#1096)
+- prost-types: '+' is not a numeric digit (#1104)
+- prost-types: Converting DateTime to Timestamp is fallible (#1095)
+- prost-types: Parse timestamp with long second fraction (#1106)
+- prost-types: Format negative fractional duration (#1110)
+- prost-types: Allow unknown local time offset (#1109)
+
+## Styling
+
+- Remove use of legacy numeric constants (#1089)
+- Move encoding functions into separate modules (#1111)
+- Remove needless borrow (#1122)
+
+## Testing
+
+- Add tests for public interface of DecodeError (#1120)
+- Add `parse_date` fuzzing target (#1127)
+- Fix build without std (#1134)
+- Change some proptest to kani proofs (#1133)
+- Add `parse_duration` fuzzing target (#1129)
+- fuzz: Fix building of fuzzing targets (#1107)
+- fuzz: Add fuzz targets to workspace (#1117)
+
+## Miscellaneous Tasks
+
+- Move old protobuf benchmark into prost (#1100)
+- Remove allow clippy::derive_partial_eq_without_eq (#1115)
+- Run `cargo test` without `all-targets` (#1118)
+- dependabot: Add github actions (#1121)
+- Update to cargo clippy version 1.80 (#1128)
+
+## Build
+
+- Use `proc-macro` in Cargo.toml (#1102)
+- Ignore missing features in `tests` crates (#1101)
+- Use separated build directory for protobuf (#1103)
+- protobuf: Don't install unused test proto (#1116)
+- protobuf: Use crate `cmake` (#1137)
+- deps: Update devcontainer to Debian Bookworm release (#1114)
+- deps: Bump actions/upload-artifact from 3 to 4 (#1123)
+- deps: Bump baptiste0928/cargo-install from 2 to 3 (#1124)
+- deps: bump model-checking/kani-github-action from 0.32 to 1.1 (#1125)
+
 # Prost version 0.13.1
 
 _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
