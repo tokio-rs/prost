@@ -203,9 +203,6 @@ where
                     Event::Start(Tag::CodeBlock(kind)) => {
                         Event::Start(Tag::CodeBlock(map_codeblock(kind)))
                     }
-                    Event::End(Tag::CodeBlock(kind)) => {
-                        Event::End(Tag::CodeBlock(map_codeblock(kind)))
-                    }
                     e => e,
                 }
             },
