@@ -37,6 +37,11 @@ pub enum OneofWithEnumCustomDebug {
     #[prost(enumeration = "BasicEnumeration", tag = "10")]
     Enumeration(i32),
 }
+impl fmt::Debug for OneofWithEnumCustomDebug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("OneofWithEnumCustomDebug {..}")
+    }
+}
 
 #[derive(Clone, PartialEq, prost::Message)]
 #[prost(skip_debug)]
@@ -54,11 +59,9 @@ impl fmt::Debug for MessageWithOneofCustomDebug {
 /// Enumerations inside oneofs
 #[test]
 fn oneof_with_enum_custom_debug() {
-    let msg = MessageWithOneofCustomDebug {
-        of: Some(OneofWithEnumCustomDebug::Enumeration(
-            BasicEnumeration::TWO as i32,
-        )),
-    };
+    let of = OneofWithEnumCustomDebug::Enumeration(BasicEnumeration::TWO as i32);
+    assert_eq!(format!("{:?}", of), "OneofWithEnumCustomDebug {..}");
+    let msg = MessageWithOneofCustomDebug { of: Some(of) };
     assert_eq!(format!("{:?}", msg), "MessageWithOneofCustomDebug {..}");
 }
 
