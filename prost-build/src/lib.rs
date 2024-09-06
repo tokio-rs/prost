@@ -8,23 +8,18 @@
 //!
 //! ## Example
 //!
-//! Let's create a small crate, `snazzy`, that defines a collection of
+//! Let's create a small library crate, `snazzy`, that defines a collection of
 //! snazzy new items in a protobuf file.
 //!
 //! ```bash
-//! $ cargo new snazzy && cd snazzy
+//! $ cargo new --lib snazzy && cd snazzy
 //! ```
 //!
-//! First, add `prost-build`, `prost` and its public dependencies to `Cargo.toml`
-//! (see [crates.io](https://crates.io/crates/prost) for the current versions):
+//! First, add `prost-build` and `prost` as dependencies to `Cargo.toml`:
 //!
-//! ```toml
-//! [dependencies]
-//! bytes = <bytes-version>
-//! prost = <prost-version>
-//!
-//! [build-dependencies]
-//! prost-build = { version = <prost-version> }
+//! ```bash
+//! $ cargo add --build prost-build
+//! $ cargo add prost
 //! ```
 //!
 //! Next, add `src/items.proto` to the project:
@@ -36,13 +31,16 @@
 //!
 //! // A snazzy new shirt!
 //! message Shirt {
+//!     // Label sizes
 //!     enum Size {
 //!         SMALL = 0;
 //!         MEDIUM = 1;
 //!         LARGE = 2;
 //!     }
 //!
+//!     // The base color
 //!     string color = 1;
+//!     // The size as stated on the label
 //!     Size size = 2;
 //! }
 //! ```
@@ -71,6 +69,7 @@
 //!
 //! use snazzy::items;
 //!
+//! /// Returns a large shirt of the specified color
 //! pub fn create_large_shirt(color: String) -> items::Shirt {
 //!     let mut shirt = items::Shirt::default();
 //!     shirt.color = color;
