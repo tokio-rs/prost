@@ -1079,8 +1079,7 @@ impl Config {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1))
-            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
+        let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1));
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 

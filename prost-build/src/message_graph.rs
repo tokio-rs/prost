@@ -19,9 +19,7 @@ pub struct MessageGraph {
 }
 
 impl MessageGraph {
-    pub fn new<'a>(
-        files: impl Iterator<Item = &'a FileDescriptorProto>,
-    ) -> Result<MessageGraph, String> {
+    pub fn new<'a>(files: impl Iterator<Item = &'a FileDescriptorProto>) -> MessageGraph {
         let mut msg_graph = MessageGraph {
             index: HashMap::new(),
             graph: Graph::new(),
@@ -39,7 +37,7 @@ impl MessageGraph {
             }
         }
 
-        Ok(msg_graph)
+        msg_graph
     }
 
     fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {
