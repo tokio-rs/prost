@@ -167,4 +167,34 @@ mod tests {
         case(".google.protobuf.Duration", "::prost_types::Duration");
         case(".google.protobuf.Empty", "()");
     }
+
+    #[test]
+    fn test_error_fully_qualified() {
+        let paths = [("foo".to_string(), "bar".to_string())];
+        let err = ExternPaths::new(&paths, false).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Protobuf paths must be fully qualified (begin with a leading '.'): foo"
+        )
+    }
+
+    #[test]
+    fn test_error_invalid_path() {
+        let paths = [(".foo.".to_string(), "bar".to_string())];
+        let err = ExternPaths::new(&paths, false).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "invalid fully-qualified Protobuf path: .foo."
+        )
+    }
+
+    #[test]
+    fn test_error_duplicate() {
+        let paths = [
+            (".foo".to_string(), "bar".to_string()),
+            (".foo".to_string(), "bar".to_string()),
+        ];
+        let err = ExternPaths::new(&paths, false).unwrap_err();
+        assert_eq!(err.to_string(), "duplicate extern Protobuf path: .foo")
+    }
 }
