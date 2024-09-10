@@ -426,4 +426,20 @@ mod tests {
             );
         }
     }
+
+    #[cfg(feature = "arbitrary")]
+    #[test]
+    fn check_timestamp_implements_arbitrary() {
+        use arbitrary::{Arbitrary, Unstructured};
+
+        let mut unstructured = Unstructured::new(&[]);
+
+        assert_eq!(
+            Timestamp::arbitrary(&mut unstructured),
+            Ok(Timestamp {
+                seconds: 0,
+                nanos: 0
+            })
+        );
+    }
 }
