@@ -803,8 +803,7 @@ impl<'a> CodeGenerator<'a> {
 
         for variant in variant_mappings.iter() {
             self.push_indent();
-            self.buf.push_str(&enum_name);
-            self.buf.push_str("::");
+            self.buf.push_str("Self::");
             self.buf.push_str(&variant.generated_variant_name);
             self.buf.push_str(" => \"");
             self.buf.push_str(variant.proto_name);

@@ -28,9 +28,9 @@ impl ServingStatus {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            ServingStatus::Unknown => "UNKNOWN",
-            ServingStatus::Serving => "SERVING",
-            ServingStatus::NotServing => "NOT_SERVING",
+            Self::Unknown => "UNKNOWN",
+            Self::Serving => "SERVING",
+            Self::NotServing => "NOT_SERVING",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
