@@ -1249,3 +1249,100 @@ pub fn protoc_include_from_env() -> Option<PathBuf> {
 
     Some(protoc_include)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! assert_starts_with {
+        ($left:expr, $right:expr) => {
+            match (&$left, &$right) {
+                (left_val, right_val) => {
+                    if !(left_val.starts_with(right_val)) {
+                        panic!(
+                            "assertion 'starts_with` failed:\nleft: {}\nright: {}",
+                            left_val, right_val
+                        )
+                    }
+                }
+            }
+        };
+    }
+
+    #[test]
+    fn test_error_protoc_not_found() {
+        let mut config = Config::new();
+        config.protoc_executable("path-does-not-exist");
+
+        let err = config.load_fds(&[""], &[""]).unwrap_err();
+        assert_eq!(err.to_string(), error_message_protoc_not_found())
+    }
+
+    #[test]
+    fn test_error_protoc_not_executable() {
+        let mut config = Config::new();
+        config.protoc_executable("src/lib.rs");
+
+        let err = config.load_fds(&[""], &[""]).unwrap_err();
+        assert_starts_with!(err.to_string(), "failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: \"src/lib.rs\"): ")
+    }
+
+    #[test]
+    fn test_error_incorrect_skip_protoc_run() {
+        let mut config = Config::new();
+        config.skip_protoc_run();
+
+        let err = config.load_fds(&[""], &[""]).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "file_descriptor_set_path is required with skip_protoc_run"
+        )
+    }
+
+    #[test]
+    fn test_error_protoc_failed() {
+        let mut config = Config::new();
+
+        let err = config.load_fds(&[""], &[""]).unwrap_err();
+        assert_starts_with!(
+            err.to_string(),
+            "protoc failed: You seem to have passed an empty string as one of the arguments to "
+        )
+    }
+
+    #[test]
+    fn test_error_non_existing_file_descriptor_set() {
+        let mut config = Config::new();
+        config.skip_protoc_run();
+        config.file_descriptor_set_path("path-does-not-exist");
+
+        let err = config.load_fds(&[""], &[""]).unwrap_err();
+        assert_starts_with!(
+            err.to_string(),
+            "unable to open file_descriptor_set_path: \"path-does-not-exist\", OS: "
+        )
+    }
+
+    #[test]
+    fn test_error_text_incorrect_file_descriptor_set() {
+        let mut config = Config::new();
+        config.skip_protoc_run();
+        config.file_descriptor_set_path("src/lib.rs");
+
+        let err = config.load_fds(&[""], &[""]).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "invalid FileDescriptorSet: failed to decode Protobuf message: unexpected end group tag"
+        )
+    }
+
+    #[test]
+    fn test_error_unset_out_dir() {
+        let mut config = Config::new();
+
+        let err = config
+            .compile_fds(FileDescriptorSet::default())
+            .unwrap_err();
+        assert_eq!(err.to_string(), "OUT_DIR environment variable is not set")
+    }
+}
