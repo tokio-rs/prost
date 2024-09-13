@@ -3,7 +3,7 @@
 use std::iter;
 
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct PathMap<T> {
     // insertion order might actually matter (to avoid warning about legacy-derive-helpers)
     // see: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#legacy-derive-helpers
