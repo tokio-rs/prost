@@ -1284,7 +1284,7 @@ mod tests {
         config.protoc_executable("src/lib.rs");
 
         let err = config.load_fds(&[""], &[""]).unwrap_err();
-        assert_starts_with!(err.to_string(), "failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: \"src/lib.rs\"): ")
+        assert_starts_with!(err.to_string(), "failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: src/lib.rs): ")
     }
 
     #[test]
@@ -1319,7 +1319,7 @@ mod tests {
         let err = config.load_fds(&[""], &[""]).unwrap_err();
         assert_starts_with!(
             err.to_string(),
-            "unable to open file_descriptor_set_path: \"path-does-not-exist\", OS: "
+            "unable to open file_descriptor_set_path: path-does-not-exist, OS: "
         )
     }
 
