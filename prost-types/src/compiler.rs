@@ -154,8 +154,8 @@ pub mod code_generator_response {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Feature::None => "FEATURE_NONE",
-                Feature::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
+                Self::None => "FEATURE_NONE",
+                Self::Proto3Optional => "FEATURE_PROTO3_OPTIONAL",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.

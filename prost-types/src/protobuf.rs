@@ -227,24 +227,24 @@ pub mod field_descriptor_proto {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Type::Double => "TYPE_DOUBLE",
-                Type::Float => "TYPE_FLOAT",
-                Type::Int64 => "TYPE_INT64",
-                Type::Uint64 => "TYPE_UINT64",
-                Type::Int32 => "TYPE_INT32",
-                Type::Fixed64 => "TYPE_FIXED64",
-                Type::Fixed32 => "TYPE_FIXED32",
-                Type::Bool => "TYPE_BOOL",
-                Type::String => "TYPE_STRING",
-                Type::Group => "TYPE_GROUP",
-                Type::Message => "TYPE_MESSAGE",
-                Type::Bytes => "TYPE_BYTES",
-                Type::Uint32 => "TYPE_UINT32",
-                Type::Enum => "TYPE_ENUM",
-                Type::Sfixed32 => "TYPE_SFIXED32",
-                Type::Sfixed64 => "TYPE_SFIXED64",
-                Type::Sint32 => "TYPE_SINT32",
-                Type::Sint64 => "TYPE_SINT64",
+                Self::Double => "TYPE_DOUBLE",
+                Self::Float => "TYPE_FLOAT",
+                Self::Int64 => "TYPE_INT64",
+                Self::Uint64 => "TYPE_UINT64",
+                Self::Int32 => "TYPE_INT32",
+                Self::Fixed64 => "TYPE_FIXED64",
+                Self::Fixed32 => "TYPE_FIXED32",
+                Self::Bool => "TYPE_BOOL",
+                Self::String => "TYPE_STRING",
+                Self::Group => "TYPE_GROUP",
+                Self::Message => "TYPE_MESSAGE",
+                Self::Bytes => "TYPE_BYTES",
+                Self::Uint32 => "TYPE_UINT32",
+                Self::Enum => "TYPE_ENUM",
+                Self::Sfixed32 => "TYPE_SFIXED32",
+                Self::Sfixed64 => "TYPE_SFIXED64",
+                Self::Sint32 => "TYPE_SINT32",
+                Self::Sint64 => "TYPE_SINT64",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -297,9 +297,9 @@ pub mod field_descriptor_proto {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Label::Optional => "LABEL_OPTIONAL",
-                Label::Required => "LABEL_REQUIRED",
-                Label::Repeated => "LABEL_REPEATED",
+                Self::Optional => "LABEL_OPTIONAL",
+                Self::Required => "LABEL_REQUIRED",
+                Self::Repeated => "LABEL_REPEATED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -576,9 +576,9 @@ pub mod file_options {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                OptimizeMode::Speed => "SPEED",
-                OptimizeMode::CodeSize => "CODE_SIZE",
-                OptimizeMode::LiteRuntime => "LITE_RUNTIME",
+                Self::Speed => "SPEED",
+                Self::CodeSize => "CODE_SIZE",
+                Self::LiteRuntime => "LITE_RUNTIME",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -759,9 +759,9 @@ pub mod field_options {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                CType::String => "STRING",
-                CType::Cord => "CORD",
-                CType::StringPiece => "STRING_PIECE",
+                Self::String => "STRING",
+                Self::Cord => "CORD",
+                Self::StringPiece => "STRING_PIECE",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -801,9 +801,9 @@ pub mod field_options {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                JsType::JsNormal => "JS_NORMAL",
-                JsType::JsString => "JS_STRING",
-                JsType::JsNumber => "JS_NUMBER",
+                Self::JsNormal => "JS_NORMAL",
+                Self::JsString => "JS_STRING",
+                Self::JsNumber => "JS_NUMBER",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -913,9 +913,9 @@ pub mod method_options {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                IdempotencyLevel::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
-                IdempotencyLevel::NoSideEffects => "NO_SIDE_EFFECTS",
-                IdempotencyLevel::Idempotent => "IDEMPOTENT",
+                Self::IdempotencyUnknown => "IDEMPOTENCY_UNKNOWN",
+                Self::NoSideEffects => "NO_SIDE_EFFECTS",
+                Self::Idempotent => "IDEMPOTENT",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1402,25 +1402,25 @@ pub mod field {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Kind::TypeUnknown => "TYPE_UNKNOWN",
-                Kind::TypeDouble => "TYPE_DOUBLE",
-                Kind::TypeFloat => "TYPE_FLOAT",
-                Kind::TypeInt64 => "TYPE_INT64",
-                Kind::TypeUint64 => "TYPE_UINT64",
-                Kind::TypeInt32 => "TYPE_INT32",
-                Kind::TypeFixed64 => "TYPE_FIXED64",
-                Kind::TypeFixed32 => "TYPE_FIXED32",
-                Kind::TypeBool => "TYPE_BOOL",
-                Kind::TypeString => "TYPE_STRING",
-                Kind::TypeGroup => "TYPE_GROUP",
-                Kind::TypeMessage => "TYPE_MESSAGE",
-                Kind::TypeBytes => "TYPE_BYTES",
-                Kind::TypeUint32 => "TYPE_UINT32",
-                Kind::TypeEnum => "TYPE_ENUM",
-                Kind::TypeSfixed32 => "TYPE_SFIXED32",
-                Kind::TypeSfixed64 => "TYPE_SFIXED64",
-                Kind::TypeSint32 => "TYPE_SINT32",
-                Kind::TypeSint64 => "TYPE_SINT64",
+                Self::TypeUnknown => "TYPE_UNKNOWN",
+                Self::TypeDouble => "TYPE_DOUBLE",
+                Self::TypeFloat => "TYPE_FLOAT",
+                Self::TypeInt64 => "TYPE_INT64",
+                Self::TypeUint64 => "TYPE_UINT64",
+                Self::TypeInt32 => "TYPE_INT32",
+                Self::TypeFixed64 => "TYPE_FIXED64",
+                Self::TypeFixed32 => "TYPE_FIXED32",
+                Self::TypeBool => "TYPE_BOOL",
+                Self::TypeString => "TYPE_STRING",
+                Self::TypeGroup => "TYPE_GROUP",
+                Self::TypeMessage => "TYPE_MESSAGE",
+                Self::TypeBytes => "TYPE_BYTES",
+                Self::TypeUint32 => "TYPE_UINT32",
+                Self::TypeEnum => "TYPE_ENUM",
+                Self::TypeSfixed32 => "TYPE_SFIXED32",
+                Self::TypeSfixed64 => "TYPE_SFIXED64",
+                Self::TypeSint32 => "TYPE_SINT32",
+                Self::TypeSint64 => "TYPE_SINT64",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1479,10 +1479,10 @@ pub mod field {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Cardinality::Unknown => "CARDINALITY_UNKNOWN",
-                Cardinality::Optional => "CARDINALITY_OPTIONAL",
-                Cardinality::Required => "CARDINALITY_REQUIRED",
-                Cardinality::Repeated => "CARDINALITY_REPEATED",
+                Self::Unknown => "CARDINALITY_UNKNOWN",
+                Self::Optional => "CARDINALITY_OPTIONAL",
+                Self::Required => "CARDINALITY_REQUIRED",
+                Self::Repeated => "CARDINALITY_REPEATED",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1562,8 +1562,8 @@ impl Syntax {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Syntax::Proto2 => "SYNTAX_PROTO2",
-            Syntax::Proto3 => "SYNTAX_PROTO3",
+            Self::Proto2 => "SYNTAX_PROTO2",
+            Self::Proto3 => "SYNTAX_PROTO3",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2139,7 +2139,7 @@ impl NullValue {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            NullValue::NullValue => "NULL_VALUE",
+            Self::NullValue => "NULL_VALUE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
