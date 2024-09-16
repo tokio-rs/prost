@@ -183,13 +183,42 @@ impl FromStr for Duration {
     }
 }
 
+#[cfg(feature = "chrono")]
+mod chrono {
+    use ::chrono::TimeDelta;
+
+    use super::*;
+
+    impl From<::chrono::TimeDelta> for Duration {
+        fn from(value: ::chrono::TimeDelta) -> Self {
+            let mut result = Self {
+                seconds: value.num_seconds(),
+                nanos: value.subsec_nanos(),
+            };
+            result.normalize();
+            result
+        }
+    }
+
+    impl TryFrom<Duration> for ::chrono::TimeDelta {
+        type Error = DurationError;
+
+        fn try_from(mut value: Duration) -> Result<TimeDelta, duration::DurationError> {
+            value.normalize();
+            let seconds = TimeDelta::try_seconds(value.seconds).ok_or(DurationError::OutOfRange)?;
+            let nanos = TimeDelta::nanoseconds(value.nanos.into());
+            seconds.checked_add(&nanos).ok_or(DurationError::OutOfRange)
+        }
+    }
+}
+
 #[cfg(kani)]
 mod proofs {
     use super::*;
 
     #[cfg(feature = "std")]
     #[kani::proof]
-    fn check_duration_roundtrip() {
+    fn check_duration_std_roundtrip() {
         let seconds = kani::any();
         let nanos = kani::any();
         kani::assume(nanos < 1_000_000_000);
@@ -218,7 +247,7 @@ mod proofs {
 
     #[cfg(feature = "std")]
     #[kani::proof]
-    fn check_duration_roundtrip_nanos() {
+    fn check_duration_std_roundtrip_nanos() {
         let seconds = 0;
         let nanos = kani::any();
         let std_duration = std::time::Duration::new(seconds, nanos);
@@ -241,6 +270,31 @@ mod proofs {
                 time::Duration::try_from(neg_prost_duration),
                 Err(DurationError::NegativeDuration(d)) if d == std_duration,
             ))
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    #[kani::proof]
+    fn check_duration_chrono_roundtrip() {
+        let seconds = kani::any();
+        let nanos = kani::any();
+        let prost_duration = Duration { seconds, nanos };
+        match ::chrono::TimeDelta::try_from(prost_duration) {
+            Err(DurationError::OutOfRange) => {
+                // Test case not valid: duration out of range
+                return;
+            }
+            Err(err) => {
+                panic!("Unexpected error: {err}")
+            }
+            Ok(chrono_duration) => {
+                let mut normalized_prost_duration = prost_duration;
+                normalized_prost_duration.normalize();
+                assert_eq!(
+                    Duration::try_from(chrono_duration).unwrap(),
+                    normalized_prost_duration
+                );
+            }
         }
     }
 }
