@@ -140,6 +140,10 @@ pub mod invalid {
     }
 }
 
+pub mod boxed_field {
+    include!(concat!(env!("OUT_DIR"), "/boxed_field.rs"));
+}
+
 pub mod default_string_escape {
     include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
