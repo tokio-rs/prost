@@ -1075,7 +1075,7 @@ impl<'a> CodeGenerator<'a> {
             && (fd_type == Type::Message || fd_type == Type::Group)
             && self
                 .message_graph
-                .is_nested(field.type_name(), fq_message_name)
+                .is_directly_nested(field.type_name(), fq_message_name)
         {
             return true;
         }

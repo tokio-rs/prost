@@ -152,6 +152,19 @@ fn main() {
     std::fs::create_dir_all(&out_path).unwrap();
 
     prost_build::Config::new()
+        .out_dir(src.join("nesting_complex/boxed"))
+        .boxed("Foo.bar")
+        .boxed("BazB.baz_c")
+        .boxed("BakC.bak_d")
+        .compile_protos(&[src.join("nesting_complex.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
+        .out_dir(src.join("nesting_complex/"))
+        .compile_protos(&[src.join("nesting_complex.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .bytes(["."])
         .out_dir(out_path)
         .include_file("wellknown_include.rs")
