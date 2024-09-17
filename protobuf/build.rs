@@ -97,6 +97,7 @@ fn apply_patches(src_dir: &Path) -> Result<()> {
     patch_src.push("fix-conformance_test_runner-cmake-build.patch");
 
     let rc = Command::new("patch")
+        .arg("-f")
         .arg("-p1")
         .arg("-i")
         .arg(patch_src)
