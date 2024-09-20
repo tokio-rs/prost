@@ -171,6 +171,11 @@ fn main() {
         .compile_protos(&[src.join("type_names.proto")], includes)
         .unwrap();
 
+    prost_build::Config::new()
+        .boxed("Foo.bar")
+        .compile_protos(&[src.join("boxed_field.proto")], includes)
+        .unwrap();
+
     // Check that attempting to compile a .proto without a package declaration does not result in an error.
     config
         .compile_protos(&[src.join("no_package.proto")], includes)

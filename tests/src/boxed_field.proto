@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package boxed_field;
+
+message Foo {
+  Bar bar = 1;
+}
+
+message Bar {
+}

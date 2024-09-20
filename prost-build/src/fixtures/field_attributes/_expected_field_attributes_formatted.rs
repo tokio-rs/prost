@@ -19,7 +19,7 @@ pub struct Foo {
     #[prost(string, tag = "1")]
     pub foo: ::prost::alloc::string::String,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Bar {
     #[prost(message, optional, boxed, tag = "1")]
     pub qux: ::core::option::Option<::prost::alloc::boxed::Box<Qux>>,
