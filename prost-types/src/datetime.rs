@@ -989,10 +989,7 @@ mod tests {
             let date_time = DateTime::from(timestamp);
             let roundtrip = Timestamp::try_from(date_time).unwrap();
 
-            let mut normalized_timestamp = timestamp;
-            normalized_timestamp.normalize();
-
-            prop_assert_eq!(normalized_timestamp, roundtrip);
+            prop_assert_eq!(timestamp.normalized(), roundtrip);
         }
 
         #[test]

@@ -62,6 +62,17 @@ impl Timestamp {
         }
     }
 
+    /// Return a normalized copy of the timestamp to a canonical format.
+    ///
+    /// Based on [`google::protobuf::util::CreateNormalized`][1].
+    ///
+    /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
+    pub fn normalized(&self) -> Self {
+        let mut result = *self;
+        result.normalize();
+        result
+    }
+
     /// Creates a new `Timestamp` at the start of the provided UTC date.
     pub fn date(year: i64, month: u8, day: u8) -> Result<Timestamp, TimestampError> {
         Timestamp::date_time_nanos(year, month, day, 0, 0, 0, 0)
@@ -399,14 +410,13 @@ mod tests {
         ];
 
         for case in cases.iter() {
-            let mut test_timestamp = crate::Timestamp {
+            let test_timestamp = crate::Timestamp {
                 seconds: case.1,
                 nanos: case.2,
             };
-            test_timestamp.normalize();
 
             assert_eq!(
-                test_timestamp,
+                test_timestamp.normalized(),
                 crate::Timestamp {
                     seconds: case.3,
                     nanos: case.4,

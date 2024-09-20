@@ -58,6 +58,17 @@ impl Duration {
         // debug_assert!(self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000,
         //               "invalid duration: {:?}", self);
     }
+
+    /// Returns a normalized copy of the duration to a canonical format.
+    ///
+    /// Based on [`google::protobuf::util::CreateNormalized`][1].
+    ///
+    /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L79-L100
+    pub fn normalized(&self) -> Self {
+        let mut result = *self;
+        result.normalize();
+        result
+    }
 }
 
 impl Name for Duration {
@@ -77,9 +88,8 @@ impl TryFrom<time::Duration> for Duration {
         let seconds = i64::try_from(duration.as_secs()).map_err(|_| DurationError::OutOfRange)?;
         let nanos = duration.subsec_nanos() as i32;
 
-        let mut duration = Duration { seconds, nanos };
-        duration.normalize();
-        Ok(duration)
+        let duration = Duration { seconds, nanos };
+        Ok(duration.normalized())
     }
 }
 
@@ -105,8 +115,7 @@ impl TryFrom<Duration> for time::Duration {
 
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut d = *self;
-        d.normalize();
+        let d = self.normalized();
         if self.seconds < 0 || self.nanos < 0 {
             write!(f, "-")?;
         }
@@ -407,14 +416,13 @@ mod tests {
         ];
 
         for case in cases.iter() {
-            let mut test_duration = Duration {
+            let test_duration = Duration {
                 seconds: case.1,
                 nanos: case.2,
             };
-            test_duration.normalize();
 
             assert_eq!(
-                test_duration,
+                test_duration.normalized(),
                 Duration {
                     seconds: case.3,
                     nanos: case.4,
