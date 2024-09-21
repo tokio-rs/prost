@@ -1,3 +1,42 @@
+# Prost version 0.13.3
+
+_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+
+### Features
+
+- *(prost-types)* Add `normalized` functions (#1158)
+
+### Bug Fixes
+
+- *(prost-build)* Remove `derived(Copy)` on boxed fields (#1157)
+
+### Documentation
+
+- *(prost-types)* Add description of using Any (#1141)
+- *(prost-build)* Use `cargo add` in example (#1149)
+
+### Styling
+
+- Use `Path::display()` when printing a path (#1150)
+- `MessageGraph::new()` can't actually fail (#1151)
+- *(generated-code)* Use `Self` in `as_str_name` (#1154)
+
+### Testing
+
+- Actually test `skip_debug` for `prost::Oneof` (#1148)
+- *(prost-build)* Validate error texts (#1152)
+- *(prost-build)* Fix error texts (#1156)
+
+### Build
+
+- Increase MSRV to 1.71.1 (#1135)
+- *(deps)* Update pulldown-cmark to 0.12 and pulldown-cmark-to-cmark to 16 (#1144)
+- *(protobuf)* Compile and install protoc on Windows (#1145)
+- *(protobuf)* Use same `protoc` from same repo as .proto-files (#1136)
+- *(deps)* Update pulldown-cmark-to-cmark from 16 to 17 (#1155)
+- Unify assert on fixtures (#1142)
+
 # Prost version 0.13.2
 
 _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
