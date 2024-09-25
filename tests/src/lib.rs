@@ -75,6 +75,9 @@ mod nesting;
 #[cfg(test)]
 mod recursive_oneof;
 
+#[cfg(test)]
+mod groups;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -104,10 +107,6 @@ pub mod foo {
 /// in a separate file.
 pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
-}
-
-pub mod groups {
-    include!(concat!(env!("OUT_DIR"), "/groups.rs"));
 }
 
 pub mod proto3 {
@@ -263,8 +262,6 @@ mod tests {
 
     use alloc::collections::{BTreeMap, BTreeSet};
     use alloc::vec;
-    #[cfg(not(feature = "std"))]
-    use alloc::{boxed::Box, string::ToString};
 
     use super::*;
 
@@ -388,29 +385,6 @@ mod tests {
     }
 
     #[test]
-    fn test_deep_nesting_group() {
-        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
-            use crate::groups::{nested_group2::OptionalGroup, NestedGroup2};
-
-            let mut a = NestedGroup2::default();
-            for _ in 0..depth {
-                a = NestedGroup2 {
-                    optionalgroup: Some(Box::new(OptionalGroup {
-                        nested_group: Some(a),
-                    })),
-                };
-            }
-
-            let mut buf = Vec::new();
-            a.encode(&mut buf).unwrap();
-            NestedGroup2::decode(buf.as_slice()).map(|_| ())
-        }
-
-        assert!(build_and_roundtrip(50).is_ok());
-        assert!(build_and_roundtrip(51).is_err());
-    }
-
-    #[test]
     fn test_267_regression() {
         // Checks that skip_field will error appropriately when given a big stack of StartGroup
         // tags. When the no-recursion-limit feature is enabled this results in stack overflow.
@@ -424,83 +398,6 @@ mod tests {
     fn test_default_string_escape() {
         let msg = default_string_escape::Person::default();
         assert_eq!(msg.name, r#"["unknown"]"#);
-    }
-
-    #[test]
-    fn test_group() {
-        // optional group
-        let msg1_bytes = &[0x0B, 0x10, 0x20, 0x0C];
-
-        let msg1 = groups::Test1 {
-            groupa: Some(groups::test1::GroupA { i2: Some(32) }),
-        };
-
-        let mut bytes = Vec::new();
-        msg1.encode(&mut bytes).unwrap();
-        assert_eq!(&bytes, msg1_bytes);
-
-        // skip group while decoding
-        let data: &[u8] = &[
-            0x0B, // start group (tag=1)
-            0x30, 0x01, // unused int32 (tag=6)
-            0x2B, 0x30, 0xFF, 0x01, 0x2C, // unused group (tag=5)
-            0x10, 0x20, // int32 (tag=2)
-            0x0C, // end group (tag=1)
-        ];
-        assert_eq!(groups::Test1::decode(data), Ok(msg1));
-
-        // repeated group
-        let msg2_bytes: &[u8] = &[
-            0x20, 0x40, 0x2B, 0x30, 0xFF, 0x01, 0x2C, 0x2B, 0x30, 0x01, 0x2C, 0x38, 0x64,
-        ];
-
-        let msg2 = groups::Test2 {
-            i14: Some(64),
-            groupb: vec![
-                groups::test2::GroupB { i16: Some(255) },
-                groups::test2::GroupB { i16: Some(1) },
-            ],
-            i17: Some(100),
-        };
-
-        let mut bytes = Vec::new();
-        msg2.encode(&mut bytes).unwrap();
-        assert_eq!(bytes.as_slice(), msg2_bytes);
-
-        assert_eq!(groups::Test2::decode(msg2_bytes), Ok(msg2));
-    }
-
-    #[test]
-    fn test_group_oneof() {
-        let msg = groups::OneofGroup {
-            i1: Some(42),
-            field: Some(groups::oneof_group::Field::S2("foo".to_string())),
-        };
-        check_message(&msg);
-
-        let msg = groups::OneofGroup {
-            i1: Some(42),
-            field: Some(groups::oneof_group::Field::G(groups::oneof_group::G {
-                i2: None,
-                s1: "foo".to_string(),
-                t1: None,
-            })),
-        };
-        check_message(&msg);
-
-        let msg = groups::OneofGroup {
-            i1: Some(42),
-            field: Some(groups::oneof_group::Field::G(groups::oneof_group::G {
-                i2: Some(99),
-                s1: "foo".to_string(),
-                t1: Some(groups::Test1 {
-                    groupa: Some(groups::test1::GroupA { i2: None }),
-                }),
-            })),
-        };
-        check_message(&msg);
-
-        check_message(&groups::OneofGroup::default());
     }
 
     #[test]
