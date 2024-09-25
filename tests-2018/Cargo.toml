@@ -8,7 +8,7 @@ authors = [
 publish = false
 edition = "2018"
 
-build = "../tests/src/build.rs"
+build = "../tests/build.rs"
 
 [lib]
 doctest = false
