@@ -46,7 +46,8 @@ fn main() {
         .compile_protos(&[src.join("ident_conversion.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
+        .btree_map(["."])
         .compile_protos(&[src.join("nesting.proto")], includes)
         .unwrap();
 
