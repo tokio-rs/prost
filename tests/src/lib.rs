@@ -78,6 +78,9 @@ mod recursive_oneof;
 #[cfg(test)]
 mod groups;
 
+#[cfg(test)]
+mod default_string_escape;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -113,10 +116,6 @@ pub mod proto3 {
     pub mod presence {
         include!(concat!(env!("OUT_DIR"), "/proto3.presence.rs"));
     }
-}
-
-pub mod default_string_escape {
-    include!(concat!(env!("OUT_DIR"), "/default_string_escape.rs"));
 }
 
 #[cfg(not(feature = "std"))]
@@ -392,12 +391,6 @@ mod tests {
         // https://github.com/tokio-rs/prost/issues/267
         let buf = vec![b'C'; 1 << 20];
         <() as Message>::decode(&buf[..]).err().unwrap();
-    }
-
-    #[test]
-    fn test_default_string_escape() {
-        let msg = default_string_escape::Person::default();
-        assert_eq!(msg.name, r#"["unknown"]"#);
     }
 
     #[test]
