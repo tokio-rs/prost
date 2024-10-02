@@ -23,7 +23,6 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2
 
 [dependencies]
 anyhow = "1.0.1"
-bytes = "1"
 cfg-if = "1"
 prost = { path = "../prost" }
 prost-types = { path = "../prost-types" }
