@@ -121,7 +121,7 @@ impl Config {
         self
     }
 
-    /// Configure the code generator to generate Rust [`bytes::Bytes`][1] fields for Protobuf
+    /// Configure the code generator to generate Rust [`bytes::Bytes`](prost::bytes::Bytes) fields for Protobuf
     /// [`bytes`][2] type fields.
     ///
     /// # Arguments
@@ -166,7 +166,6 @@ impl Config {
     /// config.bytes(&["my_bytes_field", ".foo.bar"]);
     /// ```
     ///
-    /// [1]: https://docs.rs/bytes/latest/bytes/struct.Bytes.html
     /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
     /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
     pub fn bytes<I, S>(&mut self, paths: I) -> &mut Self

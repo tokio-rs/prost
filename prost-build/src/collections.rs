@@ -16,7 +16,7 @@ pub(crate) enum BytesType {
     /// The [`prost::alloc::vec::Vec<u8>`] type.
     #[default]
     Vec,
-    /// The [`bytes::Bytes`] type.
+    /// The [`bytes::Bytes`](prost::bytes::Bytes) type.
     Bytes,
 }
 
