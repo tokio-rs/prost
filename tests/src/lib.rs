@@ -134,6 +134,14 @@ pub mod proto3 {
     }
 }
 
+pub mod nesting_complex_boxed {
+    include!("nesting_complex/boxed/nesting_complex.rs");
+}
+
+pub mod nesting_complex {
+    include!("nesting_complex/nesting_complex.rs");
+}
+
 pub mod invalid {
     pub mod doctest {
         include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));

@@ -1,0 +1,47 @@
+syntax = "proto2";
+
+package nesting_complex;
+
+// ----- Directly nested
+message Foo {
+  optional Bar bar = 1;
+}
+
+message Bar {
+  optional Foo foo = 1;
+}
+
+// ----- Transitively nested
+message BazA {
+  optional BazB baz_b = 1;
+}
+
+message BazB {
+  optional BazC baz_c = 1;
+}
+
+message BazC {
+  optional BazA baz_a = 1;
+}
+
+// ----- Transitively nested in two chain
+message BakA {
+  optional BakB bak_b = 1;
+}
+
+message BakB {
+  optional BakC bak_c = 1;
+  optional BakE bak_e = 2;
+}
+
+message BakC {
+  optional BakD bak_d = 1;
+}
+
+message BakD {
+  optional BakA bak_a = 1;
+}
+
+message BakE {
+  optional BakA bak_a = 1;
+}
