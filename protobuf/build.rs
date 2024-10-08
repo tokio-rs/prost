@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 
 fn main() -> Result<()> {
     let out_dir =
@@ -20,8 +20,6 @@ fn main() -> Result<()> {
     let protobuf_dir = &out_dir.join(format!("protobuf-{}", version));
 
     if !protobuf_dir.exists() {
-        apply_patches(&src_dir)?;
-
         let build_dir = &out_dir.join(format!("build-protobuf-{}", version));
         fs::create_dir_all(build_dir).expect("failed to create build directory");
 
@@ -90,25 +88,6 @@ fn git_describe(src_dir: &Path) -> Result<String> {
     Ok(stdout.trim().to_string())
 }
 
-/// Apply patches to the protobuf source directory
-fn apply_patches(src_dir: &Path) -> Result<()> {
-    let mut patch_src = env::current_dir().context("failed to get current working directory")?;
-    patch_src.push("src");
-    patch_src.push("fix-conformance_test_runner-cmake-build.patch");
-
-    let rc = Command::new("patch")
-        .arg("-p1")
-        .arg("-i")
-        .arg(patch_src)
-        .current_dir(src_dir)
-        .status()
-        .context("failed to apply patch")?;
-    // exit code: 0 means success; 1 means already applied
-    ensure!(rc.code().unwrap() <= 1, "protobuf patch failed");
-
-    Ok(())
-}
-
 fn install_protoc_and_conformance_test_runner(
     src_dir: &Path,
     build_dir: &Path,
@@ -119,7 +98,9 @@ fn install_protoc_and_conformance_test_runner(
     let build_conformance = !cfg!(windows);
 
     // Build and install protoc, the protobuf libraries, and the conformance test runner.
-    cmake::Config::new(src_dir.join("cmake"))
+    cmake::Config::new(src_dir)
+        .define("CMAKE_CXX_STANDARD", "14")
+        .define("ABSL_PROPAGATE_CXX_STD", "ON")
         .define("CMAKE_INSTALL_PREFIX", prefix_dir)
         .define(
             "protobuf_BUILD_CONFORMANCE",
