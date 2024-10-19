@@ -427,3 +427,50 @@ mod tests {
         }
     }
 }
+
+impl prost::Message for Timestamp {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: bytes::BufMut,
+    {
+        if self.seconds != 0 {
+            prost::encoding::int64::encode(1, &self.seconds, buf);
+        }
+        if self.nanos != 0 {
+            prost::encoding::int32::encode(2, &self.nanos, buf);
+        }
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: prost::encoding::WireType,
+        buf: &mut B,
+        ctx: prost::encoding::DecodeContext,
+    ) -> Result<(), prost::DecodeError>
+    where
+        B: bytes::Buf,
+    {
+        match tag {
+            1 => prost::encoding::int64::merge(wire_type, &mut self.seconds, buf, ctx),
+            2 => prost::encoding::int32::merge(wire_type, &mut self.nanos, buf, ctx),
+            _ => prost::encoding::skip_field(wire_type, tag, buf, ctx),
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        let mut len = 0;
+        if self.seconds != 0 {
+            len += prost::encoding::int64::encoded_len(1, &self.seconds);
+        }
+        if self.nanos != 0 {
+            len += prost::encoding::int32::encoded_len(2, &self.nanos);
+        }
+        len
+    }
+
+    fn clear(&mut self) {
+        self.seconds = 0;
+        self.nanos = 0;
+    }
+}

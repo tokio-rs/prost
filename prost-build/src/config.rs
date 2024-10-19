@@ -382,6 +382,7 @@ impl Config {
     /// types, and instead generate Protobuf well-known types from their `.proto` definitions.
     pub fn compile_well_known_types(&mut self) -> &mut Self {
         self.prost_types = false;
+        self.extern_path(".google.protobuf.Timestamp", "::prost_types::Timestamp");
         self
     }
 

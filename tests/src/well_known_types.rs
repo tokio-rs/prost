@@ -69,3 +69,21 @@ mod include {
         "/wellknown_include/wellknown_include.rs"
     ));
 }
+
+#[test]
+fn test_prost_message_for_timestamp() {
+    use prost::Message;
+
+    let timestamp = ::prost_types::Timestamp {
+        seconds: 100,
+        nanos: 42,
+    };
+
+    let mut buf = Vec::new();
+    timestamp.encode(&mut buf).expect("Failed to encode Timestamp");
+
+    let decoded_timestamp = ::prost_types::Timestamp::decode(&buf[..])
+        .expect("Failed to decode Timestamp");
+
+    assert_eq!(timestamp, decoded_timestamp, "Encoded and decoded Timestamp should be equal");
+}
