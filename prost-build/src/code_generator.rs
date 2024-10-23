@@ -87,7 +87,7 @@ impl OneofField {
     }
 }
 
-impl<'a> CodeGenerator<'a> {
+impl CodeGenerator<'_> {
     pub fn generate(
         config: &mut Config,
         message_graph: &MessageGraph,

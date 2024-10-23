@@ -92,7 +92,7 @@ impl<'a, T> std::iter::Iterator for Iter<'a, T> {
     }
 }
 
-impl<'a, T> std::iter::FusedIterator for Iter<'a, T> {}
+impl<T> std::iter::FusedIterator for Iter<'_, T> {}
 
 /// Given a fully-qualified path, returns a sequence of paths:
 /// - the path itself

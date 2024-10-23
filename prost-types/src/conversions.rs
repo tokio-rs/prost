@@ -43,7 +43,7 @@ impl From<String> for Value {
     }
 }
 
-impl<'a> From<&'a str> for Value {
+impl From<&str> for Value {
     fn from(value: &str) -> Self {
         value::Kind::StringValue(value.into()).into()
     }
