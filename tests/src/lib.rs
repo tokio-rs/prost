@@ -56,6 +56,9 @@ mod submessage_without_package;
 #[cfg(test)]
 mod type_names;
 
+#[cfg(test)]
+mod boxed_field;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -138,10 +141,6 @@ pub mod invalid {
     pub mod doctest {
         include!(concat!(env!("OUT_DIR"), "/invalid.doctest.rs"));
     }
-}
-
-pub mod boxed_field {
-    include!(concat!(env!("OUT_DIR"), "/boxed_field.rs"));
 }
 
 pub mod default_string_escape {
