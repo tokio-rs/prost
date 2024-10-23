@@ -5,8 +5,6 @@ publish = false
 edition.workspace = true
 authors.workspace = true
 
-build = "src/build.rs"
-
 [features]
 default = ["std"]
 std = []

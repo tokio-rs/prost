@@ -5,7 +5,7 @@ publish = false
 edition = "2015"
 authors.workspace = true
 
-build = "../tests/src/build.rs"
+build = "../tests/build.rs"
 
 [lib]
 doctest = false
