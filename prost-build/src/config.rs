@@ -881,7 +881,6 @@ impl Config {
     ///   config.compile_fds(file_descriptor_set)
     /// }
     /// ```
-
     pub fn load_fds(
         &mut self,
         protos: &[impl AsRef<Path>],
