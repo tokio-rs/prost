@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
-use std::error::Error;
+use core::error::Error;
 
 pub mod benchmarks {
     include!(concat!(env!("OUT_DIR"), "/benchmarks.rs"));
