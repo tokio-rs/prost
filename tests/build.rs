@@ -132,14 +132,10 @@ fn main() {
         .compile_protos(&[src.join("proto3_presence.proto")], includes)
         .unwrap();
 
-    {
-        let mut config = prost_build::Config::new();
-        config.disable_comments(["."]);
-
-        config
-            .compile_protos(&[src.join("invalid_doctest.proto")], includes)
-            .unwrap();
-    }
+    prost_build::Config::new()
+        .disable_comments(["."])
+        .compile_protos(&[src.join("disable_comments.proto")], includes)
+        .unwrap();
 
     config
         .bytes(["."])
