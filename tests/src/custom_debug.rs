@@ -1,27 +1,31 @@
 //! Tests for skipping the default Debug implementation.
 
-use std::fmt;
+include!(concat!(env!("OUT_DIR"), "/custom_debug.rs"));
 
-use prost::alloc::format;
-#[cfg(not(feature = "std"))]
-use prost::alloc::string::String;
+use alloc::format;
+use alloc::string::String;
+use alloc::string::ToString;
+use core::fmt;
 
-use crate::custom_debug::{msg, AnEnum, Msg};
-use crate::message_encoding::BasicEnumeration;
+impl fmt::Debug for Msg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Msg {..}")
+    }
+}
 
 /// A special case with a tuple struct
 #[test]
 fn tuple_struct_custom_debug() {
     #[derive(Clone, PartialEq, prost::Message)]
     #[prost(skip_debug)]
-    struct NewType(#[prost(enumeration = "BasicEnumeration", tag = "5")] i32);
+    struct NewType(#[prost(enumeration = "AnEnum", tag = "5")] i32);
     impl fmt::Debug for NewType {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.write_str("NewType(custom_debug)")
         }
     }
     assert_eq!(
-        format!("{:?}", NewType(BasicEnumeration::TWO as i32)),
+        format!("{:?}", NewType(AnEnum::B as i32)),
         "NewType(custom_debug)"
     );
     assert_eq!(format!("{:?}", NewType(42)), "NewType(custom_debug)");
@@ -59,7 +63,7 @@ impl fmt::Debug for MessageWithOneofCustomDebug {
 /// Enumerations inside oneofs
 #[test]
 fn oneof_with_enum_custom_debug() {
-    let of = OneofWithEnumCustomDebug::Enumeration(BasicEnumeration::TWO as i32);
+    let of = OneofWithEnumCustomDebug::Enumeration(AnEnum::B as i32);
     assert_eq!(format!("{:?}", of), "OneofWithEnumCustomDebug {..}");
     let msg = MessageWithOneofCustomDebug { of: Some(of) };
     assert_eq!(format!("{:?}", msg), "MessageWithOneofCustomDebug {..}");

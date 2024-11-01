@@ -49,15 +49,15 @@ mod no_shadowed_types;
 #[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
-#[cfg(feature = "std")]
-mod skip_debug;
-#[cfg(test)]
 mod submessage_without_package;
 #[cfg(test)]
 mod type_names;
 
 #[cfg(test)]
 mod boxed_field;
+
+#[cfg(test)]
+mod custom_debug;
 
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
@@ -87,17 +87,6 @@ pub mod nesting {
 
 pub mod recursive_oneof {
     include!(concat!(env!("OUT_DIR"), "/recursive_oneof.rs"));
-}
-
-#[cfg(feature = "std")]
-pub mod custom_debug {
-    use std::fmt;
-    include!(concat!(env!("OUT_DIR"), "/custom_debug.rs"));
-    impl fmt::Debug for Msg {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.write_str("Msg {..}")
-        }
-    }
 }
 
 /// This tests the custom attributes support by abusing docs.
