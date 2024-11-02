@@ -26,12 +26,6 @@ fn main() {
     // values.
     let mut config = prost_build::Config::new();
     config.btree_map(["."]);
-    // Tests for custom attributes
-    config.type_attribute("Foo.Bar_Baz.Foo_barBaz", "#[derive(Eq, PartialOrd, Ord)]");
-    config.type_attribute(
-        "Foo.Bar_Baz.Foo_barBaz.fuzz_buster",
-        "#[derive(Eq, PartialOrd, Ord)]",
-    );
     config.type_attribute(
         "Foo.Custom.OneOfAttrs.Msg.field",
         "#[derive(PartialOrd, Ord)]",
@@ -42,7 +36,17 @@ fn main() {
             .join("file_descriptor_set.bin"),
     );
 
-    config
+    prost_build::Config::new()
+        .btree_map(["."])
+        // Tests for custom attributes
+        .type_attribute(
+            "ident_conversion.Bar_Baz.Foo_barBaz",
+            "#[derive(Eq, PartialOrd, Ord)]",
+        )
+        .type_attribute(
+            "ident_conversion.Bar_Baz.Foo_barBaz.fuzz_buster",
+            "#[derive(Eq, PartialOrd, Ord)]",
+        )
         .compile_protos(&[src.join("ident_conversion.proto")], includes)
         .unwrap();
 
