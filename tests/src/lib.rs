@@ -62,6 +62,10 @@ mod custom_debug;
 // Must be `pub` as doc tests are only executed on public types.
 pub mod disable_comments;
 
+#[cfg(test)]
+// Must be `pub` as `missing_docs` lint is only executed on public types.
+pub mod custom_attributes;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -90,16 +94,6 @@ pub mod nesting {
 
 pub mod recursive_oneof {
     include!(concat!(env!("OUT_DIR"), "/recursive_oneof.rs"));
-}
-
-/// This tests the custom attributes support by abusing docs.
-///
-/// Docs really are full-blown attributes. So we use them to ensure we can place them on everything
-/// we need. If they aren't put onto something or allowed not to be there (by the generator),
-/// compilation fails.
-#[deny(missing_docs)]
-pub mod custom_attributes {
-    include!(concat!(env!("OUT_DIR"), "/foo.custom.attrs.rs"));
 }
 
 /// Also for testing custom attributes, but on oneofs.

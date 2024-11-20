@@ -32,18 +32,10 @@ fn main() {
         "Foo.Bar_Baz.Foo_barBaz.fuzz_buster",
         "#[derive(Eq, PartialOrd, Ord)]",
     );
-    config.type_attribute("Foo.Custom.Attrs.Msg", "#[allow(missing_docs)]");
-    config.type_attribute("Foo.Custom.Attrs.Msg.field", "/// Oneof docs");
-    config.type_attribute("Foo.Custom.Attrs.AnEnum", "#[allow(missing_docs)]");
-    config.type_attribute("Foo.Custom.Attrs.AnotherEnum", "/// Oneof docs");
     config.type_attribute(
         "Foo.Custom.OneOfAttrs.Msg.field",
         "#[derive(Eq, PartialOrd, Ord)]",
     );
-    config.field_attribute("Foo.Custom.Attrs.AnotherEnum.C", "/// The C docs");
-    config.field_attribute("Foo.Custom.Attrs.AnotherEnum.D", "/// The D docs");
-    config.field_attribute("Foo.Custom.Attrs.Msg.field.a", "/// Oneof A docs");
-    config.field_attribute("Foo.Custom.Attrs.Msg.field.b", "/// Oneof B docs");
 
     config.file_descriptor_set_path(
         PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
@@ -62,7 +54,15 @@ fn main() {
         .compile_protos(&[src.join("recursive_oneof.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
+        .type_attribute("custom_attributes.Msg", "#[allow(missing_docs)]")
+        .type_attribute("custom_attributes.Msg.field", "/// Oneof docs")
+        .type_attribute("custom_attributes.AnEnum", "#[allow(missing_docs)]")
+        .type_attribute("custom_attributes.AnotherEnum", "/// Oneof docs")
+        .field_attribute("custom_attributes.AnotherEnum.C", "/// The C docs")
+        .field_attribute("custom_attributes.AnotherEnum.D", "/// The D docs")
+        .field_attribute("custom_attributes.Msg.field.a", "/// Oneof A docs")
+        .field_attribute("custom_attributes.Msg.field.b", "/// Oneof B docs")
         .compile_protos(&[src.join("custom_attributes.proto")], includes)
         .unwrap();
 

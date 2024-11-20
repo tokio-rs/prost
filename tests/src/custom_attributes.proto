@@ -1,8 +1,12 @@
 syntax = "proto3";
 
-package Foo.Custom.Attrs;
+package custom_attributes;
 
 message Msg {
+	oneof field {
+        string a = 1;
+        bytes b = 2;
+    }
 }
 
 enum AnEnum {
