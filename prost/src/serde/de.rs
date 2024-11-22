@@ -118,7 +118,7 @@ pub use forward::ForwardDeserializer;
 pub use map::MapDeserializer;
 pub use message::MessageDeserializer;
 pub use oneof::{DeserializeOneOf, OneOfDeserializer};
-pub use option::OptionDeserializer;
+pub use option::{NullDeserializer, OptionDeserializer};
 pub use r#enum::{DeserializeEnum, EnumDeserializer};
 pub use scalar::{BoolDeserializer, FloatDeserializer, IntDeserializer};
 pub use vec::VecDeserializer;

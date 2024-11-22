@@ -124,15 +124,24 @@ pub fn impl_for_message(
             field_matches.push(quote! {
                 __Field::#field_variant_ident(key) => {
                     if _private::Option::is_some(&#field_variant_ident) {
-                        return _private::Err(
-                            <__A::Error as _serde::de::Error>::duplicate_field(#field_ident_str)
+                        let __val = _serde::de::MapAccess::next_value_seed(
+                            &mut __map,
+                            _private::DesIntoWithConfig::<_private::NullDeserializer, ()>::new(
+                                __config
+                            ),
                         );
+                        match __val {
+                            _private::Ok(()) => continue,
+                            _private::Err(_) => return _private::Err(
+                                <__A::Error as _serde::de::Error>::duplicate_field(#field_ident_str)
+                            ),
+                        }
                     }
                     let __val = _serde::de::MapAccess::next_value_seed(
                         &mut __map,
                         _private::OneOfDeserializer(key, __config),
                     )?;
-                    if __val.is_some() {
+                    if _private::Option::is_some(&__val) {
                         #field_variant_ident = _private::Some(__val);
                     }
                 }

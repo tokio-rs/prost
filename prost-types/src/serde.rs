@@ -290,7 +290,14 @@ impl CustomSerialize for Value {
     {
         match self.kind.as_ref() {
             Some(value::Kind::NullValue(_)) | None => serializer.serialize_none(),
-            Some(value::Kind::NumberValue(val)) => serializer.serialize_f64(*val),
+            Some(value::Kind::NumberValue(val)) => {
+                if val.is_nan() || val.is_infinite() {
+                    return Err(serde::ser::Error::custom(format!(
+                        "serializing a value::Kind::NumberValue, which is {val}, is not possible"
+                    )));
+                }
+                serializer.serialize_f64(*val)
+            }
             Some(value::Kind::StringValue(val)) => serializer.serialize_str(val),
             Some(value::Kind::BoolValue(val)) => serializer.serialize_bool(*val),
             Some(value::Kind::StructValue(val)) => {

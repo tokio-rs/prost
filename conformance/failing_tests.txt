@@ -14,3 +14,9 @@ Recommended.FieldMaskTooManyUnderscore.JsonOutput
 Recommended.Proto2.JsonInput.FieldNameExtension.Validator
 Recommended.Proto3.JsonInput.FieldMaskInvalidCharacter
 Recommended.Proto3.JsonInput.NullValueInOtherOneofOldFormat.Validator
+
+# These just aren't possible right now, because we can't represent unknown
+# enum values in the message struct (they are stored as i32).
+Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapValue.ProtobufOutput
+Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInOptionalField.ProtobufOutput
+Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInRepeatedField.ProtobufOutput

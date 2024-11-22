@@ -62,3 +62,46 @@ where
         true
     }
 }
+
+pub struct NullDeserializer;
+
+impl DeserializeInto<()> for NullDeserializer {
+    #[inline]
+    fn deserialize_into<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+        _config: &DeserializerConfig,
+    ) -> Result<(), D::Error> {
+        struct Visitor;
+
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a null value")
+            }
+
+            #[inline]
+            fn visit_none<E>(self) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(())
+            }
+
+            #[inline]
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(())
+            }
+        }
+
+        deserializer.deserialize_option(Visitor)
+    }
+
+    #[inline]
+    fn can_deserialize_null() -> bool {
+        true
+    }
+}
