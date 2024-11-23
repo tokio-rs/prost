@@ -2,7 +2,10 @@ use std::collections::{hash_map, HashMap};
 
 use itertools::Itertools;
 
-use crate::ident::{to_snake, to_upper_camel};
+use crate::{
+    fully_qualified_name::FullyQualifiedName,
+    ident::{to_snake, to_upper_camel},
+};
 
 fn validate_proto_path(path: &str) -> Result<(), String> {
     if path.chars().next().map(|c| c != '.').unwrap_or(true) {
@@ -19,6 +22,7 @@ fn validate_proto_path(path: &str) -> Result<(), String> {
 
 #[derive(Debug)]
 pub struct ExternPaths {
+    // IMPROVEMENT: store as FullyQualifiedName and syn::Path
     extern_paths: HashMap<String, String>,
 }
 
@@ -79,10 +83,8 @@ impl ExternPaths {
         Ok(())
     }
 
-    pub fn resolve_ident(&self, pb_ident: &str) -> Option<String> {
-        // protoc should always give fully qualified identifiers.
-        assert_eq!(".", &pb_ident[..1]);
-
+    pub fn resolve_ident(&self, pb_ident: &FullyQualifiedName) -> Option<String> {
+        let pb_ident = pb_ident.as_ref();
         if let Some(rust_path) = self.extern_paths.get(pb_ident) {
             return Some(rust_path.clone());
         }
@@ -137,7 +139,10 @@ mod tests {
         .unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
-            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+            assert_eq!(
+                paths.resolve_ident(&proto_ident.into()).unwrap(),
+                resolved_ident
+            );
         };
 
         case(".foo", "::foo1");
@@ -151,9 +156,9 @@ mod tests {
         case(".a.b.c.d.e.f", "::abc::def");
         case(".a.b.c.d.e.f.g.FooBar.Baz", "::abc::def::g::foo_bar::Baz");
 
-        assert!(paths.resolve_ident(".a").is_none());
-        assert!(paths.resolve_ident(".a.b").is_none());
-        assert!(paths.resolve_ident(".a.c").is_none());
+        assert!(paths.resolve_ident(&".a".into()).is_none());
+        assert!(paths.resolve_ident(&".a.b".into()).is_none());
+        assert!(paths.resolve_ident(&".a.c".into()).is_none());
     }
 
     #[test]
@@ -161,7 +166,10 @@ mod tests {
         let paths = ExternPaths::new([], true).unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
-            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+            assert_eq!(
+                paths.resolve_ident(&proto_ident.into()).unwrap(),
+                resolved_ident
+            );
         };
 
         case(".google.protobuf.Value", "::prost_types::Value");
