@@ -15,14 +15,14 @@ use prost_types::{
     SourceCodeInfo,
 };
 
-use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
+use crate::ast::{Comments, Method, Service};
+use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
 use crate::Config;
 use crate::{
-    ast::{Comments, Method, Service},
-    ident,
+    ident::{strip_enum_prefix, to_snake, to_upper_camel},
+    json::{json_attr_for_enum_variant, json_attr_for_field, json_attr_for_one_of_variant},
 };
-use crate::{extern_paths::ExternPaths, ident::IdentKind};
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
@@ -53,9 +53,9 @@ fn prost_path(config: &Config) -> &str {
     config.prost_path.as_deref().unwrap_or("::prost")
 }
 
-struct Field {
-    descriptor: FieldDescriptorProto,
-    path_index: i32,
+pub struct Field {
+    pub descriptor: FieldDescriptorProto,
+    pub path_index: i32,
 }
 
 impl Field {
@@ -66,8 +66,12 @@ impl Field {
         }
     }
 
-    fn rust_name(&self) -> String {
+    pub fn rust_name(&self) -> String {
         to_snake(self.descriptor.name())
+    }
+
+    pub fn rust_variant_name(&self) -> String {
+        to_upper_camel(self.descriptor.name())
     }
 }
 
@@ -511,26 +515,17 @@ impl CodeGenerator<'_> {
         }
         self.buf.push('"');
 
-        let rust_field_name = &field.rust_name();
-        let proto_field_name = field.descriptor.name();
-
-        let field_name_is_stable_for_json = ident::is_stable_ident_for_json(
-            proto_field_name,
-            IdentKind::MessageField {
-                field: rust_field_name,
-            },
-        );
-
-        if self.config.enable_serde && !field_name_is_stable_for_json {
-            self.buf
-                .push_str(&format!(", json(proto_name = \"{}\")", proto_field_name));
+        if self.config.enable_serde {
+            if let Some(json_attr) = json_attr_for_field(field) {
+                self.buf.push_str(&format!(", {json_attr}"));
+            }
         }
 
         self.buf.push_str(")]\n");
         self.append_field_attributes(fq_message_name, field.descriptor.name());
         self.push_indent();
         self.buf.push_str("pub ");
-        self.buf.push_str(rust_field_name);
+        self.buf.push_str(&field.rust_name());
         self.buf.push_str(": ");
 
         let prost_path = prost_path(self.config);
@@ -584,18 +579,12 @@ impl CodeGenerator<'_> {
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
 
-        let rust_field_name = &field.rust_name();
-        let proto_field_name = field.descriptor.name();
-
-        let field_name_is_stable_for_json = ident::is_stable_ident_for_json(
-            proto_field_name,
-            IdentKind::MessageField {
-                field: rust_field_name,
-            },
-        );
-
-        let json_attr = if self.config.enable_serde && !field_name_is_stable_for_json {
-            format!(", json(proto_name = \"{}\")", proto_field_name)
+        let json_attr = if self.config.enable_serde {
+            if let Some(json_attr) = json_attr_for_field(field) {
+                format!(", {json_attr}")
+            } else {
+                Default::default()
+            }
         } else {
             Default::default()
         };
@@ -612,7 +601,7 @@ impl CodeGenerator<'_> {
         self.push_indent();
         self.buf.push_str(&format!(
             "pub {}: {}<{}, {}>,\n",
-            rust_field_name,
+            field.rust_name(),
             map_type.rust_type(),
             key_ty,
             value_ty
@@ -683,7 +672,7 @@ impl CodeGenerator<'_> {
         self.depth += 1;
         for field in &oneof.fields {
             let proto_field_name = field.descriptor.name();
-            let rust_variant_name = &to_upper_camel(proto_field_name);
+            let rust_variant_name = &field.rust_variant_name();
 
             self.path.push(field.path_index);
             self.append_doc(fq_message_name, Some(proto_field_name));
@@ -692,15 +681,12 @@ impl CodeGenerator<'_> {
             let ty_tag = self.field_type_tag(&field.descriptor);
             let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
-            let variant_name_is_stable_for_json = ident::is_stable_ident_for_json(
-                proto_field_name,
-                IdentKind::OneOfVariant {
-                    variant: rust_variant_name,
-                },
-            );
-
-            let json_attr = if self.config.enable_serde && !variant_name_is_stable_for_json {
-                format!(", json(proto_name = \"{}\")", proto_field_name)
+            let json_attr = if self.config.enable_serde {
+                if let Some(json_attr) = json_attr_for_one_of_variant(field) {
+                    format!(", {json_attr}")
+                } else {
+                    Default::default()
+                }
             } else {
                 Default::default()
             };
@@ -818,26 +804,11 @@ impl CodeGenerator<'_> {
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
 
-            let variant_name_is_stable_for_json = ident::is_stable_ident_for_json(
-                variant.proto_name,
-                IdentKind::EnumVariant {
-                    ty: &enum_name,
-                    variant: &variant.generated_variant_name,
-                },
-            );
-
-            let emit_proto_names =
-                !variant.proto_aliases.is_empty() || !variant_name_is_stable_for_json;
-
-            if self.config.enable_serde && emit_proto_names {
-                self.push_indent();
-
-                let names = iter::once(variant.proto_name)
-                    .chain(variant.proto_aliases.iter().copied())
-                    .map(|proto_name| format!("proto_name = \"{proto_name}\""))
-                    .join(", ");
-
-                self.buf.push_str(&format!("#[prost(json({names}))]\n"));
+            if self.config.enable_serde {
+                if let Some(json_attr) = json_attr_for_enum_variant(&enum_name, variant) {
+                    self.push_indent();
+                    self.buf.push_str(&format!("#[prost({json_attr})]\n"));
+                }
             };
 
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
@@ -1228,12 +1199,12 @@ fn can_pack(field: &FieldDescriptorProto) -> bool {
     )
 }
 
-struct EnumVariantMapping<'a> {
-    path_idx: usize,
-    proto_name: &'a str,
-    proto_aliases: Vec<&'a str>,
-    proto_number: i32,
-    generated_variant_name: String,
+pub struct EnumVariantMapping<'a> {
+    pub path_idx: usize,
+    pub proto_name: &'a str,
+    pub proto_aliases: Vec<&'a str>,
+    pub proto_number: i32,
+    pub generated_variant_name: String,
 }
 
 fn build_enum_value_mappings<'a>(

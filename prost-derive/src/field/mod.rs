@@ -180,7 +180,7 @@ impl Field {
             | Self::Message(message::Field { json, .. })
             | Self::Group(group::Field { json, .. })
             | Self::Map(map::Field { json, .. }) => Some(json.as_ref()),
-            _ => None,
+            Self::Oneof(_) => None,
         }
     }
 
