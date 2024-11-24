@@ -1360,6 +1360,11 @@ mod test {
     }
 
     #[test]
+    fn max_key_len() {
+        assert_eq!(key_len(MAX_TAG), 5);
+    }
+
+    #[test]
     fn string_merge_invalid_utf8() {
         let mut s = String::new();
         let buf = b"\x02\x80\x80";

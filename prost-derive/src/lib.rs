@@ -103,9 +103,31 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         )
     };
 
-    let encoded_len = fields
-        .iter()
-        .map(|(field_ident, field)| field.encoded_len(quote!(self.#field_ident)));
+    // For encoded_len, split fields into those that have a known length limit
+    // and those that don't. The sum of the known lengths should not overflow usize.
+    let mut total_limit = 0usize;
+    let mut encoded_len_limited = Vec::new();
+    let mut encoded_len_unlimited = Vec::new();
+    for (field_ident, field) in &fields {
+        let encoded_len_expr = field.encoded_len(quote!(self.#field_ident));
+        match field.encoded_len_limit() {
+            Some(limit) => {
+                total_limit = match total_limit.checked_add(limit) {
+                    Some(total_limit) => {
+                        encoded_len_limited.push(encoded_len_expr);
+                        total_limit
+                    }
+                    None => {
+                        encoded_len_unlimited.push(encoded_len_expr);
+                        continue;
+                    }
+                };
+            }
+            None => {
+                encoded_len_unlimited.push(encoded_len_expr);
+            }
+        }
+    }
 
     let encode = fields
         .iter()
@@ -196,8 +218,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             }
 
             #[inline]
+            #[allow(unused_mut)]
             fn encoded_len(&self) -> usize {
-                0 #(+ #encoded_len)*
+                let mut acc = 0usize #(+ #encoded_len_limited)*;
+                #(acc = acc.checked_add(#encoded_len_unlimited)
+                    .expect("encoded length overflows usize");)*
+                acc
             }
 
             fn clear(&mut self) {
