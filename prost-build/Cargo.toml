@@ -32,7 +32,7 @@ syn = { version = "2", features = ["full"], optional = true }
 
 # These two must be kept in sync, used for `cleanup-markdown` feature.
 pulldown-cmark = { version = "0.12", optional = true, default-features = false }
-pulldown-cmark-to-cmark = { version = ">=16, <=18", optional = true }
+pulldown-cmark-to-cmark = { version = ">=16, <=19", optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.11", default-features = false }
