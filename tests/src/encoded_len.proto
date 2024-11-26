@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package encoded_len;
 
-message Numerics {
+message Testbed {
     int32 int32 = 1;
     int64 int64 = 2;
     uint32 uint32 = 3;
@@ -17,7 +17,12 @@ message Numerics {
     double double = 12;
     bool bool = 13;
     BadEnum enumeration = 14;
+    string string = 15;
+    bytes bytes = 16;
+    repeated Empty repeated_empty = 536870911; // MAX_TAG
 }
+
+message Empty {}
 
 enum BadEnum {
     UNKNOWN = 0;

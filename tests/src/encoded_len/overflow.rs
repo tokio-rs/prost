@@ -69,16 +69,31 @@ mod int32 {
 
 mod message {
     use super::*;
-    use prost::encoding::{message, MAX_TAG};
-    use prost::Message;
+    use crate::encoded_len::proto;
+    use prost::encoding::{encoded_len_varint, key_len, message, MAX_TAG};
 
-    #[derive(Clone, PartialEq, Message)]
-    struct Empty {}
+    #[test]
+    #[cfg_attr(target_pointer_width = "32", should_panic)]
+    fn encoded_len_can_overflow_u32() {
+        let filler = proto::Empty {};
+        let filler_len = message::encoded_len(MAX_TAG, &filler);
+        let subcritical = vec![filler; u32::MAX as usize / filler_len];
+        let payload_len = subcritical.len() * filler_len;
+        assert_eq!(encoded_len_varint(payload_len as u64), 5);
+        assert!(key_len(MAX_TAG) + 5 >= filler_len);
+        let bomb32 = proto::Testbed {
+            repeated_empty: subcritical,
+            ..Default::default()
+        };
+        let encoded_len = message::encoded_len(MAX_TAG, &bomb32);
+        let expected_len = (key_len(MAX_TAG) + 5) as u64 + payload_len as u64;
+        assert!(verify_overflowing_encoded_len(encoded_len, expected_len));
+    }
 
     #[test]
     #[cfg_attr(target_pointer_width = "32", should_panic)]
     fn encoded_len_repeated_can_overflow_u32() {
-        let filler = Empty {};
+        let filler = proto::Empty {};
         let filler_len = message::encoded_len(MAX_TAG, &filler);
         let bomb32 = vec![filler; u32::MAX as usize / filler_len + 1];
         let encoded_len = message::encoded_len_repeated(MAX_TAG, &bomb32);

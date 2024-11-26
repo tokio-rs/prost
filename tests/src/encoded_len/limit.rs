@@ -9,7 +9,7 @@ macro_rules! test_limit_is_reachable {
 
             #[test]
             fn encoded_len_limit_is_reachable() {
-                let msg = proto::Numerics {
+                let msg = proto::Testbed {
                     $name: $value,
                     ..Default::default()
                 };
