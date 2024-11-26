@@ -128,6 +128,41 @@ mod field {
             assert!(verify_overflowing_encoded_len(encoded_len, expected_len));
         }
     }
+
+    macro_rules! test_map {
+        ($map_mod:ident, $map_init:expr) => {
+            use prost::encoding::{int32, message, $map_mod, MAX_TAG};
+
+            #[test]
+            #[ignore = "allocates and fills about 1 GiB"]
+            #[cfg_attr(target_pointer_width = "32", should_panic)]
+            fn encoded_len_can_overflow_u32() {
+                let encoded_entry_len = 5 + 1 + 1 + 10;
+                let num_entries = u32::MAX as usize / encoded_entry_len + 1;
+                let mut map = $map_init(num_entries);
+                map.extend((-(num_entries as i32)..0).map(|i| (i, proto::Empty {})));
+                let encoded_len =
+                    $map_mod::encoded_len(int32::encoded_len, message::encoded_len, MAX_TAG, &map);
+                let expected_len = num_entries as u64 * encoded_entry_len as u64;
+                assert!(verify_overflowing_encoded_len(encoded_len, expected_len));
+            }
+        };
+    }
+
+    mod btree_map {
+        use super::*;
+        use prost::alloc::collections::BTreeMap;
+
+        test_map!(btree_map, |_| BTreeMap::new());
+    }
+
+    #[cfg(feature = "std")]
+    mod hash_map {
+        use super::*;
+        use std::collections::HashMap;
+
+        test_map!(hash_map, HashMap::with_capacity);
+    }
 }
 
 mod derived {
