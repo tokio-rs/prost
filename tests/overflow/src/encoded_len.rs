@@ -6,6 +6,10 @@
 //! should not be run in parallel as the combined allocation requests can exceed
 //! the addressable memory.
 
+mod proto {
+    include!(concat!(env!("OUT_DIR"), "/encoded_len.rs"));
+}
+
 use prost::alloc::vec;
 
 #[cfg(target_pointer_width = "64")]
