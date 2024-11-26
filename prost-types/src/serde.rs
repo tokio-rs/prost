@@ -37,10 +37,14 @@ impl DeserializeEnum for NullValue {
     where
         E: _serde::de::Error,
     {
-        Err(E::invalid_value(
-            _serde::de::Unexpected::Str(val),
-            &"a null value",
-        ))
+        if val == "NULL_VALUE" {
+            Ok(Ok(Self::NullValue))
+        } else {
+            Err(E::invalid_value(
+                _serde::de::Unexpected::Str(val),
+                &"a null value",
+            ))
+        }
     }
 
     #[inline]
@@ -151,22 +155,39 @@ impl CustomSerialize for FieldMask {
     where
         S: _serde::Serializer,
     {
-        struct FieldMaskAsDisplay<'a>(&'a FieldMask);
+        let mut buf = String::with_capacity(self.paths.iter().map(|path| path.len()).sum());
+        let mut paths = self.paths.iter().peekable();
 
-        impl Display for FieldMaskAsDisplay<'_> {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                let mut peek = self.0.paths.iter().peekable();
-                while let Some(path) = peek.next() {
-                    f.write_str(path)?;
-                    if peek.peek().is_some() {
-                        f.write_str(",")?;
+        while let Some(path) = paths.next() {
+            let mut path_chars = path.chars().peekable();
+
+            while let Some(chr) = path_chars.next() {
+                match chr {
+                    'A'..='Z' => {
+                        return Err(<S::Error as _serde::ser::Error>::custom(
+                            "field mask element may not have upper-case letters",
+                        ))
                     }
+                    '_' => {
+                        let Some(next_chr) =
+                            path_chars.next().filter(|chr| chr.is_ascii_lowercase())
+                        else {
+                            return Err(<S::Error as _serde::ser::Error>::custom(
+                                "underscore in field mask element must be followed by lower-case letter",
+                            ));
+                        };
+                        buf.push(next_chr.to_ascii_uppercase());
+                    }
+                    _ => buf.push(chr),
                 }
-                Ok(())
+            }
+
+            if paths.peek().is_some() {
+                buf.push(',');
             }
         }
 
-        serializer.collect_str(&FieldMaskAsDisplay(self))
+        serializer.serialize_str(&buf)
     }
 }
 
@@ -185,34 +206,48 @@ impl<'de> CustomDeserialize<'de> for FieldMask {
                 formatter.write_str("a fieldmask string")
             }
 
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            fn visit_str<E>(self, val: &str) -> Result<Self::Value, E>
             where
                 E: _serde::de::Error,
             {
-                fn is_valid_ident(ident: &str) -> bool {
-                    let mut chars = ident.chars();
-                    let Some(first) = chars.next() else {
-                        return false;
-                    };
-                    if !first.is_ascii_alphabetic() {
-                        return false;
+                fn convert_path(path: &str) -> Result<String, &'static str> {
+                    let underscores_required =
+                        path.chars().filter(|chr| matches!(chr, 'A'..='Z')).count();
+
+                    let mut buf = String::with_capacity(path.len() + underscores_required);
+
+                    for chr in path.chars() {
+                        match chr {
+                            'A'..='Z' => {
+                                buf.push('_');
+                                buf.push(chr.to_ascii_lowercase());
+                            }
+                            '_' => return Err("field mask element may not contain underscores"),
+                            'a'..='z' | '0'..='9' => buf.push(chr),
+                            _ => {
+                                return Err(
+                                    "field mask element may not contain non ascii alphabetic letters or digits",
+                                )
+                            }
+                        }
                     }
-                    chars.all(|chr| chr.is_ascii_alphabetic() || chr.is_ascii_digit() || chr == '_')
+
+                    Ok(buf)
                 }
-                let mut paths = vec![];
-                let iter = v.split(',').filter_map(|path| {
-                    let path = path.trim();
-                    (!path.is_empty()).then_some(path)
-                });
-                for path in iter {
-                    if !path.split('.').all(is_valid_ident) {
-                        return Err(E::invalid_value(
-                            _serde::de::Unexpected::Str(v),
-                            &"a valid fieldmask string",
-                        ));
-                    }
-                    paths.push(path.to_owned());
-                }
+
+                let paths = val
+                    .split(',')
+                    .map(|path| path.trim())
+                    .filter(|path| !path.is_empty())
+                    .map(convert_path)
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|err| {
+                        E::invalid_value(
+                            _serde::de::Unexpected::Str(val),
+                            &&*format!("a valid fieldmask string ({err})"),
+                        )
+                    })?;
+
                 Ok(FieldMask { paths })
             }
         }

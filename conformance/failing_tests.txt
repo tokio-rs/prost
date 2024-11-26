@@ -2,18 +2,8 @@
 Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
 Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
 
-# We don't support this right now because there is no runtime validation of the
-# field paths and name mapping (JSON <-> Protobuf).
-Required.Proto3.JsonInput.AnyWithFieldMask.ProtobufOutput
-Required.Proto3.JsonInput.FieldMask.ProtobufOutput
-Recommended.FieldMaskNumbersDontRoundTrip.JsonOutput
-Recommended.FieldMaskPathsDontRoundTrip.JsonOutput
-Recommended.FieldMaskTooManyUnderscore.JsonOutput
-
 # Unsupported right now
 Recommended.Proto2.JsonInput.FieldNameExtension.Validator
-Recommended.Proto3.JsonInput.FieldMaskInvalidCharacter
-Recommended.Proto3.JsonInput.NullValueInOtherOneofOldFormat.Validator
 
 # These just aren't possible right now, because we can't represent unknown
 # string enum values in the message struct (they are stored as i32).
