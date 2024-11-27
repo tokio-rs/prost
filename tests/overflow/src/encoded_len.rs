@@ -61,9 +61,14 @@ mod field {
         }
     }
 
+    // These tests may abort on the large allocations when built on a 32-bit
+    // target and run in company with some other tests, even with
+    // --test-threads=1.
+    // As heap fragmentation seemingly becomes a problem, these tests are best
+    // run in isolation.
     mod int32 {
         use super::*;
-        use prost::encoding::{encoded_len_varint, int32, key_len, MAX_TAG};
+        use prost::encoding::{int32, MAX_TAG};
 
         #[test]
         #[ignore = "allocates and fills more than 1 GiB"]
@@ -81,6 +86,8 @@ mod field {
         #[ignore = "allocates and fills about 1.6 GiB"]
         #[cfg_attr(target_pointer_width = "32", should_panic)]
         fn encoded_len_packed_can_overflow_u32() {
+            use prost::encoding::{encoded_len_varint, key_len};
+
             let filler = -1i32;
             let filler_len = encoded_len_varint(filler as u64);
             let bomb_len = (u32::MAX as usize - key_len(MAX_TAG) - 5) / filler_len + 1;
