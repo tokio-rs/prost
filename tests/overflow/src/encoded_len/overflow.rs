@@ -254,6 +254,21 @@ mod derived {
 
     #[test]
     #[cfg_attr(target_pointer_width = "32", should_panic)]
+    fn encoded_len_can_overflow_u32_all_checked_with_repeated_field() {
+        let filler = proto::Empty {};
+        let filler_len = message::encoded_len(MAX_TAG, &filler);
+        let supercritical = vec![filler; u32::MAX as usize / filler_len + 1];
+        let expected_len = supercritical.len() as u64 * filler_len as u64;
+        let bomb32 = proto::TwoUnlimited {
+            repeated_empty: supercritical,
+            ..Default::default()
+        };
+        let encoded_len = bomb32.encoded_len();
+        assert!(verify_overflowing_encoded_len(encoded_len, expected_len));
+    }
+
+    #[test]
+    #[cfg_attr(target_pointer_width = "32", should_panic)]
     fn encoded_len_can_overflow_u32_with_string() {
         let filler = proto::Empty {};
         let filler_len = message::encoded_len(MAX_TAG, &filler);
@@ -268,6 +283,22 @@ mod derived {
         let encoded_len = bomb32.encoded_len();
         let expected_len =
             FATTEST_SCALARS.encoded_len() as u64 + padding_len as u64 + filler_len as u64;
+        assert!(verify_overflowing_encoded_len(encoded_len, expected_len));
+    }
+
+    #[test]
+    #[cfg_attr(target_pointer_width = "32", should_panic)]
+    fn encoded_len_can_overflow_u32_all_checked_with_string() {
+        let filler = proto::Empty {};
+        let filler_len = message::encoded_len(MAX_TAG, &filler);
+        let padding = vec![filler; u32::MAX as usize / filler_len];
+        let padding_len = padding.len() * filler_len;
+        let bomb32 = proto::TwoUnlimited {
+            repeated_empty: padding,
+            string: " ".repeat(filler_len - 2 - 1),
+        };
+        let encoded_len = bomb32.encoded_len();
+        let expected_len = padding_len as u64 + filler_len as u64;
         assert!(verify_overflowing_encoded_len(encoded_len, expected_len));
     }
 

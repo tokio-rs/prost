@@ -33,6 +33,11 @@ message Testbed {
     map<uint32, int32> map = 19;
 }
 
+message TwoUnlimited {
+    repeated Empty repeated_empty = 536870911; // MAX_TAG
+    string string = 16;
+}
+
 message Empty {}
 
 enum BadEnum {
