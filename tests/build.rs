@@ -102,10 +102,6 @@ fn main() {
         .compile_protos(&[src.join("default_string_escape.proto")], includes)
         .unwrap();
 
-    config
-        .compile_protos(&[src.join("encoded_len.proto")], includes)
-        .unwrap();
-
     prost_build::Config::new()
         .skip_debug(["custom_debug.Msg"])
         .compile_protos(&[src.join("custom_debug.proto")], includes)

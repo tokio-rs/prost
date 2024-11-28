@@ -169,14 +169,14 @@ jobs:
       - name: test for integer overflows
         run: |
           cargo test -p tests-overflow --target i686-unknown-linux-gnu -- \
-            --skip encoded_len::field::int32::encoded_len_packed_can_overflow_u32 \
-            --skip encoded_len::field::int32::encoded_len_repeated_can_overflow_u32 \
+            --skip encoded_len::overflow::field::int32::encoded_len_packed_can_overflow_u32 \
+            --skip encoded_len::overflow::field::int32::encoded_len_repeated_can_overflow_u32 \
             --include-ignored --test-threads 1
       - name: run tests with large allocations in isolation
         run: |
           for test in \
-            encoded_len::field::int32::encoded_len_packed_can_overflow_u32 \
-            encoded_len::field::int32::encoded_len_repeated_can_overflow_u32 \
+            encoded_len::overflow::field::int32::encoded_len_packed_can_overflow_u32 \
+            encoded_len::overflow::field::int32::encoded_len_repeated_can_overflow_u32 \
             ;
           do
             cargo test -p tests-overflow --target i686-unknown-linux-gnu -- \
