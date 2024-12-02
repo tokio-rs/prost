@@ -1101,6 +1101,31 @@ impl CodeGenerator<'_> {
         false
     }
 
+    /// Returns whether the Rust type for this field needs to be `Cow<_>`.
+    fn cowed(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+        oneof: Option<&str>,
+    ) -> bool {
+        let fd_type = field.r#type();
+
+        // We only support Cow for Bytes and String
+        if !matches!(fd_type, Type::Bytes | Type::String) {
+            return false;
+        }
+
+        let config_path = match oneof {
+            None => Cow::Borrowed(fq_message_name),
+            Some(ooname) => Cow::Owned(format!("{fq_message_name}.{ooname}")),
+        };
+        self
+            .config
+            .cowed
+            .get_first_field(&config_path, field.name())
+            .is_some()
+    }
+
     /// Returns `true` if the field options includes the `deprecated` option.
     fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
         field

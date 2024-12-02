@@ -36,6 +36,7 @@ pub struct Config {
     pub(crate) enum_attributes: PathMap<String>,
     pub(crate) field_attributes: PathMap<String>,
     pub(crate) boxed: PathMap<()>,
+    pub(crate) cowed: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
     pub(crate) out_dir: Option<PathBuf>,
@@ -369,6 +370,14 @@ impl Config {
         P: AsRef<str>,
     {
         self.boxed.insert(path.as_ref().to_string(), ());
+        self
+    }
+
+    pub fn cowed<P>(&mut self, path: P) -> &mut Self
+    where
+        P: AsRef<str>,
+    {
+        self.cowed.insert(path.as_ref().to_string(), ());
         self
     }
 
@@ -1078,7 +1087,11 @@ impl Config {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1), self.boxed.clone());
+        let message_graph = MessageGraph::new(
+            requests.iter().map(|x| &x.1),
+            self.boxed.clone(),
+            self.cowed.clone(),
+        );
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
 
@@ -1158,6 +1171,7 @@ impl default::Default for Config {
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
             boxed: PathMap::default(),
+            cowed: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
