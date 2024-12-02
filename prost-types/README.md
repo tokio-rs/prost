@@ -11,7 +11,7 @@ information about well known types.
 ## License
 
 `prost-types` is distributed under the terms of the Apache License (Version 2.0).
-`prost-types` includes code imported from the Protocol Buffers projet, which is
+`prost-types` includes code imported from the Protocol Buffers project, which is
 included under its original ([BSD][2]) license.
 
 [2]: https://github.com/google/protobuf/blob/master/LICENSE
