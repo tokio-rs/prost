@@ -78,7 +78,7 @@ fn main() {
         .compile_protos(&[src.join("no_unused_results.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("default_enum_value.proto")], includes)
         .unwrap();
 

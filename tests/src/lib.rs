@@ -66,6 +66,9 @@ pub mod disable_comments;
 // Must be `pub` as `missing_docs` lint is only executed on public types.
 pub mod custom_attributes;
 
+#[cfg(test)]
+mod default_enum_value;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -103,14 +106,6 @@ pub mod recursive_oneof {
 /// in a separate file.
 pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
-}
-
-/// Issue <https://github.com/tokio-rs/prost/issues/118>
-///
-/// When a message contains an enum field with a default value, we
-/// must ensure that the appropriate name conventions are used.
-pub mod default_enum_value {
-    include!(concat!(env!("OUT_DIR"), "/default_enum_value.rs"));
 }
 
 pub mod groups {
@@ -536,92 +531,6 @@ mod tests {
         // https://github.com/tokio-rs/prost/issues/267
         let buf = vec![b'C'; 1 << 20];
         <() as Message>::decode(&buf[..]).err().unwrap();
-    }
-
-    #[test]
-    fn test_default_enum() {
-        let msg = default_enum_value::Test::default();
-        assert_eq!(msg.privacy_level_1(), default_enum_value::PrivacyLevel::One);
-        assert_eq!(
-            msg.privacy_level_3(),
-            default_enum_value::PrivacyLevel::PrivacyLevelThree
-        );
-        assert_eq!(
-            msg.privacy_level_4(),
-            default_enum_value::PrivacyLevel::PrivacyLevelprivacyLevelFour
-        );
-    }
-
-    #[test]
-    fn test_enum_to_string() {
-        use default_enum_value::{ERemoteClientBroadcastMsg, PrivacyLevel};
-
-        assert_eq!(PrivacyLevel::One.as_str_name(), "PRIVACY_LEVEL_ONE");
-        assert_eq!(PrivacyLevel::Two.as_str_name(), "PRIVACY_LEVEL_TWO");
-        assert_eq!(
-            PrivacyLevel::PrivacyLevelThree.as_str_name(),
-            "PRIVACY_LEVEL_PRIVACY_LEVEL_THREE"
-        );
-        assert_eq!(
-            PrivacyLevel::PrivacyLevelprivacyLevelFour.as_str_name(),
-            "PRIVACY_LEVELPRIVACY_LEVEL_FOUR"
-        );
-
-        assert_eq!(
-            ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery.as_str_name(),
-            "k_ERemoteClientBroadcastMsgDiscovery"
-        );
-    }
-
-    #[test]
-    fn test_enum_from_string() {
-        use default_enum_value::{ERemoteClientBroadcastMsg, PrivacyLevel};
-
-        assert_eq!(
-            Some(PrivacyLevel::One),
-            PrivacyLevel::from_str_name("PRIVACY_LEVEL_ONE")
-        );
-        assert_eq!(
-            Some(PrivacyLevel::Two),
-            PrivacyLevel::from_str_name("PRIVACY_LEVEL_TWO")
-        );
-        assert_eq!(
-            Some(PrivacyLevel::PrivacyLevelThree),
-            PrivacyLevel::from_str_name("PRIVACY_LEVEL_PRIVACY_LEVEL_THREE")
-        );
-        assert_eq!(
-            Some(PrivacyLevel::PrivacyLevelprivacyLevelFour),
-            PrivacyLevel::from_str_name("PRIVACY_LEVELPRIVACY_LEVEL_FOUR")
-        );
-        assert_eq!(None, PrivacyLevel::from_str_name("PRIVACY_LEVEL_FIVE"));
-
-        assert_eq!(
-            Some(ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery),
-            ERemoteClientBroadcastMsg::from_str_name("k_ERemoteClientBroadcastMsgDiscovery")
-        );
-    }
-
-    #[test]
-    fn test_enum_try_from_i32() {
-        use core::convert::TryFrom;
-        use default_enum_value::{ERemoteClientBroadcastMsg, PrivacyLevel};
-
-        assert_eq!(Ok(PrivacyLevel::One), PrivacyLevel::try_from(1));
-        assert_eq!(Ok(PrivacyLevel::Two), PrivacyLevel::try_from(2));
-        assert_eq!(
-            Ok(PrivacyLevel::PrivacyLevelThree),
-            PrivacyLevel::try_from(3)
-        );
-        assert_eq!(
-            Ok(PrivacyLevel::PrivacyLevelprivacyLevelFour),
-            PrivacyLevel::try_from(4)
-        );
-        assert_eq!(Err(prost::UnknownEnumValue(5)), PrivacyLevel::try_from(5));
-
-        assert_eq!(
-            Ok(ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery),
-            ERemoteClientBroadcastMsg::try_from(0)
-        );
     }
 
     #[test]
