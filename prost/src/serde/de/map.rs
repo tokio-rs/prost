@@ -1,6 +1,6 @@
 use core::{fmt, hash::Hash, marker::PhantomData};
 
-use super::{DesIntoWithConfig, DeserializeInto, DeserializerConfig};
+use super::{DesIntoWithConfig, DeserializeInto, DeserializerConfig, MaybeDesIntoWithConfig};
 
 pub struct MapDeserializer<KD, VD>(PhantomData<(KD, VD)>);
 
@@ -38,7 +38,10 @@ where
                 let mut inner = std::collections::HashMap::with_capacity(capacity);
 
                 while let Some(key) = map.next_key_seed(DesIntoWithConfig::<KD, K>::new(self.0))? {
-                    let val = map.next_value_seed(DesIntoWithConfig::<VD, V>::new(self.0))?;
+                    let val = map.next_value_seed(MaybeDesIntoWithConfig::<VD, V>::new(self.0))?;
+                    let Some(val) = val.unwrap_for_omittable::<A::Error>(self.0, "in map")? else {
+                        continue;
+                    };
                     inner.insert(key, val);
                 }
 
@@ -83,7 +86,10 @@ where
                 let mut inner = alloc::collections::BTreeMap::new();
 
                 while let Some(key) = map.next_key_seed(DesIntoWithConfig::<KD, K>::new(self.0))? {
-                    let val = map.next_value_seed(DesIntoWithConfig::<VD, V>::new(self.0))?;
+                    let val = map.next_value_seed(MaybeDesIntoWithConfig::<VD, V>::new(self.0))?;
+                    let Some(val) = val.unwrap_for_omittable::<A::Error>(self.0, "in map")? else {
+                        continue;
+                    };
                     inner.insert(key, val);
                 }
 

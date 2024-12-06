@@ -1,6 +1,6 @@
 use core::{fmt, marker::PhantomData};
 
-use super::{DesIntoWithConfig, DeserializeInto, DeserializerConfig};
+use super::{DeserializeInto, DeserializerConfig, MaybeDesIntoWithConfig, MaybeDeserializedValue};
 
 pub struct VecDeserializer<W>(PhantomData<W>);
 
@@ -32,10 +32,13 @@ where
                 let capacity = super::size_hint::cautious::<T>(seq.size_hint());
                 let mut values = Vec::<T>::with_capacity(capacity);
 
-                while let Some(value) =
-                    seq.next_element_seed(DesIntoWithConfig::<W, T>::new(self.0))?
+                while let Some(val) =
+                    seq.next_element_seed(MaybeDesIntoWithConfig::<W, T>::new(self.0))?
                 {
-                    values.push(value);
+                    let Some(val) = val.unwrap_for_omittable(self.0, "in repeated field")? else {
+                        continue;
+                    };
+                    values.push(val);
                 }
 
                 Ok(values)

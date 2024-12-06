@@ -170,6 +170,7 @@ impl Default for SerializerConfigBuilder {
 #[non_exhaustive]
 pub struct DeserializerConfig {
     pub ignore_unknown_fields: bool,
+    pub ignore_unknown_enum_string_values: bool,
     pub deny_unknown_enum_values: bool,
 }
 
@@ -275,6 +276,12 @@ impl DeserializerConfigBuilder {
     #[inline]
     pub fn deny_unknown_enum_values(mut self, deny: bool) -> Self {
         self.config.deny_unknown_enum_values = deny;
+        self
+    }
+
+    #[inline]
+    pub fn ignore_unknown_enum_string_values(mut self, ignore: bool) -> Self {
+        self.config.ignore_unknown_enum_string_values = ignore;
         self
     }
 

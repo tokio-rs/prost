@@ -1,4 +1,4 @@
-use core::fmt::{self, Display};
+use core::fmt;
 
 use prost::alloc::collections::BTreeMap;
 use prost::serde::{
@@ -22,7 +22,7 @@ impl CustomSerialize for NullValue {
 
 impl DeserializeEnum for NullValue {
     #[inline]
-    fn deserialize_from_i32<E>(val: i32) -> Result<Result<Self, i32>, E>
+    fn deserialize_from_i32<E>(val: i32) -> Result<Option<Self>, E>
     where
         E: _serde::de::Error,
     {
@@ -33,12 +33,12 @@ impl DeserializeEnum for NullValue {
     }
 
     #[inline]
-    fn deserialize_from_str<E>(val: &str) -> Result<Result<Self, i32>, E>
+    fn deserialize_from_str<E>(val: &str) -> Result<Option<Self>, E>
     where
         E: _serde::de::Error,
     {
         if val == "NULL_VALUE" {
-            Ok(Ok(Self::NullValue))
+            Ok(Some(Self::NullValue))
         } else {
             Err(E::invalid_value(
                 _serde::de::Unexpected::Str(val),
@@ -48,11 +48,11 @@ impl DeserializeEnum for NullValue {
     }
 
     #[inline]
-    fn deserialize_from_null<E>() -> Result<Result<Self, i32>, E>
+    fn deserialize_from_null<E>() -> Result<Self, E>
     where
         E: _serde::de::Error,
     {
-        Ok(Ok(Self::NullValue))
+        Ok(Self::NullValue)
     }
 
     #[inline]

@@ -74,11 +74,78 @@ where
     }
 }
 
+#[derive(Debug)]
+pub enum MaybeDeserializedValue<T> {
+    Val(T),
+    UnknownEnumValue,
+}
+
+impl<T> MaybeDeserializedValue<T> {
+    #[inline]
+    pub fn map<R>(self, f: impl FnOnce(T) -> R) -> MaybeDeserializedValue<R> {
+        match self {
+            Self::Val(val) => MaybeDeserializedValue::Val(f(val)),
+            Self::UnknownEnumValue => MaybeDeserializedValue::UnknownEnumValue,
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_for_field<E>(
+        self,
+        config: &DeserializerConfig,
+        field_name: &'static str,
+    ) -> Result<T, E>
+    where
+        E: serde::de::Error,
+        T: Default,
+    {
+        match self {
+            Self::Val(val) => Ok(val),
+            Self::UnknownEnumValue if config.ignore_unknown_enum_string_values => Ok(T::default()),
+            Self::UnknownEnumValue => Err(E::custom(format!(
+                "found an unknown enum value at field `{field_name}`"
+            ))),
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_for_omittable<E>(
+        self,
+        config: &DeserializerConfig,
+        location: &'static str,
+    ) -> Result<Option<T>, E>
+    where
+        E: serde::de::Error,
+    {
+        match self {
+            Self::Val(val) => Ok(Some(val)),
+            Self::UnknownEnumValue if config.ignore_unknown_enum_string_values => Ok(None),
+            Self::UnknownEnumValue => Err(E::custom(format!(
+                "found an unknown enum value `{location}`"
+            ))),
+        }
+    }
+}
+
+impl<T> From<T> for MaybeDeserializedValue<T> {
+    #[inline]
+    fn from(val: T) -> Self {
+        Self::Val(val)
+    }
+}
+
 pub trait DeserializeInto<T> {
     fn deserialize_into<'de, D: Deserializer<'de>>(
         deserializer: D,
         config: &DeserializerConfig,
     ) -> Result<T, D::Error>;
+
+    fn maybe_deserialize_into<'de, D: Deserializer<'de>>(
+        deserializer: D,
+        config: &DeserializerConfig,
+    ) -> Result<MaybeDeserializedValue<T>, D::Error> {
+        Self::deserialize_into(deserializer, config).map(MaybeDeserializedValue::Val)
+    }
 
     #[inline]
     fn can_deserialize_null() -> bool {
@@ -107,6 +174,30 @@ where
         D: Deserializer<'de>,
     {
         <W as DeserializeInto<T>>::deserialize_into(deserializer, self.0)
+    }
+}
+
+pub struct MaybeDesIntoWithConfig<'c, W, T>(pub &'c DeserializerConfig, PhantomData<(W, T)>);
+
+impl<'c, W, T> MaybeDesIntoWithConfig<'c, W, T> {
+    #[inline]
+    pub fn new(config: &'c DeserializerConfig) -> Self {
+        Self(config, PhantomData)
+    }
+}
+
+impl<'c, 'de, W, T> DeserializeSeed<'de> for MaybeDesIntoWithConfig<'c, W, T>
+where
+    W: DeserializeInto<T>,
+{
+    type Value = MaybeDeserializedValue<T>;
+
+    #[inline]
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        <W as DeserializeInto<T>>::maybe_deserialize_into(deserializer, self.0)
     }
 }
 

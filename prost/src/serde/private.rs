@@ -32,6 +32,7 @@ pub use super::ser::{
 pub use super::de::{
     BoolDeserializer, BytesDeserializer, CustomDeserialize, DefaultDeserializer, DesIntoWithConfig,
     DesWithConfig, DeserializeEnum, DeserializeInto, DeserializeOneOf, EnumDeserializer,
-    FloatDeserializer, ForwardDeserializer, IntDeserializer, MapDeserializer, MessageDeserializer,
-    NullDeserializer, OneOfDeserializer, OptionDeserializer, VecDeserializer,
+    FloatDeserializer, ForwardDeserializer, IntDeserializer, MapDeserializer,
+    MaybeDesIntoWithConfig, MaybeDeserializedValue, MessageDeserializer, NullDeserializer,
+    OneOfDeserializer, OptionDeserializer, VecDeserializer,
 };

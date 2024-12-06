@@ -93,7 +93,12 @@ pub fn impl_for_message(
                     }
                     let val =_serde::de::MapAccess::next_value_seed(
                         &mut __map,
-                        _private::DesIntoWithConfig::<#deserializer, _>::new(__config)
+                        _private::MaybeDesIntoWithConfig::<#deserializer, _>::new(__config)
+                    )?;
+                    let val = _private::MaybeDeserializedValue::unwrap_for_field(
+                        val,
+                        __config,
+                        #field_ident_str
                     )?;
                     #field_variant_ident = _private::Some(val);
                 }
@@ -388,8 +393,6 @@ pub fn impl_for_enum(
     _generics: &Generics,
     variants: &[(Ident, Expr, Option<Json>)],
 ) -> Result<TokenStream, Error> {
-    let invalid_val_err_msg = format!("a valid enum value (`{}`)", enum_ident);
-
     let (str_arms, int_arms): (Vec<_>, Vec<_>) = variants
         .iter()
         .map(|(variant_ident, descr, json)| {
@@ -404,10 +407,10 @@ pub fn impl_for_enum(
                 _ => vec![format!("{enum_ident}_{variant_ident}").to_shouty_snake_case()],
             };
             let str_arm = quote! {
-                #(#json_value)|* => _private::Ok(_private::Ok(Self::#variant_ident))
+                #(#json_value)|* => _private::Ok(_private::Some(Self::#variant_ident))
             };
             let int_arm = quote! {
-                #descr => _private::Ok(_private::Ok(Self::#variant_ident))
+                #descr => _private::Ok(_private::Some(Self::#variant_ident))
             };
             (str_arm, int_arm)
         })
@@ -416,29 +419,24 @@ pub fn impl_for_enum(
     Ok(quote! {
         impl _private::DeserializeEnum for #enum_ident {
             fn deserialize_from_i32<__E>(val: i32)
-                -> _private::Result<_private::Result<Self, i32>, __E>
+                -> _private::Result<_private::Option<Self>, __E>
             where
                 __E: _serde::de::Error
             {
                 match val {
                     #(#int_arms,)*
-                    _ => _private::Ok(_private::Err(val)),
+                    _ => _private::Ok(_private::None),
                 }
             }
 
             fn deserialize_from_str<__E>(val: &str)
-                -> _private::Result<_private::Result<Self, i32>, __E>
+                -> _private::Result<_private::Option<Self>, __E>
             where
                 __E: _serde::de::Error
             {
                 match val {
                     #(#str_arms,)*
-                    _ => {
-                        _private::Err(<__E as _serde::de::Error>::invalid_value(
-                            _serde::de::Unexpected::Str(val),
-                            &#invalid_val_err_msg
-                        ))
-                    }
+                    _ => _private::Ok(_private::None),
                 }
             }
         }

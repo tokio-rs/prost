@@ -210,6 +210,7 @@ where
     let serializer_config = SerializerConfig::default();
     let deserializer_config = DeserializerConfigBuilder::default()
         .ignore_unknown_fields(ignore_unknown_fields)
+        .ignore_unknown_enum_string_values(ignore_unknown_fields)
         .build();
 
     // Try to decode a message from the data. If decoding fails, continue.
