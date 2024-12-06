@@ -1,3 +1,41 @@
+# Prost version 0.13.4
+
+_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## Features
+
+- Impl Name for Protobuf well-known wrapper types (#1174)
+
+## Performance
+
+- NonZeroU64 to optimize encoded_len_varint (#1192)
+
+## Dependencies
+
+- Remove unused `bytes` dependency from `prost-build` (#1169)
+- Update pulldown-cmark-to-cmark requirement from >=16, <=17 to >=16, <=18 (#1173)
+- Update pulldown-cmark-to-cmark requirement from >=16, <=18 to >=16, <=19 (#1195)
+- Update protobuf to v25.3 (#1165)
+- Update protobuf to v25.4 (#1176)
+
+## Styling
+
+- Remove explicit lifetimes (#1180)
+- Remove unnecessary empty line after document (#1181)
+
+## Testing
+
+- *(boxed_field)* Confirm `Foo::bar` is boxed (#1168)
+- Move build.rs to standard location (#1167)
+- *(custom_debug)* Merge `skip_debug` into `custom_debug` (#1178)
+- Rename `invalid_doctest` to `disable_comments` (#1183)
+- *(custom_attributes)* Move module to separate file (#1187)
+
+## Build
+
+- Bump clippy version to 1.82 (#1182)
+- Restrict permissions of `GITHUB_TOKEN` (#1189)
+
 # Prost version 0.13.3
 
 _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.

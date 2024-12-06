@@ -17,7 +17,7 @@ default = ["std"]
 std = ["prost/std"]
 
 [dependencies]
-prost = { version = "0.13.3", path = "../prost", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.13.4", path = "../prost", default-features = false, features = ["prost-derive"] }
 
 [dev-dependencies]
 proptest = "1"
