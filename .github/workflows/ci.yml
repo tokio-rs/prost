@@ -148,7 +148,7 @@ jobs:
         uses: ./.github/actions/setup-ninja
       - uses: Swatinem/rust-cache@v2
       - name: test
-        run: cargo test
+        run: cargo test --features arbitrary
       - name: test no-default-features
         run: cargo test -p prost-build -p prost-derive -p prost-types --no-default-features
 

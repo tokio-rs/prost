@@ -35,6 +35,7 @@
 //!
 //! ## Feature Flags
 //! - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
+//! - `arbitrary`: Enable integration with crate `arbitrary`. All types on this crate will implement `trait Arbitrary`.
 //!
 //! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
 
