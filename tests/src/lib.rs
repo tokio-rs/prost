@@ -207,7 +207,9 @@ pub fn roundtrip<M>(
 where
     M: Message + SerdeMessage + Default,
 {
+    #[cfg(feature = "json")]
     let serializer_config = SerializerConfig::default();
+    #[cfg(feature = "json")]
     let deserializer_config = DeserializerConfigBuilder::default()
         .ignore_unknown_fields(ignore_unknown_fields)
         .ignore_unknown_enum_string_values(ignore_unknown_fields)
@@ -219,13 +221,17 @@ where
             Ok(all_types) => all_types,
             Err(err) => return RoundtripResult::DecodeError(err.into()),
         },
+        #[cfg(feature = "json")]
         RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
             Ok(all_types) => all_types,
             Err(err) => return RoundtripResult::DecodeError(err.into()),
         },
+        #[cfg(not(feature = "json"))]
+        RoundtripInput::Json(_) => unreachable!("enable the `json` feature for json rountrips"),
     };
 
     let mid_protobuf;
+    #[cfg(feature = "json")]
     let mid_json;
     let mid_input = match output_ty {
         RoundtripOutputType::Protobuf => {
@@ -254,6 +260,7 @@ where
 
             RoundtripInput::Protobuf(&mid_protobuf)
         }
+        #[cfg(feature = "json")]
         RoundtripOutputType::Json => {
             mid_json = match serializer_config.with(&all_types).to_string() {
                 Ok(val) => val,
@@ -267,6 +274,8 @@ where
             };
             RoundtripInput::Json(&mid_json)
         }
+        #[cfg(not(feature = "json"))]
+        RoundtripOutputType::Json => unreachable!("enable the `json` feature for json rountrips"),
     };
 
     let final_all_types = match mid_input {
@@ -274,6 +283,7 @@ where
             Ok(all_types) => all_types,
             Err(err) => return RoundtripResult::DecodeError(err.into()),
         },
+        #[cfg(feature = "json")]
         RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
             Ok(all_types) => all_types,
             Err(err) => {
@@ -284,6 +294,8 @@ where
                 }
             }
         },
+        #[cfg(not(feature = "json"))]
+        RoundtripInput::Json(_) => unreachable!("enable the `json` feature for json rountrips"),
     };
 
     match output_ty {
@@ -326,6 +338,7 @@ where
 
             RoundtripResult::Protobuf(encoded_1)
         }
+        #[cfg(feature = "json")]
         RoundtripOutputType::Json => {
             let json = match serializer_config.with(&final_all_types).to_string() {
                 Ok(val) => val,
@@ -339,6 +352,8 @@ where
             };
             RoundtripResult::Json(json)
         }
+        #[cfg(not(feature = "json"))]
+        RoundtripOutputType::Json => unreachable!("enable the `json` feature for json rountrips"),
     }
 }
 

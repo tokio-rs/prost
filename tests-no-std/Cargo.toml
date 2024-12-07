@@ -12,7 +12,7 @@ doctest = false
 path = "../tests/src/lib.rs"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2015", "std"))'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2015", "std", "json"))'] }
 
 # Compile the `tests` crate *without* the std feature, which is implicitly
 # omitted from the default crate features. It would be easier to do something
@@ -23,8 +23,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2
 [dependencies]
 anyhow = { version = "1.0.45", default-features = false }
 cfg-if = "1"
-prost = { path = "../prost", default-features = false, features = ["derive"] }
-prost-types = { path = "../prost-types", default-features = false }
+prost = { path = "../prost", default-features = false, features = ["derive", "serde"] }
+prost-types = { path = "../prost-types", default-features = false, features = ["serde"] }
 
 [dev-dependencies]
 prost-build = { path = "../prost-build" }
