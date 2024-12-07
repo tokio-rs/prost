@@ -327,7 +327,7 @@ impl CustomSerialize for Value {
             Some(value::Kind::NullValue(_)) | None => serializer.serialize_none(),
             Some(value::Kind::NumberValue(val)) => {
                 if val.is_nan() || val.is_infinite() {
-                    return Err(serde::ser::Error::custom(format!(
+                    return Err(_serde::ser::Error::custom(format!(
                         "serializing a value::Kind::NumberValue, which is {val}, is not possible"
                     )));
                 }

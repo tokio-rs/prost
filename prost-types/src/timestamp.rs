@@ -113,7 +113,7 @@ impl Timestamp {
         Timestamp::try_from(date_time)
     }
 
-    #[cfg(feature = "any-v2")]
+    #[cfg(feature = "serde")]
     pub(crate) fn from_json_str(s: &str) -> Result<Timestamp, TimestampError> {
         datetime::parse_timestamp(s, true).ok_or(TimestampError::ParseFailure)
     }
