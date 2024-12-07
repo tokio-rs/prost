@@ -9,24 +9,27 @@
 //!
 //! ## Any
 //!
-//! The well-known [`Any`] type contains an arbitrary serialized message along with a URL that
-//! describes the type of the serialized message. Every message that also implements [`Name`]
-//! can be serialized to and deserialized from [`Any`].
+//! The well-known [`Any`](protobuf::Any) type contains an arbitrary serialized message along
+//! with a URL that describes the type of the serialized message.
+//! Every message that also implements [`Name`] can be serialized to and deserialized
+//! from [`Any`](protobuf::Any).
 //!
 //! ### Serialization
 //!
-//! A message can be serialized using [`Any::from_msg`].
+//! A message can be serialized using [`Any::from_msg`](protobuf::Any::from_msg).
 //!
 //! ```rust
+//! # use crate::protobuf::Any;
 //! let message = Timestamp::date(2000, 1, 1).unwrap();
 //! let any = Any::from_msg(&message).unwrap();
 //! ```
 //!
 //! ### Deserialization
 //!
-//! A message can be deserialized using [`Any::to_msg`].
+//! A message can be deserialized using [`Any::to_msg`](protobuf::Any::to_msg).
 //!
 //! ```rust
+//! # use crate::protobuf::Any;
 //! # let message = Timestamp::date(2000, 1, 1).unwrap();
 //! # let any = Any::from_msg(&message).unwrap();
 //! #
