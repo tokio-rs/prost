@@ -1,6 +1,6 @@
 use core::fmt;
 
-use prost::alloc::collections::BTreeMap;
+use prost::alloc::{borrow::ToOwned, collections::BTreeMap, format, string::String, vec, vec::Vec};
 use prost::serde::{
     de::{CustomDeserialize, DesWithConfig},
     private::{self, DeserializeEnum, _serde},
