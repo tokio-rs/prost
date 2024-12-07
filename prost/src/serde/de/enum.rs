@@ -44,7 +44,7 @@ where
             Ok(val) => Ok(val.into()),
             Err(UnknownEnumValue::Int(val)) => Ok(val),
             Err(UnknownEnumValue::Str(val)) => Err(<D::Error as serde::de::Error>::invalid_value(
-                serde::de::Unexpected::Str(&*val),
+                serde::de::Unexpected::Str(&val),
                 &"a valid enum value",
             )),
         }
@@ -76,7 +76,7 @@ enum UnknownEnumValue<'de> {
 
 struct EnumVisitor<'c, E>(&'c DeserializerConfig, PhantomData<E>);
 
-impl<'c, 'de, T> serde::de::Visitor<'de> for EnumVisitor<'c, T>
+impl<'de, T> serde::de::Visitor<'de> for EnumVisitor<'_, T>
 where
     T: DeserializeEnum,
 {

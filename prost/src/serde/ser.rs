@@ -11,7 +11,7 @@ pub trait CustomSerialize {
         S: serde::Serializer;
 }
 
-impl<'a, T> CustomSerialize for &'a T
+impl<T> CustomSerialize for &T
 where
     T: CustomSerialize,
 {
@@ -65,7 +65,7 @@ where
 
 pub struct SerWithConfig<'c, T>(pub T, pub &'c SerializerConfig);
 
-impl<'c, T> serde::Serialize for SerWithConfig<'c, T>
+impl<T> serde::Serialize for SerWithConfig<'_, T>
 where
     T: CustomSerialize,
 {
@@ -80,7 +80,7 @@ where
 
 pub struct SerIdentity<'a, T>(pub &'a T);
 
-impl<'a, T> CustomSerialize for SerIdentity<'a, T>
+impl<T> CustomSerialize for SerIdentity<'_, T>
 where
     T: CustomSerialize,
 {
@@ -95,7 +95,7 @@ where
 
 pub struct SerSerde<'a, T>(pub &'a T);
 
-impl<'a, T> CustomSerialize for SerSerde<'a, T>
+impl<T> CustomSerialize for SerSerde<'_, T>
 where
     T: Serialize,
 {
@@ -110,7 +110,7 @@ where
 
 pub struct SerAsDisplay<'a, T>(pub &'a T);
 
-impl<'a, T> CustomSerialize for SerAsDisplay<'a, T>
+impl<T> CustomSerialize for SerAsDisplay<'_, T>
 where
     T: Display,
 {
@@ -125,7 +125,7 @@ where
 
 pub struct SerBytesAsBase64<'a, T>(pub &'a T);
 
-impl<'a, T> CustomSerialize for SerBytesAsBase64<'a, T>
+impl<T> CustomSerialize for SerBytesAsBase64<'_, T>
 where
     T: Deref<Target = [u8]>,
 {
@@ -185,7 +185,7 @@ impl CustomSerialize for SerFloat64<'_> {
 
 pub struct SerMappedVecItems<'a, I, M>(pub &'a Vec<I>, pub fn(&'a I) -> M);
 
-impl<'a, I, M> CustomSerialize for SerMappedVecItems<'a, I, M>
+impl<I, M> CustomSerialize for SerMappedVecItems<'_, I, M>
 where
     M: CustomSerialize,
 {

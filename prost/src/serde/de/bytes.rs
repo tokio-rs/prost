@@ -15,7 +15,7 @@ where
     ) -> Result<T, D::Error> {
         struct Visitor<T>(PhantomData<T>);
 
-        impl<'de, T> serde::de::Visitor<'de> for Visitor<T>
+        impl<T> serde::de::Visitor<'_> for Visitor<T>
         where
             T: From<Vec<u8>>,
         {

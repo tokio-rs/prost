@@ -59,7 +59,7 @@ impl<'c, T> DesWithConfig<'c, T> {
     }
 }
 
-impl<'c, 'de, T> serde::de::DeserializeSeed<'de> for DesWithConfig<'c, T>
+impl<'de, T> serde::de::DeserializeSeed<'de> for DesWithConfig<'_, T>
 where
     T: CustomDeserialize<'de>,
 {
@@ -162,7 +162,7 @@ impl<'c, W, T> DesIntoWithConfig<'c, W, T> {
     }
 }
 
-impl<'c, 'de, W, T> DeserializeSeed<'de> for DesIntoWithConfig<'c, W, T>
+impl<'de, W, T> DeserializeSeed<'de> for DesIntoWithConfig<'_, W, T>
 where
     W: DeserializeInto<T>,
 {
@@ -186,7 +186,7 @@ impl<'c, W, T> MaybeDesIntoWithConfig<'c, W, T> {
     }
 }
 
-impl<'c, 'de, W, T> DeserializeSeed<'de> for MaybeDesIntoWithConfig<'c, W, T>
+impl<'de, W, T> DeserializeSeed<'de> for MaybeDesIntoWithConfig<'_, W, T>
 where
     W: DeserializeInto<T>,
 {

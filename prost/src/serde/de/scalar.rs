@@ -12,7 +12,7 @@ impl<const PARSE_STR: bool> DeserializeInto<bool> for BoolDeserializer<PARSE_STR
     ) -> Result<bool, D::Error> {
         struct Visitor<const PARSE_STR: bool>;
 
-        impl<'de, const PARSE_STR: bool> serde::de::Visitor<'de> for Visitor<PARSE_STR> {
+        impl<const PARSE_STR: bool> serde::de::Visitor<'_> for Visitor<PARSE_STR> {
             type Value = bool;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -60,7 +60,7 @@ impl DeserializeInto<i32> for IntDeserializer {
     ) -> Result<i32, D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = i32;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -170,7 +170,7 @@ impl DeserializeInto<i64> for IntDeserializer {
     ) -> Result<i64, D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = i64;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -255,7 +255,7 @@ impl DeserializeInto<u32> for IntDeserializer {
     ) -> Result<u32, D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = u32;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -342,7 +342,7 @@ impl DeserializeInto<u64> for IntDeserializer {
     ) -> Result<u64, D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = u64;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -406,7 +406,7 @@ impl DeserializeInto<f32> for FloatDeserializer {
     ) -> Result<f32, D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = f32;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -500,7 +500,7 @@ impl DeserializeInto<f64> for FloatDeserializer {
     ) -> Result<f64, D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = f64;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

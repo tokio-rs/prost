@@ -45,7 +45,7 @@ pub struct WithSerializerConfig<'a, T> {
     config: &'a SerializerConfig,
 }
 
-impl<'a, T> WithSerializerConfig<'a, T>
+impl<T> WithSerializerConfig<'_, T>
 where
     T: private::CustomSerialize,
 {
@@ -91,7 +91,7 @@ where
     }
 }
 
-impl<'a, T> Serialize for WithSerializerConfig<'a, T>
+impl<T> Serialize for WithSerializerConfig<'_, T>
 where
     T: private::CustomSerialize,
 {

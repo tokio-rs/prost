@@ -1,6 +1,6 @@
 use core::{fmt, marker::PhantomData};
 
-use super::{DeserializeInto, DeserializerConfig, MaybeDesIntoWithConfig, MaybeDeserializedValue};
+use super::{DeserializeInto, DeserializerConfig, MaybeDesIntoWithConfig};
 
 pub struct VecDeserializer<W>(PhantomData<W>);
 
@@ -15,7 +15,7 @@ where
     ) -> Result<Vec<T>, D::Error> {
         struct Visitor<'c, W, T>(&'c DeserializerConfig, PhantomData<(W, T)>);
 
-        impl<'c, 'de, W, T> serde::de::Visitor<'de> for Visitor<'c, W, T>
+        impl<'de, W, T> serde::de::Visitor<'de> for Visitor<'_, W, T>
         where
             W: DeserializeInto<T>,
         {

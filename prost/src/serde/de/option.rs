@@ -15,7 +15,7 @@ where
     ) -> Result<Option<T>, D::Error> {
         struct Visitor<'c, T, I>(&'c DeserializerConfig, PhantomData<(T, I)>);
 
-        impl<'c, 'de, T, I> serde::de::Visitor<'de> for Visitor<'c, T, I>
+        impl<'de, T, I> serde::de::Visitor<'de> for Visitor<'_, T, I>
         where
             I: DeserializeInto<T>,
         {
@@ -63,7 +63,7 @@ where
     ) -> Result<MaybeDeserializedValue<Option<T>>, D::Error> {
         struct Visitor<'c, T, I>(&'c DeserializerConfig, PhantomData<(T, I)>);
 
-        impl<'c, 'de, T, I> serde::de::Visitor<'de> for Visitor<'c, T, I>
+        impl<'de, T, I> serde::de::Visitor<'de> for Visitor<'_, T, I>
         where
             I: DeserializeInto<T>,
         {
@@ -121,7 +121,7 @@ impl DeserializeInto<()> for NullDeserializer {
     ) -> Result<(), D::Error> {
         struct Visitor;
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
+        impl serde::de::Visitor<'_> for Visitor {
             type Value = ();
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

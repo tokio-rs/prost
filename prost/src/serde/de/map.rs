@@ -18,7 +18,7 @@ where
     ) -> Result<std::collections::HashMap<K, V>, D::Error> {
         struct Visitor<'c, K, V, KD, VD>(&'c DeserializerConfig, PhantomData<(K, V, KD, VD)>);
 
-        impl<'c, 'de, K, V, KD, VD> serde::de::Visitor<'de> for Visitor<'c, K, V, KD, VD>
+        impl<'de, K, V, KD, VD> serde::de::Visitor<'de> for Visitor<'_, K, V, KD, VD>
         where
             K: Eq + Hash,
             KD: DeserializeInto<K>,
@@ -67,7 +67,7 @@ where
     ) -> Result<alloc::collections::BTreeMap<K, V>, D::Error> {
         struct Visitor<'c, K, V, KD, VD>(&'c DeserializerConfig, PhantomData<(K, V, KD, VD)>);
 
-        impl<'c, 'de, K, V, KD, VD> serde::de::Visitor<'de> for Visitor<'c, K, V, KD, VD>
+        impl<'de, K, V, KD, VD> serde::de::Visitor<'de> for Visitor<'_, K, V, KD, VD>
         where
             K: Ord,
             KD: DeserializeInto<K>,

@@ -18,7 +18,7 @@ pub struct OneOfDeserializer<'c, T>(pub T::FieldKey, pub &'c DeserializerConfig)
 where
     T: DeserializeOneOf;
 
-impl<'c, 'de, T> serde::de::DeserializeSeed<'de> for OneOfDeserializer<'c, T>
+impl<'de, T> serde::de::DeserializeSeed<'de> for OneOfDeserializer<'_, T>
 where
     T: DeserializeOneOf,
 {
