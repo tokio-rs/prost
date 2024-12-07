@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{boxed::Box, vec::Vec};
 
 use core::{fmt::Display, marker::PhantomData, ops::Deref};
 use serde::{ser::SerializeStruct, Serialize, Serializer};

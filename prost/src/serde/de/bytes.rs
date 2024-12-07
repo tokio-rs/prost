@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::{fmt, marker::PhantomData};
 
 use super::{DeserializeInto, DeserializerConfig};

@@ -1,5 +1,5 @@
+use alloc::borrow::{Cow, ToOwned};
 use core::{fmt, marker::PhantomData};
-use std::borrow::Cow;
 
 use super::{DeserializeInto, DeserializerConfig, MaybeDeserializedValue};
 

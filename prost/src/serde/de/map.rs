@@ -1,4 +1,4 @@
-use core::{fmt, hash::Hash, marker::PhantomData};
+use core::{fmt, marker::PhantomData};
 
 use super::{DesIntoWithConfig, DeserializeInto, DeserializerConfig, MaybeDesIntoWithConfig};
 
@@ -7,7 +7,7 @@ pub struct MapDeserializer<KD, VD>(PhantomData<(KD, VD)>);
 #[cfg(feature = "std")]
 impl<K, V, KD, VD> DeserializeInto<std::collections::HashMap<K, V>> for MapDeserializer<KD, VD>
 where
-    K: Eq + Hash,
+    K: Eq + core::hash::Hash,
     KD: DeserializeInto<K>,
     VD: DeserializeInto<V>,
 {
@@ -20,7 +20,7 @@ where
 
         impl<'de, K, V, KD, VD> serde::de::Visitor<'de> for Visitor<'_, K, V, KD, VD>
         where
-            K: Eq + Hash,
+            K: Eq + core::hash::Hash,
             KD: DeserializeInto<K>,
             VD: DeserializeInto<V>,
         {
@@ -53,7 +53,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<K, V, KD, VD> DeserializeInto<alloc::collections::BTreeMap<K, V>> for MapDeserializer<KD, VD>
 where
     K: Ord,
