@@ -212,7 +212,7 @@ impl<'de> CustomDeserialize<'de> for FieldMask {
             {
                 fn convert_path(path: &str) -> Result<String, &'static str> {
                     let underscores_required =
-                        path.chars().filter(|chr| matches!(chr, 'A'..='Z')).count();
+                        path.chars().filter(|chr| chr.is_ascii_uppercase()).count();
 
                     let mut buf = String::with_capacity(path.len() + underscores_required);
 
@@ -279,7 +279,7 @@ impl<'de> CustomDeserialize<'de> for Struct {
     {
         struct Visitor<'c>(&'c DeserializerConfig);
 
-        impl<'c, 'de> _serde::de::Visitor<'de> for Visitor<'c> {
+        impl<'de> _serde::de::Visitor<'de> for Visitor<'_> {
             type Value = Struct;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -353,7 +353,7 @@ impl<'de> CustomDeserialize<'de> for Value {
     {
         struct Visitor<'c>(&'c DeserializerConfig);
 
-        impl<'c, 'de> _serde::de::Visitor<'de> for Visitor<'c> {
+        impl<'de> _serde::de::Visitor<'de> for Visitor<'_> {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -480,7 +480,7 @@ impl<'de> CustomDeserialize<'de> for ListValue {
     {
         struct Visitor<'c>(&'c DeserializerConfig);
 
-        impl<'c, 'de> _serde::de::Visitor<'de> for Visitor<'c> {
+        impl<'de> _serde::de::Visitor<'de> for Visitor<'_> {
             type Value = ListValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
