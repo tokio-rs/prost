@@ -69,6 +69,10 @@ impl Duration {
         result.normalize();
         result
     }
+
+    pub fn is_valid(&self) -> bool {
+        self.seconds >= -315_576_000_000 && self.seconds <= 315_576_000_000
+    }
 }
 
 impl Name for Duration {
@@ -116,7 +120,7 @@ impl TryFrom<Duration> for time::Duration {
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let d = self.normalized();
-        if self.seconds < 0 || self.nanos < 0 {
+        if self.seconds < 0 && self.nanos <= 0 || self.seconds <= 0 && self.nanos < 0 {
             write!(f, "-")?;
         }
         write!(f, "{}", d.seconds.abs())?;

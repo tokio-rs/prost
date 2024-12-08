@@ -12,15 +12,16 @@ doctest = false
 path = "../tests/src/lib.rs"
 
 [features]
-default = ["edition-2015", "std"]
+default = ["edition-2015", "std", "json"]
 edition-2015 = []
 std = []
+json = ["prost/serde-json"]
 
 [dependencies]
 anyhow = "1.0.1"
 cfg-if = "1"
-prost = { path = "../prost" }
-prost-types = { path = "../prost-types" }
+prost = { path = "../prost", features = ["serde"] }
+prost-types = { path = "../prost-types", features = ["serde"] }
 protobuf = { path = "../protobuf" }
 
 [dev-dependencies]

@@ -62,6 +62,12 @@ impl DateTime {
             && self.second < 60
             && self.nanos < 1_000_000_000
     }
+
+    /// Returns `true` if the `DateTime` is a valid calendar date that also has a valid RFC3339
+    /// representation.
+    pub(crate) fn is_rfc3339_valid(&self) -> bool {
+        self.is_valid() && self.year > 0 && self.year < 10000
+    }
 }
 
 impl fmt::Display for DateTime {
@@ -276,19 +282,29 @@ fn parse_nanos(s: &str) -> Option<(u32, &str)> {
 
 /// Parses a timezone offset in RFC 3339 format from ASCII string `s`, returning the offset hour,
 /// offset minute, and remaining input.
-fn parse_offset(s: &str) -> Option<(i8, i8, &str)> {
+fn parse_offset(s: &str, json_mode: bool) -> Option<(i8, i8, &str)> {
     debug_assert!(s.is_ascii());
 
-    if s.is_empty() {
-        // If no timezone specified, assume UTC.
-        return Some((0, 0, s));
-    }
+    let (s, z) = if json_mode {
+        if s.is_empty() {
+            return None;
+        }
 
-    // Snowflake's timestamp format contains a space separator before the offset.
-    let s = parse_char(s, b' ').unwrap_or(s);
+        (s, parse_char(s, b'Z'))
+    } else {
+        if s.is_empty() {
+            // If no timezone specified, assume UTC.
+            return Some((0, 0, s));
+        }
 
-    if let Some(s) = parse_char_ignore_case(s, b'Z') {
-        Some((0, 0, s))
+        // Snowflake's timestamp format contains a space separator before the offset.
+        let s = parse_char(s, b' ').unwrap_or(s);
+
+        (s, parse_char_ignore_case(s, b'Z'))
+    };
+
+    if let Some(z) = z {
+        Some((0, 0, z))
     } else {
         let (is_positive, s) = if let Some(s) = parse_char(s, b'+') {
             (true, s)
@@ -487,7 +503,7 @@ pub(crate) fn year_to_seconds(year: i64) -> (i128, bool) {
 }
 
 /// Parses a timestamp in RFC 3339 format from `s`.
-pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
+pub(crate) fn parse_timestamp(s: &str, json_mode: bool) -> Option<Timestamp> {
     // Check that the string is ASCII, since subsequent parsing steps use byte-level indexing.
     ensure!(s.is_ascii());
 
@@ -502,13 +518,22 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
             ..DateTime::default()
         };
 
+        if json_mode {
+            ensure!(date_time.is_rfc3339_valid());
+        }
+
         return Timestamp::try_from(date_time).ok();
     }
 
-    // Accept either 'T' or ' ' as delimiter between date and time.
-    let s = parse_char_ignore_case(s, b'T').or_else(|| parse_char(s, b' '))?;
+    let s = if json_mode {
+        // Only accept 'T' when parsing in json mode.
+        parse_char(s, b'T')?
+    } else {
+        // Accept either 'T' or ' ' as delimiter between date and time.
+        parse_char_ignore_case(s, b'T').or_else(|| parse_char(s, b' '))?
+    };
     let (hour, minute, mut second, nanos, s) = parse_time(s)?;
-    let (offset_hour, offset_minute, s) = parse_offset(s)?;
+    let (offset_hour, offset_minute, s) = parse_offset(s, json_mode)?;
 
     ensure!(s.is_empty());
 
@@ -531,6 +556,10 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
         second,
         nanos,
     };
+
+    if json_mode {
+        ensure!(date_time.is_rfc3339_valid());
+    }
 
     let Timestamp { seconds, nanos } = Timestamp::try_from(date_time).ok()?;
 
