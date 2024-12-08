@@ -131,11 +131,7 @@ pub mod default_string_escape {
 use alloc::{string::String, vec::Vec};
 
 use anyhow::anyhow;
-use prost::{
-    bytes::Buf,
-    serde::{DeserializerConfigBuilder, SerdeMessage, SerializerConfig},
-    Message,
-};
+use prost::{bytes::Buf, serde::SerdeMessage, Message};
 
 #[derive(Debug, Clone, Copy)]
 pub enum RoundtripInput<'a> {
@@ -202,15 +198,15 @@ pub enum RoundtripOutput {
 pub fn roundtrip<M>(
     input: RoundtripInput<'_>,
     output_ty: RoundtripOutputType,
-    ignore_unknown_fields: bool,
+    #[cfg_attr(not(feature = "json"), allow(unused_variables))] ignore_unknown_fields: bool,
 ) -> RoundtripResult
 where
     M: Message + SerdeMessage + Default,
 {
     #[cfg(feature = "json")]
-    let serializer_config = SerializerConfig::default();
+    let serializer_config = prost::serde::SerializerConfig::default();
     #[cfg(feature = "json")]
-    let deserializer_config = DeserializerConfigBuilder::default()
+    let deserializer_config = prost::serde::DeserializerConfigBuilder::default()
         .ignore_unknown_fields(ignore_unknown_fields)
         .ignore_unknown_enum_string_values(ignore_unknown_fields)
         .build();
@@ -219,7 +215,7 @@ where
     let all_types = match input {
         RoundtripInput::Protobuf(data) => match M::decode(data) {
             Ok(all_types) => all_types,
-            Err(err) => return RoundtripResult::DecodeError(err.into()),
+            Err(err) => return RoundtripResult::DecodeError(anyhow::Error::msg(err)),
         },
         #[cfg(feature = "json")]
         RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
@@ -281,7 +277,7 @@ where
     let final_all_types = match mid_input {
         RoundtripInput::Protobuf(data) => match M::decode(data) {
             Ok(all_types) => all_types,
-            Err(err) => return RoundtripResult::DecodeError(err.into()),
+            Err(err) => return RoundtripResult::DecodeError(anyhow::Error::msg(err)),
         },
         #[cfg(feature = "json")]
         RoundtripInput::Json(data) => match deserializer_config.deserialize_from_str::<M>(data) {
@@ -313,7 +309,7 @@ where
 
             let mut encoded_2 = alloc::vec![];
             if let Err(error) = final_all_types.encode(&mut encoded_2) {
-                return RoundtripResult::Error(error.into());
+                return RoundtripResult::Error(anyhow::Error::msg(error));
             }
             if encoded_2.len() != encoded_len {
                 return RoundtripResult::Error(anyhow!(
