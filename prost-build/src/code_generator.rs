@@ -80,7 +80,7 @@ impl OneofField {
 }
 
 impl<'a, 'b> CodeGenerator<'a, 'b> {
-    pub fn generate(context: &mut Context<'b>, file: FileDescriptorProto, buf: &mut String) {
+    pub(crate) fn generate(context: &mut Context<'b>, file: FileDescriptorProto, buf: &mut String) {
         let source_info = file.source_code_info.map(|mut s| {
             s.location.retain(|loc| {
                 let len = loc.path.len();
