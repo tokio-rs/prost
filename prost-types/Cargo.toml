@@ -15,9 +15,11 @@ doctest = false
 [features]
 default = ["std"]
 std = ["prost/std"]
+arbitrary = ["dep:arbitrary"]
 
 [dependencies]
 prost = { version = "0.13.4", path = "../prost", default-features = false, features = ["prost-derive"] }
+arbitrary = { version = "1.4", features = ["derive"], optional = true }
 
 [dev-dependencies]
 proptest = "1"

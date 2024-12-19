@@ -40,6 +40,10 @@ fn bootstrap() {
     prost_build::Config::new()
         .compile_well_known_types()
         .btree_map(["."])
+        .type_attribute(
+            ".",
+            r#"#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]"#,
+        )
         .out_dir(tempdir.path())
         .compile_protos(
             &[
