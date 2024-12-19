@@ -22,9 +22,16 @@ prost-derive = ["derive"]     # deprecated, please use derive feature instead
 no-recursion-limit = []
 std = []
 
+serde = ["dep:serde", "dep:base64"]
+serde-json = ["std", "serde", "dep:serde_json"]
+
 [dependencies]
 bytes = { version = "1", default-features = false }
 prost-derive = { version = "0.13.4", path = "../prost-derive", optional = true }
+
+base64 = { version = "0.21.4", default-features = false, features = ["alloc"], optional = true }
+serde = { version = "1.0.189", default-features = false, features = ["alloc"], optional = true }
+serde_json = { version = "1.0.107", features = ["float_roundtrip"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }

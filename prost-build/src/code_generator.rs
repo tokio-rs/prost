@@ -1,8 +1,9 @@
 use std::ascii;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::iter;
 
+use indexmap::IndexMap;
 use itertools::{Either, Itertools};
 use log::debug;
 use multimap::MultiMap;
@@ -16,9 +17,12 @@ use prost_types::{
 
 use crate::ast::{Comments, Method, Service};
 use crate::extern_paths::ExternPaths;
-use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::message_graph::MessageGraph;
 use crate::Config;
+use crate::{
+    ident::{strip_enum_prefix, to_snake, to_upper_camel},
+    json::{json_attr_for_enum_variant, json_attr_for_field, json_attr_for_one_of_variant},
+};
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
@@ -49,9 +53,9 @@ fn prost_path(config: &Config) -> &str {
     config.prost_path.as_deref().unwrap_or("::prost")
 }
 
-struct Field {
-    descriptor: FieldDescriptorProto,
-    path_index: i32,
+pub struct Field {
+    pub descriptor: FieldDescriptorProto,
+    pub path_index: i32,
 }
 
 impl Field {
@@ -62,8 +66,12 @@ impl Field {
         }
     }
 
-    fn rust_name(&self) -> String {
+    pub fn rust_name(&self) -> String {
         to_snake(self.descriptor.name())
+    }
+
+    pub fn rust_variant_name(&self) -> String {
+        to_upper_camel(self.descriptor.name())
     }
 }
 
@@ -238,6 +246,7 @@ impl CodeGenerator<'_> {
             prost_path(self.config)
         ));
         self.append_skip_debug(&fq_message_name);
+        self.append_serde();
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -378,6 +387,14 @@ impl CodeGenerator<'_> {
         }
     }
 
+    fn append_serde(&mut self) {
+        if self.config.enable_serde {
+            push_indent(self.buf, self.depth);
+            self.buf.push_str("#[prost(serde)]");
+            self.buf.push('\n');
+        }
+    }
+
     fn append_enum_attributes(&mut self, fq_message_name: &str) {
         assert_eq!(b'.', fq_message_name.as_bytes()[0]);
         for attribute in self.config.enum_attributes.get(fq_message_name) {
@@ -462,6 +479,7 @@ impl CodeGenerator<'_> {
         if boxed {
             self.buf.push_str(", boxed");
         }
+
         self.buf.push_str(", tag=\"");
         self.buf.push_str(&field.descriptor.number().to_string());
 
@@ -495,8 +513,15 @@ impl CodeGenerator<'_> {
                 self.buf.push_str(&default.escape_default().to_string());
             }
         }
+        self.buf.push('"');
 
-        self.buf.push_str("\")]\n");
+        if self.config.enable_serde {
+            if let Some(json_attr) = json_attr_for_field(field) {
+                self.buf.push_str(&format!(", {json_attr}"));
+            }
+        }
+
+        self.buf.push_str(")]\n");
         self.append_field_attributes(fq_message_name, field.descriptor.name());
         self.push_indent();
         self.buf.push_str("pub ");
@@ -554,12 +579,23 @@ impl CodeGenerator<'_> {
         let key_tag = self.field_type_tag(key);
         let value_tag = self.map_value_type_tag(value);
 
+        let json_attr = if self.config.enable_serde {
+            if let Some(json_attr) = json_attr_for_field(field) {
+                format!(", {json_attr}")
+            } else {
+                Default::default()
+            }
+        } else {
+            Default::default()
+        };
+
         self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+            "#[prost({}=\"{}, {}\", tag=\"{}\"{})]\n",
             map_type.annotation(),
             key_tag,
             value_tag,
-            field.descriptor.number()
+            field.descriptor.number(),
+            json_attr
         ));
         self.append_field_attributes(fq_message_name, field.descriptor.name());
         self.push_indent();
@@ -619,12 +655,14 @@ impl CodeGenerator<'_> {
             self.message_graph
                 .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
+
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
             if can_oneof_derive_copy { "Copy, " } else { "" },
             prost_path(self.config)
         ));
         self.append_skip_debug(fq_message_name);
+        self.append_serde();
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&to_upper_camel(oneof.descriptor.name()));
@@ -633,21 +671,36 @@ impl CodeGenerator<'_> {
         self.path.push(2);
         self.depth += 1;
         for field in &oneof.fields {
+            let proto_field_name = field.descriptor.name();
+            let rust_variant_name = &field.rust_variant_name();
+
             self.path.push(field.path_index);
-            self.append_doc(fq_message_name, Some(field.descriptor.name()));
+            self.append_doc(fq_message_name, Some(proto_field_name));
             self.path.pop();
 
-            self.push_indent();
             let ty_tag = self.field_type_tag(&field.descriptor);
-            self.buf.push_str(&format!(
-                "#[prost({}, tag=\"{}\")]\n",
-                ty_tag,
-                field.descriptor.number()
-            ));
-            self.append_field_attributes(&oneof_name, field.descriptor.name());
+            let ty = self.resolve_type(&field.descriptor, fq_message_name);
+
+            let json_attr = if self.config.enable_serde {
+                if let Some(json_attr) = json_attr_for_one_of_variant(field) {
+                    format!(", {json_attr}")
+                } else {
+                    Default::default()
+                }
+            } else {
+                Default::default()
+            };
 
             self.push_indent();
-            let ty = self.resolve_type(&field.descriptor, fq_message_name);
+            self.buf.push_str(&format!(
+                "#[prost({}, tag=\"{}\"{})]\n",
+                ty_tag,
+                field.descriptor.number(),
+                json_attr
+            ));
+            self.append_field_attributes(&oneof_name, proto_field_name);
+
+            self.push_indent();
 
             let boxed = self.boxed(
                 &field.descriptor,
@@ -657,23 +710,17 @@ impl CodeGenerator<'_> {
 
             debug!(
                 "    oneof: {:?}, type: {:?}, boxed: {}",
-                field.descriptor.name(),
-                ty,
-                boxed
+                proto_field_name, ty, boxed
             );
 
             if boxed {
                 self.buf.push_str(&format!(
                     "{}(::prost::alloc::boxed::Box<{}>),\n",
-                    to_upper_camel(field.descriptor.name()),
-                    ty
+                    rust_variant_name, ty
                 ));
             } else {
-                self.buf.push_str(&format!(
-                    "{}({}),\n",
-                    to_upper_camel(field.descriptor.name()),
-                    ty
-                ));
+                self.buf
+                    .push_str(&format!("{}({}),\n", rust_variant_name, ty));
             }
         }
         self.depth -= 1;
@@ -741,6 +788,7 @@ impl CodeGenerator<'_> {
         ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
+        self.append_serde();
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&enum_name);
@@ -755,6 +803,14 @@ impl CodeGenerator<'_> {
             self.path.push(variant.path_idx as i32);
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
+
+            if self.config.enable_serde {
+                if let Some(json_attr) = json_attr_for_enum_variant(&enum_name, variant) {
+                    self.push_indent();
+                    self.buf.push_str(&format!("#[prost({json_attr})]\n"));
+                }
+            };
+
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
             self.push_indent();
             self.buf.push_str(&variant.generated_variant_name);
@@ -973,8 +1029,8 @@ impl CodeGenerator<'_> {
         // protoc should always give fully qualified identifiers.
         assert_eq!(".", &pb_ident[..1]);
 
-        if let Some(proto_ident) = self.extern_paths.resolve_ident(pb_ident) {
-            return proto_ident;
+        if let Some(resolved) = self.extern_paths.resolve_ident(pb_ident) {
+            return resolved.rust_path;
         }
 
         let mut local_path = self
@@ -1143,11 +1199,12 @@ fn can_pack(field: &FieldDescriptorProto) -> bool {
     )
 }
 
-struct EnumVariantMapping<'a> {
-    path_idx: usize,
-    proto_name: &'a str,
-    proto_number: i32,
-    generated_variant_name: String,
+pub struct EnumVariantMapping<'a> {
+    pub path_idx: usize,
+    pub proto_name: &'a str,
+    pub proto_aliases: Vec<&'a str>,
+    pub proto_number: i32,
+    pub generated_variant_name: String,
 }
 
 fn build_enum_value_mappings<'a>(
@@ -1155,35 +1212,43 @@ fn build_enum_value_mappings<'a>(
     do_strip_enum_prefix: bool,
     enum_values: &'a [EnumValueDescriptorProto],
 ) -> Vec<EnumVariantMapping<'a>> {
-    let mut numbers = HashSet::new();
     let mut generated_names = HashMap::new();
-    let mut mappings = Vec::new();
+    // Use an insertion-order preserving map here because the enum ordering must be preserved.
+    let mut mappings = IndexMap::<i32, EnumVariantMapping>::new();
 
     for (idx, value) in enum_values.iter().enumerate() {
+        let enum_name = value.name();
+        let enum_value = value.number();
+
         // Skip duplicate enum values. Protobuf allows this when the
         // 'allow_alias' option is set.
-        if !numbers.insert(value.number()) {
+        if let Some(mapping) = mappings.get_mut(&enum_value) {
+            mapping.proto_aliases.push(enum_name);
             continue;
         }
 
-        let mut generated_variant_name = to_upper_camel(value.name());
+        let mut generated_variant_name = to_upper_camel(enum_name);
         if do_strip_enum_prefix {
             generated_variant_name =
                 strip_enum_prefix(generated_enum_name, &generated_variant_name);
         }
 
-        if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), value.name())
-        {
+        if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), enum_name) {
             panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
-                generated_variant_name, old_v, value.name());
+                generated_variant_name, old_v, enum_name);
         }
 
-        mappings.push(EnumVariantMapping {
-            path_idx: idx,
-            proto_name: value.name(),
-            proto_number: value.number(),
-            generated_variant_name,
-        })
+        mappings.insert(
+            enum_value,
+            EnumVariantMapping {
+                path_idx: idx,
+                proto_name: enum_name,
+                proto_aliases: vec![],
+                proto_number: enum_value,
+                generated_variant_name,
+            },
+        );
     }
-    mappings
+
+    mappings.into_values().collect()
 }

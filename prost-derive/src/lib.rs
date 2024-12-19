@@ -10,23 +10,42 @@ use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Index, Variant,
+    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, ExprLit, ExprUnary,
+    Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, UnOp, Variant,
 };
 
 mod field;
-use crate::field::Field;
+use crate::field::{Field, Json};
+
+mod serde;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse2(input)?;
 
     let ident = input.ident;
 
-    syn::custom_keyword!(skip_debug);
-    let skip_debug = input
+    let mut skip_debug = false;
+    let mut emit_serde = false;
+
+    if let Some(attr) = input
         .attrs
-        .into_iter()
-        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+        .iter()
+        .find(|attr| attr.path().is_ident("prost"))
+    {
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("skip_debug") {
+                skip_debug = true;
+                return Ok(());
+            }
+
+            if meta.path.is_ident("serde") {
+                emit_serde = true;
+                return Ok(());
+            }
+
+            Err(meta.error("unrecognized attributes"))
+        })?;
+    }
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -172,6 +191,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     };
 
+    let serde_impl = if emit_serde {
+        serde::impls_for_struct(&ident, generics, &fields)?
+    } else {
+        Default::default()
+    };
+
     let expanded = quote! {
         impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
@@ -250,6 +275,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         #expanded
 
         #methods
+
+        #serde_impl
     };
 
     Ok(expanded)
@@ -273,15 +300,42 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         Data::Union(..) => bail!("Enumeration can not be derived for a union"),
     };
 
+    let mut emit_serde = false;
+
+    if let Some(attr) = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("prost"))
+    {
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("serde") {
+                emit_serde = true;
+                return Ok(());
+            }
+
+            Err(meta.error("unrecognized attributes"))
+        })?;
+    }
+
     // Map the variants into 'fields'.
-    let mut variants: Vec<(Ident, Expr)> = Vec::new();
+    let mut variants: Vec<(Ident, Expr, Option<Json>)> = Vec::new();
     for Variant {
+        attrs,
         ident,
         fields,
         discriminant,
         ..
     } in punctuated_variants
     {
+        let mut json = None;
+
+        let attrs = field::prost_attrs(attrs)?;
+        for attr in &attrs {
+            if let Some(j) = field::Json::from_attr(attr)? {
+                field::set_option(&mut json, j, "duplicate json attribute")?;
+            }
+        }
+
         match fields {
             Fields::Unit => (),
             Fields::Named(_) | Fields::Unnamed(_) => {
@@ -290,7 +344,28 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         }
 
         match discriminant {
-            Some((_, expr)) => variants.push((ident, expr)),
+            Some((_, expr)) => {
+                // Validate the the discriminant.
+                let inner_expr = match &expr {
+                    Expr::Unary(ExprUnary {
+                        op: UnOp::Neg(_),
+                        expr,
+                        ..
+                    }) => expr,
+                    _ => &expr,
+                };
+                if !matches!(
+                    inner_expr,
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Int(_),
+                        ..
+                    })
+                ) {
+                    bail!("Enumeration variants must have an integral discriminant");
+                }
+
+                variants.push((ident, expr, json))
+            }
             None => bail!("Enumeration variants must have a discriminant"),
         }
     }
@@ -301,20 +376,26 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
     let default = variants[0].0.clone();
 
-    let is_valid = variants.iter().map(|(_, value)| quote!(#value => true));
-    let from = variants
-        .iter()
-        .map(|(variant, value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)));
+    let is_valid = variants.iter().map(|(_, value, _)| quote!(#value => true));
+    let from = variants.iter().map(
+        |(variant, value, _)| quote!(#value => ::core::option::Option::Some(#ident::#variant)),
+    );
 
     let try_from = variants
         .iter()
-        .map(|(variant, value)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)));
+        .map(|(variant, value, _)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)));
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
     let from_i32_doc = format!(
         "Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.",
         ident
     );
+
+    let serde_impls = if emit_serde {
+        serde::impls_for_enum(&ident, generics, &variants)?
+    } else {
+        Default::default()
+    };
 
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
@@ -358,6 +439,8 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
                 }
             }
         }
+
+        #serde_impls
     };
 
     Ok(expanded)
@@ -373,11 +456,28 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let ident = input.ident;
 
-    syn::custom_keyword!(skip_debug);
-    let skip_debug = input
+    let mut skip_debug = false;
+    let mut emit_serde = false;
+
+    if let Some(attr) = input
         .attrs
-        .into_iter()
-        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+        .iter()
+        .find(|attr| attr.path().is_ident("prost"))
+    {
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("skip_debug") {
+                skip_debug = true;
+                return Ok(());
+            }
+
+            if meta.path.is_ident("serde") {
+                emit_serde = true;
+                return Ok(());
+            }
+
+            Err(meta.error("unrecognized attributes"))
+        })?;
+    }
 
     let variants = match input.data {
         Data::Enum(DataEnum { variants, .. }) => variants,
@@ -459,6 +559,12 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(#ident::#variant_ident(ref value) => #encoded_len)
     });
 
+    let serde_impls = if emit_serde {
+        serde::impls_for_oneof(&ident, generics, &fields)?
+    } else {
+        Default::default()
+    };
+
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
@@ -492,6 +598,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
+        #serde_impls
     };
     let expanded = if skip_debug {
         expanded

@@ -39,6 +39,7 @@ fn main() -> Result<()> {
     let conformance_proto_dir = src_dir.join("conformance");
     prost_build::Config::new()
         .protoc_executable(&protoc_executable)
+        .enable_serde()
         .compile_protos(
             &[conformance_proto_dir.join("conformance.proto")],
             &[conformance_proto_dir],
@@ -54,6 +55,7 @@ fn main() -> Result<()> {
     prost_build::Config::new()
         .protoc_executable(&protoc_executable)
         .btree_map(["."])
+        .enable_serde()
         .compile_protos(
             &[
                 proto_dir.join("google/protobuf/test_messages_proto2.proto"),

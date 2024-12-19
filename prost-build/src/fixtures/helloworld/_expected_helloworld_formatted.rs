@@ -2,6 +2,7 @@
 #[derive(derive_builder::Builder)]
 #[derive(custom_proto::Input)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[prost(serde)]
 pub struct Message {
     #[prost(string, tag = "1")]
     pub say: ::prost::alloc::string::String,
@@ -9,6 +10,7 @@ pub struct Message {
 #[derive(derive_builder::Builder)]
 #[derive(custom_proto::Output)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[prost(serde)]
 pub struct Response {
     #[prost(string, tag = "1")]
     pub say: ::prost::alloc::string::String,
@@ -16,9 +18,13 @@ pub struct Response {
 #[some_enum_attr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
+#[prost(serde)]
 pub enum ServingStatus {
+    #[prost(json(proto_name = "UNKNOWN"))]
     Unknown = 0,
+    #[prost(json(proto_name = "SERVING"))]
     Serving = 1,
+    #[prost(json(proto_name = "NOT_SERVING"))]
     NotServing = 2,
 }
 impl ServingStatus {

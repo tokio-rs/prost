@@ -3,12 +3,13 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::Meta;
 
-use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
+use crate::field::{set_bool, set_option, tag_attr, word_attr, Json, Label};
 
 #[derive(Clone)]
 pub struct Field {
     pub label: Label,
     pub tag: u32,
+    pub json: Option<Json>,
 }
 
 impl Field {
@@ -17,6 +18,7 @@ impl Field {
         let mut label = None;
         let mut tag = None;
         let mut boxed = false;
+        let mut json = None;
 
         let mut unknown_attrs = Vec::new();
 
@@ -25,6 +27,8 @@ impl Field {
                 set_bool(&mut group, "duplicate group attributes")?;
             } else if word_attr("boxed", attr) {
                 set_bool(&mut boxed, "duplicate boxed attributes")?;
+            } else if let Some(j) = Json::from_attr(attr)? {
+                set_option(&mut json, j, "duplicate json attributes")?;
             } else if let Some(t) = tag_attr(attr)? {
                 set_option(&mut tag, t, "duplicate tag attributes")?;
             } else if let Some(l) = Label::from_attr(attr) {
@@ -53,6 +57,7 @@ impl Field {
         Ok(Some(Field {
             label: label.unwrap_or(Label::Optional),
             tag,
+            json,
         }))
     }
 
@@ -131,5 +136,13 @@ impl Field {
             Label::Required => quote!(#ident.clear()),
             Label::Repeated => quote!(#ident.clear()),
         }
+    }
+
+    pub fn to_message_field(&self) -> super::Field {
+        super::Field::Message(super::message::Field {
+            label: self.label,
+            tag: self.tag,
+            json: self.json.clone(),
+        })
     }
 }

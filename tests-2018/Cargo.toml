@@ -15,8 +15,9 @@ doctest = false
 path = "../tests/src/lib.rs"
 
 [features]
-default = ["std"]
+default = ["std", "json"]
 std = []
+json = ["prost/serde-json"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2015"))'] }
@@ -24,8 +25,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("edition-2
 [dependencies]
 anyhow = "1.0.1"
 cfg-if = "1"
-prost = { path = "../prost" }
-prost-types = { path = "../prost-types" }
+prost = { path = "../prost", features = ["serde"] }
+prost-types = { path = "../prost-types", features = ["serde"] }
 protobuf = { path = "../protobuf" }
 
 [dev-dependencies]

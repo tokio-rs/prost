@@ -9,24 +9,27 @@
 //!
 //! ## Any
 //!
-//! The well-known [`Any`] type contains an arbitrary serialized message along with a URL that
-//! describes the type of the serialized message. Every message that also implements [`Name`]
-//! can be serialized to and deserialized from [`Any`].
+//! The well-known [`Any`](protobuf::Any) type contains an arbitrary serialized message along
+//! with a URL that describes the type of the serialized message.
+//! Every message that also implements [`Name`] can be serialized to and deserialized
+//! from [`Any`](protobuf::Any).
 //!
 //! ### Serialization
 //!
-//! A message can be serialized using [`Any::from_msg`].
+//! A message can be serialized using [`Any::from_msg`](protobuf::Any::from_msg).
 //!
 //! ```rust
+//! # use crate::protobuf::Any;
 //! let message = Timestamp::date(2000, 1, 1).unwrap();
 //! let any = Any::from_msg(&message).unwrap();
 //! ```
 //!
 //! ### Deserialization
 //!
-//! A message can be deserialized using [`Any::to_msg`].
+//! A message can be deserialized using [`Any::to_msg`](protobuf::Any::to_msg).
 //!
 //! ```rust
+//! # use crate::protobuf::Any;
 //! # let message = Timestamp::date(2000, 1, 1).unwrap();
 //! # let any = Any::from_msg(&message).unwrap();
 //! #
@@ -45,6 +48,13 @@ pub mod compiler;
 mod datetime;
 #[rustfmt::skip]
 mod protobuf;
+#[cfg(feature = "any-v2")]
+pub mod any_v2;
+#[cfg(feature = "serde")]
+#[doc(hidden)]
+pub mod serde;
+#[cfg(feature = "any-v2")]
+mod smallbox;
 
 use core::convert::TryFrom;
 use core::fmt;
@@ -57,6 +67,11 @@ use prost::alloc::vec::Vec;
 use prost::{DecodeError, EncodeError, Message, Name};
 
 pub use protobuf::*;
+
+#[cfg(feature = "any-v2")]
+pub use any_v2::ProstAny as Any;
+#[cfg(feature = "any-v2")]
+pub use protobuf::Any as AnyV1;
 
 // The Protobuf `Duration` and `Timestamp` types can't delegate to the standard library equivalents
 // because the Protobuf versions are signed. To make them easier to work with, `From` conversions

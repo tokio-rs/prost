@@ -15,9 +15,14 @@ doctest = false
 [features]
 default = ["std"]
 std = ["prost/std"]
+serde = ["prost/serde"]
+any-v2 = ["std", "serde", "prost/serde-json", "dep:serde", "dep:erased-serde"]
 
 [dependencies]
 prost = { version = "0.13.4", path = "../prost", default-features = false, features = ["prost-derive"] }
+
+erased-serde = { version = "0.4.3", optional = true }
+serde = { version = "1.0.189", features = ["derive"], optional = true }
 
 [dev-dependencies]
 proptest = "1"
