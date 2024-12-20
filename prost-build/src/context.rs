@@ -12,6 +12,9 @@ use crate::{BytesType, Config, MapType, ServiceGenerator};
 /// The context providing all the global information needed to generate code.
 /// It also provides a more disciplined access to Config
 /// and its mutable instance of ServiceGenerator.
+///
+/// A `Context` is built once in the generation process and is reused by
+/// `CodeGenerator` instances created to generate code for each input file.
 pub struct Context<'a> {
     config: &'a mut Config,
     message_graph: MessageGraph,

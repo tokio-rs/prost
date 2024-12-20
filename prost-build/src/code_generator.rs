@@ -24,6 +24,7 @@ use c_escaping::unescape_c_escape_string;
 mod syntax;
 use syntax::Syntax;
 
+/// State object for the code generation process on a single input file.
 pub struct CodeGenerator<'a, 'b> {
     context: &'a mut Context<'b>,
     package: String,
