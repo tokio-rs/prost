@@ -17,6 +17,7 @@ use prost_types::{
 use crate::ast::{Comments, Method, Service};
 use crate::context::Context;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
+use crate::Config;
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
@@ -81,6 +82,10 @@ impl OneofField {
 }
 
 impl<'a, 'b> CodeGenerator<'a, 'b> {
+    fn config(&self) -> &Config {
+        self.context.config()
+    }
+
     pub(crate) fn generate(context: &mut Context<'b>, file: FileDescriptorProto, buf: &mut String) {
         let source_info = file.source_code_info.map(|mut s| {
             s.location.retain(|loc| {
@@ -286,7 +291,7 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
             self.pop_mod();
         }
 
-        if self.context.config().enable_type_names {
+        if self.config().enable_type_names {
             self.append_type_name(&message_name, &fq_message_name);
         }
     }
@@ -452,7 +457,7 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
                 self.buf.push_str("\\\"");
             } else if type_ == Type::Enum {
                 let mut enum_value = to_upper_camel(default);
-                if self.context.config().strip_enum_prefix {
+                if self.config().strip_enum_prefix {
                     // Field types are fully qualified, so we extract
                     // the last segment and strip it from the left
                     // side of the default value.
@@ -713,11 +718,8 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
         self.buf.push_str(&enum_name);
         self.buf.push_str(" {\n");
 
-        let variant_mappings = build_enum_value_mappings(
-            &enum_name,
-            self.context.config().strip_enum_prefix,
-            enum_values,
-        );
+        let variant_mappings =
+            build_enum_value_mappings(&enum_name, self.config().strip_enum_prefix, enum_values);
 
         self.depth += 1;
         self.path.push(2);
