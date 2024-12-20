@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_str, Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Path};
 
-use crate::field::{set_option, tags_attr};
+use crate::field::{set_bool, set_option, tags_attr, word_attr};
 
 #[derive(Clone)]
 pub struct Field {
@@ -15,6 +15,8 @@ impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut tags = None;
+        let mut boxed = false;
+
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
@@ -34,6 +36,8 @@ impl Field {
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
             } else if let Some(t) = tags_attr(attr)? {
                 set_option(&mut tags, t, "duplicate tags attributes")?;
+            } else if word_attr("boxed", attr) {
+                set_bool(&mut boxed, "duplicate boxed attribute")?;
             } else {
                 unknown_attrs.push(attr);
             }
