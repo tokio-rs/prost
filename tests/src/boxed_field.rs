@@ -8,7 +8,6 @@ cfg_if! {
     }
 }
 
-
 #[test]
 /// Confirm `Foo::bar` and `OneofField::BoxQux` is boxed by creating an instance
 fn test_bar_is_boxed() {

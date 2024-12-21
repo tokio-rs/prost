@@ -15,7 +15,6 @@ impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut tags = None;
-
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
