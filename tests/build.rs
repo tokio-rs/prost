@@ -169,6 +169,7 @@ fn main() {
 
     prost_build::Config::new()
         .boxed("Foo.bar")
+        .boxed("Foo.oneof_field.box_qux")
         .compile_protos(&[src.join("boxed_field.proto")], includes)
         .unwrap();
 
