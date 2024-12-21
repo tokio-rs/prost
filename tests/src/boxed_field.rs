@@ -10,7 +10,7 @@ cfg_if! {
 
 #[test]
 /// Confirm `Foo::bar` and `OneofField::BoxQux` is boxed by creating an instance
-fn test_bar_is_boxed() {
+fn test_boxed_field() {
     use alloc::boxed::Box;
     let _ = Foo {
         bar: Some(Box::new(Bar {})),
