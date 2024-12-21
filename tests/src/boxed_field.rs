@@ -1,8 +1,16 @@
 include!(concat!(env!("OUT_DIR"), "/boxed_field.rs"));
-use foo::OneofField;
+
+cfg_if! {
+    if #[cfg(feature = "edition-2015")] {
+        use boxed_field::foo::OneofField;
+    } else {
+        use foo::OneofField;
+    }
+}
+
 
 #[test]
-/// Confirm `Foo::bar` is boxed by creating an instance
+/// Confirm `Foo::bar` and `OneofField::BoxQux` is boxed by creating an instance
 fn test_bar_is_boxed() {
     use alloc::boxed::Box;
     let _ = Foo {
