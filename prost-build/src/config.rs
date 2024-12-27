@@ -48,6 +48,7 @@ pub struct Config {
     pub(crate) disable_comments: PathMap<()>,
     pub(crate) skip_debug: PathMap<()>,
     pub(crate) skip_protoc_run: bool,
+    pub(crate) skip_source_info: bool,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
     #[cfg(feature = "format")]
@@ -597,6 +598,26 @@ impl Config {
         self
     }
 
+    /// This can be used to avoid passing ``--include_source_info`` argument when the `protoc`
+    /// command is invoked to generate the `FileDescriptorSet`. The ``--include_source_info``
+    /// flag is passed by default, however it results in vastly larger descriptors that
+    /// include information about the original location of each decl in the source file as
+    /// well as surrounding comments.
+    ///
+    /// In `build.rs`:
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.file_descriptor_set_path("path/from/build/system")
+    ///     .skip_source_info()
+    ///     .compile_protos(&["src/items.proto"], &["src/"]);
+    /// ```
+    ///
+    pub fn skip_source_info(&mut self) -> &mut Self {
+        self.skip_source_info = true;
+        self
+    }
+
     /// Configures the code generator to not strip the enum name from variant names.
     ///
     /// Protobuf enum definitions commonly include the enum name as a prefix of every variant name.
@@ -902,10 +923,11 @@ impl Config {
 
         if !self.skip_protoc_run {
             let mut cmd = Command::new(&self.protoc_executable);
-            cmd.arg("--include_imports")
-                .arg("--include_source_info")
-                .arg("-o")
-                .arg(&file_descriptor_set_path);
+            cmd.arg("--include_imports");
+            if !self.skip_source_info {
+                cmd.arg("--include_source_info");
+            }
+            cmd.arg("-o").arg(&file_descriptor_set_path);
 
             for include in includes {
                 if include.as_ref().exists() {
@@ -1170,6 +1192,7 @@ impl default::Default for Config {
             disable_comments: PathMap::default(),
             skip_debug: PathMap::default(),
             skip_protoc_run: false,
+            skip_source_info: false,
             include_file: None,
             prost_path: None,
             #[cfg(feature = "format")]
