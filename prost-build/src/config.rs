@@ -598,11 +598,13 @@ impl Config {
         self
     }
 
-    /// This can be used to avoid passing ``--include_source_info`` argument when the `protoc`
-    /// command is invoked to generate the `FileDescriptorSet`. The ``--include_source_info``
-    /// flag is passed by default, however it results in vastly larger descriptors that
-    /// include information about the original location of each decl in the source file as
-    /// well as surrounding comments.
+    /// Configures the code generator to remove surrounding comments and documentation.
+    /// 
+    /// If enabled, this will cause `protoc` to not be passed the `--include_source_info` argument.
+    /// Typically, `--include_source_info` is passed by default, but it results in larger
+    /// [`FileDescriptorSet`s](https://github.com/protocolbuffers/protobuf/blob/cff254d32f850ba8186227ce6775b3f01a1f8cf8/src/google/protobuf/descriptor.proto#L54-L66) that include information about the
+    /// original location of each declaration in the source file as well as surrounding
+    /// comments and documentation.
     ///
     /// In `build.rs`:
     ///
