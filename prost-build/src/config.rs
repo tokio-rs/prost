@@ -48,6 +48,7 @@ pub struct Config {
     pub(crate) disable_comments: PathMap<()>,
     pub(crate) skip_debug: PathMap<()>,
     pub(crate) skip_protoc_run: bool,
+    pub(crate) skip_source_info: bool,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
     #[cfg(feature = "format")]
@@ -597,6 +598,27 @@ impl Config {
         self
     }
 
+    /// Configures the code generator to remove surrounding comments and documentation.
+    ///
+    /// If enabled, this will cause `protoc` to not be passed the `--include_source_info` argument.
+    /// Typically, `--include_source_info` is passed by default, but it results in larger
+    /// [`FileDescriptorSet`s](https://github.com/protocolbuffers/protobuf/blob/cff254d32f850ba8186227ce6775b3f01a1f8cf8/src/google/protobuf/descriptor.proto#L54-L66) that include information about the
+    /// original location of each declaration in the source file as well as surrounding
+    /// comments and documentation.
+    ///
+    /// In `build.rs`:
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.file_descriptor_set_path("path/from/build/system")
+    ///     .skip_source_info()
+    ///     .compile_protos(&["src/items.proto"], &["src/"]);
+    /// ```
+    pub fn skip_source_info(&mut self) -> &mut Self {
+        self.skip_source_info = true;
+        self
+    }
+
     /// Configures the code generator to not strip the enum name from variant names.
     ///
     /// Protobuf enum definitions commonly include the enum name as a prefix of every variant name.
@@ -902,10 +924,11 @@ impl Config {
 
         if !self.skip_protoc_run {
             let mut cmd = Command::new(&self.protoc_executable);
-            cmd.arg("--include_imports")
-                .arg("--include_source_info")
-                .arg("-o")
-                .arg(&file_descriptor_set_path);
+            cmd.arg("--include_imports");
+            if !self.skip_source_info {
+                cmd.arg("--include_source_info");
+            }
+            cmd.arg("-o").arg(&file_descriptor_set_path);
 
             for include in includes {
                 if include.as_ref().exists() {
@@ -1170,6 +1193,7 @@ impl default::Default for Config {
             disable_comments: PathMap::default(),
             skip_debug: PathMap::default(),
             skip_protoc_run: false,
+            skip_source_info: false,
             include_file: None,
             prost_path: None,
             #[cfg(feature = "format")]
