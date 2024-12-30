@@ -599,7 +599,7 @@ impl Config {
     }
 
     /// Configures the code generator to remove surrounding comments and documentation.
-    /// 
+    ///
     /// If enabled, this will cause `protoc` to not be passed the `--include_source_info` argument.
     /// Typically, `--include_source_info` is passed by default, but it results in larger
     /// [`FileDescriptorSet`s](https://github.com/protocolbuffers/protobuf/blob/cff254d32f850ba8186227ce6775b3f01a1f8cf8/src/google/protobuf/descriptor.proto#L54-L66) that include information about the
