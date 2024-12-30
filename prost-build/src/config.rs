@@ -191,7 +191,7 @@ impl Config {
     ///
     /// **`attribute`** - an arbitrary string that'll be placed before each matched field. The
     /// expected usage are additional attributes, usually in concert with whole-type
-    /// attributes set with [`type_attribute`](method.type_attribute), but it is not
+    /// attributes set with [`type_attribute`](#method.type_attribute), but it is not
     /// checked and anything can be put there.
     ///
     /// Note that the calls to this method are cumulative ‒ if multiple paths from multiple calls
