@@ -614,7 +614,6 @@ impl Config {
     ///     .skip_source_info()
     ///     .compile_protos(&["src/items.proto"], &["src/"]);
     /// ```
-    ///
     pub fn skip_source_info(&mut self) -> &mut Self {
         self.skip_source_info = true;
         self
