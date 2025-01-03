@@ -182,7 +182,7 @@ pub trait ServiceGenerator {
     /// Finalizes the generation process.
     ///
     /// In case there's something that needs to be output at the end of the generation process, it
-    /// goes here. Similar to [`generate`](#method.generate), the output should be appended to
+    /// goes here. Similar to [`generate`](Self::generate), the output should be appended to
     /// `buf`.
     ///
     /// An example can be a module or other thing that needs to appear just once, not for each
@@ -196,7 +196,7 @@ pub trait ServiceGenerator {
 
     /// Finalizes the generation process for an entire protobuf package.
     ///
-    /// This differs from [`finalize`](#method.finalize) by where (and how often) it is called
+    /// This differs from [`finalize`](Self::finalize) by where (and how often) it is called
     /// during the service generator life cycle. This method is called once per protobuf package,
     /// making it ideal for grouping services within a single package spread across multiple
     /// `.proto` files.
