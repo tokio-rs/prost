@@ -986,7 +986,7 @@ impl CodeGenerator<'_> {
         // If no package is specified the start of the package name will be '.'
         // and split will return an empty string ("") which breaks resolution
         // The fix to this is to ignore the first item if it is empty.
-        if local_path.peek().map_or(false, |s| s.is_empty()) {
+        if local_path.peek().is_some_and(|s| s.is_empty()) {
             local_path.next();
         }
 
@@ -1103,10 +1103,7 @@ impl CodeGenerator<'_> {
 
     /// Returns `true` if the field options includes the `deprecated` option.
     fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
-        field
-            .options
-            .as_ref()
-            .map_or(false, FieldOptions::deprecated)
+        field.options.as_ref().is_some_and(FieldOptions::deprecated)
     }
 
     /// Returns the fully-qualified name, starting with a dot
