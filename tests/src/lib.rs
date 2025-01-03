@@ -69,6 +69,9 @@ pub mod custom_attributes;
 #[cfg(test)]
 mod default_enum_value;
 
+#[cfg(test)]
+mod nesting;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -89,10 +92,6 @@ pub mod foo {
     pub mod bar_baz {
         include!(concat!(env!("OUT_DIR"), "/foo.bar_baz.rs"));
     }
-}
-
-pub mod nesting {
-    include!(concat!(env!("OUT_DIR"), "/nesting.rs"));
 }
 
 pub mod recursive_oneof {
@@ -266,7 +265,7 @@ mod tests {
     use alloc::collections::{BTreeMap, BTreeSet};
     use alloc::vec;
     #[cfg(not(feature = "std"))]
-    use alloc::{borrow::ToOwned, boxed::Box, string::ToString};
+    use alloc::{boxed::Box, string::ToString};
 
     use super::*;
 
@@ -390,40 +389,6 @@ mod tests {
     }
 
     #[test]
-    fn test_nesting() {
-        use crate::nesting::{A, B};
-        let _ = A {
-            a: Some(Box::default()),
-            repeated_a: Vec::<A>::new(),
-            map_a: BTreeMap::<i32, A>::new(),
-            b: Some(Box::default()),
-            repeated_b: Vec::<B>::new(),
-            map_b: BTreeMap::<i32, B>::new(),
-        };
-    }
-
-    #[test]
-    fn test_deep_nesting() {
-        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
-            use crate::nesting::A;
-
-            let mut a = Box::<A>::default();
-            for _ in 0..depth {
-                let mut next = Box::<A>::default();
-                next.a = Some(a);
-                a = next;
-            }
-
-            let mut buf = Vec::new();
-            a.encode(&mut buf).unwrap();
-            A::decode(buf.as_slice()).map(|_| ())
-        }
-
-        assert!(build_and_roundtrip(100).is_ok());
-        assert!(build_and_roundtrip(101).is_err());
-    }
-
-    #[test]
     fn test_deep_nesting_oneof() {
         fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
             use crate::recursive_oneof::{a, A, C};
@@ -463,48 +428,6 @@ mod tests {
             let mut buf = Vec::new();
             a.encode(&mut buf).unwrap();
             NestedGroup2::decode(buf.as_slice()).map(|_| ())
-        }
-
-        assert!(build_and_roundtrip(50).is_ok());
-        assert!(build_and_roundtrip(51).is_err());
-    }
-
-    #[test]
-    fn test_deep_nesting_repeated() {
-        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
-            use crate::nesting::C;
-
-            let mut c = C::default();
-            for _ in 0..depth {
-                let mut next = C::default();
-                next.r.push(c);
-                c = next;
-            }
-
-            let mut buf = Vec::new();
-            c.encode(&mut buf).unwrap();
-            C::decode(buf.as_slice()).map(|_| ())
-        }
-
-        assert!(build_and_roundtrip(100).is_ok());
-        assert!(build_and_roundtrip(101).is_err());
-    }
-
-    #[test]
-    fn test_deep_nesting_map() {
-        fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
-            use crate::nesting::D;
-
-            let mut d = D::default();
-            for _ in 0..depth {
-                let mut next = D::default();
-                next.m.insert("foo".to_owned(), d);
-                d = next;
-            }
-
-            let mut buf = Vec::new();
-            d.encode(&mut buf).unwrap();
-            D::decode(buf.as_slice()).map(|_| ())
         }
 
         assert!(build_and_roundtrip(50).is_ok());
