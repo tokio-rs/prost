@@ -19,7 +19,7 @@ heck = { version = ">=0.4, <=0.5" }
 itertools = { version = ">=0.10, <=0.13", default-features = false, features = ["use_alloc"] }
 log = "0.4.4"
 multimap = { version = ">=0.8, <=0.10", default-features = false }
-petgraph = { version = "0.6", default-features = false }
+petgraph = { version = ">=0.6, <=0.7", default-features = false }
 prost = { version = "0.13.4", path = "../prost", default-features = false }
 prost-types = { version = "0.13.4", path = "../prost-types", default-features = false }
 tempfile = "3"
