@@ -12,7 +12,7 @@ permissions:
 
 env:
   PROTOC_VERSION: '3.25.3'
-  clippy_rust_version: '1.82'
+  clippy_rust_version: '1.83'
 
 jobs:
   # Depends on all actions that are required for a "successful" CI run.
