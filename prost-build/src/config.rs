@@ -187,11 +187,11 @@ impl Config {
     /// # Arguments
     ///
     /// **`path`** - a path matching any number of fields. These fields get the attribute.
-    /// For details about matching fields see [`btree_map`](#method.btree_map).
+    /// For details about matching fields see [`btree_map`](Self::btree_map).
     ///
     /// **`attribute`** - an arbitrary string that'll be placed before each matched field. The
     /// expected usage are additional attributes, usually in concert with whole-type
-    /// attributes set with [`type_attribute`](method.type_attribute), but it is not
+    /// attributes set with [`type_attribute`](Self::type_attribute), but it is not
     /// checked and anything can be put there.
     ///
     /// Note that the calls to this method are cumulative ‒ if multiple paths from multiple calls
@@ -220,7 +220,7 @@ impl Config {
     /// # Arguments
     ///
     /// **`paths`** - a path matching any number of types. It works the same way as in
-    /// [`btree_map`](#method.btree_map), just with the field name omitted.
+    /// [`btree_map`](Self::btree_map), just with the field name omitted.
     ///
     /// **`attribute`** - an arbitrary string to be placed before each matched type. The
     /// expected usage are additional attributes, but anything is allowed.
@@ -230,7 +230,7 @@ impl Config {
     /// it.
     ///
     /// For things like serde it might be needed to combine with [field
-    /// attributes](#method.field_attribute).
+    /// attributes](Self::field_attribute).
     ///
     /// # Examples
     ///
@@ -269,7 +269,7 @@ impl Config {
     /// # Arguments
     ///
     /// **`paths`** - a path matching any number of types. It works the same way as in
-    /// [`btree_map`](#method.btree_map), just with the field name omitted.
+    /// [`btree_map`](Self::btree_map), just with the field name omitted.
     ///
     /// **`attribute`** - an arbitrary string to be placed before each matched type. The
     /// expected usage are additional attributes, but anything is allowed.
@@ -279,7 +279,7 @@ impl Config {
     /// it.
     ///
     /// For things like serde it might be needed to combine with [field
-    /// attributes](#method.field_attribute).
+    /// attributes](Self::field_attribute).
     ///
     /// # Examples
     ///
@@ -308,7 +308,7 @@ impl Config {
     /// # Arguments
     ///
     /// **`paths`** - a path matching any number of types. It works the same way as in
-    /// [`btree_map`](#method.btree_map), just with the field name omitted.
+    /// [`btree_map`](Self::btree_map), just with the field name omitted.
     ///
     /// **`attribute`** - an arbitrary string to be placed before each matched type. The
     /// expected usage are additional attributes, but anything is allowed.
@@ -318,7 +318,7 @@ impl Config {
     /// it.
     ///
     /// For things like serde it might be needed to combine with [field
-    /// attributes](#method.field_attribute).
+    /// attributes](Self::field_attribute).
     ///
     /// # Examples
     ///
@@ -357,7 +357,7 @@ impl Config {
     /// # Arguments
     ///
     /// **`path`** - a path matching any number of fields. These fields get the attribute.
-    /// For details about matching fields see [`btree_map`](#method.btree_map).
+    /// For details about matching fields see [`btree_map`](Self::btree_map).
     ///
     /// # Examples
     ///
@@ -666,7 +666,7 @@ impl Config {
     /// # Domains
     ///
     /// **`paths`** - a path matching any number of types. It works the same way as in
-    /// [`btree_map`](#method.btree_map), just with the field name omitted.
+    /// [`btree_map`](Self::btree_map), just with the field name omitted.
     ///
     /// **`domain`** - an arbitrary string to be used as a prefix for type URLs.
     ///
