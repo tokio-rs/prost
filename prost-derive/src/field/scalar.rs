@@ -453,7 +453,7 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
             Meta::Path(ref name) if name.is_ident("string") => Ty::String,
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
-            Meta::Path(ref name) => Ty::Foreign(name.clone()),
+            Meta::Path(ref name) if name.leading_colon.is_some() => Ty::Foreign(name.clone()),
             Meta::NameValue(MetaNameValue {
                 ref path,
                 value:
