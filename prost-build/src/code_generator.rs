@@ -81,7 +81,7 @@ impl OneofField {
     }
 }
 
-impl<'a, 'b> CodeGenerator<'a, 'b> {
+impl<'b> CodeGenerator<'_, 'b> {
     fn config(&self) -> &Config {
         self.context.config()
     }
