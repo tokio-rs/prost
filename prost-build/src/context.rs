@@ -38,7 +38,7 @@ impl<'a> Context<'a> {
         self.config
     }
 
-    pub fn service_generator(&mut self) -> Option<&mut (dyn ServiceGenerator + 'static)> {
+    pub fn service_generator_mut(&mut self) -> Option<&mut (dyn ServiceGenerator + 'static)> {
         self.config.service_generator.as_deref_mut()
     }
 

@@ -129,7 +129,7 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
         }
         code_gen.path.pop();
 
-        if code_gen.context.service_generator().is_some() {
+        if code_gen.context.service_generator_mut().is_some() {
             code_gen.path.push(6);
             for (idx, service) in file.service.into_iter().enumerate() {
                 code_gen.path.push(idx as i32);
@@ -137,7 +137,7 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
                 code_gen.path.pop();
             }
 
-            if let Some(service_generator) = code_gen.context.service_generator() {
+            if let Some(service_generator) = code_gen.context.service_generator_mut() {
                 service_generator.finalize(code_gen.buf);
             }
 
@@ -885,7 +885,7 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
             options: service.options.unwrap_or_default(),
         };
 
-        if let Some(service_generator) = self.context.service_generator() {
+        if let Some(service_generator) = self.context.service_generator_mut() {
             service_generator.generate(service, self.buf)
         }
     }

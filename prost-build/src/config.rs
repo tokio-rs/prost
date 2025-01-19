@@ -1099,7 +1099,7 @@ impl Config {
             }
         }
 
-        if let Some(service_generator) = context.service_generator() {
+        if let Some(service_generator) = context.service_generator_mut() {
             for (module, package) in packages {
                 let buf = modules.get_mut(&module).unwrap();
                 service_generator.finalize_package(&package, buf);
