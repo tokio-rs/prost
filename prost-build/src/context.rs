@@ -181,32 +181,13 @@ impl<'a> Context<'a> {
             .unwrap()
             .field
             .iter()
-            .all(|field| self.can_message_field_derive_copy(fq_message_name, field))
+            .all(|field| self.can_field_derive_copy(fq_message_name, field))
     }
 
     /// Returns `true` if the type of this message field allows deriving the Copy trait.
-    pub fn can_message_field_derive_copy(
+    pub fn can_field_derive_copy(
         &self,
         fq_message_name: &str,
-        field: &FieldDescriptorProto,
-    ) -> bool {
-        self.can_field_derive_copy_impl(fq_message_name, None, field)
-    }
-
-    /// Returns `true` if the type of this field in a oneof allows deriving the Copy trait.
-    pub fn can_oneof_field_derive_copy(
-        &self,
-        fq_message_name: &str,
-        oneof_name: &str,
-        field: &FieldDescriptorProto,
-    ) -> bool {
-        self.can_field_derive_copy_impl(fq_message_name, Some(oneof_name), field)
-    }
-
-    fn can_field_derive_copy_impl(
-        &self,
-        fq_message_name: &str,
-        oneof: Option<&str>,
         field: &FieldDescriptorProto,
     ) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
@@ -222,14 +203,10 @@ impl<'a> Context<'a> {
             {
                 return false;
             }
-            let config_path = match oneof {
-                None => Cow::Borrowed(fq_message_name),
-                Some(oneof_name) => Cow::Owned(format!("{fq_message_name}.{oneof_name}")),
-            };
             if self
                 .config
                 .boxed
-                .get_first_field(&config_path, field.name())
+                .get_first_field(fq_message_name, field.name())
                 .is_some()
             {
                 false

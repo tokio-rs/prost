@@ -593,11 +593,8 @@ impl<'a, 'b> CodeGenerator<'a, 'b> {
         self.push_indent();
 
         let can_oneof_derive_copy = oneof.fields.iter().all(|field| {
-            self.context.can_oneof_field_derive_copy(
-                fq_message_name,
-                oneof.descriptor.name(),
-                &field.descriptor,
-            )
+            self.context
+                .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
         self.buf.push_str(&format!(
             "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
