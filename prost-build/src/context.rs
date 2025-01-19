@@ -243,7 +243,8 @@ impl<'a> Context<'a> {
         } else {
             self.config
                 .disable_comments
-                .get_first(fq_message_name)
+                .get(fq_message_name)
+                .next()
                 .is_some()
         }
     }
