@@ -141,10 +141,12 @@ impl<'a> Context<'a> {
         oneof: Option<&str>,
         field: &FieldDescriptorProto,
     ) -> bool {
-        let repeated = field.label() == Label::Repeated;
+        if field.label() == Label::Repeated {
+            // Repeated field are stored in Vec, therefore it is already heap allocated
+            return false;
+        }
         let fd_type = field.r#type();
-        if !repeated
-            && (fd_type == Type::Message || fd_type == Type::Group)
+        if (fd_type == Type::Message || fd_type == Type::Group)
             && self
                 .message_graph
                 .is_nested(field.type_name(), fq_message_name)
@@ -161,13 +163,6 @@ impl<'a> Context<'a> {
             .get_first_field(&config_path, field.name())
             .is_some()
         {
-            if repeated {
-                println!(
-                    "cargo:warning=\
-                    Field X is repeated and manually marked as boxed. \
-                    This is deprecated and support will be removed in a later release"
-                );
-            }
             return true;
         }
         false
