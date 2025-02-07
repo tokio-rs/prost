@@ -87,7 +87,7 @@ fn main() {
         .compile_protos(&[src.join("enum_keyword_variant.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 
