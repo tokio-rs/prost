@@ -383,7 +383,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn append_field(&mut self, fq_message_name: &str, field: &Field) {
         let type_ = field.descriptor.r#type();
-        let repeated = field.descriptor.label == Some(Label::Repeated as i32);
+        let repeated = field.descriptor.label() == Label::Repeated;
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
         let boxed = self

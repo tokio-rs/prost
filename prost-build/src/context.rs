@@ -141,7 +141,7 @@ impl<'a> Context<'a> {
         oneof: Option<&str>,
         field: &FieldDescriptorProto,
     ) -> bool {
-        let repeated = field.label == Some(Label::Repeated as i32);
+        let repeated = field.label() == Label::Repeated;
         let fd_type = field.r#type();
         if !repeated
             && (fd_type == Type::Message || fd_type == Type::Group)
