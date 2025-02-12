@@ -223,9 +223,14 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_message_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str(&format!(
-            "#[derive(Clone, {}PartialEq, {}::Message)]\n",
+            "#[derive(Clone, {}PartialEq, {}{}::Message)]\n",
             if self.context.can_message_derive_copy(&fq_message_name) {
                 "Copy, "
+            } else {
+                ""
+            },
+            if self.context.can_message_derive_eq(&fq_message_name) {
+                "Eq, Hash, "
             } else {
                 ""
             },
@@ -596,9 +601,18 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.context
                 .can_field_derive_copy(fq_message_name, &field.descriptor)
         });
+        let can_oneof_derive_eq = oneof.fields.iter().all(|field| {
+            self.context
+                .can_field_derive_eq(fq_message_name, &field.descriptor)
+        });
         self.buf.push_str(&format!(
-            "#[derive(Clone, {}PartialEq, {}::Oneof)]\n",
+            "#[derive(Clone, {}PartialEq, {}{}::Oneof)]\n",
             if can_oneof_derive_copy { "Copy, " } else { "" },
+            if can_oneof_derive_eq {
+                "Eq, Hash, "
+            } else {
+                ""
+            },
             self.context.prost_path()
         ));
         self.append_skip_debug(fq_message_name);
