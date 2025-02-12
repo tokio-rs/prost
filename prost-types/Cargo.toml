@@ -20,6 +20,7 @@ arbitrary = ["dep:arbitrary"]
 [dependencies]
 prost = { version = "0.13.5", path = "../prost", default-features = false, features = ["prost-derive"] }
 arbitrary = { version = "1.4", features = ["derive"], optional = true }
+chrono = { version = "0.4.34", default-features = false, optional = true }
 
 [dev-dependencies]
 proptest = "1"

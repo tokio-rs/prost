@@ -185,7 +185,7 @@ jobs:
         uses: model-checking/kani-github-action@v1.1
         with:
           args: |
-            -p prost-types
+            -p prost-types --features chrono
   no-std:
     runs-on: ubuntu-latest
     steps:
