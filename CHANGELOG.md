@@ -1,3 +1,39 @@
+# Prost version 0.13.5
+
+_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## Features
+
+- prost-types: Derive Arbitrary (#1188)
+
+## Documentation
+
+- Use intra doc links instead of HTML tags (#1219)
+
+## Dependencies
+
+- Update pulldown-cmark-to-cmark requirement from >=16, <=19 to >=16, <=20 (#1206)
+- Update itertools requirement from >=0.10, <=0.13 to >=0.10, <=0.14 (#1222)
+- Update petgraph requirement to include 0.7 (#1226)
+- Update rand requirement from 0.8 to 0.9 (#1233)
+- Bump clippy to 1.83 (#1220)
+- Update flake.lock (#1216)
+
+## Styling
+
+- Replace unnecessary `map_or` (#1221)
+- prost-build: Use enum getter (#1238)
+
+## Testing
+
+- default_enum_value: Move tests to separate module (#1198)
+- nesting: Move tests to separate module (#1218)
+- recursive_oneof: Move tests to separate module (#1225)
+- boxed_field: Box an oneof field (#1235)
+- groups: Move tests to separate module (#1234)
+- default_string_escape: Move tests to separate module (#1239)
+- Move DecodeError tests closer to the implementation (#1227)
+
 # Prost version 0.13.4
 
 _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
