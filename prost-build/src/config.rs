@@ -685,7 +685,6 @@ impl Config {
         S: AsRef<str>,
         D: AsRef<str>,
     {
-        self.type_name_domains.clear();
         for matcher in paths {
             self.type_name_domains
                 .insert(matcher.as_ref().to_string(), domain.as_ref().to_string());
