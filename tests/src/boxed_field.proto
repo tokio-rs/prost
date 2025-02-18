@@ -8,6 +8,7 @@ message Foo {
     string baz = 2;
     Bar box_qux = 3;
   }
+  repeated Bar boxed_bar_list = 4;
 }
 
 message Bar {
