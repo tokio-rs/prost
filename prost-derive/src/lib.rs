@@ -441,7 +441,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote! {
             #tag => {
                 match field {
-                    ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
+                    &mut ::core::option::Option::Some(#ident::#variant_ident(ref mut value)) => {
                         #merge
                     },
                     _ => {
