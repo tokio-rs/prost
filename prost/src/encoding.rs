@@ -8,6 +8,7 @@ use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::borrow::{Borrow, BorrowMut};
 use core::mem;
 use core::str;
 
@@ -539,7 +540,7 @@ macro_rules! length_delimited {
 
         #[inline]
         pub fn encoded_len(tag: u32, value: &$ty) -> usize {
-            key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
+            key_len(tag) + encoded_len_varint(coerce(value).len() as u64) + coerce(value).len()
         }
 
         #[inline]
@@ -547,7 +548,9 @@ macro_rules! length_delimited {
             key_len(tag) * values.len()
                 + values
                     .iter()
-                    .map(|value| encoded_len_varint(value.len() as u64) + value.len())
+                    .map(|value| {
+                        encoded_len_varint(coerce(value).len() as u64) + coerce(value).len()
+                    })
                     .sum::<usize>()
         }
     };
@@ -556,18 +559,24 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    pub fn encode(tag: u32, value: &String, buf: &mut impl BufMut) {
+    #[inline]
+    fn coerce(value: &impl Borrow<String>) -> &String {
+        value.borrow()
+    }
+
+    pub fn encode(tag: u32, value: &impl Borrow<String>, buf: &mut impl BufMut) {
         encode_key(tag, WireType::LengthDelimited, buf);
-        encode_varint(value.len() as u64, buf);
-        buf.put_slice(value.as_bytes());
+        encode_varint(value.borrow().len() as u64, buf);
+        buf.put_slice(value.borrow().as_bytes());
     }
 
     pub fn merge(
         wire_type: WireType,
-        value: &mut String,
+        value: &mut impl BorrowMut<String>,
         buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError> {
+        let value = BorrowMut::<String>::borrow_mut(value);
         // ## Unsafety
         //
         // `string::merge` reuses `bytes::merge`, with an additional check of utf-8
@@ -605,7 +614,7 @@ pub mod string {
         }
     }
 
-    length_delimited!(String);
+    length_delimited!(impl BorrowMut<String> + Default);
 
     #[cfg(test)]
     mod test {
@@ -617,7 +626,7 @@ pub mod string {
         proptest! {
             #[test]
             fn check(value: String, tag in MIN_TAG..=MAX_TAG) {
-                super::test::check_type(value, tag, WireType::LengthDelimited,
+                super::test::check_type::<String, String>(value, tag, WireType::LengthDelimited,
                                         encode, merge, encoded_len)?;
             }
             #[test]
@@ -685,7 +694,13 @@ impl sealed::BytesAdapter for Vec<u8> {
 }
 
 pub mod bytes {
+    use super::sealed::BytesAdapter;
     use super::*;
+
+    #[inline]
+    fn coerce(value: &impl BytesAdapter) -> &impl BytesAdapter {
+        value
+    }
 
     pub fn encode(tag: u32, value: &impl BytesAdapter, buf: &mut impl BufMut) {
         encode_key(tag, WireType::LengthDelimited, buf);
