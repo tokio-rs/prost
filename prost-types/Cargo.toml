@@ -16,11 +16,15 @@ doctest = false
 default = ["std"]
 std = ["prost/std"]
 arbitrary = ["dep:arbitrary"]
+serde = ["serde_serialize", "serde_deserialize"]
+serde_serialize = ["std", "dep:serde"]
+serde_deserialize = ["std", "dep:serde"]
 
 [dependencies]
 prost = { version = "0.13.5", path = "../prost", default-features = false, features = ["prost-derive"] }
 arbitrary = { version = "1.4", features = ["derive"], optional = true }
 chrono = { version = "0.4.34", default-features = false, optional = true }
+serde = { version = "1.0.218", default-features = false, optional = true, features = ["derive", "std"] }
 
 [dev-dependencies]
 proptest = "1"
