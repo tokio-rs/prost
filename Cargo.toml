@@ -9,6 +9,8 @@ members = [
   "protobuf",
   "tests",
   "tests-2015",
+  "tests-2018",
+  "tests-2024",
   "tests-no-std",
   "tests/single-include",
   "fuzz",
