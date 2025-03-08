@@ -380,7 +380,7 @@ the `std` features in `prost` and `prost-types`:
 
 ```ignore
 [dependencies]
-prost = { version = "0.13.5", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.13.5", default-features = false, features = ["derive"] }
 # Only necessary if using Protobuf well-known types:
 prost-types = { version = "0.13.5", default-features = false }
 ```
