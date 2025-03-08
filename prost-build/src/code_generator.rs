@@ -470,7 +470,7 @@ impl<'b> CodeGenerator<'_, 'b> {
                         .descriptor
                         .type_name
                         .as_ref()
-                        .and_then(|ty| ty.split('.').last())
+                        .and_then(|ty| ty.split('.').next_back())
                         .unwrap();
 
                     enum_value = strip_enum_prefix(&to_upper_camel(enum_type), &enum_value)
