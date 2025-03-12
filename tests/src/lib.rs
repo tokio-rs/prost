@@ -356,6 +356,7 @@ mod tests {
             super_: 51,
             extern_: 52,
             crate_: 53,
+            r#gen: 54,
         };
 
         let _ = foo::bar_baz::foo_bar_baz::Self_ {};

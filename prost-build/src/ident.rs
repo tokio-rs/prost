@@ -18,7 +18,9 @@ pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
         | "abstract" | "become" | "box" | "do" | "final" | "macro" | "override" | "priv" | "typeof"
         | "unsized" | "virtual" | "yield"
         // 2018 reserved keywords.
-        | "async" | "await" | "try" => format!("r#{}", ident),
+        | "async" | "await" | "try"
+        // 2024 reserved keywords.
+        | "gen" => format!("r#{}", ident),
         // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
         "_" | "super" | "self" | "Self" | "extern" | "crate" => format!("{}_", ident),
         // the following keywords begin with a number and are therefore prefixed with an underscore.
@@ -118,6 +120,7 @@ mod tests {
         assert_eq!(sanitize_identifier("async"), "r#async");
         assert_eq!(sanitize_identifier("await"), "r#await");
         assert_eq!(sanitize_identifier("try"), "r#try");
+        assert_eq!(sanitize_identifier("gen"), "r#gen");
         assert_eq!(sanitize_identifier("self"), "self_");
         assert_eq!(sanitize_identifier("super"), "super_");
         assert_eq!(sanitize_identifier("extern"), "extern_");
@@ -219,6 +222,7 @@ mod tests {
         assert_eq!("r#async", &to_snake("async"));
         assert_eq!("r#await", &to_snake("await"));
         assert_eq!("r#try", &to_snake("try"));
+        assert_eq!("r#gen", &to_snake("gen"));
     }
 
     #[test]

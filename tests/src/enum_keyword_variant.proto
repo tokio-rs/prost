@@ -9,6 +9,7 @@ enum Feeding {
   FEEDING_SELF = 2;
   FEEDING_ELSE = 3;
   FEEDING_ERROR = 4;
+  FEEDING_GEN = 5;
 }
 
 enum Grooming {

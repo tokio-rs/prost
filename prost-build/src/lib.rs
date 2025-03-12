@@ -397,10 +397,10 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
 
         let state = Rc::new(RefCell::new(MockState::default()));
-        let gen = MockServiceGenerator::new(Rc::clone(&state));
+        let generator = MockServiceGenerator::new(Rc::clone(&state));
 
         Config::new()
-            .service_generator(Box::new(gen))
+            .service_generator(Box::new(generator))
             .include_file("_protos.rs")
             .out_dir(tempdir.path())
             .compile_protos(
@@ -467,13 +467,13 @@ mod tests {
     fn test_generate_no_empty_outputs() {
         let _ = env_logger::try_init();
         let state = Rc::new(RefCell::new(MockState::default()));
-        let gen = MockServiceGenerator::new(Rc::clone(&state));
+        let generator = MockServiceGenerator::new(Rc::clone(&state));
         let include_file = "_include.rs";
         let tempdir = tempfile::tempdir().unwrap();
         let previously_empty_proto_path = tempdir.path().join(Path::new("google.protobuf.rs"));
 
         Config::new()
-            .service_generator(Box::new(gen))
+            .service_generator(Box::new(generator))
             .include_file(include_file)
             .out_dir(tempdir.path())
             .compile_protos(
@@ -529,12 +529,12 @@ mod tests {
 
         for _ in 1..10 {
             let state = Rc::new(RefCell::new(MockState::default()));
-            let gen = MockServiceGenerator::new(Rc::clone(&state));
+            let generator = MockServiceGenerator::new(Rc::clone(&state));
             let include_file = "_include.rs";
             let tempdir = tempfile::tempdir().unwrap();
 
             Config::new()
-                .service_generator(Box::new(gen))
+                .service_generator(Box::new(generator))
                 .include_file(include_file)
                 .out_dir(tempdir.path())
                 .compile_protos(
