@@ -73,6 +73,12 @@ jobs:
           toolchain: ${{ env.clippy_rust_version }}
           components: clippy
       - run: cargo clippy --workspace --exclude protobuf --all-features --tests -- -D warnings
+      - name: enable edition 2024 lints in `prost-derive` macros
+        run: sed -i 's/edition = "[0-9]*"/edition = "2024"/' Cargo.toml 
+      - name: set MSRV to clippy version to enable more lints
+        run: sed -i 's/rust-version = "[.0-9]*"/rust-version = "${{ env.clippy_rust_version }}"/' Cargo.toml
+      - name: clippy with edition 2024
+        run: cargo clippy --workspace --exclude protobuf --all-features --tests -- -D warnings
 
   docs:
     runs-on: ubuntu-latest
