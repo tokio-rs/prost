@@ -1,8 +1,8 @@
 [package]
-name = "tests-2018"
+name = "tests-2024"
 version = "0.0.0"
 publish = false
-edition = "2018"
+edition = "2024"
 authors.workspace = true
 
 build = "../tests/build.rs"
