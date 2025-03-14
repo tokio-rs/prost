@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package oneof_name_conflict;
+
+message Bakery {
+  message Bread {
+    int32 weight = 3;
+  }
+
+  oneof bread {
+    string a = 1;
+    Bread b = 2;
+  }
+}

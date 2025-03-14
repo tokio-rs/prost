@@ -81,6 +81,8 @@ mod groups;
 #[cfg(test)]
 mod default_string_escape;
 
+mod oneof_name_conflict;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
