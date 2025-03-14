@@ -62,6 +62,7 @@ message Foo_barBaz {
   int32 super = 51;
   int32 extern = 52;
   int32 crate = 53;
+  int32 gen = 54;
 
   message Self {
   }
