@@ -728,7 +728,7 @@ impl Config {
     /// Set the path to `protoc` executable to be used by `prost-build`
     ///
     /// Use the provided path to find `protoc`. This can either be a file name which is
-    /// searched for in the `PATH` or an aboslute path to use a specific executable.
+    /// searched for in the `PATH` or an absolute path to use a specific executable.
     ///
     /// # Example `build.rs`
     ///
