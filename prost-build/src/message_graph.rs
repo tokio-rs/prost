@@ -41,15 +41,11 @@ impl MessageGraph {
     }
 
     fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {
-        let MessageGraph {
-            ref mut index,
-            ref mut graph,
-            ..
-        } = *self;
         assert_eq!(b'.', msg_name.as_bytes()[0]);
-        *index
+        *self
+            .index
             .entry(msg_name.clone())
-            .or_insert_with(|| graph.add_node(msg_name))
+            .or_insert_with(|| self.graph.add_node(msg_name))
     }
 
     /// Adds message to graph IFF it contains a non-repeated field containing another message.
