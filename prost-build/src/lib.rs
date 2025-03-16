@@ -115,7 +115,7 @@
 //! PROTOC=/usr/local/bin/protoc
 //! ```
 //!
-//! Alternatively, the path to `protoc` execuatable can be explicitly set
+//! Alternatively, the path to `protoc` executable can be explicitly set
 //! via [`Config::protoc_executable()`].
 //!
 //! If `prost-build` can not find `protoc`
