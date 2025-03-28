@@ -16,6 +16,6 @@ included under its original ([BSD][2]) license.
 
 [2]: https://github.com/google/protobuf/blob/master/LICENSE
 
-See [LICENSE](../LICENSE) for details.
+See [LICENSE](./LICENSE) for details.
 
 Copyright 2017 Dan Burkert
