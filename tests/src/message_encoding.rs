@@ -395,3 +395,58 @@ pub enum BasicOneof {
     #[prost(string, tag = "9")]
     String(String),
 }
+
+#[derive(Clone, Debug, PartialEq, Default)]
+struct StringWrapper {
+    inner: String,
+}
+
+impl core::borrow::Borrow<String> for StringWrapper {
+    fn borrow(&self) -> &String {
+        &self.inner
+    }
+}
+
+impl core::borrow::BorrowMut<String> for StringWrapper {
+    fn borrow_mut(&mut self) -> &mut String {
+        &mut self.inner
+    }
+}
+
+impl StringWrapper {
+    fn clear(&mut self) {
+        self.inner.clear();
+    }
+}
+
+impl PartialEq<&str> for StringWrapper {
+    fn eq(&self, other: &&str) -> bool {
+        self.inner.as_str() == *other
+    }
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct MessageWithStringWrapper {
+    #[prost(string, tag = "1")]
+    inner: StringWrapper,
+}
+
+#[derive(Clone, PartialEq, Message)]
+struct MessageWithString {
+    #[prost(string, tag = "1")]
+    inner: String,
+}
+
+#[test]
+fn check_string_wrapper_is_valid() {
+    let message_with_string_wrapper = MessageWithStringWrapper {
+        inner: StringWrapper {
+            inner: String::new(),
+        },
+    };
+    check_message(&message_with_string_wrapper);
+    let message_with_string = MessageWithString {
+        inner: String::new(),
+    };
+    check_serialize_equivalent(&message_with_string_wrapper, &message_with_string);
+}
