@@ -275,7 +275,7 @@ mod tests {
         // Representative tests for the case of timestamps before the UTC Epoch time:
         // validate the expected behaviour that "negative second values with fractions
         // must still have non-negative nanos values that count forward in time"
-        // https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp
+        // https://protobuf.dev/reference/protobuf/google.protobuf/#google.protobuf.Timestamp
         //
         // To ensure cross-platform compatibility, all nanosecond values in these
         // tests are in minimum 100 ns increments.  This does not affect the general
