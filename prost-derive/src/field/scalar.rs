@@ -539,7 +539,7 @@ impl Ty {
 
     // TODO: rename to 'ref_type'
     pub fn rust_ref_type(&self) -> TokenStream {
-        match self {
+        match *self {
             Ty::Double => quote!(f64),
             Ty::Float => quote!(f32),
             Ty::Int32 => quote!(i32),
