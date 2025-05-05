@@ -91,13 +91,24 @@ impl Field {
     pub fn merge(&self, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => quote! {
-                ::prost::encoding::int32::merge(wire_type,
-                                              #ident.map(|msg| msg as i32).get_or_insert_with(::core::default::Default::default),
-                                              buf,
-                                              ctx)
+                {
+                    let mut i32_repr = #ident.map_or(0, |msg| msg as i32);
+                    let res = ::prost::encoding::int32::merge(wire_type,
+                        &mut i32_repr,
+                        buf,
+                        ctx
+                    );
+                    *#ident = Some(i32_repr.try_into().unwrap());
+                    res
+                }
             },
             Label::Required => quote! {
-                ::prost::encoding::int32::merge(wire_type, &mut (*#ident as i32), buf, ctx)
+                {
+                    let mut i32_repr = *#ident as i32;
+                    let res = ::prost::encoding::int32::merge(wire_type, &mut i32_repr, buf, ctx);
+                    *#ident = i32_repr.try_into().unwrap();
+                    res
+                }
             },
             Label::Repeated => quote! {
                 ::prost::encoding::int32::merge_repeated(wire_type, &(*#ident as i32), buf, ctx)
