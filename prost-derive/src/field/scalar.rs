@@ -400,6 +400,7 @@ pub enum Ty {
     String,
     Bytes(BytesTy),
     Enumeration(Path),
+    EnumerationTyped(Path),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -464,6 +465,20 @@ impl Ty {
             Meta::List(ref meta_list) if meta_list.path.is_ident("enumeration") => {
                 Ty::Enumeration(meta_list.parse_args::<Path>()?)
             }
+            // Meta::NameValue(MetaNameValue {
+            //     ref path,
+            //     value:
+            //         Expr::Lit(ExprLit {
+            //             lit: Lit::Str(ref l),
+            //             ..
+            //         }),
+            //     ..
+            // }) if path.is_ident("enumeration_typed") => {
+            //     Ty::EnumerationTyped(parse_str::<Path>(&l.value())?)
+            // }
+            // Meta::List(ref meta_list) if meta_list.path.is_ident("enumeration_typed") => {
+            //     Ty::EnumerationTyped(meta_list.parse_args::<Path>()?)
+            // }
             _ => return Ok(None),
         };
         Ok(Some(ty))
@@ -471,6 +486,7 @@ impl Ty {
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
         let enumeration_len = "enumeration".len();
+        let enumeration_typed_len = "enumeration_typed".len();
         let error = Err(anyhow!("invalid type: {}", s));
         let ty = match s.trim() {
             "float" => Ty::Float,
@@ -501,6 +517,21 @@ impl Ty {
 
                 Ty::Enumeration(parse_str::<Path>(s[1..s.len() - 1].trim())?)
             }
+            s if s.len() > enumeration_typed_len
+                && &s[..enumeration_typed_len] == "enumeration_typed" =>
+            {
+                let s = &s[enumeration_typed_len..].trim();
+                match s.chars().next() {
+                    Some('<') | Some('(') => (),
+                    _ => return error,
+                }
+                match s.chars().next_back() {
+                    Some('>') | Some(')') => (),
+                    _ => return error,
+                }
+
+                Ty::EnumerationTyped(parse_str::<Path>(s[1..s.len() - 1].trim())?)
+            }
             _ => return error,
         };
         Ok(ty)
@@ -525,6 +556,7 @@ impl Ty {
             Ty::String => "string",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
+            Ty::EnumerationTyped(..) => "enum",
         }
     }
 
@@ -539,7 +571,7 @@ impl Ty {
 
     // TODO: rename to 'ref_type'
     pub fn rust_ref_type(&self) -> TokenStream {
-        match *self {
+        match self {
             Ty::Double => quote!(f64),
             Ty::Float => quote!(f32),
             Ty::Int32 => quote!(i32),
@@ -556,6 +588,7 @@ impl Ty {
             Ty::String => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
+            Ty::EnumerationTyped(ref enumeration) => quote!(#enumeration),
         }
     }
 
@@ -776,6 +809,7 @@ impl DefaultValue {
             Ty::String => DefaultValue::String(String::new()),
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
+            Ty::EnumerationTyped(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
     }
 
