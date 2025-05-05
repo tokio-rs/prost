@@ -1,9 +1,9 @@
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse_str, Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Path};
+use syn::Meta;
 
-use crate::field::{set_option, tags_attr};
+use crate::field::set_option;
 
 use super::{set_bool, tag_attr, word_attr, Label};
 
