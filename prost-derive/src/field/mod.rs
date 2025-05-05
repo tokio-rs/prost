@@ -26,7 +26,7 @@ pub enum Field {
     Oneof(oneof::Field),
     /// A group field.
     Group(group::Field),
-    /// A enum typed field.
+    /// An enum field that is not an `i32`.
     EnumTyped(enum_typed::Field),
 }
 
