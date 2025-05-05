@@ -17,7 +17,7 @@ fn validate_proto_path(path: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ExternPaths {
     extern_paths: HashMap<String, String>,
 }

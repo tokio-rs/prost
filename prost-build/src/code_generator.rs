@@ -1159,7 +1159,7 @@ mod tests {
             &mut Context::new(
                 &mut config,
                 MessageGraph::new([file_descriptor_proto.clone()].iter()),
-                ExternPaths::default(),
+                ExternPaths::new(&[], false).unwrap(),
             ),
             file_descriptor_proto.clone(),
             &mut buf,
