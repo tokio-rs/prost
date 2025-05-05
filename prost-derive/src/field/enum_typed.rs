@@ -128,8 +128,3 @@ impl Field {
         }
     }
 }
-
-enum Test {
-    A = 0,
-    B = 1,
-}
