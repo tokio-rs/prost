@@ -238,7 +238,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             {
                 #[cfg(feature = "custom-derive")]
                 {
-                    String::from(", ") + &self.config().custom_message_derives.join(", ")
+                    if self.config().custom_message_derives.len() > 0 {
+                        String::from(", ") + &self.config().custom_message_derives.join(", ")
+                    } else {
+                        String::from("")
+                    }
                 }
                 #[cfg(not(feature = "custom-derive"))]
                 {
@@ -627,7 +631,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             {
                 #[cfg(feature = "custom-derive")]
                 {
-                    String::from(", ") + &self.config().custom_oneof_derives.join(", ")
+                    if self.config().custom_oneof_derives.len() > 0 {
+                        String::from(", ") + &self.config().custom_oneof_derives.join(", ")
+                    } else {
+                        String::from("")
+                    }
                 }
                 #[cfg(not(feature = "custom-derive"))]
                 {
@@ -744,7 +752,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             {
                 #[cfg(feature = "custom-derive")]
                 {
-                    String::from(", ") + &self.config().custom_enum_derives.join(", ")
+                    if self.config().custom_enum_derives.len() > 0 {
+                        String::from(", ") + &self.config().custom_enum_derives.join(", ")
+                    } else {
+                        String::from("")
+                    }
                 }
                 #[cfg(not(feature = "custom-derive"))]
                 {
