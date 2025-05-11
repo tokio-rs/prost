@@ -54,6 +54,12 @@ pub struct Config {
     pub(crate) prost_path: Option<String>,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
+    #[cfg(feature = "custom-derive")]
+    pub(crate) custom_message_derives: Vec<String>,
+    #[cfg(feature = "custom-derive")]
+    pub(crate) custom_oneof_derives: Vec<String>,
+    #[cfg(feature = "custom-derive")]
+    pub(crate) custom_enum_derives: Vec<String>,
 }
 
 impl Config {
@@ -1145,6 +1151,17 @@ impl Config {
             *buf = with_generated;
         }
     }
+    #[cfg(feature = "custom-derive")]
+    pub fn with_custom_derives(
+        &mut self,
+        message_derives: Vec<String>,
+        oneof_derives: Vec<String>,
+        enum_derives: Vec<String>,
+    ) {
+        self.custom_message_derives.extend(message_derives);
+        self.custom_oneof_derives.extend(oneof_derives);
+        self.custom_enum_derives.extend(enum_derives);
+    }
 }
 
 /// Write a slice as the entire contents of a file.
@@ -1196,6 +1213,12 @@ impl default::Default for Config {
             prost_path: None,
             #[cfg(feature = "format")]
             fmt: true,
+            #[cfg(feature = "custom-derive")]
+            custom_message_derives: vec![],
+            #[cfg(feature = "custom-derive")]
+            custom_oneof_derives: vec![],
+            #[cfg(feature = "custom-derive")]
+            custom_enum_derives: vec![],
         }
     }
 }

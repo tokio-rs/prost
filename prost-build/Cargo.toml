@@ -10,10 +10,10 @@ edition.workspace = true
 rust-version.workspace = true
 
 [features]
-default = ["format"]
+default = ["format", "custom-derive"]
 format = ["dep:prettyplease", "dep:syn"]
 cleanup-markdown = ["dep:pulldown-cmark", "dep:pulldown-cmark-to-cmark"]
-
+custom-derive = []
 [dependencies]
 heck = { version = ">=0.4, <=0.5" }
 itertools = { version = ">=0.10, <=0.14", default-features = false, features = ["use_alloc"] }

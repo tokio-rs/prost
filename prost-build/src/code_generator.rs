@@ -223,7 +223,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_message_attributes(&fq_message_name);
         self.push_indent();
         self.buf.push_str(&format!(
-            "#[derive(Clone, {}PartialEq, {}{}::Message)]\n",
+            "#[derive(Clone, {}PartialEq, {}{}::Message{})]\n",
             if self.context.can_message_derive_copy(&fq_message_name) {
                 "Copy, "
             } else {
@@ -234,7 +234,17 @@ impl<'b> CodeGenerator<'_, 'b> {
             } else {
                 ""
             },
-            self.context.prost_path()
+            self.context.prost_path(),
+            {
+                #[cfg(feature = "custom-derive")]
+                {
+                    String::from(", ") + &self.config().custom_message_derives.join(", ")
+                }
+                #[cfg(not(feature = "custom-derive"))]
+                {
+                    String::from("")
+                }
+            }
         ));
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
@@ -606,14 +616,24 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .can_field_derive_eq(fq_message_name, &field.descriptor)
         });
         self.buf.push_str(&format!(
-            "#[derive(Clone, {}PartialEq, {}{}::Oneof)]\n",
+            "#[derive(Clone, {}PartialEq, {}{}::Oneof{})]\n",
             if can_oneof_derive_copy { "Copy, " } else { "" },
             if can_oneof_derive_eq {
                 "Eq, Hash, "
             } else {
                 ""
             },
-            self.context.prost_path()
+            self.context.prost_path(),
+            {
+                #[cfg(feature = "custom-derive")]
+                {
+                    String::from(", ") + &self.config().custom_oneof_derives.join(", ")
+                }
+                #[cfg(not(feature = "custom-derive"))]
+                {
+                    String::from("")
+                }
+            }
         ));
         self.append_skip_debug(fq_message_name);
         self.push_indent();
@@ -718,9 +738,19 @@ impl<'b> CodeGenerator<'_, 'b> {
             "Debug, "
         };
         self.buf.push_str(&format!(
-            "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration)]\n",
+            "#[derive(Clone, Copy, {}PartialEq, Eq, Hash, PartialOrd, Ord, {}::Enumeration{})]\n",
             dbg,
             self.context.prost_path(),
+            {
+                #[cfg(feature = "custom-derive")]
+                {
+                    String::from(", ") + &self.config().custom_enum_derives.join(", ")
+                }
+                #[cfg(not(feature = "custom-derive"))]
+                {
+                    String::from("")
+                }
+            }
         ));
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
