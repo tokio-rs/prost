@@ -936,10 +936,17 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
             Type::Uint64 | Type::Fixed64 => String::from("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => format!("{}::alloc::string::String", self.context.prost_path()),
+            Type::Enum => {
+                if self.context.config().proto_enums_as_rust_enums {
+                    self.resolve_ident(field.type_name())
+                } else {
+                    String::from("i32")
+                }
+            }
             Type::Bytes => self
                 .context
                 .bytes_type(fq_message_name, field.name())
@@ -1006,10 +1013,16 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Bytes => Cow::Borrowed("bytes"),
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
-            Type::Enum => Cow::Owned(format!(
-                "enumeration={:?}",
-                self.resolve_ident(field.type_name())
-            )),
+            Type::Enum => {
+                if self.config().proto_enums_as_rust_enums {
+                    Cow::Borrowed("enumeration_typed")
+                } else {
+                    Cow::Owned(format!(
+                        "enumeration={:?}",
+                        self.resolve_ident(field.type_name())
+                    ))
+                }
+            }
         }
     }
 
@@ -1120,4 +1133,38 @@ fn build_enum_value_mappings<'a>(
         })
     }
     mappings
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{context::Context, extern_paths::ExternPaths, message_graph::MessageGraph, Config};
+
+    use super::CodeGenerator;
+
+    #[test]
+    fn proto_enum_to_rust_enum() {
+        let mut buf = String::new();
+
+        let file = Config::default()
+            .load_fds(&["./src/test_enum.proto"], &["."])
+            .unwrap();
+        let file_descriptor_proto = file.file.first().unwrap();
+
+        let mut config = Config {
+            proto_enums_as_rust_enums: true,
+            ..Default::default()
+        };
+
+        CodeGenerator::generate(
+            &mut Context::new(
+                &mut config,
+                MessageGraph::new([file_descriptor_proto.clone()].iter()),
+                ExternPaths::new(&[], false).unwrap(),
+            ),
+            file_descriptor_proto.clone(),
+            &mut buf,
+        );
+
+        assert!(buf.contains("pub a: EnumTest"));
+    }
 }
