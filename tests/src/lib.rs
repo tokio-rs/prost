@@ -14,7 +14,7 @@ cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate anyhow;
         extern crate core;
-        extern crate prost;
+        pub extern crate prost;
         extern crate prost_types;
         extern crate protobuf;
         #[cfg(test)]
@@ -23,6 +23,8 @@ cfg_if! {
         extern crate tempfile;
     }
 }
+
+pub use prost as reexported_prost;
 
 pub mod decode_error;
 pub mod extern_paths;
