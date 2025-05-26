@@ -173,6 +173,7 @@ impl<'a> Context<'a> {
         assert_eq!(".", &fq_message_name[..1]);
         self.message_graph
             .get_message(fq_message_name)
+            .ok_or_else(|| format!("message `{fq_message_name}` not found in message graph"))
             .unwrap()
             .field
             .iter()
