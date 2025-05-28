@@ -213,6 +213,33 @@ fn main() {
 
     assert!(no_root_packages_with_default.join("_.rs").exists());
 
+    // Generate force_required_messages test code - both default and required versions
+    // First generate the default version
+    prost_build::Config::new()
+        .out_dir(&out_dir)
+        .compile_protos(&[src.join("force_required_messages.proto")], includes)
+        .unwrap();
+
+    // Rename to default version
+    let generated_file = out_dir.join("force_required_messages.rs");
+    let default_target = out_dir.join("force_required_messages_default.rs");
+    if generated_file.exists() {
+        std::fs::rename(&generated_file, &default_target).unwrap();
+    }
+
+    // Generate the required version
+    prost_build::Config::new()
+        .force_required_messages()
+        .out_dir(&out_dir)
+        .compile_protos(&[src.join("force_required_messages.proto")], includes)
+        .unwrap();
+
+    // Rename to required version
+    let required_target = out_dir.join("force_required_messages_required.rs");
+    if generated_file.exists() {
+        std::fs::rename(&generated_file, &required_target).unwrap();
+    }
+
     let extern_paths = out_dir.as_path().join("extern_paths");
     fs::create_dir_all(&extern_paths).expect("failed to create prefix directory");
 

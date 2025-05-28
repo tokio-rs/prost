@@ -122,7 +122,7 @@ impl fmt::Display for Duration {
         } else if nanos % 1_000 == 0 {
             write!(f, ".{:06}s", nanos / 1_000)
         } else {
-            write!(f, ".{:09}s", nanos)
+            write!(f, ".{nanos:09}s")
         }
     }
 }
@@ -155,7 +155,7 @@ impl fmt::Display for DurationError {
         match self {
             DurationError::ParseFailure => write!(f, "failed to parse duration"),
             DurationError::NegativeDuration(duration) => {
-                write!(f, "failed to convert negative duration: {:?}", duration)
+                write!(f, "failed to convert negative duration: {duration:?}")
             }
             DurationError::OutOfRange => {
                 write!(f, "failed to convert duration out of range")

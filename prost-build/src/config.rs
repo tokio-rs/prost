@@ -52,6 +52,7 @@ pub struct Config {
     pub(crate) skip_source_info: bool,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
+    pub(crate) force_required_messages: bool,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -703,6 +704,23 @@ impl Config {
         self
     }
 
+    /// Forces message fields to be non-optional in proto3.
+    ///
+    /// By default, prost generates `Option<T>` for all message fields in proto3,
+    /// even when they're not explicitly marked as optional. This method allows
+    /// you to disable this behavior and generate direct `T` types instead.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.force_required_messages();
+    /// ```
+    pub fn force_required_messages(&mut self) -> &mut Self {
+        self.force_required_messages = true;
+        self
+    }
+
     /// Add an argument to the `protoc` protobuf compilation invocation.
     ///
     /// # Example `build.rs`
@@ -958,7 +976,7 @@ impl Config {
                 cmd.arg(proto.as_ref());
             }
 
-            debug!("Running: {:?}", cmd);
+            debug!("Running: {cmd:?}");
 
             let output = match cmd.output() {
             Err(err) if ErrorKind::NotFound == err.kind() => return Err(Error::new(
@@ -993,7 +1011,7 @@ impl Config {
         let file_descriptor_set = FileDescriptorSet::decode(buf.as_slice()).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
-                format!("invalid FileDescriptorSet: {}", error),
+                format!("invalid FileDescriptorSet: {error}"),
             )
         })?;
 
@@ -1060,16 +1078,12 @@ impl Config {
                 .expect("every module should have a filename");
 
             if basepath.is_some() {
-                self.write_line(
-                    outfile,
-                    stack.len(),
-                    &format!("include!(\"{}\");", file_name),
-                )?;
+                self.write_line(outfile, stack.len(), &format!("include!(\"{file_name}\");"))?;
             } else {
                 self.write_line(
                     outfile,
                     stack.len(),
-                    &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}\"));", file_name),
+                    &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{file_name}\"));"),
                 )?;
             }
         }
@@ -1194,6 +1208,7 @@ impl default::Default for Config {
             skip_source_info: false,
             include_file: None,
             prost_path: None,
+            force_required_messages: false,
             #[cfg(feature = "format")]
             fmt: true,
         }
@@ -1220,6 +1235,7 @@ impl fmt::Debug for Config {
             .field("disable_comments", &self.disable_comments)
             .field("skip_debug", &self.skip_debug)
             .field("prost_path", &self.prost_path)
+            .field("force_required_messages", &self.force_required_messages)
             .finish()
     }
 }
@@ -1238,8 +1254,7 @@ pub fn error_message_protoc_not_found() -> String {
         "It is also available at https://github.com/protocolbuffers/protobuf/releases";
 
     format!(
-        "{} {} {}  For more information: https://docs.rs/prost-build/#sourcing-protoc",
-        error_msg, os_specific_hint, download_msg
+        "{error_msg} {os_specific_hint} {download_msg}  For more information: https://docs.rs/prost-build/#sourcing-protoc"
     )
 }
 
@@ -1366,5 +1381,14 @@ mod tests {
             .compile_fds(FileDescriptorSet::default())
             .unwrap_err();
         assert_eq!(err.to_string(), "OUT_DIR environment variable is not set")
+    }
+
+    #[test]
+    fn test_force_required_messages_config() {
+        let mut config = Config::new();
+        assert!(!config.force_required_messages);
+
+        config.force_required_messages();
+        assert!(config.force_required_messages);
     }
 }

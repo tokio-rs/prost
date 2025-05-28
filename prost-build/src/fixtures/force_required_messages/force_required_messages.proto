@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package force_required_messages;
+
+message Address {
+    string street = 1;
+    string city = 2;
+    string country = 3;
+}
+
+message Contact {
+    string email = 1;
+    string phone = 2;
+}
+
+message Person {
+    // Scalar fields - should always be T in proto3
+    string name = 1;
+    int32 age = 2;
+    
+    // Message fields - should be Option<T> by default, T with force_required_messages
+    Address home_address = 3;
+    Contact contact_info = 4;
+    
+    // Explicitly optional fields - should always be Option<T>
+    optional Address work_address = 5;
+    optional Contact emergency_contact = 6;
+    
+    // Repeated fields - should always be Vec<T>
+    repeated Address previous_addresses = 7;
+    repeated Contact additional_contacts = 8;
+}
+
+message Company {
+    string name = 1;
+    Address headquarters = 2;
+    repeated Person employees = 3;
+    optional Person ceo = 4;
+}

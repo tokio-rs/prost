@@ -115,7 +115,7 @@ pub fn encode_key(tag: u32, wire_type: WireType, buf: &mut impl BufMut) {
 pub fn decode_key(buf: &mut impl Buf) -> Result<(u32, WireType), DecodeError> {
     let key = decode_varint(buf)?;
     if key > u64::from(u32::MAX) {
-        return Err(DecodeError::new(format!("invalid key value: {}", key)));
+        return Err(DecodeError::new(format!("invalid key value: {key}")));
     }
     let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key as u32 >> 3;

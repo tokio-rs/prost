@@ -7,12 +7,11 @@ use crate::ident::{to_snake, to_upper_camel};
 fn validate_proto_path(path: &str) -> Result<(), String> {
     if path.chars().next().map(|c| c != '.').unwrap_or(true) {
         return Err(format!(
-            "Protobuf paths must be fully qualified (begin with a leading '.'): {}",
-            path
+            "Protobuf paths must be fully qualified (begin with a leading '.'): {path}"
         ));
     }
     if path.split('.').skip(1).any(str::is_empty) {
-        return Err(format!("invalid fully-qualified Protobuf path: {}", path));
+        return Err(format!("invalid fully-qualified Protobuf path: {path}"));
     }
     Ok(())
 }

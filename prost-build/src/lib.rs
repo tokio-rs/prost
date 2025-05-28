@@ -582,4 +582,51 @@ mod tests {
         let actual = String::from_utf8(buf).unwrap();
         assert_eq_fixture_contents!("src/fixtures/write_includes/_.includes.rs", actual);
     }
+
+    #[test]
+    fn test_force_required_messages_default() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/force_required_messages/force_required_messages.proto"],
+                &["src/fixtures/force_required_messages"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/force_required_messages/_expected_default_formatted.rs"
+            } else {
+                "src/fixtures/force_required_messages/_expected_default.rs"
+            },
+            tempdir.path().join("force_required_messages.rs")
+        );
+    }
+
+    #[test]
+    fn test_force_required_messages_enabled() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .force_required_messages()
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/force_required_messages/force_required_messages.proto"],
+                &["src/fixtures/force_required_messages"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/force_required_messages/_expected_required_formatted.rs"
+            } else {
+                "src/fixtures/force_required_messages/_expected_required.rs"
+            },
+            tempdir.path().join("force_required_messages.rs")
+        );
+    }
 }
