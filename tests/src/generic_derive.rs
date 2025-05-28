@@ -13,7 +13,7 @@ enum GenericEnum<A: CustomType> {
 
 #[derive(Clone, prost::Message)]
 struct GenericMessage<A: CustomType> {
-    #[prost(message, tag = "1")]
+    #[prost(message, optional, tag = "1")]
     data: Option<A>,
 }
 

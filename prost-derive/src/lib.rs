@@ -74,7 +74,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 }
                 Ok(None) => None,
                 Err(err) => Some(Err(
-                    err.context(format!("invalid message field {}.{}", ident, field_ident))
+                    err.context(format!("invalid message field {ident}.{field_ident}"))
                 )),
             }
         })
@@ -310,11 +310,9 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|(variant, value)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)));
 
-    let is_valid_doc = format!("Returns `true` if `value` is a variant of `{}`.", ident);
-    let from_i32_doc = format!(
-        "Converts an `i32` to a `{}`, or `None` if `value` is not a valid variant.",
-        ident
-    );
+    let is_valid_doc = format!("Returns `true` if `value` is a variant of `{ident}`.");
+    let from_i32_doc =
+        format!("Converts an `i32` to a `{ident}`, or `None` if `value` is not a valid variant.",);
 
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {

@@ -310,10 +310,8 @@ impl<'b> CodeGenerator<'_, 'b> {
         ));
         self.depth += 1;
 
-        self.buf.push_str(&format!(
-            "const NAME: &'static str = \"{}\";\n",
-            message_name,
-        ));
+        self.buf
+            .push_str(&format!("const NAME: &'static str = \"{message_name}\";\n",));
         self.buf.push_str(&format!(
             "const PACKAGE: &'static str = \"{}\";\n",
             self.package,
@@ -492,13 +490,13 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         if repeated {
             self.buf
-                .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
+                .push_str(&format!("{prost_path}::alloc::vec::Vec<"));
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
         if boxed {
             self.buf
-                .push_str(&format!("{}::alloc::boxed::Box<", prost_path));
+                .push_str(&format!("{prost_path}::alloc::boxed::Box<"));
         }
         self.buf.push_str(&ty);
         if boxed {
@@ -841,7 +839,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
         let name = service.name().to_owned();
-        debug!("  service: {:?}", name);
+        debug!("  service: {name:?}");
 
         let comments = self
             .location()
@@ -1033,7 +1031,10 @@ impl<'b> CodeGenerator<'_, 'b> {
         }
 
         match field.r#type() {
-            Type::Message => true,
+            Type::Message => {
+                // Check if we should force non-optional message fields in proto3
+                !(self.syntax == Syntax::Proto3 && self.config().force_required_messages)
+            }
             _ => self.syntax == Syntax::Proto2,
         }
     }

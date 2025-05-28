@@ -20,11 +20,11 @@ pub fn sanitize_identifier(s: impl AsRef<str>) -> String {
         // 2018 reserved keywords.
         | "async" | "await" | "try"
         // 2024 reserved keywords.
-        | "gen" => format!("r#{}", ident),
+        | "gen" => format!("r#{ident}"),
         // the following keywords are not supported as raw identifiers and are therefore suffixed with an underscore.
-        "_" | "super" | "self" | "Self" | "extern" | "crate" => format!("{}_", ident),
+        "_" | "super" | "self" | "Self" | "extern" | "crate" => format!("{ident}_"),
         // the following keywords begin with a number and are therefore prefixed with an underscore.
-        s if s.starts_with(|c: char| c.is_numeric()) => format!("_{}", ident),
+        s if s.starts_with(|c: char| c.is_numeric()) => format!("_{ident}"),
         _ => ident.to_string(),
     }
 }

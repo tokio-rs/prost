@@ -285,14 +285,13 @@ impl Field {
         };
 
         if let Ty::Enumeration(ref ty) = self.ty {
-            let set = Ident::new(&format!("set_{}", ident_str), Span::call_site());
-            let set_doc = format!("Sets `{}` to the provided enum value.", ident_str);
+            let set = Ident::new(&format!("set_{ident_str}"), Span::call_site());
+            let set_doc = format!("Sets `{ident_str}` to the provided enum value.");
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
                     let get_doc = format!(
-                        "Returns the enum value of `{}`, \
+                        "Returns the enum value of `{ident_str}`, \
                          or the default if the field is set to an invalid enum value.",
-                        ident_str,
                     );
                     quote! {
                         #[doc=#get_doc]
@@ -308,9 +307,8 @@ impl Field {
                 }
                 Kind::Optional(ref default) => {
                     let get_doc = format!(
-                        "Returns the enum value of `{}`, \
+                        "Returns the enum value of `{ident_str}`, \
                          or the default if the field is unset or set to an invalid enum value.",
-                        ident_str,
                     );
                     quote! {
                         #[doc=#get_doc]
@@ -329,11 +327,10 @@ impl Field {
                 }
                 Kind::Repeated | Kind::Packed => {
                     let iter_doc = format!(
-                        "Returns an iterator which yields the valid enum values contained in `{}`.",
-                        ident_str,
+                        "Returns an iterator which yields the valid enum values contained in `{ident_str}`.",
                     );
-                    let push = Ident::new(&format!("push_{}", ident_str), Span::call_site());
-                    let push_doc = format!("Appends the provided enum value to `{}`.", ident_str);
+                    let push = Ident::new(&format!("push_{ident_str}"), Span::call_site());
+                    let push_doc = format!("Appends the provided enum value to `{ident_str}`.");
                     quote! {
                         #[doc=#iter_doc]
                         pub fn #get(&self) -> ::core::iter::FilterMap<
@@ -362,8 +359,7 @@ impl Field {
             };
 
             let get_doc = format!(
-                "Returns the value of `{0}`, or the default value if `{0}` is unset.",
-                ident_str,
+                "Returns the value of `{ident_str}`, or the default value if `{ident_str}` is unset.",
             );
 
             Some(quote! {

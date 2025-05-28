@@ -65,7 +65,7 @@ impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("failed to decode Protobuf message: ")?;
         for &(message, field) in &self.inner.stack {
-            write!(f, "{}.{}: ", message, field)?;
+            write!(f, "{message}.{field}: ")?;
         }
         f.write_str(&self.inner.description)
     }
@@ -134,7 +134,7 @@ impl From<EncodeError> for std::io::Error {
 
 /// An error indicating that an unknown enumeration value was encountered.
 ///
-/// The Protobuf spec mandates that enumeration value sets are ‘open’, so this
+/// The Protobuf spec mandates that enumeration value sets are 'open', so this
 /// error's value represents an integer value unrecognized by the
 /// presently used enum definition.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

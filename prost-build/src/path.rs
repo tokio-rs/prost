@@ -23,7 +23,7 @@ impl<T> PathMap<T> {
 
     /// Returns a iterator over all the value matching the path `fq_path.field` and associated suffix/prefix path
     pub(crate) fn get_field(&self, fq_path: &str, field: &str) -> Iter<'_, T> {
-        Iter::new(self, format!("{}.{}", fq_path, field))
+        Iter::new(self, format!("{fq_path}.{field}"))
     }
 
     /// Returns the first value found matching the given path
@@ -36,7 +36,7 @@ impl<T> PathMap<T> {
     /// Returns the first value found matching the path `fq_path.field`
     /// If nothing matches the path, suffix paths will be tried, then prefix paths, then the global path
     pub(crate) fn get_first_field<'a>(&'a self, fq_path: &'_ str, field: &'_ str) -> Option<&'a T> {
-        self.find_best_matching(&format!("{}.{}", fq_path, field))
+        self.find_best_matching(&format!("{fq_path}.{field}"))
     }
 
     /// Removes all matchers from the path map.

@@ -90,7 +90,7 @@ impl fmt::Display for DateTime {
         } else if nanos % 1_000 == 0 {
             write!(f, ".{:06}Z", nanos / 1_000)
         } else {
-            write!(f, ".{:09}Z", nanos)
+            write!(f, ".{nanos:09}Z")
         }
     }
 }
@@ -808,8 +808,7 @@ mod tests {
             assert_eq!(
                 s.parse::<Duration>().unwrap(),
                 Duration { seconds, nanos },
-                "duration: {}",
-                s
+                "duration: {s}",
             );
         };
 
