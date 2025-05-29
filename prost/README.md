@@ -467,7 +467,7 @@ configured with the required dependencies to compile the whole project.
 - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
 - `derive`: Enable integration with `prost-derive`. Disable this feature to reduce compile times. This feature is enabled by default.
 - `prost-derive`: Deprecated. Alias for `derive` feature.
-- `no-recursion-limit`: Disable the recursion limit. The recursion limit is 100 and cannot be customized. 
+- `no-recursion-limit`: Disable the recursion limit. The recursion limit is 100, and can be changed with `prost_build::recursion_limit`.
 
 ## FAQ
 

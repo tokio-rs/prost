@@ -11,7 +11,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Index, Variant,
+    FieldsUnnamed, Ident, Index, Lit, Meta, Variant,
 };
 
 mod field;
@@ -19,14 +19,27 @@ use crate::field::Field;
 
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse2(input)?;
-
     let ident = input.ident;
 
     syn::custom_keyword!(skip_debug);
     let skip_debug = input
         .attrs
-        .into_iter()
+        .iter()
         .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+
+    let mut recursion_limit: u32 = 100;
+    for attr in field::prost_attrs(input.attrs.clone())? {
+        match attr {
+            Meta::NameValue(ref meta) if meta.path.is_ident("recursion_limit") => {
+                let Expr::Lit(ref lit) = meta.value else {
+                    continue;
+                };
+                let Lit::Int(ref int) = lit.lit else { continue };
+                recursion_limit = int.base10_parse()?;
+            }
+            _ => (),
+        }
+    }
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -202,6 +215,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
             fn clear(&mut self) {
                 #(#clear;)*
+            }
+
+            fn recursion_limit() -> u32 {
+                #recursion_limit
             }
         }
 
