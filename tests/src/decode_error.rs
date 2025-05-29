@@ -98,7 +98,7 @@ fn test_decode_error_invalid_tag() {
 fn test_decode_error_unexpected_wire_type() {
     let mut buf = [0x00].as_slice();
     let mut msg = TestAllTypesProto3::default();
-    let ctx = prost::encoding::DecodeContext::default();
+    let ctx = prost::encoding::DecodeContext::new(100);
     assert_eq!(
         msg.merge_field(1, prost::encoding::WireType::LengthDelimited, &mut buf, ctx).unwrap_err().to_string(),
         "failed to decode Protobuf message: TestAllTypesProto3.optional_int32: invalid wire type: LengthDelimited (expected Varint)"

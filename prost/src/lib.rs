@@ -24,11 +24,6 @@ pub use crate::error::{DecodeError, EncodeError, UnknownEnumValue};
 pub use crate::message::Message;
 pub use crate::name::Name;
 
-// See `encoding::DecodeContext` for more info.
-// 100 is the default recursion limit in the C++ implementation.
-#[cfg(not(feature = "no-recursion-limit"))]
-const RECURSION_LIMIT: u32 = 100;
-
 // Re-export #[derive(Message, Enumeration, Oneof)].
 // Based on serde's equivalent re-export [1], but enabled by default.
 //
