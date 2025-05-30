@@ -157,12 +157,12 @@ impl<T> OpenEnum<T> {
     /// If the value of the open enum is known, returns it in `Ok`, otherwise
     /// returns the provided error value in `Err`.
     ///
-    /// Arguments passed to `known_or` are eagerly evaluated; if you are passing
+    /// Arguments passed to `ok_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use
-    /// [`known_or_else`] and pass a lazily evaluated closure to it.
+    /// [`ok_or_else`] and pass a lazily evaluated closure to it.
     ///
-    /// [`known_or_else`]: #method.known_or_else
-    pub fn known_or<E>(self, err: E) -> Result<T, E> {
+    /// [`ok_or_else`]: #method.ok_or_else
+    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
             Self::Known(v) => Ok(v),
             Self::Unknown(_) => Err(err),
@@ -172,7 +172,7 @@ impl<T> OpenEnum<T> {
     /// If the value of the open enum is known, returns it in `Ok`, otherwise
     /// returns `Err` with the value computed from the field's raw integer value
     /// by the provided closure.
-    pub fn known_or_else<E, F>(self, err: F) -> Result<T, E>
+    pub fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
     where
         F: FnOnce(i32) -> E,
     {
