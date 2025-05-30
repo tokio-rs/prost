@@ -9,6 +9,8 @@ use prost_types::{
     DescriptorProto, FileDescriptorProto,
 };
 
+use crate::path::fq_package_path;
+
 /// `MessageGraph` builds a graph of messages whose edges correspond to nesting.
 /// The goal is to recognize when message types are recursively nested, so
 /// that fields can be boxed when necessary.
@@ -27,11 +29,7 @@ impl MessageGraph {
         };
 
         for file in files {
-            let package = format!(
-                "{}{}",
-                if file.package.is_some() { "." } else { "" },
-                file.package.as_ref().map(String::as_str).unwrap_or("")
-            );
+            let package = fq_package_path(file);
             for msg in &file.message_type {
                 msg_graph.add_message(&package, msg);
             }

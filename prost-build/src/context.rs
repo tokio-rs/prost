@@ -5,6 +5,7 @@ use prost_types::{
     FieldDescriptorProto,
 };
 
+use crate::enums::{EnumFeatures, EnumRepr};
 use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
 use crate::{BytesType, Config, MapType, ServiceGenerator};
@@ -18,6 +19,7 @@ use crate::{BytesType, Config, MapType, ServiceGenerator};
 pub struct Context<'a> {
     config: &'a mut Config,
     message_graph: MessageGraph,
+    enum_features: EnumFeatures,
     extern_paths: ExternPaths,
 }
 
@@ -25,11 +27,13 @@ impl<'a> Context<'a> {
     pub fn new(
         config: &'a mut Config,
         message_graph: MessageGraph,
+        enum_features: EnumFeatures,
         extern_paths: ExternPaths,
     ) -> Self {
         Self {
             config,
             message_graph,
+            enum_features,
             extern_paths,
         }
     }
@@ -168,13 +172,22 @@ impl<'a> Context<'a> {
         false
     }
 
-    /// Returns `true` if the named message field should be generated using the
-    /// type-safe `OpenEnum` representation.
-    pub fn is_typed_enum_field(&self, fq_message_name: &str, field_name: &str) -> bool {
-        self.config
+    /// Returns the enum value representation for the named message field.
+    pub fn enum_field_repr(&self, fq_message_name: &str, field: &FieldDescriptorProto) -> EnumRepr {
+        if self
+            .config
             .typed_enum_fields
-            .get_first_field(fq_message_name, field_name)
+            .get_first_field(fq_message_name, field.name())
             .is_some()
+        {
+            if self.enum_features.is_closed(field.type_name()) {
+                EnumRepr::Closed
+            } else {
+                EnumRepr::Open
+            }
+        } else {
+            EnumRepr::Int
+        }
     }
 
     /// Returns `true` if this message can automatically derive Copy trait.
