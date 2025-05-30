@@ -40,6 +40,7 @@ pub struct Config {
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
     pub(crate) out_dir: Option<PathBuf>,
+    pub(crate) current_dir: Option<PathBuf>,
     pub(crate) extern_paths: Vec<(String, String)>,
     pub(crate) default_package_filename: String,
     pub(crate) enable_type_names: bool,
@@ -643,6 +644,18 @@ impl Config {
         self
     }
 
+    /// Configures the current directory where `protoc` runs.
+    ///
+    /// If unset, defaults to the process current directory, which is the
+    /// package directory for the `build.rs` build phase.
+    pub fn current_dir<P>(&mut self, path: P) -> &mut Self
+    where
+        P: Into<PathBuf>,
+    {
+        self.current_dir = Some(path.into());
+        self
+    }
+
     /// Configures what filename protobufs with no package definition are written to.
     /// The filename will be appended with the `.rs` extension.
     pub fn default_package_filename<S>(&mut self, filename: S) -> &mut Self
@@ -931,6 +944,10 @@ impl Config {
             }
             cmd.arg("-o").arg(&file_descriptor_set_path);
 
+            if let Some(ref current_dir) = self.current_dir {
+                cmd.current_dir(current_dir);
+            }
+
             for include in includes {
                 println!("cargo:rerun-if-changed={}", include.as_ref().display());
                 if include.as_ref().exists() {
@@ -1182,6 +1199,7 @@ impl default::Default for Config {
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
+            current_dir: None,
             extern_paths: Vec::new(),
             default_package_filename: "_".to_string(),
             enable_type_names: false,
@@ -1212,6 +1230,7 @@ impl fmt::Debug for Config {
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
             .field("out_dir", &self.out_dir)
+            .field("current_dir", &self.current_dir)
             .field("extern_paths", &self.extern_paths)
             .field("default_package_filename", &self.default_package_filename)
             .field("enable_type_names", &self.enable_type_names)
