@@ -57,6 +57,9 @@ mod type_names;
 mod boxed_field;
 
 #[cfg(test)]
+mod enum_type;
+
+#[cfg(test)]
 mod custom_debug;
 
 // Must be `pub` as doc tests are only executed on public types.

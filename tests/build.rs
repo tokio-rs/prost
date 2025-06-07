@@ -176,6 +176,14 @@ fn main() {
         .compile_protos(&[src.join("boxed_field.proto")], includes)
         .unwrap();
 
+    prost_build::Config::new()
+        .typed_enum_fields(".")
+        .compile_protos(
+            &[src.join("enum_type").join("use_in_fields.proto")],
+            &[src.join("enum_type")],
+        )
+        .unwrap();
+
     // Check that attempting to compile a .proto without a package declaration does not result in an error.
     config
         .compile_protos(&[src.join("no_package.proto")], includes)
