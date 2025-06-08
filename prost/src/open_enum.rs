@@ -3,7 +3,8 @@ use crate::{DecodeError, Message, UnknownEnumValue};
 
 use bytes::{Buf, BufMut};
 
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
+use core::hash::{Hash, Hasher};
 
 /// Represents the value of an open enum field.
 ///
@@ -18,7 +19,7 @@ pub enum OpenEnum<T> {
     /// A known value of the generated enum type.
     Known(T),
     /// An unknown value as decoded from the message.
-    Unknown(i32),
+    Unknown(Unknown),
 }
 
 impl<T> Default for OpenEnum<T>
@@ -46,7 +47,7 @@ impl<T> OpenEnum<T> {
     {
         match value.try_into() {
             Ok(v) => Self::Known(v),
-            Err(_) => Self::Unknown(value),
+            Err(_) => Self::Unknown(Unknown(value)),
         }
     }
 
@@ -57,7 +58,7 @@ impl<T> OpenEnum<T> {
     {
         match self {
             Self::Known(v) => v.into(),
-            Self::Unknown(v) => v,
+            Self::Unknown(u) => u.0,
         }
     }
 
@@ -70,12 +71,10 @@ impl<T> OpenEnum<T> {
     {
         match self {
             Self::Known(v) => v.clone().into(),
-            Self::Unknown(v) => *v,
+            Self::Unknown(u) => u.0,
         }
     }
-}
 
-impl<T> OpenEnum<T> {
     /// Returns the known value of the open enum.
     ///
     /// # Panics
@@ -84,7 +83,7 @@ impl<T> OpenEnum<T> {
     pub fn unwrap(self) -> T {
         match self {
             Self::Known(v) => v,
-            Self::Unknown(v) => panic!("unknown field value {}", v),
+            Self::Unknown(u) => panic!("unknown enumeration value {}", u.0),
         }
     }
 
@@ -112,7 +111,7 @@ impl<T> OpenEnum<T> {
     {
         match self {
             Self::Known(v) => v,
-            Self::Unknown(v) => f(v),
+            Self::Unknown(u) => f(u.0),
         }
     }
 
@@ -136,7 +135,7 @@ impl<T> OpenEnum<T> {
     {
         match self {
             Self::Known(v) => Ok(v.clone()),
-            Self::Unknown(r) => Err(UnknownEnumValue(*r)),
+            Self::Unknown(u) => Err(UnknownEnumValue(u.0)),
         }
     }
 
@@ -178,7 +177,16 @@ impl<T> OpenEnum<T> {
     {
         match self {
             Self::Known(v) => Ok(v),
-            Self::Unknown(v) => Err(err(v)),
+            Self::Unknown(u) => Err(err(u.0)),
+        }
+    }
+}
+
+impl<T: Hash> Hash for OpenEnum<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            OpenEnum::Known(v) => v.hash(state),
+            OpenEnum::Unknown(u) => u.0.hash(state),
         }
     }
 }
@@ -211,5 +219,34 @@ where
 
     fn clear(&mut self) {
         *self = OpenEnum::from_raw(0);
+    }
+}
+
+/// Represents an unknown enumeration value.
+///
+/// When the Protobuf spec mandates that enumeration value sets are ‘open’,
+/// a value of this type represents an integer value not known from the
+/// presently used enum definition.
+///
+/// This wrapper type is used to ensure correctness of constructed `[OpenEnum]`
+/// values and should rarely be used by name.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Unknown(i32);
+
+impl Debug for Unknown {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<Unknown> for i32 {
+    fn from(value: Unknown) -> Self {
+        value.0
+    }
+}
+
+impl From<Unknown> for UnknownEnumValue {
+    fn from(value: Unknown) -> Self {
+        UnknownEnumValue(value.0)
     }
 }

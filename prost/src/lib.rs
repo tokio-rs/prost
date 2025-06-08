@@ -12,7 +12,7 @@ pub use bytes;
 mod error;
 mod message;
 mod name;
-mod open_enum;
+pub mod open_enum;
 mod types;
 
 #[doc(hidden)]
