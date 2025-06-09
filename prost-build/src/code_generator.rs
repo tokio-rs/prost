@@ -271,7 +271,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.push_indent();
         self.buf.push_str("}\n");
 
-        let builder = self.builder_name(&fq_message_name);
+        let builder = self.context.builder_name(&fq_message_name);
 
         if let Some(builder_name) = &builder {
             self.append_associated_builder_fn(&message_name, builder_name);
@@ -694,13 +694,6 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str("}\n");
     }
 
-    fn builder_name(&self, fq_message_name: &str) -> Option<String> {
-        self.config
-            .builders
-            .get_first(fq_message_name)
-            .map(|name| name.to_owned())
-    }
-
     fn append_associated_builder_fn(&mut self, message_name: &str, builder_name: &str) {
         let mod_name = to_snake(message_name);
         let struct_name = to_upper_camel(message_name);
@@ -835,10 +828,12 @@ impl<'b> CodeGenerator<'_, 'b> {
         let repeated = field.descriptor.label == Some(Label::Repeated as i32);
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
-        let boxed = self.boxed(&field.descriptor, fq_message_name, None);
+        let boxed = self
+            .context
+            .should_box_message_field(fq_message_name, &field.descriptor);
         let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
-        let prost_path = prost_path(self.config);
+        let prost_path = self.context.prost_path();
         let arg_type = if field.descriptor.r#type() == Type::Enum {
             // Enums are special: the field type is i32, but for the setter
             // we want the accompanying enumeration type.
