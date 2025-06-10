@@ -473,30 +473,36 @@ configured with the required dependencies to compile the whole project.
 
 1. **Could `prost` be implemented as a serializer for [Serde](https://serde.rs/)?**
 
-  Probably not, however I would like to hear from a Serde expert on the matter.
-  There are two complications with trying to serialize Protobuf messages with
-  Serde:
+   Probably not, however I would like to hear from a Serde expert on the matter.
+   There are two complications with trying to serialize Protobuf messages with
+   Serde:
 
-  - Protobuf fields require a numbered tag, and currently there appears to be no
-    mechanism suitable for this in `serde`.
-  - The mapping of Protobuf type to Rust type is not 1-to-1. As a result,
-    trait-based approaches to dispatching don't work very well. Example: six
-    different Protobuf field types correspond to a Rust `Vec<i32>`: `repeated
-    int32`, `repeated sint32`, `repeated sfixed32`, and their packed
-    counterparts.
+   - Protobuf fields require a numbered tag, and currently there appears to be no
+     mechanism suitable for this in `serde`.
+   - The mapping of Protobuf type to Rust type is not 1-to-1. As a result,
+     trait-based approaches to dispatching don't work very well. Example: six
+     different Protobuf field types correspond to a Rust `Vec<i32>`: `repeated
+     int32`, `repeated sint32`, `repeated sfixed32`, and their packed
+     counterparts.
 
-  But it is possible to place `serde` derive tags onto the generated types, so
-  the same structure can support both `prost` and `Serde`.
+   But it is possible to place `serde` derive tags onto the generated types, so
+   the same structure can support both `prost` and `Serde`.
 
 2. **I get errors when trying to run `cargo test` on MacOS**
 
-  If the errors are about missing `autoreconf` or similar, you can probably fix
-  them by running
+   If the errors are about missing `autoreconf` or similar, you can probably fix
+   them by running
 
-  ```ignore
-  brew install automake
-  brew install libtool
-  ```
+   ```ignore
+   brew install automake
+   brew install libtool
+   ```
+
+3. **Why are most fields are wrapped in an `Option`?**
+
+   In the `protobuf` wire protocol all fields are optional. The design of `prost` choose to expose
+   this to the user of the types. `prost` leans toward correctness and safety, aligned with Rust’s 
+   philosophy — even at the cost of verbosity.
 
 ## License
 
