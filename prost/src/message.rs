@@ -127,7 +127,7 @@ pub trait Message: Send + Sync {
     where
         Self: Sized,
     {
-        let ctx = DecodeContext::default();
+        let ctx = DecodeContext::new(Self::recursion_limit());
         while buf.has_remaining() {
             let (tag, wire_type) = decode_key(&mut buf)?;
             self.merge_field(tag, wire_type, &mut buf, ctx.clone())?;
@@ -145,12 +145,22 @@ pub trait Message: Send + Sync {
             WireType::LengthDelimited,
             self,
             &mut buf,
-            DecodeContext::default(),
+            DecodeContext::new(Self::recursion_limit()),
         )
     }
 
     /// Clears the message, resetting all fields to their default.
     fn clear(&mut self);
+
+    /// The recursion limit for decoding protobuf messages.
+    ///
+    /// Defaults to 100. Can be customized in your build.rs or by using the no-recursion-limit crate feature.
+    fn recursion_limit() -> u32
+    where
+        Self: Sized,
+    {
+        100
+    }
 }
 
 impl<M> Message for Box<M>
@@ -174,6 +184,9 @@ where
     }
     fn clear(&mut self) {
         (**self).clear()
+    }
+    fn recursion_limit() -> u32 {
+        M::recursion_limit()
     }
 }
 
