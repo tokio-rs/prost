@@ -80,9 +80,10 @@ pub mod builders {
 
 #[cfg(test)]
 mod tests {
-    use super::builders::{zoo, AnEnum, EmptyForNow, Evolved, Zoo};
+    use super::builders::{AnEnum, EmptyForNow, Evolved, Zoo, zoo};
 
     use alloc::boxed::Box;
+    use alloc::string::String;
     use alloc::vec::Vec;
 
     #[test]
@@ -94,7 +95,9 @@ mod tests {
 
     #[test]
     fn repeated_field_init_from_iterator() {
-        let v = Evolved::builder().added_field(["hello", "world"]).build();
+        let v = Evolved::builder()
+            .added_field(["hello", "world"].into_iter().map(String::from).collect())
+            .build();
         assert_eq!(v.initial_field, 0);
         assert_eq!(v.added_field.len(), 2);
     }
@@ -102,7 +105,7 @@ mod tests {
     #[test]
     fn message_field_init() {
         let msg = Zoo::builder()
-            .message_field(Evolved::builder().initial_field(42))
+            .message_field(Evolved::builder().initial_field(42).build())
             .build();
         assert_eq!(
             msg.message_field,
@@ -135,5 +138,13 @@ mod tests {
     fn oneof_field_setter_takes_enum_values() {
         let msg = Zoo::builder().oneof_field(zoo::OneofField::A(42)).build();
         assert_eq!(msg.oneof_field, Some(zoo::OneofField::A(42)));
+    }
+
+    #[test]
+    fn repeated_enum_field_setter_from_iterator_of_enum_values() {
+        let msg = Zoo::builder()
+            .repeated_enum_field([AnEnum::A, AnEnum::B].into_iter().collect())
+            .build();
+        assert_eq!(&msg.repeated_enum_field[..], &[1, 2]);
     }
 }

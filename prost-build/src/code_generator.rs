@@ -838,17 +838,22 @@ impl<'b> CodeGenerator<'_, 'b> {
             // Enums are special: the field type is i32, but for the setter
             // we want the accompanying enumeration type.
             self.resolve_ident(field.descriptor.type_name())
+        } else if boxed {
+            // For boxed fields, we want to accept the unboxed type
+            // as well as an already allocated Box.
+            format!("impl Into<{}::alloc::boxed::Box<{}>>", prost_path, ty)
         } else {
-            let arg_bound = if boxed {
-                format!("Into<{}::alloc::boxed::Box<{}>>", prost_path, ty)
-            } else {
-                format!("Into<{}>", ty)
-            };
-            if repeated {
-                format!("impl IntoIterator<Item = impl {}>", arg_bound)
-            } else {
-                format!("impl {}", arg_bound)
-            }
+            ty.clone()
+        };
+        let (arg_type, set_expr) = if repeated {
+            (
+                format!("{prost_path}::builder::RepeatedField<{ty}, {arg_type}>"),
+                "value.into()",
+            )
+        } else if field.descriptor.r#type() == Type::Enum || boxed {
+            (arg_type, "value.into()")
+        } else {
+            (arg_type, "value")
         };
 
         debug!("    field setter: {:?}, arg: {:?}", rust_name, arg_type);
@@ -871,13 +876,13 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str("self.inner.");
         self.buf.push_str(&rust_name);
         self.buf.push_str(" = ");
-        if repeated {
-            self.buf
-                .push_str("value.into_iter().map(Into::into).collect();\n");
-        } else if optional {
-            self.buf.push_str("Some(value.into());\n")
+        if optional {
+            self.buf.push_str("Some(");
+            self.buf.push_str(set_expr);
+            self.buf.push_str(");\n")
         } else {
-            self.buf.push_str("value.into();\n")
+            self.buf.push_str(set_expr);
+            self.buf.push_str(";\n")
         }
 
         self.push_indent();

@@ -315,11 +315,11 @@ pub mod person {
     }
 
     impl Builder {
-        pub fn name(mut self, value: impl Into<String>) -> Self { ... }
+        pub fn name(mut self, value: String) -> Self { ... }
 
         pub fn phones(
             mut self,
-            value: impl IntoIterator<Item = impl Into<PhoneNumber>>,
+            value: ::prost::builder::RepeatedField<PhoneNumber>,
         ) -> Self {
             ...
         }

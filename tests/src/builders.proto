@@ -25,6 +25,7 @@ message Zoo {
     int32 a = 4;
     string b = 5;
   }
+  repeated AnEnum repeated_enum_field = 6;
 }
 
 message ConflictProneScalar {
