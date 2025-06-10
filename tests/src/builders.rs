@@ -80,7 +80,7 @@ pub mod builders {
 
 #[cfg(test)]
 mod tests {
-    use super::builders::{AnEnum, EmptyForNow, Evolved, Zoo, zoo};
+    use super::builders::{zoo, AnEnum, EmptyForNow, Evolved, Zoo};
 
     use alloc::boxed::Box;
     use alloc::string::String;
@@ -96,7 +96,12 @@ mod tests {
     #[test]
     fn repeated_field_init_from_iterator() {
         let v = Evolved::builder()
-            .added_field(["hello", "world"].into_iter().map(String::from).collect())
+            .added_field(
+                ["hello", "world"]
+                    .iter()
+                    .map(|&s| String::from(s))
+                    .collect(),
+            )
             .build();
         assert_eq!(v.initial_field, 0);
         assert_eq!(v.added_field.len(), 2);
@@ -143,7 +148,7 @@ mod tests {
     #[test]
     fn repeated_enum_field_setter_from_iterator_of_enum_values() {
         let msg = Zoo::builder()
-            .repeated_enum_field([AnEnum::A, AnEnum::B].into_iter().collect())
+            .repeated_enum_field([AnEnum::A, AnEnum::B].iter().copied().collect())
             .build();
         assert_eq!(&msg.repeated_enum_field[..], &[1, 2]);
     }
