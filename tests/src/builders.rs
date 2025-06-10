@@ -61,7 +61,7 @@
 ///
 /// ```
 /// # use tests::builders::builders::ConflictFreeScalar;
-/// let msg = ConflictFreeScalar::builder().builder("hello").build();
+/// let msg = ConflictFreeScalar::builder().builder("hello".into()).build();
 /// assert_eq!(msg.builder, "hello");
 /// ```
 ///
@@ -70,7 +70,7 @@
 ///
 /// ```
 /// # use tests::builders::builders::Keywordy;
-/// let msg = Keywordy::builder().r#type("foo").build();
+/// let msg = Keywordy::builder().r#type("foo".into()).build();
 /// assert_eq!(msg.r#type, "foo");
 /// ```
 ///
