@@ -37,11 +37,10 @@ pub struct DecodeContext {
     /// How many times we can recurse in the current decode stack before we hit
     /// the recursion limit.
     ///
-    /// It defaults to 100 and can be changed using `prost_build::recursion_limit`,
+    /// It defaults to 100 and can be changed using `prost_build::Config::recursion_limit`,
     /// or it can be disabled entirely using the `no-recursion-limit` feature.
     #[cfg(not(feature = "no-recursion-limit"))]
-    #[doc(hidden)]
-    pub recurse_count: u32,
+    recurse_count: u32,
 }
 
 impl DecodeContext {
