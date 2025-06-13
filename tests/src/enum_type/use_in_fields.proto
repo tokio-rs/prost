@@ -1,0 +1,14 @@
+// The guide says we can import proto3 enums in proto2 files, but not the other way around.
+syntax = 'proto2';
+
+package enum_type.use_in_fields;
+
+import "closed.proto";
+import "open.proto";
+
+message Msg {
+    optional closed.Closed closed = 1;
+    optional open.Open open = 2;
+    required closed.Closed closed_required = 3;
+    required open.Open open_required = 4;
+}

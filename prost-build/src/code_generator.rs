@@ -16,14 +16,13 @@ use prost_types::{
 
 use crate::ast::{Comments, Method, Service};
 use crate::context::Context;
+use crate::enums::EnumRepr;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
+use crate::syntax::Syntax;
 use crate::Config;
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
-
-mod syntax;
-use syntax::Syntax;
 
 /// State object for the code generation process on a single input file.
 pub struct CodeGenerator<'a, 'b> {
@@ -388,7 +387,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn append_field(&mut self, fq_message_name: &str, field: &Field) {
         let type_ = field.descriptor.r#type();
-        let repeated = field.descriptor.label() == Label::Repeated;
+        let repeated = field.descriptor.label == Some(Label::Repeated as i32);
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
         let boxed = self
@@ -415,12 +414,16 @@ impl<'b> CodeGenerator<'_, 'b> {
         let type_tag = self.field_type_tag(&field.descriptor);
         self.buf.push_str(&type_tag);
 
-        if type_ == Type::Bytes {
-            let bytes_type = self
-                .context
-                .bytes_type(fq_message_name, field.descriptor.name());
-            self.buf
-                .push_str(&format!("={:?}", bytes_type.annotation()));
+        match type_ {
+            Type::Bytes => {
+                let bytes_type = self
+                    .context
+                    .bytes_type(fq_message_name, field.descriptor.name());
+                self.buf
+                    .push_str(&format!("={:?}", bytes_type.annotation()));
+            }
+            Type::Enum => self.push_enum_type_annotation(fq_message_name, &field.descriptor),
+            _ => {}
         }
 
         match field.descriptor.label() {
@@ -537,12 +540,16 @@ impl<'b> CodeGenerator<'_, 'b> {
         let value_tag = self.map_value_type_tag(value);
 
         self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+            "#[prost({}=\"{}, {}\"",
             map_type.annotation(),
             key_tag,
             value_tag,
-            field.descriptor.number()
         ));
+        if value.r#type() == Type::Enum {
+            self.push_enum_type_annotation(fq_message_name, &field.descriptor);
+        }
+        self.buf
+            .push_str(&format!(", tag=\"{}\")]\n", field.descriptor.number()));
         self.append_field_attributes(fq_message_name, field.descriptor.name());
         self.push_indent();
         self.buf.push_str(&format!(
@@ -630,11 +637,12 @@ impl<'b> CodeGenerator<'_, 'b> {
 
             self.push_indent();
             let ty_tag = self.field_type_tag(&field.descriptor);
-            self.buf.push_str(&format!(
-                "#[prost({}, tag=\"{}\")]\n",
-                ty_tag,
-                field.descriptor.number()
-            ));
+            self.buf.push_str(&format!("#[prost({}", ty_tag,));
+            if field.descriptor.r#type() == Type::Enum {
+                self.push_enum_type_annotation(&oneof_name, &field.descriptor);
+            }
+            self.buf
+                .push_str(&format!(", tag=\"{}\")]\n", field.descriptor.number()));
             self.append_field_attributes(&oneof_name, field.descriptor.name());
 
             self.push_indent();
@@ -930,13 +938,21 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str("}\n");
     }
 
+    fn push_enum_type_annotation(&mut self, fq_message_name: &str, field: &FieldDescriptorProto) {
+        match self.enum_field_repr(fq_message_name, field) {
+            EnumRepr::Int => {}
+            EnumRepr::Open => self.buf.push_str(", enum_type=\"open\""),
+            EnumRepr::Closed => self.buf.push_str(", enum_type=\"closed\""),
+        }
+    }
+
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
             Type::Uint64 | Type::Fixed64 => String::from("u64"),
-            Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
+            Type::Int32 | Type::Sfixed32 | Type::Sint32 => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => format!("{}::alloc::string::String", self.context.prost_path()),
@@ -946,6 +962,15 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .rust_type()
                 .to_owned(),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
+            Type::Enum => match self.enum_field_repr(fq_message_name, field) {
+                EnumRepr::Int => String::from("i32"),
+                EnumRepr::Open => format!(
+                    "{}::OpenEnum<{}>",
+                    self.context.prost_path(),
+                    self.resolve_ident(field.type_name())
+                ),
+                EnumRepr::Closed => self.resolve_ident(field.type_name()),
+            },
         }
     }
 
@@ -985,6 +1010,10 @@ impl<'b> CodeGenerator<'_, 'b> {
             .chain(ident_path.map(to_snake))
             .chain(iter::once(to_upper_camel(ident_type)))
             .join("::")
+    }
+
+    fn enum_field_repr(&self, fq_message_name: &str, field: &FieldDescriptorProto) -> EnumRepr {
+        self.context.enum_field_repr(fq_message_name, field)
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
