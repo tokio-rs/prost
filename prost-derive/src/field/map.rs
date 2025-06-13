@@ -258,8 +258,8 @@ impl Field {
             let key_ty = self.key_ty.rust_type();
             let key_ref_ty = self.key_ty.rust_ref_type();
 
-            let get = Ident::new(&format!("get_{}", ident), Span::call_site());
-            let insert = Ident::new(&format!("insert_{}", ident), Span::call_site());
+            let get = Ident::new(&format!("get_{ident}"), Span::call_site());
+            let insert = Ident::new(&format!("insert_{ident}"), Span::call_site());
             let take_ref = if self.key_ty.is_numeric() {
                 quote!(&)
             } else {
@@ -267,11 +267,10 @@ impl Field {
             };
 
             let get_doc = format!(
-                "Returns the enum value for the corresponding key in `{}`, \
-                 or `None` if the entry does not exist or it is not a valid enum value.",
-                ident,
+                "Returns the enum value for the corresponding key in `{ident}`, \
+                 or `None` if the entry does not exist or it is not a valid enum value."
             );
-            let insert_doc = format!("Inserts a key value pair into `{}`.", ident);
+            let insert_doc = format!("Inserts a key value pair into `{ident}`.");
             Some(quote! {
                 #[doc=#get_doc]
                 pub fn #get(&self, key: #key_ref_ty) -> ::core::option::Option<#ty> {

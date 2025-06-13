@@ -17,10 +17,10 @@ fn main() -> Result<()> {
     }
 
     let version = git_describe(&src_dir)?;
-    let protobuf_dir = &out_dir.join(format!("protobuf-{}", version));
+    let protobuf_dir = &out_dir.join(format!("protobuf-{version}"));
 
     if !protobuf_dir.exists() {
-        let build_dir = &out_dir.join(format!("build-protobuf-{}", version));
+        let build_dir = &out_dir.join(format!("build-protobuf-{version}"));
         fs::create_dir_all(build_dir).expect("failed to create build directory");
 
         let tempdir = tempfile::Builder::new()

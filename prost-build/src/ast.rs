@@ -193,7 +193,7 @@ where
                             if s.as_ref() == "rust" {
                                 CodeBlockKind::Fenced("compile_fail".into())
                             } else {
-                                CodeBlockKind::Fenced(format!("text,{}", s).into())
+                                CodeBlockKind::Fenced(format!("text,{s}").into())
                             }
                         }
                         CodeBlockKind::Indented => CodeBlockKind::Fenced("text".into()),
