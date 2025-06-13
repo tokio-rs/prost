@@ -454,11 +454,7 @@ mod tests {
         config.compile_fds(fds).unwrap();
 
         assert_eq_fixture_file!(
-            if cfg!(feature = "format") {
-                "src/fixtures/helloworld/_expected_helloworld_formatted.rs"
-            } else {
-                "src/fixtures/helloworld/_expected_helloworld.rs"
-            },
+            "src/fixtures/helloworld/_expected_helloworld.rs",
             tempdir.path().join("helloworld.rs")
         );
     }

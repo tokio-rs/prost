@@ -420,7 +420,7 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .context
                 .bytes_type(fq_message_name, field.descriptor.name());
             self.buf
-                .push_str(&format!("={:?}", bytes_type.annotation()));
+                .push_str(&format!(" = {:?}", bytes_type.annotation()));
         }
 
         match field.descriptor.label() {
@@ -439,7 +439,7 @@ impl<'b> CodeGenerator<'_, 'b> {
                         .as_ref()
                         .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
                 {
-                    self.buf.push_str(", packed=\"false\"");
+                    self.buf.push_str(", packed = \"false\"");
                 }
             }
         }
@@ -447,11 +447,11 @@ impl<'b> CodeGenerator<'_, 'b> {
         if boxed {
             self.buf.push_str(", boxed");
         }
-        self.buf.push_str(", tag=\"");
+        self.buf.push_str(", tag = \"");
         self.buf.push_str(&field.descriptor.number().to_string());
 
         if let Some(ref default) = field.descriptor.default_value {
-            self.buf.push_str("\", default=\"");
+            self.buf.push_str("\", default = \"");
             if type_ == Type::Bytes {
                 self.buf.push_str("b\\\"");
                 for b in unescape_c_escape_string(default) {
@@ -537,7 +537,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         let value_tag = self.map_value_type_tag(value);
 
         self.buf.push_str(&format!(
-            "#[prost({}=\"{}, {}\", tag=\"{}\")]\n",
+            "#[prost({} = \"{}, {}\", tag = \"{}\")]\n",
             map_type.annotation(),
             key_tag,
             value_tag,
@@ -568,7 +568,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_doc(fq_message_name, None);
         self.push_indent();
         self.buf.push_str(&format!(
-            "#[prost(oneof=\"{}\", tags=\"{}\")]\n",
+            "#[prost(oneof = \"{}\", tags = \"{}\")]\n",
             type_name,
             oneof
                 .fields
@@ -631,7 +631,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.push_indent();
             let ty_tag = self.field_type_tag(&field.descriptor);
             self.buf.push_str(&format!(
-                "#[prost({}, tag=\"{}\")]\n",
+                "#[prost({}, tag = \"{}\")]\n",
                 ty_tag,
                 field.descriptor.number()
             ));
@@ -1007,7 +1007,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
-                "enumeration={:?}",
+                "enumeration = {:?}",
                 self.resolve_ident(field.type_name())
             )),
         }

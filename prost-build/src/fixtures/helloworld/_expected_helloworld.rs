@@ -3,14 +3,14 @@
 #[derive(custom_proto::Input)]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Message {
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub say: ::prost::alloc::string::String,
 }
 #[derive(derive_builder::Builder)]
 #[derive(custom_proto::Output)]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Response {
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub say: ::prost::alloc::string::String,
 }
 #[some_enum_attr(u8)]
