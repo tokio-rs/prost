@@ -81,6 +81,9 @@ mod groups;
 #[cfg(test)]
 mod default_string_escape;
 
+#[cfg(test)]
+mod ident_conversion;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
@@ -95,12 +98,6 @@ mod test_result_named_option_value {
 
 mod test_result_named_result_value {
     include!(concat!(env!("OUT_DIR"), "/mystruct.result.rs"));
-}
-
-pub mod foo {
-    pub mod bar_baz {
-        include!(concat!(env!("OUT_DIR"), "/foo.bar_baz.rs"));
-    }
 }
 
 /// Also for testing custom attributes, but on oneofs.
@@ -261,7 +258,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use alloc::collections::{BTreeMap, BTreeSet};
+    use alloc::collections::BTreeSet;
     use alloc::vec;
 
     use super::*;
@@ -298,87 +295,11 @@ mod tests {
     }
 
     #[test]
-    fn test_ident_conversions() {
-        let msg = foo::bar_baz::FooBarBaz {
-            foo_bar_baz: 42,
-            fuzz_busters: vec![foo::bar_baz::foo_bar_baz::FuzzBuster {
-                t: BTreeMap::<i32, foo::bar_baz::FooBarBaz>::new(),
-                nested_self: None,
-            }],
-            p_i_e: 0,
-            r#as: 4,
-            r#break: 5,
-            r#const: 6,
-            r#continue: 7,
-            r#else: 8,
-            r#enum: 9,
-            r#false: 10,
-            r#fn: 11,
-            r#for: 12,
-            r#if: 13,
-            r#impl: 14,
-            r#in: 15,
-            r#let: 16,
-            r#loop: 17,
-            r#match: 18,
-            r#mod: 19,
-            r#move: 20,
-            r#mut: 21,
-            r#pub: 22,
-            r#ref: 23,
-            r#return: 24,
-            r#static: 25,
-            r#struct: 26,
-            r#trait: 27,
-            r#true: 28,
-            r#type: 29,
-            r#unsafe: 30,
-            r#use: 31,
-            r#where: 32,
-            r#while: 33,
-            r#dyn: 34,
-            r#abstract: 35,
-            r#become: 36,
-            r#box: 37,
-            r#do: 38,
-            r#final: 39,
-            r#macro: 40,
-            r#override: 41,
-            r#priv: 42,
-            r#typeof: 43,
-            r#unsized: 44,
-            r#virtual: 45,
-            r#yield: 46,
-            r#async: 47,
-            r#await: 48,
-            r#try: 49,
-            self_: 50,
-            super_: 51,
-            extern_: 52,
-            crate_: 53,
-            r#gen: 54,
-        };
-
-        let _ = foo::bar_baz::foo_bar_baz::Self_ {};
-
-        // Test enum ident conversion.
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Foo;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Bar;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FooBar;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::FuzzBuster;
-        let _ = foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::NormalRustEnumCase;
-
-        let mut buf = Vec::new();
-        msg.encode(&mut buf).expect("encode");
-        roundtrip::<foo::bar_baz::FooBarBaz>(&buf).unwrap();
-    }
-
-    #[test]
     fn test_custom_type_attributes() {
         // We abuse the ident conversion protobuf for the custom attribute additions. We placed
         // `Ord` on the FooBarBaz (which is not implemented by ordinary messages).
         let mut set1 = BTreeSet::new();
-        let msg1 = foo::bar_baz::FooBarBaz::default();
+        let msg1 = ident_conversion::bar_baz::FooBarBaz::default();
         set1.insert(msg1);
         // Similar, but for oneof fields
         let mut set2 = BTreeSet::new();
