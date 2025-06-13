@@ -64,9 +64,9 @@ impl fmt::Debug for MessageWithOneofCustomDebug {
 #[test]
 fn oneof_with_enum_custom_debug() {
     let of = OneofWithEnumCustomDebug::Enumeration(AnEnum::B as i32);
-    assert_eq!(format!("{:?}", of), "OneofWithEnumCustomDebug {..}");
+    assert_eq!(format!("{of:?}"), "OneofWithEnumCustomDebug {..}");
     let msg = MessageWithOneofCustomDebug { of: Some(of) };
-    assert_eq!(format!("{:?}", msg), "MessageWithOneofCustomDebug {..}");
+    assert_eq!(format!("{msg:?}"), "MessageWithOneofCustomDebug {..}");
 }
 
 /// Generated protobufs
@@ -77,5 +77,5 @@ fn test_proto_msg_custom_debug() {
         b: "".to_string(),
         c: Some(msg::C::D(AnEnum::A as i32)),
     };
-    assert_eq!(format!("{:?}", msg), "Msg {..}");
+    assert_eq!(format!("{msg:?}"), "Msg {..}");
 }

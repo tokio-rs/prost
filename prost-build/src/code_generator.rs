@@ -310,10 +310,8 @@ impl<'b> CodeGenerator<'_, 'b> {
         ));
         self.depth += 1;
 
-        self.buf.push_str(&format!(
-            "const NAME: &'static str = \"{}\";\n",
-            message_name,
-        ));
+        self.buf
+            .push_str(&format!("const NAME: &'static str = \"{message_name}\";\n"));
         self.buf.push_str(&format!(
             "const PACKAGE: &'static str = \"{}\";\n",
             self.package,
@@ -492,13 +490,13 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         if repeated {
             self.buf
-                .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
+                .push_str(&format!("{prost_path}::alloc::vec::Vec<"));
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
         if boxed {
             self.buf
-                .push_str(&format!("{}::alloc::boxed::Box<", prost_path));
+                .push_str(&format!("{prost_path}::alloc::boxed::Box<"));
         }
         self.buf.push_str(&ty);
         if boxed {

@@ -172,8 +172,7 @@ impl fmt::Display for TimestampError {
             TimestampError::OutOfSystemRange(timestamp) => {
                 write!(
                     f,
-                    "{} is not representable as a `SystemTime` because it is out of range",
-                    timestamp
+                    "{timestamp} is not representable as a `SystemTime` because it is out of range",
                 )
             }
             TimestampError::ParseFailure => {
