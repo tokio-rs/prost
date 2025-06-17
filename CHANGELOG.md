@@ -1,3 +1,59 @@
+# Prost version 0.14.1
+
+_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## ⚠️ Revert emission of `rerun` commands
+
+Version 0.14.1 reverts the emission of `rerun` commands. Other than this change, it is identical to 0.14.0.
+
+In version 0.14.0, `prost-build` began emitting `rerun` commands. While intended to improve build correctness, this change caused regressions for some users—for example, those generating `protos` from an `includes` directory. These edge cases are difficult to address reliably, so the change has been rolled back in 0.14.1.
+
+For more details, see [issue #1296](https://github.com/tokio-rs/prost/issues/1296).
+
+## Breaking changes
+- prost: Relax Message Debug trait bound (#1147)
+
+  BREAKING CHANGE: `trait Debug` was a supertrait of `trait Message`. This is no longer required by `prost`. If your code relies on `trait Debug` being implemented for every `impl Message`, you must now explicitly state that you require both Debug and Message. For example: `where M: Debug + Message`
+
+- prost: Remove prost-derive feature (#1247)
+
+  BREAKING CHANGE: Feature flag `prost-derive` is renamed to `derive`. Please rename any usage of `prost-derive` feature in your `Cargo.toml`.
+
+- prost-build: Prevent repeated fields to be boxed (#1237)
+
+  BREAKING CHANGE: A repeated field that is manually marked as boxed was typed as `Vec<Box<T>>`. Those fields are now simply typed as `Vec<T>` to prevent double indirection. The `boxed` configuration is effectively ignored for repeated fields.
+
+- prost-build: Make `type_name_domain` cumulative (#1228)
+
+  BREAKING CHANGE: The configuration for domain names of messages is now cumulative. All calls to `prost_build::Config::type_name_domain` are now concatenated. The previous behavior was that only the arguments of the last call were used. If you do multiple calls to type_name_domain, you need to remove all but the last call to maintain the same behavior.
+
+- prost-build: Derive Eq and Hash trait for messages where possible (#1175)
+
+  BREAKING CHANGE: `prost-build` will automatically derive `trait Eq` and `trait Hash` for types where all field support those as well. If you manually `impl Eq` and/or `impl Hash` for generated types, then you need to remove the manual implementation. If you use `type_attribute` to `derive(Eq)` and/or `derive(Hash)`, then you need to remove those.
+
+## Features
+
+- prost-types: Implement conversion `Duration` to/from `chrono::TimeDelta` (#1236)
+- prost-build: Prepare for 2024 keyword `gen` (#1257)
+
+## Dependencies
+
+- *(deps)* Update pulldown-cmark to 0.13 (#1259)
+- *(deps)* update criterion requirement from 0.5 to 0.6 (#1280)
+
+## Documentation
+
+- Update dead link LICENSE in `prost-types/README.md` (#1262)
+
+## Styling
+- Use DoubleEndedIterator::next_back (#1255)
+- Fix typo (#1260)
+
+## Testing
+
+- Run tests using edition 2024 (#1254)
+- Run clippy with edition 2024 enabled (#1256)
+
 # Prost version 0.14.0
 
 _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
