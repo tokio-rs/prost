@@ -56,7 +56,7 @@ pub struct CodeGeneratorResponse {
     /// This should be used to indicate errors in .proto files which prevent the
     /// code generator from generating correct code.  Errors which indicate a
     /// problem in protoc itself -- such as the input CodeGeneratorRequest being
-    /// unparseable -- should be reported by writing a message to stderr and
+    /// unparsable -- should be reported by writing a message to stderr and
     /// exiting with a non-zero status code.
     #[prost(string, optional, tag = "1")]
     pub error: ::core::option::Option<::prost::alloc::string::String>,
