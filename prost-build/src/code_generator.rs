@@ -237,6 +237,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.context.prost_path()
         ));
         self.append_skip_debug(&fq_message_name);
+        self.append_recursion_limit(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -373,6 +374,21 @@ impl<'b> CodeGenerator<'_, 'b> {
         for attribute in self.context.enum_attributes(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str(attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_recursion_limit(&mut self, fq_message_name: &str) {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        if let Some(limit) = self
+            .config()
+            .recursion_limits
+            .get_first(fq_message_name)
+            .cloned()
+        {
+            push_indent(self.buf, self.depth);
+            self.buf
+                .push_str(&format!("#[prost(recursion_limit={})]", limit));
             self.buf.push('\n');
         }
     }
