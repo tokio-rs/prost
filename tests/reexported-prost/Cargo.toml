@@ -1,0 +1,14 @@
+[package]
+name = "reexported_prost"
+version = "0.1.0"
+authors = ["Jerko Steiner <jerko.steiner@gmail.com>"]
+edition = "2021"
+publish = false
+license = "MIT"
+
+[dependencies]
+prost = { path = "../../prost" }
+prost-types = { path = "../../prost-types" }
+
+[build-dependencies]
+prost-build = { path = "../../prost-build" }
