@@ -57,6 +57,9 @@ mod type_names;
 mod boxed_field;
 
 #[cfg(test)]
+mod enum_type;
+
+#[cfg(test)]
 mod custom_debug;
 
 // Must be `pub` as doc tests are only executed on public types.
@@ -305,7 +308,7 @@ mod tests {
                 t: BTreeMap::<i32, foo::bar_baz::FooBarBaz>::new(),
                 nested_self: None,
             }],
-            p_i_e: 0,
+            p_i_e: foo::bar_baz::foo_bar_baz::StrawberryRhubarbPie::Foo.into(),
             r#as: 4,
             r#break: 5,
             r#const: 6,

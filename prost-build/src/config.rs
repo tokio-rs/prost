@@ -16,6 +16,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::code_generator::CodeGenerator;
 use crate::context::Context;
+use crate::enums::EnumFeatures;
 use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
@@ -37,6 +38,7 @@ pub struct Config {
     pub(crate) enum_attributes: PathMap<String>,
     pub(crate) field_attributes: PathMap<String>,
     pub(crate) boxed: PathMap<()>,
+    pub(crate) typed_enum_fields: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
     pub(crate) out_dir: Option<PathBuf>,
@@ -371,6 +373,30 @@ impl Config {
         P: AsRef<str>,
     {
         self.boxed.insert(path.as_ref().to_string(), ());
+        self
+    }
+
+    /// Represent Protobuf enum types encountered in matched fields with types
+    /// bound to their corresponding Rust enum types, rather than the default `i32`.
+    ///
+    /// Depending on the proto file syntax, the representation type can be:
+    /// * For closed enums (in proto2), the corresponding Rust enum type.
+    /// * For open enums (in proto3), the Rust enum type wrapped in [`OpenEnum`](prost::OpenEnum).
+    ///
+    /// # Arguments
+    ///
+    /// **`path`** - a path matching any number of fields. These fields will get the type-checked
+    /// enum representation.
+    /// For details about matching fields see [`btree_map`](#method.btree_map).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.typed_enum_fields(".my_messages");
+    /// ```
+    pub fn typed_enum_fields(&mut self, path: impl AsRef<str>) -> &mut Self {
+        self.typed_enum_fields.insert(path.as_ref().to_owned(), ());
         self
     }
 
@@ -1102,9 +1128,10 @@ impl Config {
         let mut packages = HashMap::new();
 
         let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1));
+        let enum_features = EnumFeatures::new(requests.iter().map(|x| &x.1));
         let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
             .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
-        let mut context = Context::new(self, message_graph, extern_paths);
+        let mut context = Context::new(self, message_graph, enum_features, extern_paths);
 
         for (request_module, request_fd) in requests {
             // Only record packages that have services
@@ -1182,6 +1209,7 @@ impl default::Default for Config {
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
             boxed: PathMap::default(),
+            typed_enum_fields: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
