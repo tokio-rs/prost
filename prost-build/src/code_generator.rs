@@ -65,19 +65,40 @@ struct OneofField {
     descriptor: OneofDescriptorProto,
     fields: Vec<Field>,
     path_index: i32,
+    // This type has the same name as another nested type at the same level
+    has_type_name_conflict: bool,
 }
 
 impl OneofField {
-    fn new(descriptor: OneofDescriptorProto, fields: Vec<Field>, path_index: i32) -> Self {
+    fn new(
+        parent: &DescriptorProto,
+        descriptor: OneofDescriptorProto,
+        fields: Vec<Field>,
+        path_index: i32,
+    ) -> Self {
+        let has_type_name_conflict = parent
+            .nested_type
+            .iter()
+            .any(|nested| to_snake(nested.name()) == descriptor.name());
+
         Self {
             descriptor,
             fields,
             path_index,
+            has_type_name_conflict,
         }
     }
 
     fn rust_name(&self) -> String {
         to_snake(self.descriptor.name())
+    }
+
+    fn type_name(&self) -> String {
+        let mut name = to_upper_camel(self.descriptor.name());
+        if self.has_type_name_conflict {
+            name.push_str("OneOf");
+        }
+        name
     }
 }
 
@@ -167,7 +188,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         type MapTypes = HashMap<String, (FieldDescriptorProto, FieldDescriptorProto)>;
         let (nested_types, map_types): (NestedTypes, MapTypes) = message
             .nested_type
-            .into_iter()
+            .iter()
             .enumerate()
             .partition_map(|(idx, nested_type)| {
                 if nested_type
@@ -184,7 +205,7 @@ impl<'b> CodeGenerator<'_, 'b> {
                     let name = format!("{}.{}", &fq_message_name, nested_type.name());
                     Either::Right((name, (key, value)))
                 } else {
-                    Either::Left((nested_type, idx))
+                    Either::Left((nested_type.clone(), idx))
                 }
             });
 
@@ -193,28 +214,28 @@ impl<'b> CodeGenerator<'_, 'b> {
         type OneofFieldsByIndex = MultiMap<i32, Field>;
         let (fields, mut oneof_map): (Vec<Field>, OneofFieldsByIndex) = message
             .field
-            .into_iter()
+            .iter()
             .enumerate()
             .partition_map(|(idx, proto)| {
                 let idx = idx as i32;
                 if proto.proto3_optional.unwrap_or(false) {
-                    Either::Left(Field::new(proto, idx))
+                    Either::Left(Field::new(proto.clone(), idx))
                 } else if let Some(oneof_index) = proto.oneof_index {
-                    Either::Right((oneof_index, Field::new(proto, idx)))
+                    Either::Right((oneof_index, Field::new(proto.clone(), idx)))
                 } else {
-                    Either::Left(Field::new(proto, idx))
+                    Either::Left(Field::new(proto.clone(), idx))
                 }
             });
         // Optional fields create a synthetic oneof that we want to skip
         let oneof_fields: Vec<OneofField> = message
             .oneof_decl
-            .into_iter()
+            .iter()
             .enumerate()
-            .filter_map(move |(idx, proto)| {
+            .filter_map(|(idx, proto)| {
                 let idx = idx as i32;
                 oneof_map
                     .remove(&idx)
-                    .map(|fields| OneofField::new(proto, fields, idx))
+                    .map(|fields| OneofField::new(&message, proto.clone(), fields, idx))
             })
             .collect();
 
@@ -558,11 +579,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         fq_message_name: &str,
         oneof: &OneofField,
     ) {
-        let type_name = format!(
-            "{}::{}",
-            to_snake(message_name),
-            to_upper_camel(oneof.descriptor.name())
-        );
+        let type_name = format!("{}::{}", to_snake(message_name), oneof.type_name());
         self.append_doc(fq_message_name, None);
         self.push_indent();
         self.buf.push_str(&format!(
@@ -616,7 +633,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(&to_upper_camel(oneof.descriptor.name()));
+        self.buf.push_str(&oneof.type_name());
         self.buf.push_str(" {\n");
 
         self.path.push(2);
