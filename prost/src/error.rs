@@ -65,7 +65,7 @@ impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("failed to decode Protobuf message: ")?;
         for &(message, field) in &self.inner.stack {
-            write!(f, "{}.{}: ", message, field)?;
+            write!(f, "{message}.{field}: ")?;
         }
         f.write_str(&self.inner.description)
     }

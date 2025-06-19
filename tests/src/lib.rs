@@ -135,6 +135,7 @@ pub enum RoundtripResult {
     Error(anyhow::Error),
 }
 
+#[allow(clippy::uninlined_format_args)]
 impl RoundtripResult {
     /// Unwrap the roundtrip result.
     pub fn unwrap(self) -> Vec<u8> {

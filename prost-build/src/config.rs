@@ -990,7 +990,7 @@ impl Config {
         let file_descriptor_set = FileDescriptorSet::decode(buf.as_slice()).map_err(|error| {
             Error::new(
                 ErrorKind::InvalidInput,
-                format!("invalid FileDescriptorSet: {}", error),
+                format!("invalid FileDescriptorSet: {error}"),
             )
         })?;
 
@@ -1063,16 +1063,12 @@ impl Config {
                 .expect("every module should have a filename");
 
             if basepath.is_some() {
-                self.write_line(
-                    outfile,
-                    stack.len(),
-                    &format!("include!(\"{}\");", file_name),
-                )?;
+                self.write_line(outfile, stack.len(), &format!("include!(\"{file_name}\");"))?;
             } else {
                 self.write_line(
                     outfile,
                     stack.len(),
-                    &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{}\"));", file_name),
+                    &format!("include!(concat!(env!(\"OUT_DIR\"), \"/{file_name}\"));"),
                 )?;
             }
         }
@@ -1241,8 +1237,7 @@ pub fn error_message_protoc_not_found() -> String {
         "It is also available at https://github.com/protocolbuffers/protobuf/releases";
 
     format!(
-        "{} {} {}  For more information: https://docs.rs/prost-build/#sourcing-protoc",
-        error_msg, os_specific_hint, download_msg
+        "{error_msg} {os_specific_hint} {download_msg}  For more information: https://docs.rs/prost-build/#sourcing-protoc"
     )
 }
 

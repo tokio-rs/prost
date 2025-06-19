@@ -18,7 +18,7 @@ use crate::message_encoding::BasicEnumeration;
 fn basic() {
     let mut basic = Basic::default();
     assert_eq!(
-        format!("{:?}", basic),
+        format!("{basic:?}"),
         "Basic { \
          int32: 0, \
          bools: [], \
@@ -41,7 +41,7 @@ fn basic() {
         .bytes_map
         .insert("hello".to_string(), "world".as_bytes().into());
     assert_eq!(
-        format!("{:?}", basic),
+        format!("{basic:?}"),
         "Basic { \
          int32: 0, \
          bools: [], \
@@ -93,7 +93,7 @@ fn oneof_with_enum() {
         of: Some(OneofWithEnum::Enumeration(BasicEnumeration::TWO as i32)),
     };
     assert_eq!(
-        format!("{:?}", msg),
+        format!("{msg:?}"),
         "MessageWithOneof { of: Some(Enumeration(TWO)) }"
     );
 }
