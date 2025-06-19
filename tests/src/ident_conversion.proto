@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package Foo.Bar_Baz;
+package ident_conversion.Bar_Baz;
 
 // Test that ident conversion works correctly on message and field names.
 message Foo_barBaz {
