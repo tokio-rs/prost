@@ -84,6 +84,9 @@ mod default_string_escape;
 #[cfg(test)]
 mod ident_conversion;
 
+#[cfg(test)]
+mod oneof_name_conflict;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }
