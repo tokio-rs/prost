@@ -173,10 +173,13 @@ impl<'a> Context<'a> {
         assert_eq!(".", &fq_message_name[..1]);
         self.message_graph
             .get_message(fq_message_name)
-            .unwrap()
-            .field
-            .iter()
-            .all(|field| self.can_field_derive_copy(fq_message_name, field))
+            .map(|descriptor| {
+                descriptor
+                    .field
+                    .iter()
+                    .all(|field| self.can_field_derive_copy(fq_message_name, field))
+            })
+            .unwrap_or_default()
     }
 
     /// Returns `true` if the type of this message field allows deriving the Copy trait.
@@ -233,10 +236,15 @@ impl<'a> Context<'a> {
     pub fn can_message_derive_eq(&self, fq_message_name: &str) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
 
-        let msg = self.message_graph.get_message(fq_message_name).unwrap();
-        msg.field
-            .iter()
-            .all(|field| self.can_field_derive_eq(fq_message_name, field))
+        self.message_graph
+            .get_message(fq_message_name)
+            .map(|descriptor| {
+                descriptor
+                    .field
+                    .iter()
+                    .all(|field| self.can_field_derive_eq(fq_message_name, field))
+            })
+            .unwrap_or_default()
     }
 
     /// Returns `true` if the type of this field allows deriving the Eq trait.
