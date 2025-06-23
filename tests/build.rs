@@ -52,6 +52,7 @@ fn main() {
 
     prost_build::Config::new()
         .btree_map(["."])
+        .recursion_limit("nesting.E", 200)
         .compile_protos(&[src.join("nesting.proto")], includes)
         .unwrap();
 
