@@ -1,7 +1,7 @@
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::Meta;
+use syn::{Meta, Path};
 
 use crate::field::{set_bool, set_option, tag_attr, word_attr, Label};
 
@@ -71,29 +71,29 @@ impl Field {
         }
     }
 
-    pub fn encode(&self, ident: TokenStream) -> TokenStream {
+    pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
                 if let Some(ref msg) = #ident {
-                    ::prost::encoding::group::encode(#tag, msg, buf);
+                    #prost_path::encoding::group::encode(#tag, msg, buf);
                 }
             },
             Label::Required => quote! {
-                ::prost::encoding::group::encode(#tag, &#ident, buf);
+                #prost_path::encoding::group::encode(#tag, &#ident, buf);
             },
             Label::Repeated => quote! {
                 for msg in &#ident {
-                    ::prost::encoding::group::encode(#tag, msg, buf);
+                    #prost_path::encoding::group::encode(#tag, msg, buf);
                 }
             },
         }
     }
 
-    pub fn merge(&self, ident: TokenStream) -> TokenStream {
+    pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match self.label {
             Label::Optional => quote! {
-                ::prost::encoding::group::merge(
+                #prost_path::encoding::group::merge(
                     tag,
                     wire_type,
                     #ident.get_or_insert_with(::core::default::Default::default),
@@ -102,25 +102,25 @@ impl Field {
                 )
             },
             Label::Required => quote! {
-                ::prost::encoding::group::merge(tag, wire_type, #ident, buf, ctx)
+                #prost_path::encoding::group::merge(tag, wire_type, #ident, buf, ctx)
             },
             Label::Repeated => quote! {
-                ::prost::encoding::group::merge_repeated(tag, wire_type, #ident, buf, ctx)
+                #prost_path::encoding::group::merge_repeated(tag, wire_type, #ident, buf, ctx)
             },
         }
     }
 
-    pub fn encoded_len(&self, ident: TokenStream) -> TokenStream {
+    pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
-                #ident.as_ref().map_or(0, |msg| ::prost::encoding::group::encoded_len(#tag, msg))
+                #ident.as_ref().map_or(0, |msg| #prost_path::encoding::group::encoded_len(#tag, msg))
             },
             Label::Required => quote! {
-                ::prost::encoding::group::encoded_len(#tag, &#ident)
+                #prost_path::encoding::group::encoded_len(#tag, &#ident)
             },
             Label::Repeated => quote! {
-                ::prost::encoding::group::encoded_len_repeated(#tag, &#ident)
+                #prost_path::encoding::group::encoded_len_repeated(#tag, &#ident)
             },
         }
     }
