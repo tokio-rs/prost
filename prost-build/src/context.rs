@@ -19,6 +19,7 @@ pub struct Context<'a> {
     config: &'a mut Config,
     message_graph: MessageGraph,
     extern_paths: ExternPaths,
+    prost_path_attribute: Option<String>,
 }
 
 impl<'a> Context<'a> {
@@ -27,10 +28,16 @@ impl<'a> Context<'a> {
         message_graph: MessageGraph,
         extern_paths: ExternPaths,
     ) -> Self {
+        let prost_path_attribute = config
+            .prost_path
+            .as_deref()
+            .map(|prost_path| format!(r#"#[prost(prost_path = "{prost_path}")]"#));
+
         Self {
             config,
             message_graph,
             extern_paths,
+            prost_path_attribute,
         }
     }
 
@@ -43,7 +50,11 @@ impl<'a> Context<'a> {
     }
 
     pub fn prost_path(&self) -> &str {
-        self.config.prost_path.as_deref().unwrap_or("::prost")
+        self.config.prost_path_or_default()
+    }
+
+    pub fn prost_path_attribute(&self) -> Option<&str> {
+        self.prost_path_attribute.as_deref()
     }
 
     pub fn resolve_extern_ident(&self, pb_ident: &str) -> Option<String> {

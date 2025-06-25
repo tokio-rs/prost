@@ -694,7 +694,7 @@ impl Config {
 
     /// Configures the path that's used for deriving `Message` for generated messages.
     /// This is mainly useful for generating crates that wish to re-export prost.
-    /// Defaults to `::prost::Message` if not specified.
+    /// Defaults to `::prost` if not specified.
     pub fn prost_path<S>(&mut self, path: S) -> &mut Self
     where
         S: Into<String>,
@@ -1033,6 +1033,10 @@ impl Config {
         self.compile_fds(file_descriptor_set)
     }
 
+    pub(crate) fn prost_path_or_default(&self) -> &str {
+        self.prost_path.as_deref().unwrap_or("::prost")
+    }
+
     pub(crate) fn write_includes(
         &self,
         mut modules: Vec<&Module>,
@@ -1098,8 +1102,12 @@ impl Config {
         let mut packages = HashMap::new();
 
         let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1));
-        let extern_paths = ExternPaths::new(&self.extern_paths, self.prost_types)
-            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
+        let extern_paths = ExternPaths::new(
+            &self.extern_paths,
+            self.prost_path_or_default(),
+            self.prost_types,
+        )
+        .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
         let mut context = Context::new(self, message_graph, extern_paths);
 
         for (request_module, request_fd) in requests {
