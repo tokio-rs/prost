@@ -52,6 +52,7 @@ pub struct Config {
     pub(crate) skip_source_info: bool,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
+    pub(crate) prost_types_path: Option<String>,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -703,6 +704,17 @@ impl Config {
         self
     }
 
+    /// Configures the path that's used well known types.
+    /// This is mainly useful for generating crates that wish to re-export prost_types.
+    /// Defaults to `::prost_types` if not specified.`
+    pub fn prost_types_path<S>(&mut self, path: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.prost_types_path = Some(path.into());
+        self
+    }
+
     /// Add an argument to the `protoc` protobuf compilation invocation.
     ///
     /// # Example `build.rs`
@@ -1037,6 +1049,10 @@ impl Config {
         self.prost_path.as_deref().unwrap_or("::prost")
     }
 
+    pub(crate) fn prost_types_path_or_default(&self) -> &str {
+        self.prost_types_path.as_deref().unwrap_or("::prost_types")
+    }
+
     pub(crate) fn write_includes(
         &self,
         mut modules: Vec<&Module>,
@@ -1105,6 +1121,7 @@ impl Config {
         let extern_paths = ExternPaths::new(
             &self.extern_paths,
             self.prost_path_or_default(),
+            self.prost_types_path_or_default(),
             self.prost_types,
         )
         .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
@@ -1201,6 +1218,7 @@ impl default::Default for Config {
             skip_source_info: false,
             include_file: None,
             prost_path: None,
+            prost_types_path: None,
             #[cfg(feature = "format")]
             fmt: true,
         }
