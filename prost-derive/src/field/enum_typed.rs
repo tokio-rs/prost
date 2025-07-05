@@ -93,7 +93,8 @@ impl Field {
             Label::Optional => quote! {
                 {
                     let mut i32_repr = #ident.map_or(0, |msg| msg as i32);
-                    let res = ::prost::encoding::int32::merge(wire_type,
+                    let res = ::prost::encoding::int32::merge(
+                        wire_type,
                         &mut i32_repr,
                         buf,
                         ctx
@@ -111,7 +112,7 @@ impl Field {
                 }
             },
             Label::Repeated => quote! {
-                ::prost::encoding::int32::merge_repeated(wire_type, &(*#ident as i32), buf, ctx)
+                ::prost::encoding::merge_repeated_enum(wire_type, #ident, buf, ctx)
             },
         }
     }
@@ -126,7 +127,7 @@ impl Field {
                 ::prost::encoding::int32::encoded_len(#tag, &(#ident as i32))
             },
             Label::Repeated => quote! {
-                ::prost::encoding::int32::encoded_len_repeated(#tag, &(#ident as i32))
+                ::prost::encoding::encoded_len_repeated_enum(#tag, &#ident)
             },
         }
     }

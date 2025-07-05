@@ -8,6 +8,7 @@ use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::fmt::Debug;
 use core::mem;
 use core::str;
 
@@ -239,6 +240,41 @@ macro_rules! merge_repeated_numeric {
             }
         }
     };
+}
+
+pub fn merge_repeated_enum<T: TryFrom<i32>>(
+    wire_type: WireType,
+    values: &mut Vec<T>,
+    buf: &mut impl Buf,
+    ctx: DecodeContext,
+) -> Result<(), DecodeError>
+where
+    T::Error: Debug,
+{
+    if wire_type == WireType::LengthDelimited {
+        // Packed.
+        merge_loop(values, buf, ctx, |values, buf, ctx| {
+            let mut value = 0_i32;
+            int32::merge(wire_type, &mut value, buf, ctx)?;
+            values.push(value.try_into().unwrap());
+            Ok(())
+        })
+    } else {
+        // Unpacked.
+        check_wire_type(wire_type, wire_type)?;
+        let mut value = 0_i32;
+        int32::merge(wire_type, &mut value, buf, ctx)?;
+        values.push(value.try_into().unwrap());
+        Ok(())
+    }
+}
+
+pub fn encoded_len_repeated_enum<T: Into<i32> + Copy>(tag: u32, values: &[T]) -> usize {
+    key_len(tag) * values.len()
+        + values
+            .iter()
+            .map(|val| encoded_len_varint(Into::<i32>::into(*val) as u64))
+            .sum::<usize>()
 }
 
 /// Macro which emits a module containing a set of encoding functions for a
