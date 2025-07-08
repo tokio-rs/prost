@@ -106,7 +106,6 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(v!(Kind::NumberValue(value)))
             }
 
-            #[cfg(feature = "std")]
             #[inline]
             fn visit_str<E>(self, value: &str) -> Result<Value, E>
             where
@@ -115,7 +114,6 @@ impl<'de> Deserialize<'de> for Value {
                 self.visit_string(::prost::alloc::string::String::from(value))
             }
 
-            #[cfg(feature = "std")]
             #[inline]
             fn visit_string<E>(self, value: ::prost::alloc::string::String) -> Result<Value, E> {
                 Ok(v!(Kind::StringValue(value)))
@@ -153,7 +151,6 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(v!(Kind::ListValue(ListValue { values })))
             }
 
-            #[cfg(feature = "std")]
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
             where
                 V: MapAccess<'de>,
