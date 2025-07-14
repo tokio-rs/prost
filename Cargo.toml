@@ -12,6 +12,8 @@ members = [
   "tests-2018",
   "tests-2024",
   "tests-no-std",
+  "tests/prost-path",
+  "tests/reexported-prost",
   "tests/single-include",
   "fuzz",
 ]
