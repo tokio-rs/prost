@@ -171,6 +171,36 @@ mod tests {
 
         case(".google.protobuf.Value", "::prost_types::Value");
         case(".google.protobuf.Duration", "::prost_types::Duration");
+        case(
+            ".google.protobuf.BytesValue",
+            "::prost::alloc::vec::Vec<u8>",
+        );
+        case(".google.protobuf.Empty", "()");
+    }
+
+    #[test]
+    fn test_well_known_types_reexported_prost() {
+        let paths = ExternPaths::new(
+            &[],
+            "::some_crate::prost",
+            "::some_crate::prost_types",
+            true,
+        )
+        .unwrap();
+
+        let case = |proto_ident: &str, resolved_ident: &str| {
+            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+        };
+
+        case(".google.protobuf.Value", "::some_crate::prost_types::Value");
+        case(
+            ".google.protobuf.Duration",
+            "::some_crate::prost_types::Duration",
+        );
+        case(
+            ".google.protobuf.BytesValue",
+            "::some_crate::prost::alloc::vec::Vec<u8>",
+        );
         case(".google.protobuf.Empty", "()");
     }
 
