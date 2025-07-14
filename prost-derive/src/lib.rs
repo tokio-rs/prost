@@ -538,6 +538,36 @@ fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
     Ok(result)
 }
 
+/// Extracts the path to prost specified using the `#[prost(prost_path = "...")]` attribute. When
+/// missing, falls back to default, which is `::prost`.
+fn get_prost_path(attrs: &[Meta]) -> Result<Path, Error> {
+    let mut prost_path = None;
+
+    for attr in attrs {
+        match attr {
+            Meta::NameValue(MetaNameValue {
+                path,
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(lit), ..
+                    }),
+                ..
+            }) if path.is_ident("prost_path") => {
+                let path: Path =
+                    syn::parse_str(&lit.value()).context("invalid prost_path argument")?;
+
+                set_option(&mut prost_path, path, "duplicate prost_path attributes")?;
+            }
+            _ => continue,
+        }
+    }
+
+    let prost_path =
+        prost_path.unwrap_or_else(|| syn::parse_str("::prost").expect("default prost_path"));
+
+    Ok(prost_path)
+}
+
 struct Attributes {
     skip_debug: bool,
     prost_path: Path,
@@ -549,32 +579,11 @@ impl Attributes {
         let skip_debug = attrs.iter().any(|a| a.parse_args::<skip_debug>().is_ok());
 
         let attrs = prost_attrs(attrs)?;
-        let mut prost_path = None;
-
-        for attr in attrs {
-            match attr {
-                Meta::NameValue(MetaNameValue {
-                    path,
-                    value:
-                        Expr::Lit(ExprLit {
-                            lit: Lit::Str(ref lit),
-                            ..
-                        }),
-                    ..
-                }) if path.is_ident("prost_path") => {
-                    let path: Path =
-                        syn::parse_str(&lit.value()).context("invalid prost_path argument")?;
-
-                    set_option(&mut prost_path, path, "duplicate prost_path attributes")?;
-                }
-                _ => continue,
-            }
-        }
+        let prost_path = get_prost_path(&attrs)?;
 
         Ok(Self {
             skip_debug,
-            prost_path: prost_path
-                .unwrap_or_else(|| syn::parse_str("::prost").expect("default prost_path")),
+            prost_path,
         })
     }
 }
