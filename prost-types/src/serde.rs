@@ -100,7 +100,7 @@ impl<'de> Visitor<'de> for KindVisitor {
     fn visit_i64<E: Error>(self, value: i64) -> Result<Self::Value, E> {
         let rounded = value as f64;
         match rounded as i64 == value {
-            true => Ok(Kind::NumberValue(value as f64)),
+            true => Ok(Kind::NumberValue(rounded)),
             false => Err(Error::custom("i64 cannot be represented by f64")),
         }
     }
