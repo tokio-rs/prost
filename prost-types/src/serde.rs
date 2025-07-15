@@ -220,12 +220,12 @@ impl<'de> Deserialize<'de> for ListValue {
 mod tests {
     use super::*;
 
-    fn round_trip(value:Value,expected:&str){
-	    let json = serde_json::to_string(&value).unwrap();
-	    assert_eq!(json, expected);
+    fn round_trip(value: Value, expected: &str) {
+        let json = serde_json::to_string(&value).unwrap();
+        assert_eq!(json, expected);
 
-	    let value_rt = serde_json::from_str(&json).unwrap();
-	    assert_eq!(value, value_rt);
+        let value_rt = serde_json::from_str(&json).unwrap();
+        assert_eq!(value, value_rt);
     }
 
     #[cfg(feature = "std")]
