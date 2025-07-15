@@ -62,56 +62,61 @@ impl Serialize for Value {
         }
     }
 }
-/// Shorthand to create a Value
-macro_rules! v {
-    ($kind:expr) => {
-        Value { kind: Some($kind) }
-    };
-}
 impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(ValueVisitor)
+        Ok(Self {
+            kind: Some(Deserialize::deserialize(deserializer)?),
+        })
     }
 }
 
-struct ValueVisitor;
+impl<'de> Deserialize<'de> for Kind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(KindVisitor)
+    }
+}
 
-impl<'de> Visitor<'de> for ValueVisitor {
-    type Value = Value;
+struct KindVisitor;
+
+impl<'de> Visitor<'de> for KindVisitor {
+    type Value = Kind;
 
     fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         formatter.write_str("any valid protobuf value")
     }
 
     #[inline]
-    fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
-        Ok(v!(Kind::BoolValue(value)))
+    fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E> {
+        Ok(Kind::BoolValue(value))
     }
 
     #[inline]
-    fn visit_i64<E: Error>(self, value: i64) -> Result<Value, E> {
+    fn visit_i64<E: Error>(self, value: i64) -> Result<Self::Value, E> {
         let rounded = value as f64;
         match rounded as i64 == value {
-            true => Ok(v!(Kind::NumberValue(value as f64))),
+            true => Ok(Kind::NumberValue(value as f64)),
             false => Err(Error::custom("i64 cannot be represented by f64")),
         }
     }
 
     #[inline]
-    fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
-        Ok(v!(Kind::NumberValue(value as f64)))
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E> {
+        Ok(Kind::NumberValue(value as f64))
     }
 
     #[inline]
-    fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-        Ok(v!(Kind::NumberValue(value)))
+    fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E> {
+        Ok(Kind::NumberValue(value))
     }
 
     #[inline]
-    fn visit_str<E>(self, value: &str) -> Result<Value, E>
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: Error,
     {
@@ -119,17 +124,17 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     #[inline]
-    fn visit_string<E>(self, value: ::prost::alloc::string::String) -> Result<Value, E> {
-        Ok(v!(Kind::StringValue(value)))
+    fn visit_string<E>(self, value: ::prost::alloc::string::String) -> Result<Self::Value, E> {
+        Ok(Kind::StringValue(value))
     }
 
     #[inline]
-    fn visit_none<E>(self) -> Result<Value, E> {
-        Ok(v!(Kind::NullValue(0)))
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(Kind::NullValue(0))
     }
 
     #[inline]
-    fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -137,12 +142,12 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     #[inline]
-    fn visit_unit<E>(self) -> Result<Value, E> {
-        Ok(v!(Kind::NullValue(0)))
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(Kind::NullValue(0))
     }
 
     #[inline]
-    fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    fn visit_seq<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
     where
         V: SeqAccess<'de>,
     {
@@ -152,10 +157,10 @@ impl<'de> Visitor<'de> for ValueVisitor {
             values.push(elem);
         }
 
-        Ok(v!(Kind::ListValue(ListValue { values })))
+        Ok(Kind::ListValue(ListValue { values }))
     }
 
-    fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
     where
         V: MapAccess<'de>,
     {
@@ -165,7 +170,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
             fields.insert(key, value);
         }
 
-        Ok(v!(Kind::StructValue(Struct { fields })))
+        Ok(Kind::StructValue(Struct { fields }))
     }
 }
 
