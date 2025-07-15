@@ -73,6 +73,10 @@ impl<'de> Deserialize<'de> for Value {
     where
         D: Deserializer<'de>,
     {
+        deserializer.deserialize_any(ValueVisitor)
+    }
+}
+
         struct ValueVisitor;
 
         impl<'de> Visitor<'de> for ValueVisitor {
@@ -164,10 +168,6 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(v!(Kind::StructValue(Struct { fields })))
             }
         }
-
-        deserializer.deserialize_any(ValueVisitor)
-    }
-}
 
 impl Serialize for ListValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
