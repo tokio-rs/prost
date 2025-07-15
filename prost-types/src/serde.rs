@@ -77,97 +77,97 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-        struct ValueVisitor;
+struct ValueVisitor;
 
-        impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Value;
+impl<'de> Visitor<'de> for ValueVisitor {
+    type Value = Value;
 
-            fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                formatter.write_str("any valid protobuf value")
-            }
+    fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        formatter.write_str("any valid protobuf value")
+    }
 
-            #[inline]
-            fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
-                Ok(v!(Kind::BoolValue(value)))
-            }
+    #[inline]
+    fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
+        Ok(v!(Kind::BoolValue(value)))
+    }
 
-            #[inline]
-            fn visit_i64<E: Error>(self, value: i64) -> Result<Value, E> {
-                let rounded = value as f64;
-                match rounded as i64 == value {
-                    true => Ok(v!(Kind::NumberValue(value as f64))),
-                    false => Err(Error::custom("i64 cannot be represented by f64")),
-                }
-            }
-
-            #[inline]
-            fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
-                Ok(v!(Kind::NumberValue(value as f64)))
-            }
-
-            #[inline]
-            fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(v!(Kind::NumberValue(value)))
-            }
-
-            #[inline]
-            fn visit_str<E>(self, value: &str) -> Result<Value, E>
-            where
-                E: Error,
-            {
-                self.visit_string(::prost::alloc::string::String::from(value))
-            }
-
-            #[inline]
-            fn visit_string<E>(self, value: ::prost::alloc::string::String) -> Result<Value, E> {
-                Ok(v!(Kind::StringValue(value)))
-            }
-
-            #[inline]
-            fn visit_none<E>(self) -> Result<Value, E> {
-                Ok(v!(Kind::NullValue(0)))
-            }
-
-            #[inline]
-            fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                Deserialize::deserialize(deserializer)
-            }
-
-            #[inline]
-            fn visit_unit<E>(self) -> Result<Value, E> {
-                Ok(v!(Kind::NullValue(0)))
-            }
-
-            #[inline]
-            fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                let mut values = ::prost::alloc::vec::Vec::new();
-
-                while let Some(elem) = visitor.next_element()? {
-                    values.push(elem);
-                }
-
-                Ok(v!(Kind::ListValue(ListValue { values })))
-            }
-
-            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
-            where
-                V: MapAccess<'de>,
-            {
-                let mut fields = ::prost::alloc::collections::BTreeMap::new();
-
-                while let Some((key, value)) = visitor.next_entry()? {
-                    fields.insert(key, value);
-                }
-
-                Ok(v!(Kind::StructValue(Struct { fields })))
-            }
+    #[inline]
+    fn visit_i64<E: Error>(self, value: i64) -> Result<Value, E> {
+        let rounded = value as f64;
+        match rounded as i64 == value {
+            true => Ok(v!(Kind::NumberValue(value as f64))),
+            false => Err(Error::custom("i64 cannot be represented by f64")),
         }
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
+        Ok(v!(Kind::NumberValue(value as f64)))
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
+        Ok(v!(Kind::NumberValue(value)))
+    }
+
+    #[inline]
+    fn visit_str<E>(self, value: &str) -> Result<Value, E>
+    where
+        E: Error,
+    {
+        self.visit_string(::prost::alloc::string::String::from(value))
+    }
+
+    #[inline]
+    fn visit_string<E>(self, value: ::prost::alloc::string::String) -> Result<Value, E> {
+        Ok(v!(Kind::StringValue(value)))
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Value, E> {
+        Ok(v!(Kind::NullValue(0)))
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Deserialize::deserialize(deserializer)
+    }
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Value, E> {
+        Ok(v!(Kind::NullValue(0)))
+    }
+
+    #[inline]
+    fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    where
+        V: SeqAccess<'de>,
+    {
+        let mut values = ::prost::alloc::vec::Vec::new();
+
+        while let Some(elem) = visitor.next_element()? {
+            values.push(elem);
+        }
+
+        Ok(v!(Kind::ListValue(ListValue { values })))
+    }
+
+    fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    where
+        V: MapAccess<'de>,
+    {
+        let mut fields = ::prost::alloc::collections::BTreeMap::new();
+
+        while let Some((key, value)) = visitor.next_entry()? {
+            fields.insert(key, value);
+        }
+
+        Ok(v!(Kind::StructValue(Struct { fields })))
+    }
+}
 
 impl Serialize for ListValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
