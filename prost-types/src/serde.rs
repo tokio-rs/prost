@@ -220,16 +220,21 @@ impl<'de> Deserialize<'de> for ListValue {
 mod tests {
     use super::*;
 
+    fn round_trip(value:Value,expected:&str){
+	    let json = serde_json::to_string(&value).unwrap();
+	    assert_eq!(json, expected);
+
+	    let value_rt = serde_json::from_str(&json).unwrap();
+	    assert_eq!(value, value_rt);
+    }
+
     #[cfg(feature = "std")]
     #[test]
     fn test_null_value() {
         let value = Value {
             kind: Some(Kind::NullValue(0)),
         };
-
-        let json = serde_json::to_string(&value).unwrap();
-
-        assert_eq!(json, "null");
+        round_trip(value, "null");
     }
     #[cfg(feature = "std")]
     #[test]
@@ -237,10 +242,7 @@ mod tests {
         let value = Value {
             kind: Some(Kind::NumberValue(123.456)),
         };
-
-        let json = serde_json::to_string(&value).unwrap();
-
-        assert_eq!(json, "123.456");
+        round_trip(value, "123.456");
     }
     #[cfg(feature = "std")]
     #[test]
@@ -248,10 +250,7 @@ mod tests {
         let value = Value {
             kind: Some(Kind::StringValue("test string".into())),
         };
-
-        let json = serde_json::to_string(&value).unwrap();
-
-        assert_eq!(json, "\"test string\"");
+        round_trip(value, "\"test string\"");
     }
     #[cfg(feature = "std")]
     #[test]
@@ -259,10 +258,7 @@ mod tests {
         let value = Value {
             kind: Some(Kind::BoolValue(true)),
         };
-
-        let json = serde_json::to_string(&value).unwrap();
-
-        assert_eq!(json, "true");
+        round_trip(value, "true");
     }
     #[cfg(feature = "std")]
     #[test]
@@ -274,10 +270,7 @@ mod tests {
         let value = Value {
             kind: Some(Kind::StructValue(Struct { fields })),
         };
-
-        let json = serde_json::to_string(&value).unwrap();
-
-        assert_eq!(json, "{\"key1\":\"value1\",\"key2\":\"value2\"}");
+        round_trip(value, "{\"key1\":\"value1\",\"key2\":\"value2\"}");
     }
     #[cfg(feature = "std")]
     #[test]
@@ -289,9 +282,6 @@ mod tests {
         let value = Value {
             kind: Some(Kind::ListValue(ListValue { values })),
         };
-
-        let json = serde_json::to_string(&value).unwrap();
-
-        assert_eq!(json, "[\"value1\",\"value2\"]");
+        round_trip(value, "[\"value1\",\"value2\"]");
     }
 }
