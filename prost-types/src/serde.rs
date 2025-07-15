@@ -1,7 +1,7 @@
 use crate::protobuf::value::Kind;
 use crate::protobuf::{ListValue, Struct, Value};
 use serde::de::{Error, MapAccess, SeqAccess, Visitor};
-use serde::ser::{SerializeMap, SerializeSeq};
+use serde::ser::{Error as _, SerializeMap, SerializeSeq};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 impl Serialize for Struct {
@@ -58,7 +58,7 @@ impl Serialize for Value {
             Some(Kind::BoolValue(v)) => serializer.serialize_bool(*v),
             Some(Kind::StructValue(v)) => v.serialize(serializer),
             Some(Kind::ListValue(v)) => v.serialize(serializer),
-            None => serializer.serialize_none(),
+            None => Err(S::Error::custom("Value kind is None")),
         }
     }
 }
