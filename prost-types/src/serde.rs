@@ -275,9 +275,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_list_value() {
-        let mut values = ::prost::alloc::vec::Vec::new();
-        values.push("value1".into());
-        values.push("value2".into());
+        let values = ::prost::alloc::vec!["value1".into(), "value2".into()];
 
         let value = Value {
             kind: Some(Kind::ListValue(ListValue { values })),
