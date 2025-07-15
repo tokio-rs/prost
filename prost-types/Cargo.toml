@@ -14,7 +14,7 @@ doctest = false
 
 [features]
 default = ["std"]
-std = ["prost/std"]
+std = ["prost/std", "serde/std"]
 arbitrary = ["dep:arbitrary"]
 serde = ["dep:serde"]
 
