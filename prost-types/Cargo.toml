@@ -14,15 +14,15 @@ doctest = false
 
 [features]
 default = ["std"]
-std = ["prost/std", "serde/std"]
+std = ["prost/std"]
 arbitrary = ["dep:arbitrary"]
-serde = ["dep:serde"]
+serde = ["dep:serde", "std"]
 
 [dependencies]
 prost = { version = "0.14.1", path = "../prost", default-features = false, features = ["derive"] }
 arbitrary = { version = "1.4", features = ["derive"], optional = true }
 chrono = { version = "0.4.34", default-features = false, optional = true }
-serde = { version = "1.0.219", default-features = false, optional = true }
+serde = { version = "1.0.219", features = ["std"], optional = true }
 
 [dev-dependencies]
 proptest = "1"
