@@ -215,3 +215,83 @@ impl<'de> Deserialize<'de> for ListValue {
         deserializer.deserialize_map(ListVisitor)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_null_value() {
+        let value = Value {
+            kind: Some(Kind::NullValue(0)),
+        };
+
+        let json = serde_json::to_string(&value).unwrap();
+
+        assert_eq!(json, "null");
+    }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_number_value() {
+        let value = Value {
+            kind: Some(Kind::NumberValue(123.456)),
+        };
+
+        let json = serde_json::to_string(&value).unwrap();
+
+        assert_eq!(json, "123.456");
+    }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_string_value() {
+        let value = Value {
+            kind: Some(Kind::StringValue("test string".into())),
+        };
+
+        let json = serde_json::to_string(&value).unwrap();
+
+        assert_eq!(json, "\"test string\"");
+    }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_bool_value() {
+        let value = Value {
+            kind: Some(Kind::BoolValue(true)),
+        };
+
+        let json = serde_json::to_string(&value).unwrap();
+
+        assert_eq!(json, "true");
+    }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_struct_value() {
+        let mut fields = ::prost::alloc::collections::BTreeMap::new();
+        fields.insert("key1".into(), "value1".into());
+        fields.insert("key2".into(), "value2".into());
+
+        let value = Value {
+            kind: Some(Kind::StructValue(Struct { fields })),
+        };
+
+        let json = serde_json::to_string(&value).unwrap();
+
+        assert_eq!(json, "{\"key1\":\"value1\",\"key2\":\"value2\"}");
+    }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_list_value() {
+        let mut values = ::prost::alloc::vec::Vec::new();
+        values.push("value1".into());
+        values.push("value2".into());
+
+        let value = Value {
+            kind: Some(Kind::ListValue(ListValue { values })),
+        };
+
+        let json = serde_json::to_string(&value).unwrap();
+
+        assert_eq!(json, "[\"value1\",\"value2\"]");
+    }
+}
