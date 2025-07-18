@@ -36,3 +36,7 @@ pulldown-cmark-to-cmark = { version = "21", optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.11", default-features = false }
+
+[lints.clippy]
+# This lint has MSRV 1.86
+io_other_error = "allow"
