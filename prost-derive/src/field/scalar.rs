@@ -2,7 +2,7 @@ use std::fmt;
 
 use anyhow::{anyhow, bail, Error};
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Expr, ExprLit, Ident, Index, Lit, LitByteStr, Meta, MetaNameValue, Path};
 
 use crate::field::{bool_attr, set_option, tag_attr, Label};
@@ -283,6 +283,16 @@ impl Field {
             }
             Err(_) => quote!(#ident),
         };
+        let get_or_default = match syn::parse_str::<Index>(&ident_str) {
+            Ok(index) => {
+                let get = Ident::new(
+                    &format!("get_{}_or_default", index.index),
+                    Span::call_site(),
+                );
+                quote!(#get)
+            }
+            Err(_) => format_ident!("{ident}_or_default").to_token_stream(),
+        };
 
         if let Ty::Enumeration(ref ty) = self.ty {
             let set = Ident::new(&format!("set_{ident_str}"), Span::call_site());
@@ -308,15 +318,24 @@ impl Field {
                 Kind::Optional(ref default) => {
                     let get_doc = format!(
                         "Returns the enum value of `{ident_str}`, \
+                         or `None` if the field is unset or set to an invalid enum value."
+                    );
+                    let get_or_default_doc = format!(
+                        "Returns the enum value of `{ident_str}`, \
                          or the default if the field is unset or set to an invalid enum value."
                     );
                     quote! {
                         #[doc=#get_doc]
-                        pub fn #get(&self) -> #ty {
+                        pub fn #get(&self) -> ::core::option::Option<#ty> {
                             self.#ident.and_then(|x| {
                                 let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
-                            }).unwrap_or(#default)
+                            })
+                        }
+
+                        #[doc=#get_or_default_doc]
+                        pub fn #get_or_default(&self) -> #ty {
+                            self.#get().unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]

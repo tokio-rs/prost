@@ -406,8 +406,8 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     fn append_field(&mut self, fq_message_name: &str, field: &Field) {
-        let type_ = field.descriptor.r#type();
-        let repeated = field.descriptor.label() == Label::Repeated;
+        let type_ = field.descriptor.type_or_default();
+        let repeated = field.descriptor.label_or_default() == Label::Repeated;
         let deprecated = self.deprecated(&field.descriptor);
         let optional = self.optional(&field.descriptor);
         let boxed = self
@@ -442,7 +442,7 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .push_str(&format!(" = {:?}", bytes_type.annotation()));
         }
 
-        match field.descriptor.label() {
+        match field.descriptor.label_or_default() {
             Label::Optional => {
                 if optional {
                     self.buf.push_str(", optional");
@@ -946,7 +946,7 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
-        match field.r#type() {
+        match field.type_or_default() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
             Type::Uint32 | Type::Fixed32 => String::from("u32"),
@@ -1003,7 +1003,7 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.r#type() {
+        match field.type_or_default() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
             Type::Int32 => Cow::Borrowed("int32"),
@@ -1029,7 +1029,7 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
-        match field.r#type() {
+        match field.type_or_default() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
@@ -1043,11 +1043,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             return true;
         }
 
-        if field.label() != Label::Optional {
+        if field.label_or_default() != Label::Optional {
             return false;
         }
 
-        match field.r#type() {
+        match field.type_or_default() {
             Type::Message => true,
             _ => self.syntax == Syntax::Proto2,
         }
@@ -1074,7 +1074,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 /// Returns `true` if the repeated field type can be packed.
 fn can_pack(field: &FieldDescriptorProto) -> bool {
     matches!(
-        field.r#type(),
+        field.type_or_default(),
         Type::Float
             | Type::Double
             | Type::Int32
