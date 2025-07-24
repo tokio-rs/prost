@@ -1,7 +1,6 @@
 use std::ascii;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::iter;
 
 use itertools::{Either, Itertools};
 use log::debug;
@@ -91,14 +90,6 @@ impl OneofField {
 
     fn rust_name(&self) -> String {
         to_snake(self.descriptor.name())
-    }
-
-    fn type_name(&self) -> String {
-        let mut name = to_upper_camel(self.descriptor.name());
-        if self.has_type_name_conflict {
-            name.push_str("OneOf");
-        }
-        name
     }
 }
 
@@ -260,7 +251,8 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
-        self.buf.push_str(&to_upper_camel(&message_name));
+        self.buf
+            .push_str(&self.type_name_with_affixes(&message_name));
         self.buf.push_str(" {\n");
 
         self.depth += 1;
@@ -327,7 +319,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.buf.push_str(&format!(
             "impl {prost_path}::Name for {} {{\n",
-            to_upper_camel(message_name)
+            self.type_name_with_affixes(message_name)
         ));
         self.depth += 1;
 
@@ -579,7 +571,13 @@ impl<'b> CodeGenerator<'_, 'b> {
         fq_message_name: &str,
         oneof: &OneofField,
     ) {
-        let type_name = format!("{}::{}", to_snake(message_name), oneof.type_name());
+        // Apply OneOf suffix if there's a conflict, then apply global affixes
+        let mut base_name = oneof.descriptor.name().to_string();
+        if oneof.has_type_name_conflict {
+            base_name.push_str("_one_of");
+        }
+        let oneof_type_name = self.type_name_with_affixes(&base_name);
+        let type_name = format!("{}::{}", to_snake(message_name), oneof_type_name);
         self.append_doc(fq_message_name, None);
         self.push_indent();
         self.buf.push_str(&format!(
@@ -633,7 +631,14 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
-        self.buf.push_str(&oneof.type_name());
+
+        // Apply OneOf suffix if there's a conflict, then apply global affixes
+        let mut base_name = oneof.descriptor.name().to_string();
+        if oneof.has_type_name_conflict {
+            base_name.push_str("_one_of");
+        }
+        let oneof_type_name = self.type_name_with_affixes(&base_name);
+        self.buf.push_str(&oneof_type_name);
         self.buf.push_str(" {\n");
 
         self.path.push(2);
@@ -710,10 +715,10 @@ impl<'b> CodeGenerator<'_, 'b> {
         debug!("  enum: {:?}", desc.name());
 
         let proto_enum_name = desc.name();
-        let enum_name = to_upper_camel(proto_enum_name);
+        let fq_proto_enum_name = self.fq_name(proto_enum_name);
+        let enum_name = self.type_name_with_affixes(proto_enum_name);
 
         let enum_values = &desc.value;
-        let fq_proto_enum_name = self.fq_name(proto_enum_name);
 
         if self
             .context
@@ -995,11 +1000,21 @@ impl<'b> CodeGenerator<'_, 'b> {
             ident_path.next();
         }
 
-        local_path
+        // Build the base path without the type name
+        let base_path: Vec<String> = local_path
             .map(|_| "super".to_string())
             .chain(ident_path.map(to_snake))
-            .chain(iter::once(to_upper_camel(ident_type)))
-            .join("::")
+            .collect();
+
+        // Apply prefix/suffix to the type name if configured, using the protobuf identifier to determine package
+        let type_name = self.type_name_with_affixes_for_package(ident_type, Some(pb_ident));
+
+        // Join the path with the potentially suffixed type name
+        if base_path.is_empty() {
+            type_name
+        } else {
+            format!("{}::{}", base_path.join("::"), type_name)
+        }
     }
 
     fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
@@ -1068,6 +1083,42 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.type_path.join("."),
             message_name,
         )
+    }
+
+    /// Return the type name with optional prefix and/or suffix based on configuration
+    fn type_name_with_affixes(&self, type_name: &str) -> String {
+        self.type_name_with_affixes_for_package(type_name, None)
+    }
+
+    fn type_name_with_affixes_for_package(
+        &self,
+        type_name: &str,
+        pb_ident: Option<&str>,
+    ) -> String {
+        let mut type_name = to_upper_camel(type_name);
+
+        // Determine the lookup path for PathMap
+        let lookup_path = match pb_ident {
+            Some(ident) if ident.starts_with('.') => ident.to_string(),
+            _ => {
+                if self.package.is_empty() {
+                    ".".to_string()
+                } else {
+                    format!(".{}", self.package.trim_matches('.'))
+                }
+            }
+        };
+
+        // Let PathMap handle the complex path matching and fallback logic
+        if let Some(prefix) = self.config().type_name_prefixes.get_first(&lookup_path) {
+            type_name.insert_str(0, prefix);
+        }
+
+        if let Some(suffix) = self.config().type_name_suffixes.get_first(&lookup_path) {
+            type_name.push_str(suffix);
+        }
+
+        type_name
     }
 }
 
