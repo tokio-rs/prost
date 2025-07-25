@@ -87,6 +87,18 @@ mod ident_conversion;
 #[cfg(test)]
 mod oneof_name_conflict;
 
+#[cfg(test)]
+mod type_name_suffix;
+
+#[cfg(test)]
+mod type_name_prefix;
+
+#[cfg(test)]
+mod type_name_prefix_suffix;
+
+#[cfg(test)]
+mod type_name_imports;
+
 mod test_enum_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
 }

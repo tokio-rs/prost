@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package external_package;
+
+message ExternalMessage {
+    string name = 1;
+    int32 value = 2;
+}
+
+enum ExternalStatus {
+    EXTERNAL_UNKNOWN = 0;
+    EXTERNAL_ACTIVE = 1;
+}

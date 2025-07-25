@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package type_name_suffix;
+
+// Simple message to test type name suffix
+message TestMessage {
+    string name = 1;
+    int32 value = 2;
+}
+
+// Enum to test suffix on enums
+enum TestEnum {
+    UNKNOWN = 0;
+    FIRST = 1;
+    SECOND = 2;
+}
+
+// Nested types to test suffix propagation
+message OuterMessage {
+    message InnerMessage {
+        string data = 1;
+    }
+
+    InnerMessage inner = 1;
+    TestEnum test_enum = 2;
+}
+
+// Message with self-reference to test suffix in type references
+message RecursiveMessage {
+    RecursiveMessage child = 1;
+    repeated RecursiveMessage children = 2;
+}
+
+// Message with oneof to test suffix on oneof enum
+message MessageWithOneof {
+    oneof test_oneof {
+        string string_value = 1;
+        int32 int_value = 2;
+        TestMessage message = 3;
+    }
+}

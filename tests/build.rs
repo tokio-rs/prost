@@ -184,6 +184,41 @@ fn main() {
         .compile_protos(&[src.join("oneof_name_conflict.proto")], includes)
         .unwrap();
 
+    // Test type name suffix
+    prost_build::Config::new()
+        .type_name_suffix("Proto")
+        .compile_protos(&[src.join("type_name_suffix.proto")], includes)
+        .unwrap();
+
+    // Test type name prefix
+    prost_build::Config::new()
+        .type_name_prefix("Proto")
+        .compile_protos(&[src.join("type_name_prefix.proto")], includes)
+        .unwrap();
+
+    // Test type name prefix and suffix together
+    prost_build::Config::new()
+        .type_name_prefix("Pre")
+        .type_name_suffix("Post")
+        .compile_protos(&[src.join("type_name_prefix_suffix.proto")], includes)
+        .unwrap();
+
+    // Test type name suffix with imports (well-known types) and package-specific suffixes
+    prost_build::Config::new()
+        .type_name_suffix("Proto")
+        .package_type_name_suffix([
+            // Different suffix for external package
+            (".external_package", "ABC"),
+        ])
+        .compile_protos(
+            &[
+                src.join("type_name_imports.proto"),
+                src.join("type_name_external_package.proto"),
+            ],
+            &[src.clone(), src.join("include")],
+        )
+        .unwrap();
+
     // Check that attempting to compile a .proto without a package declaration does not result in an error.
     config
         .compile_protos(&[src.join("no_package.proto")], includes)
