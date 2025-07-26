@@ -459,9 +459,21 @@ pub enum Gender {
 
 ## Nix
 
-The prost project maintains flakes support for local development. Once you have
-nix and nix flakes setup you can just run `nix develop` to get a shell
-configured with the required dependencies to compile the whole project.
+The prost project supports development using Nix flakes. Once you have Nix and flakes enabled, you can simply run:
+
+```
+nix develop
+```
+
+This will drop you into a shell with all dependencies configured to build the entire project.
+
+If you want to use the minimum supported Rust version as required by Tokio [see MSRV](#msrv), run:
+
+```
+nix develop .#rust_minimum_version
+```
+
+This ensures compatibility testing and development with the oldest supported toolchain version.
 
 ## Feature Flags
 - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.

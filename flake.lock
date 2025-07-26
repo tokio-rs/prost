@@ -73,7 +73,8 @@
       "inputs": {
         "fenix": "fenix",
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_2",
+        "rust_manifest": "rust_manifest"
       }
     },
     "rust-analyzer-src": {
@@ -91,6 +92,18 @@
         "ref": "nightly",
         "repo": "rust-analyzer",
         "type": "github"
+      }
+    },
+    "rust_manifest": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-+luyleoaReh01qcOghMXEz+t3Lm700Z0cS4Hm61pVCE=",
+        "type": "file",
+        "url": "https://static.rust-lang.org/dist/2023-08-03/channel-rust-1.71.1.toml"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://static.rust-lang.org/dist/2023-08-03/channel-rust-1.71.1.toml"
       }
     },
     "systems": {
