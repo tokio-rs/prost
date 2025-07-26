@@ -166,8 +166,8 @@ impl Add<Duration> for Timestamp {
             Self {
                 seconds,
                 nanos: match seconds {
-                    i64::MAX => NANOS_PER_SECOND,
-                    i64::MIN => 0,
+                    i64::MAX => Self::MAX.nanos,
+                    i64::MIN => Self::MIN.nanos,
                     _ => nanos,
                 },
             }
@@ -187,20 +187,19 @@ impl Sub<Duration> for Timestamp {
     }
 }
 
-//This can be more nice, if impl overflow controlled such use i128
 macro_rules! impl_div_for_integer {
     ($($t:ty),*) => {
         $(
             impl Div<$t> for Timestamp {
                 type Output = Duration;
 
-                fn div(self, rhs: $t) -> Self::Output {
-                    let total_nanos = self.seconds as i128 * NANOS_PER_SECOND as i128 + self.nanos as i128;
+                fn div(self, denominator: $t) -> Self::Output {
+                    let mut total_nanos = self.seconds as i128 * NANOS_PER_SECOND as i128 + self.nanos as i128;
 
-                    let result_nanos = total_nanos / (rhs as i128);
+                    total_nanos /= denominator as i128;
 
-                    let mut seconds = (result_nanos / NANOS_PER_SECOND as i128) as i64;
-                    let mut nanos = (result_nanos % NANOS_PER_SECOND as i128) as i32;
+                    let mut seconds = (total_nanos / NANOS_PER_SECOND as i128) as i64;
+                    let mut nanos = (total_nanos % NANOS_PER_SECOND as i128) as i32;
 
                     if nanos < 0 {
                         seconds -= 1;
@@ -222,11 +221,16 @@ macro_rules! impl_div_for_float {
             impl Div<$t> for Timestamp {
                 type Output = Duration;
 
-                fn div(self, rhs: $t) -> Self::Output {
-                    let total_seconds_float = (self.seconds as f64 + self.nanos as f64 / NANOS_PER_SECOND as f64) / rhs as f64;
+                fn div(self, denominator: $t) -> Self::Output {
+                    let mut total_seconds_float = (self.seconds as f64 + self.nanos as f64 / NANOS_PER_SECOND as f64);
+                    total_seconds_float /= denominator as f64;
 
+                    //Not necessary to create special treatment for overflow, if denominator is
+                    //extreame low the value can be f64::INFINITY and then converted for i64 is i64::MAX
+                    // assert_eq!((f64::MAX/f64::MIN_POSITIVE) as i64, i64::MAX)
+                    // assert_eq!((f64::MIN/f64::MIN_POSITIVE) as i64, i64::MIN)
                     let mut seconds = total_seconds_float as i64;
-                    if total_seconds_float < 0.0 && total_seconds_float != seconds as f64 {
+                    if total_seconds_float < 0. && total_seconds_float != seconds as f64 {
                         seconds -= 1;
                     }
 
@@ -362,6 +366,8 @@ mod tests_ops {
         let _ = ts + dur;
     }
 
+    //This test needs to run --release argument
+    //In production enviroments don't cause panic, only returns Timestamp::(MAX or MIN)
     #[test]
     #[cfg(not(debug_assertions))]
     fn test_add_saturating_seconds() {
@@ -374,7 +380,7 @@ mod tests_ops {
             nanos: 0,
         };
 
-        assert_eq!((ts + dur).seconds, i64::MAX);
+        assert_eq!((ts + dur), Timestamp::MAX);
     }
 
     #[test]
@@ -572,7 +578,7 @@ mod tests_ops {
 }
 
 #[cfg(kani)]
-mod kani_verification_ops {
+mod proofs_ops {
     use super::*;
 
     #[kani::proof]
@@ -598,7 +604,7 @@ mod kani_verification_ops {
 
         let result = ts + dur;
 
-        assert!(result.nanos >= 0 && result.nanos < NANOS_PER_SECOND);
+        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
     }
 
     #[kani::proof]
@@ -624,7 +630,7 @@ mod kani_verification_ops {
 
         let result = ts - dur;
 
-        assert!(result.nanos >= 0 && result.nanos < NANOS_PER_SECOND);
+        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
     }
 
     #[kani::proof]
@@ -642,7 +648,7 @@ mod kani_verification_ops {
 
         let result = ts / divisor;
 
-        assert!(result.nanos >= 0 && result.nanos < NANOS_PER_SECOND);
+        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
     }
 
     #[kani::proof]
@@ -656,7 +662,7 @@ mod kani_verification_ops {
 
         let result = ts / divisor;
 
-        assert!(result.nanos >= 0 && result.nanos <= NANOS_PER_SECOND);
+        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
     }
 }
 
@@ -670,7 +676,7 @@ impl Name for Timestamp {
 }
 
 #[cfg(feature = "chrono")]
-mod chrono {
+mod timestamp_chrono {
     use super::*;
     use ::chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 
@@ -721,115 +727,6 @@ mod chrono {
             DateTime::try_from(timestamp).map(|date_time| date_time.date_naive())
         }
     }
-
-    impl From<NaiveTime> for Timestamp {
-        fn from(naive_time: NaiveTime) -> Self {
-            NaiveDate::default().and_time(naive_time).and_utc().into()
-        }
-    }
-
-    impl TryFrom<Timestamp> for NaiveTime {
-        type Error = TimestampError;
-
-        fn try_from(timestamp: Timestamp) -> Result<Self, Self::Error> {
-            DateTime::try_from(timestamp).map(|date_time| date_time.time())
-        }
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use ::chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
-
-        #[test]
-        fn test_datetime_roundtrip() {
-            let original_dt = Utc::now();
-            let timestamp: Timestamp = original_dt.into();
-            let converted_dt: DateTime<Utc> = timestamp.try_into().unwrap();
-            assert_eq!(original_dt, converted_dt);
-        }
-
-        #[test]
-        fn test_naivedatetime_roundtrip() {
-            let original_ndt = NaiveDate::from_ymd_opt(2023, 10, 26)
-                .unwrap()
-                .and_hms_nano_opt(10, 0, 0, 123_456_789)
-                .unwrap();
-            let timestamp: Timestamp = original_ndt.into();
-            let converted_ndt: NaiveDateTime = timestamp.try_into().unwrap();
-            assert_eq!(original_ndt, converted_ndt);
-        }
-
-        #[test]
-        fn test_naivedate_roundtrip() {
-            let original_nd = NaiveDate::from_ymd_opt(1995, 12, 17).unwrap();
-            // From<NaiveDate> converts to a timestamp at midnight.
-            let timestamp: Timestamp = original_nd.into();
-            let converted_nd: NaiveDate = timestamp.try_into().unwrap();
-            assert_eq!(original_nd, converted_nd);
-        }
-
-        #[test]
-        fn test_naivetime_roundtrip() {
-            let original_nt = NaiveTime::from_hms_nano_opt(23, 59, 59, 999_999_999).unwrap();
-            // From<NaiveTime> converts to a timestamp on the default date (1970-01-01).
-            let timestamp: Timestamp = original_nt.into();
-            let converted_nt: NaiveTime = timestamp.try_into().unwrap();
-            assert_eq!(original_nt, converted_nt);
-        }
-
-        #[test]
-        fn test_epoch_conversion() {
-            let epoch_dt = DateTime::from_timestamp(0, 0).unwrap();
-            let timestamp: Timestamp = epoch_dt.into();
-            assert_eq!(
-                timestamp,
-                Timestamp {
-                    seconds: 0,
-                    nanos: 0
-                }
-            );
-
-            let converted_dt: DateTime<Utc> = timestamp.try_into().unwrap();
-            assert_eq!(epoch_dt, converted_dt);
-        }
-
-        #[test]
-        fn test_timestamp_out_of_range() {
-            // This timestamp is far beyond what chrono can represent.
-            let far_future = Timestamp {
-                seconds: i64::MAX,
-                nanos: 0,
-            };
-            let result = DateTime::<Utc>::try_from(far_future);
-            assert_eq!(
-                result,
-                Err(TimestampError::OutOfChronoDateTimeRanges(far_future))
-            );
-        }
-
-        #[test]
-        fn test_timestamp_normalization() {
-            // A timestamp with negative nanos that should be normalized.
-            // 10 seconds - 100 nanos should be 9 seconds + 999,999,900 nanos.
-            let unnormalized = Timestamp {
-                seconds: 10,
-                nanos: -100,
-            };
-            let expected_dt = DateTime::from_timestamp(9, 999_999_900).unwrap();
-            let converted_dt: DateTime<Utc> = unnormalized.try_into().unwrap();
-            assert_eq!(converted_dt, expected_dt);
-
-            // A timestamp with > 1B nanos.
-            // 5s + 1.5B nanos should be 6s + 0.5B nanos.
-            let overflow_nanos = Timestamp {
-                seconds: 5,
-                nanos: 1_500_000_000,
-            };
-            let expected_dt_2 = DateTime::from_timestamp(6, 500_000_000).unwrap();
-            let converted_dt_2: DateTime<Utc> = overflow_nanos.try_into().unwrap();
-            assert_eq!(converted_dt_2, expected_dt_2);
-        }
-    }
 }
 
 #[cfg(feature = "std")]
@@ -866,6 +763,7 @@ pub enum TimestampError {
     /// `Timestamp`s are likely representable on 64-bit Unix-like platforms, but other platforms,
     /// such as Windows and 32-bit Linux, may not be able to represent the full range of
     /// `Timestamp`s.
+    #[cfg(feature = "std")]
     OutOfSystemRange(Timestamp),
 
     /// An error indicating failure to parse a timestamp in RFC-3339 format.
@@ -874,15 +772,16 @@ pub enum TimestampError {
     /// Indicates an error when constructing a timestamp due to invalid date or time data.
     InvalidDateTime,
 
-    #[cfg(feature = "chrono")]
     /// Indicates that a [`Timestamp`] could not bet converted to
     /// [`chrono::{DateTime, NaiveDateTime, NaiveDate, NaiveTime`] out of range
+    #[cfg(feature = "chrono")]
     OutOfChronoDateTimeRanges(Timestamp),
 }
 
 impl fmt::Display for TimestampError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            #[cfg(feature = "std")]
             TimestampError::OutOfSystemRange(timestamp) => {
                 write!(
                     f,
@@ -895,7 +794,6 @@ impl fmt::Display for TimestampError {
             TimestampError::InvalidDateTime => {
                 write!(f, "invalid date or time")
             }
-
             #[cfg(feature = "chrono")]
             TimestampError::OutOfChronoDateTimeRanges(timestamp) => {
                 write!(
@@ -971,186 +869,58 @@ mod proofs {
     }
 
     #[cfg(feature = "chrono")]
-    mod kani_chrono {
+    mod p_chrono {
         use super::*;
-        use ::chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc};
+        use ::chrono::{DateTime, NaiveDate, NaiveDateTime};
         //Why does it limit? In testing, it was left for more than 2 hours and not completed.
 
-        // #[kani::proof]
-        // fn check_timestamp_roundtrip_via_date_time() {
-        //     let seconds = kani::any();
-        //     let nanos = kani::any();
-        //
-        //     kani::assume(i64::MAX / 3 < seconds);
-        //     kani::assume(i64::MIN / 3 > seconds);
-        //
-        //     let mut timestamp = Timestamp { seconds, nanos };
-        //     timestamp.normalize();
-        //
-        //     if let Ok(date_time) = DateTime::try_from(timestamp) {
-        //         assert_eq!(Timestamp::from(date_time), timestamp);
-        //     }
-        // }
+        #[kani::proof]
+        fn check_timestamp_roundtrip_via_date_time() {
+            let seconds = kani::any();
+            let nanos = kani::any();
 
-        // #[kani::proof]
-        // fn check_timestamp_roundtrip_via_naive_date_time() {
-        //     let seconds = kani::any();
-        //     let nanos = kani::any();
-        //
-        //     kani::assume(i64::MAX / 3 < seconds);
-        //     kani::assume(i64::MIN / 3 > seconds);
-        //
-        //     let mut timestamp = Timestamp { seconds, nanos };
-        //     timestamp.normalize();
-        //
-        //     if let Ok(naive_date_time) = NaiveDateTime::try_from(timestamp) {
-        //         assert_eq!(Timestamp::from(naive_date_time), timestamp);
-        //     }
-        // }
+            kani::assume(i64::MAX / 3 < seconds);
+            kani::assume(i64::MIN / 3 > seconds);
 
-        // #[kani::proof]
-        // fn check_timestamp_roundtrip_via_naive_date() {
-        //     let seconds = kani::any();
-        //     let nanos = kani::any();
-        //
-        //     kani::assume(i64::MAX / 3 < seconds);
-        //     kani::assume(i64::MIN / 3 > seconds);
-        //
-        //     let mut timestamp = Timestamp { seconds, nanos };
-        //     timestamp.normalize();
-        //
-        //     if let Ok(naive_date) = NaiveDate::try_from(timestamp) {
-        //         assert_eq!(Timestamp::from(naive_date), timestamp);
-        //     }
-        // }
+            let mut timestamp = Timestamp { seconds, nanos };
+            timestamp.normalize();
 
-        // #[kani::proof]
-        // fn check_timestamp_roundtrip_via_naive_time() {
-        //     let seconds = kani::any();
-        //     let nanos = kani::any();
-        //
-        //     kani::assume(i64::MAX / 3 < seconds);
-        //     kani::assume(i64::MIN / 3 > seconds);
-        //
-        //     let mut timestamp = Timestamp { seconds, nanos };
-        //     timestamp.normalize();
-        //
-        //     if let Ok(naive_time) = NaiveTime::try_from(timestamp) {
-        //         assert_eq!(Timestamp::from(naive_time), timestamp);
-        //     }
-        // }
+            if let Ok(date_time) = DateTime::try_from(timestamp) {
+                assert_eq!(Timestamp::from(date_time), timestamp);
+            }
+        }
 
-        // #[kani::proof]
-        // fn verify_from_datetime_utc() {
-        //     let date_time: DateTime<Utc> =
-        //         DateTime::from_timestamp(kani::any(), kani::any()).unwrap_or_default();
-        //     let timestamp = Timestamp::from(date_time);
-        //     assert_eq!(timestamp.seconds, date_time.timestamp());
-        //     assert_eq!(timestamp.nanos, date_time.timestamp_subsec_nanos() as i32);
-        // }
+        #[kani::proof]
+        fn check_timestamp_roundtrip_via_naive_date_time() {
+            let seconds = kani::any();
+            let nanos = kani::any();
 
-        // #[kani::proof]
-        // fn verify_from_naive_datetime() {
-        //     let naive_dt: NaiveDateTime = kani::any();
-        //     let timestamp = Timestamp::from(naive_dt);
-        //     let expected_dt_utc = naive_dt.and_utc();
-        //     assert_eq!(timestamp.seconds, expected_dt_utc.timestamp());
-        //     assert_eq!(
-        //         timestamp.nanos,
-        //         expected_dt_utc.timestamp_subsec_nanos() as i32
-        //     );
-        // }
-        //
-        // #[kani::proof]
-        // fn verify_from_naive_date() {
-        //     let naive_date: NaiveDate = kani::any();
-        //     let timestamp = Timestamp::from(naive_date);
-        //     let naive_dt = naive_date.and_time(NaiveTime::default());
-        //     let expected_dt_utc = naive_dt.and_utc();
-        //     assert_eq!(timestamp.seconds, expected_dt_utc.timestamp());
-        //     assert_eq!(
-        //         timestamp.nanos,
-        //         expected_dt_utc.timestamp_subsec_nanos() as i32
-        //     );
-        // }
-        //
-        // #[kani::proof]
-        // fn verify_from_naive_time() {
-        //     let naive_time: NaiveTime = kani::any();
-        //     let timestamp = Timestamp::from(naive_time);
-        //     let naive_dt = NaiveDate::default().and_time(naive_time);
-        //     let expected_dt_utc = naive_dt.and_utc();
-        //     assert_eq!(timestamp.seconds, expected_dt_utc.timestamp());
-        //     assert_eq!(
-        //         timestamp.nanos,
-        //         expected_dt_utc.timestamp_subsec_nanos() as i32
-        //     );
-        // }
-        //
-        // #[kani::proof]
-        // fn verify_roundtrip_from_timestamp_to_datetime() {
-        //     let timestamp: Timestamp = kani::any();
-        //     // Precondition: The timestamp must be valid according to its spec.
-        //     kani::assume((0..1_000_000_000).contains(&timestamp.nanos));
-        //
-        //     if let Ok(dt_utc) = ::chrono::DateTime::<Utc>::try_from(timestamp.clone()) {
-        //         // If conversion succeeds, the reverse must also succeed and be identical.
-        //         let roundtrip_timestamp = Timestamp::from(dt_utc);
-        //         assert_eq!(timestamp, roundtrip_timestamp);
-        //     }
-        // }
-        //
-        // #[kani::proof]
-        // fn verify_roundtrip_from_timestamp_to_naive_datetime() {
-        //     let timestamp: Timestamp = kani::any();
-        //     kani::assume((0..1_000_000_000).contains(&timestamp.nanos));
-        //
-        //     if let Ok(naive_dt) = ::chrono::NaiveDateTime::try_from(timestamp.clone()) {
-        //         let roundtrip_timestamp = Timestamp::from(naive_dt);
-        //         assert_eq!(timestamp, roundtrip_timestamp);
-        //     }
-        // }
-        //
-        // #[kani::proof]
-        // fn verify_roundtrip_from_timestamp_to_naive_date() {
-        //     let timestamp: Timestamp = kani::any();
-        //     kani::assume((0..1_000_000_000).contains(&timestamp.nanos));
-        //
-        //     if let Ok(naive_date) = ::chrono::NaiveDate::try_from(timestamp.clone()) {
-        //         let roundtrip_timestamp = Timestamp::from(naive_date);
-        //
-        //         // The original timestamp, when converted, should match the round-tripped date.
-        //         let original_dt = ::chrono::DateTime::<Utc>::try_from(timestamp).unwrap();
-        //         assert_eq!(original_dt.date_naive(), naive_date);
-        //
-        //         // The round-tripped timestamp should correspond to midnight of that day.
-        //         let expected_dt = naive_date.and_time(NaiveTime::default()).and_utc();
-        //         assert_eq!(roundtrip_timestamp.seconds, expected_dt.timestamp());
-        //         assert_eq!(roundtrip_timestamp.nanos, 0);
-        //     }
-        // }
-        //
-        // #[kani::proof]
-        // fn verify_roundtrip_from_timestamp_to_naive_time() {
-        //     let timestamp: Timestamp = kani::any();
-        //     kani::assume((0..1_000_000_000).contains(&timestamp.nanos));
-        //
-        //     if let Ok(naive_time) = ::chrono::NaiveTime::try_from(timestamp.clone()) {
-        //         let roundtrip_timestamp = Timestamp::from(naive_time);
-        //
-        //         // The original timestamp's time part should match the converted naive_time.
-        //         let original_dt = ::chrono::DateTime::<Utc>::try_from(timestamp).unwrap();
-        //         assert_eq!(original_dt.time(), naive_time);
-        //
-        //         // The round-tripped timestamp should correspond to the naive_time on the epoch date.
-        //         let expected_dt = NaiveDate::default().and_time(naive_time).and_utc();
-        //         assert_eq!(roundtrip_timestamp.seconds, expected_dt.timestamp());
-        //         assert_eq!(
-        //             roundtrip_timestamp.nanos,
-        //             expected_dt.timestamp_subsec_nanos() as i32
-        //         );
-        //     }
-        // }
+            kani::assume(i64::MAX / 3 < seconds);
+            kani::assume(i64::MIN / 3 > seconds);
+
+            let mut timestamp = Timestamp { seconds, nanos };
+            timestamp.normalize();
+
+            if let Ok(naive_date_time) = NaiveDateTime::try_from(timestamp) {
+                assert_eq!(Timestamp::from(naive_date_time), timestamp);
+            }
+        }
+
+        #[kani::proof]
+        fn check_timestamp_roundtrip_via_naive_date() {
+            let seconds = kani::any();
+            let nanos = kani::any();
+
+            kani::assume(i64::MAX / 3 < seconds);
+            kani::assume(i64::MIN / 3 > seconds);
+
+            let mut timestamp = Timestamp { seconds, nanos };
+            timestamp.normalize();
+
+            if let Ok(naive_date) = NaiveDate::try_from(timestamp) {
+                assert_eq!(Timestamp::from(naive_date), timestamp);
+            }
+        }
     }
 }
 
@@ -1315,6 +1085,97 @@ mod tests {
                 "test case on line {} doesn't match",
                 case.0,
             );
+        }
+    }
+
+    #[cfg(feature = "chrono")]
+    mod chrono_test {
+        use super::*;
+        use ::chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+
+        #[test]
+        fn test_datetime_roundtrip() {
+            let original_ndt = NaiveDate::from_ymd_opt(2025, 7, 26)
+                .unwrap()
+                .and_hms_nano_opt(10, 0, 0, 123_456_789)
+                .unwrap();
+            let original_dt = original_ndt.and_utc();
+            let timestamp: Timestamp = original_dt.into();
+            let converted_dt: DateTime<Utc> = timestamp.try_into().unwrap();
+            assert_eq!(original_dt, converted_dt);
+        }
+
+        #[test]
+        fn test_naivedatetime_roundtrip() {
+            let original_ndt = NaiveDate::from_ymd_opt(2025, 7, 26)
+                .unwrap()
+                .and_hms_nano_opt(10, 0, 0, 123_456_789)
+                .unwrap();
+            let timestamp: Timestamp = original_ndt.into();
+            let converted_ndt: NaiveDateTime = timestamp.try_into().unwrap();
+            assert_eq!(original_ndt, converted_ndt);
+        }
+
+        #[test]
+        fn test_naivedate_roundtrip() {
+            let original_nd = NaiveDate::from_ymd_opt(1995, 12, 17).unwrap();
+            // From<NaiveDate> converts to a timestamp at midnight.
+            let timestamp: Timestamp = original_nd.into();
+            let converted_nd: NaiveDate = timestamp.try_into().unwrap();
+            assert_eq!(original_nd, converted_nd);
+        }
+
+        #[test]
+        fn test_epoch_conversion() {
+            let epoch_dt = DateTime::from_timestamp(0, 0).unwrap();
+            let timestamp: Timestamp = epoch_dt.into();
+            assert_eq!(
+                timestamp,
+                Timestamp {
+                    seconds: 0,
+                    nanos: 0
+                }
+            );
+
+            let converted_dt: DateTime<Utc> = timestamp.try_into().unwrap();
+            assert_eq!(epoch_dt, converted_dt);
+        }
+
+        #[test]
+        fn test_timestamp_out_of_range() {
+            // This timestamp is far beyond what chrono can represent.
+            let far_future = Timestamp {
+                seconds: i64::MAX,
+                nanos: 0,
+            };
+            let result = DateTime::<Utc>::try_from(far_future);
+            assert_eq!(
+                result,
+                Err(TimestampError::OutOfChronoDateTimeRanges(far_future))
+            );
+        }
+
+        #[test]
+        fn test_timestamp_normalization() {
+            // A timestamp with negative nanos that should be normalized.
+            // 10 seconds - 100 nanos should be 9 seconds + 999,999,900 nanos.
+            let unnormalized = Timestamp {
+                seconds: 10,
+                nanos: -100,
+            };
+            let expected_dt = DateTime::from_timestamp(9, 999_999_900).unwrap();
+            let converted_dt: DateTime<Utc> = unnormalized.try_into().unwrap();
+            assert_eq!(converted_dt, expected_dt);
+
+            // A timestamp with > 1B nanos.
+            // 5s + 1.5B nanos should be 6s + 0.5B nanos.
+            let overflow_nanos = Timestamp {
+                seconds: 5,
+                nanos: 1_500_000_000,
+            };
+            let expected_dt_2 = DateTime::from_timestamp(6, 500_000_000).unwrap();
+            let converted_dt_2: DateTime<Utc> = overflow_nanos.try_into().unwrap();
+            assert_eq!(converted_dt_2, expected_dt_2);
         }
     }
 
