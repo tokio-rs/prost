@@ -113,6 +113,16 @@ impl Timestamp {
 
         Timestamp::try_from(date_time)
     }
+
+    pub const MAX: Timestamp = Timestamp {
+        seconds: i64::MAX,
+        nanos: NANOS_PER_SECOND - 1,
+    };
+
+    pub const MIN: Timestamp = Timestamp {
+        seconds: i64::MIN,
+        nanos: 0,
+    };
 }
 
 impl Add<Duration> for Timestamp {
