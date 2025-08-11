@@ -43,6 +43,19 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///    input is required to decode the full delimiter.
 ///  * If the supplied buffer contains 10 bytes or more, then the buffer contains an invalid
 ///    delimiter, and typically the buffer should be considered corrupt.
+///
+/// # Examples
+///
+/// ```
+/// use prost::bytes::Bytes;
+///
+/// let mut buf = Bytes::from(vec![0x04, 0x0a, 0x02, 0x01, 0x02]);
+/// let len = prost::decode_length_delimiter(&mut buf).unwrap();
+/// let message_buf = buf.split_to(len);
+///
+/// assert_eq!(len, 4);
+/// assert_eq!(&message_buf[..], [0x0a, 0x02, 0x01, 0x02]);
+/// ```
 pub fn decode_length_delimiter(mut buf: impl Buf) -> Result<usize, DecodeError> {
     let length = decode_varint(&mut buf)?;
     if length > usize::MAX as u64 {
