@@ -51,10 +51,9 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///
 /// let mut buf = Bytes::from(vec![0x04, 0x0a, 0x02, 0x01, 0x02]);
 /// let len = prost::decode_length_delimiter(&mut buf).unwrap();
-/// let message_buf = buf.split_to(len);
 ///
 /// assert_eq!(len, 4);
-/// assert_eq!(&message_buf[..], [0x0a, 0x02, 0x01, 0x02]);
+/// assert_eq!(&buf[..], [0x0a, 0x02, 0x01, 0x02]);
 /// ```
 pub fn decode_length_delimiter(mut buf: impl Buf) -> Result<usize, DecodeError> {
     let length = decode_varint(&mut buf)?;
