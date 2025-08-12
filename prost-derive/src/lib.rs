@@ -317,7 +317,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             #[doc=#is_valid_doc]
-            pub fn is_valid(value: i32) -> bool {
+            pub const fn is_valid(value: i32) -> bool {
                 match value {
                     #(#is_valid,)*
                     _ => false,

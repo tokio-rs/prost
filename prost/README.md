@@ -164,7 +164,7 @@ The `#[derive(::prost::Enumeration)]` annotation added to the generated
 
 ```rust,ignore
 impl PhoneType {
-    pub fn is_valid(value: i32) -> bool { ... }
+    pub const fn is_valid(value: i32) -> bool { ... }
     #[deprecated]
     pub fn from_i32(value: i32) -> Option<PhoneType> { ... }
 }
