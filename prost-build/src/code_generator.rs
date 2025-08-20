@@ -848,7 +848,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.buf.push_str(variant.proto_name);
             self.buf.push_str("\" => Some(");
             if variant.deprecated {
-                self.buf.push_str("#[allow(deprecated)]");
+                self.buf.push_str("#[allow(deprecated)] ");
             }
             self.buf.push_str("Self::");
             self.buf.push_str(&variant.generated_variant_name);
@@ -1160,5 +1160,5 @@ fn enum_field_deprecated(value: &EnumValueDescriptorProto) -> bool {
     value
         .options
         .as_ref()
-        .map_or(false, EnumValueOptions::deprecated)
+        .is_some_and(EnumValueOptions::deprecated)
 }

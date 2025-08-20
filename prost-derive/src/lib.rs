@@ -10,8 +10,8 @@ use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    parse_quote, punctuated::Punctuated, Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr,
-    Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Variant,
+    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
+    FieldsUnnamed, Ident, Index, Variant,
 };
 
 mod field;
@@ -274,7 +274,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     // Map the variants into 'fields'.
-    let mut variants: Vec<(Ident, Expr, Option<Attribute>)> = Vec::new();
+    let mut variants: Vec<(Ident, Expr, Option<TokenStream>)> = Vec::new();
     for Variant {
         attrs,
         ident,
@@ -291,8 +291,8 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         }
         match discriminant {
             Some((_, expr)) => {
-                let deprecated_attr = if attrs.contains(&parse_quote! { #[deprecated] }) {
-                    Some(parse_quote!(#[allow(deprecated)]))
+                let deprecated_attr = if attrs.iter().any(|v| v.path().is_ident("deprecated")) {
+                    Some(quote!(#[allow(deprecated)]))
                 } else {
                     None
                 };
@@ -394,7 +394,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     // Map the variants into 'fields'.
-    let mut fields: Vec<(Ident, Field)> = Vec::new();
+    let mut fields: Vec<(Ident, Field, Option<TokenStream>)> = Vec::new();
     for Variant {
         attrs,
         ident: variant_ident,
@@ -412,19 +412,24 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         if variant_fields.len() != 1 {
             bail!("Oneof enum variants must have a single field");
         }
+        let deprecated_attr = if attrs.iter().any(|v| v.path().is_ident("deprecated")) {
+            Some(quote!(#[allow(deprecated)]))
+        } else {
+            None
+        };
         match Field::new_oneof(attrs)? {
-            Some(field) => fields.push((variant_ident, field)),
+            Some(field) => fields.push((variant_ident, field, deprecated_attr)),
             None => bail!("invalid oneof variant: oneof variants may not be ignored"),
         }
     }
 
     // Oneof variants cannot be oneofs themselves, so it's impossible to have a field with multiple
     // tags.
-    assert!(fields.iter().all(|(_, field)| field.tags().len() == 1));
+    assert!(fields.iter().all(|(_, field, _)| field.tags().len() == 1));
 
     if let Some(duplicate_tag) = fields
         .iter()
-        .flat_map(|(_, field)| field.tags())
+        .flat_map(|(_, field, _)| field.tags())
         .duplicates()
         .next()
     {
@@ -435,32 +440,32 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         );
     }
 
-    let encode = fields.iter().map(|(variant_ident, field)| {
+    let encode = fields.iter().map(|(variant_ident, field, deprecated)| {
         let encode = field.encode(quote!(*value));
-        quote!(#ident::#variant_ident(ref value) => { #encode })
+        quote!(#deprecated #ident::#variant_ident(ref value) => { #encode })
     });
 
-    let merge = fields.iter().map(|(variant_ident, field)| {
+    let merge = fields.iter().map(|(variant_ident, field, deprecated)| {
         let tag = field.tags()[0];
         let merge = field.merge(quote!(value));
         quote! {
+            #deprecated
             #tag => if let ::core::option::Option::Some(#ident::#variant_ident(value)) = field {
                 #merge
             } else {
                 let mut owned_value = ::core::default::Default::default();
                 let value = &mut owned_value;
-                #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
+                #merge.map(|_| *field = ::core::option::Option::Some(#deprecated #ident::#variant_ident(owned_value)))
             }
         }
     });
 
-    let encoded_len = fields.iter().map(|(variant_ident, field)| {
+    let encoded_len = fields.iter().map(|(variant_ident, field, deprecated)| {
         let encoded_len = field.encoded_len(quote!(*value));
-        quote!(#ident::#variant_ident(ref value) => #encoded_len)
+        quote!(#deprecated #ident::#variant_ident(ref value) => #encoded_len)
     });
 
     let expanded = quote! {
-        #[allow(deprecated)]
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
             pub fn encode(&self, buf: &mut impl ::prost::bytes::BufMut) {
@@ -497,9 +502,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = if skip_debug {
         expanded
     } else {
-        let debug = fields.iter().map(|(variant_ident, field)| {
+        let debug = fields.iter().map(|(variant_ident, field, deprecated)| {
             let wrapper = field.debug(quote!(*value));
-            quote!(#ident::#variant_ident(ref value) => {
+            quote!(#deprecated #ident::#variant_ident(ref value) => {
                 let wrapper = #wrapper;
                 f.debug_tuple(stringify!(#variant_ident))
                     .field(&wrapper)
@@ -509,7 +514,6 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote! {
             #expanded
 
-            #[allow(deprecated)]
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                     match *self {
