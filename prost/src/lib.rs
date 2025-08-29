@@ -9,6 +9,7 @@ pub extern crate alloc;
 // Re-export the bytes crate for use within derived code.
 pub use bytes;
 
+pub mod builder;
 mod error;
 mod message;
 mod name;

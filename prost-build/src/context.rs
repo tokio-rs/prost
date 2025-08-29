@@ -303,4 +303,12 @@ impl<'a> Context<'a> {
             .get_first(fq_message_name)
             .map_or("", |name| name.as_str())
     }
+
+    /// Returns the builder type name for the named message, if configured.
+    pub fn builder_name(&self, fq_message_name: &str) -> Option<String> {
+        self.config
+            .builders
+            .get_first(fq_message_name)
+            .map(|name| name.to_owned())
+    }
 }
