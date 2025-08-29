@@ -76,7 +76,7 @@ pub trait Message: Send + Sync {
         Self: Sized,
     {
         let len = self.encoded_len();
-        let required = len + encoded_len_varint(len as u64);
+        let required = len.saturating_add(encoded_len_varint(len as u64));
         let remaining = buf.remaining_mut();
         if required > remaining {
             return Err(EncodeError::new(required, remaining));
@@ -92,7 +92,7 @@ pub trait Message: Send + Sync {
         Self: Sized,
     {
         let len = self.encoded_len();
-        let mut buf = Vec::with_capacity(len + encoded_len_varint(len as u64));
+        let mut buf = Vec::with_capacity(len.saturating_add(encoded_len_varint(len as u64)));
 
         encode_varint(len as u64, &mut buf);
         self.encode_raw(&mut buf);

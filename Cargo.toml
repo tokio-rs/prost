@@ -12,6 +12,7 @@ members = [
   "tests-2018",
   "tests-2024",
   "tests-no-std",
+  "tests/overflow",
   "tests/single-include",
   "fuzz",
 ]
@@ -33,3 +34,14 @@ edition = "2021"
 
 [profile.bench]
 debug = true
+
+[profile.test.package.tests-overflow]
+# Optimize tests to not spend stupid amounts of time looping through repetitive
+# encoded fields used for length padding.
+opt-level = 1
+# Code under test is expected to explicitly check for overflows and panic,
+# so disable built-in checks.
+overflow-checks = false
+
+[profile.test.package.prost]
+overflow-checks = false
