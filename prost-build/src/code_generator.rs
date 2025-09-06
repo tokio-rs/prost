@@ -172,6 +172,14 @@ impl<'b> CodeGenerator<'_, 'b> {
         let message_name = message.name().to_string();
         let fq_message_name = self.fq_name(&message_name);
 
+        // Validate Edition 2023 limits
+        if let Err(e) = self.validate_edition_2023_limits(&message) {
+            panic!("Edition 2023 validation failed: {}", e);
+        }
+
+        // Add reserved fields handling for Edition 2023
+        self.append_reserved_fields(&message);
+
         // Skip external types.
         if self
             .context
@@ -442,6 +450,18 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .push_str(&format!(" = {:?}", bytes_type.annotation()));
         }
 
+        // Handle field options for Edition 2023
+        if self.syntax == Syntax::Edition2023 {
+            if let Some(ref options) = field.descriptor.options {
+                if options.deprecated.unwrap_or(false) {
+                    self.buf.push_str(", deprecated");
+                }
+                if options.packed.unwrap_or(false) {
+                    self.buf.push_str(", packed = \"true\"");
+                }
+            }
+        }
+
         match field.descriptor.label() {
             Label::Optional => {
                 if optional {
@@ -456,7 +476,7 @@ impl<'b> CodeGenerator<'_, 'b> {
                         .descriptor
                         .options
                         .as_ref()
-                        .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
+                        .map_or(self.syntax == Syntax::Proto3 || self.syntax == Syntax::Edition2023, |options| options.packed())
                 {
                     self.buf.push_str(", packed = \"false\"");
                 }
@@ -1049,13 +1069,82 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         match field.r#type() {
             Type::Message => true,
-            _ => self.syntax == Syntax::Proto2,
+            _ => self.syntax == Syntax::Proto2 || self.syntax == Syntax::Edition2023,
         }
     }
 
     /// Returns `true` if the field options includes the `deprecated` option.
     fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
         field.options.as_ref().is_some_and(FieldOptions::deprecated)
+    }
+
+    /// Validates Edition 2023 field limits and constraints
+    fn validate_edition_2023_limits(&self, message: &DescriptorProto) -> Result<(), String> {
+        if self.syntax != Syntax::Edition2023 {
+            return Ok(());
+        }
+
+        // Edition 2023 has a limit of 3100 singular fields per message
+        let singular_field_count = message.field.iter()
+            .filter(|field| field.label() == Label::Optional || field.label() == Label::Required)
+            .count();
+
+        if singular_field_count > 3100 {
+            return Err(format!(
+                "Edition 2023 message '{}' has {} singular fields, but the limit is 3100",
+                message.name(),
+                singular_field_count
+            ));
+        }
+
+        // Validate enum values limit (1700 max)
+        for enum_def in &message.enum_type {
+            if enum_def.value.len() > 1700 {
+                return Err(format!(
+                    "Edition 2023 enum '{}' has {} values, but the limit is 1700",
+                    enum_def.name(),
+                    enum_def.value.len()
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handles reserved fields for Edition 2023
+    fn append_reserved_fields(&mut self, message: &DescriptorProto) {
+        if self.syntax != Syntax::Edition2023 {
+            return;
+        }
+        
+        if !message.reserved_name.is_empty() || !message.reserved_range.is_empty() {
+            self.push_indent();
+            self.buf.push_str("// Reserved fields for Edition 2023\n");
+            
+            if !message.reserved_name.is_empty() {
+                self.push_indent();
+                self.buf.push_str("// Reserved names: ");
+                for (i, name) in message.reserved_name.iter().enumerate() {
+                    if i > 0 { self.buf.push_str(", "); }
+                    self.buf.push_str(&format!("\"{}\"", name));
+                }
+                self.buf.push_str("\n");
+            }
+            
+            if !message.reserved_range.is_empty() {
+                self.push_indent();
+                self.buf.push_str("// Reserved ranges: ");
+                for (i, range) in message.reserved_range.iter().enumerate() {
+                    if i > 0 { self.buf.push_str(", "); }
+                    if let (Some(start), Some(end)) = (range.start, range.end) {
+                        self.buf.push_str(&format!("{}-{}", start, end - 1));
+                    } else if let Some(start) = range.start {
+                        self.buf.push_str(&format!("{}", start));
+                    }
+                }
+                self.buf.push_str("\n");
+            }
+        }
     }
 
     /// Returns the fully-qualified name, starting with a dot
