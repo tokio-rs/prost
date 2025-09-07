@@ -472,11 +472,10 @@ impl<'b> CodeGenerator<'_, 'b> {
             Label::Repeated => {
                 self.buf.push_str(", repeated");
                 if can_pack(&field.descriptor)
-                    && !field
-                        .descriptor
-                        .options
-                        .as_ref()
-                        .map_or(self.syntax == Syntax::Proto3 || self.syntax == Syntax::Edition2023, |options| options.packed())
+                    && !field.descriptor.options.as_ref().map_or(
+                        self.syntax == Syntax::Proto3 || self.syntax == Syntax::Edition2023,
+                        |options| options.packed(),
+                    )
                 {
                     self.buf.push_str(", packed = \"false\"");
                 }
@@ -1085,7 +1084,9 @@ impl<'b> CodeGenerator<'_, 'b> {
         }
 
         // Edition 2023 has a limit of 3100 singular fields per message
-        let singular_field_count = message.field.iter()
+        let singular_field_count = message
+            .field
+            .iter()
             .filter(|field| field.label() == Label::Optional || field.label() == Label::Required)
             .count();
 
@@ -1116,33 +1117,37 @@ impl<'b> CodeGenerator<'_, 'b> {
         if self.syntax != Syntax::Edition2023 {
             return;
         }
-        
+
         if !message.reserved_name.is_empty() || !message.reserved_range.is_empty() {
             self.push_indent();
             self.buf.push_str("// Reserved fields for Edition 2023\n");
-            
+
             if !message.reserved_name.is_empty() {
                 self.push_indent();
                 self.buf.push_str("// Reserved names: ");
                 for (i, name) in message.reserved_name.iter().enumerate() {
-                    if i > 0 { self.buf.push_str(", "); }
+                    if i > 0 {
+                        self.buf.push_str(", ");
+                    }
                     self.buf.push_str(&format!("\"{}\"", name));
                 }
-                self.buf.push_str("\n");
+                self.buf.push('\n');
             }
-            
+
             if !message.reserved_range.is_empty() {
                 self.push_indent();
                 self.buf.push_str("// Reserved ranges: ");
                 for (i, range) in message.reserved_range.iter().enumerate() {
-                    if i > 0 { self.buf.push_str(", "); }
+                    if i > 0 {
+                        self.buf.push_str(", ");
+                    }
                     if let (Some(start), Some(end)) = (range.start, range.end) {
                         self.buf.push_str(&format!("{}-{}", start, end - 1));
                     } else if let Some(start) = range.start {
                         self.buf.push_str(&format!("{}", start));
                     }
                 }
-                self.buf.push_str("\n");
+                self.buf.push('\n');
             }
         }
     }
