@@ -136,7 +136,7 @@ jobs:
           - stable
         os:
           - ubuntu-latest
-          - macos-latest
+          - macos-14
           - windows-latest
     steps:
       - uses: actions/checkout@v5
