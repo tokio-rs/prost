@@ -291,7 +291,7 @@ mod tests {
 
     macro_rules! assert_eq_fixture_file {
         ($expected_path:expr, $actual_path:expr) => {{
-            let actual = std::fs::read_to_string($actual_path).unwrap();
+            let actual = std::fs::read_to_string($actual_path).expect("Failed to read actual file");
 
             // Normalizes windows and Linux-style EOL
             let actual = actual.replace("\r\n", "\n");
@@ -302,13 +302,14 @@ mod tests {
 
     macro_rules! assert_eq_fixture_contents {
         ($expected_path:expr, $actual:expr) => {{
-            let expected = std::fs::read_to_string($expected_path).unwrap();
+            let expected =
+                std::fs::read_to_string($expected_path).expect("Failed to read expected file");
 
             // Normalizes windows and Linux-style EOL
             let expected = expected.replace("\r\n", "\n");
 
             if expected != $actual {
-                std::fs::write($expected_path, &$actual).unwrap();
+                std::fs::write($expected_path, &$actual).expect("Failed to write expected file");
             }
 
             assert_eq!(expected, $actual);
