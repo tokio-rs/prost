@@ -2,8 +2,6 @@
 //!
 //! Meant to be used only from `Message` implementations.
 
-#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
-
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
@@ -91,7 +89,6 @@ impl DecodeContext {
 
     #[cfg(feature = "no-recursion-limit")]
     #[inline]
-    #[allow(clippy::unnecessary_wraps)] // needed in other features
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         Ok(())
     }
@@ -538,6 +535,7 @@ macro_rules! length_delimited {
         }
 
         #[inline]
+        #[allow(clippy::ptr_arg)]
         pub fn encoded_len(tag: u32, value: &$ty) -> usize {
             key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
         }

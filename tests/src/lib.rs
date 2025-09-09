@@ -1,8 +1,4 @@
-#![allow(
-    clippy::cognitive_complexity,
-    clippy::module_inception,
-    clippy::unreadable_literal
-)]
+#![allow(clippy::module_inception)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
@@ -138,7 +134,6 @@ pub enum RoundtripResult {
     Error(anyhow::Error),
 }
 
-#[allow(clippy::uninlined_format_args)]
 impl RoundtripResult {
     /// Unwrap the roundtrip result.
     pub fn unwrap(self) -> Vec<u8> {
