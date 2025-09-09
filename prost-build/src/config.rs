@@ -52,6 +52,8 @@ pub struct Config {
     pub(crate) skip_source_info: bool,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
+    pub(crate) type_name_prefixes: PathMap<String>,
+    pub(crate) type_name_suffixes: PathMap<String>,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -350,6 +352,134 @@ impl Config {
     {
         self.enum_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    /// Add a suffix to all generated type names.
+    ///
+    /// # Arguments
+    ///
+    /// **`suffix`** - an arbitrary string to be appended to all type names. For example,
+    /// "Proto" would change `MyMessage` to `MyMessageProto`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Add "Proto" suffix to all generated types
+    /// config.type_name_suffix("Proto");
+    /// ```
+    pub fn type_name_suffix<S>(&mut self, suffix: S) -> &mut Self
+    where
+        S: AsRef<str>,
+    {
+        self.type_name_suffixes
+            .insert(".".to_string(), suffix.as_ref().to_string());
+        self
+    }
+
+    /// Add a prefix to all generated type names.
+    ///
+    /// # Arguments
+    ///
+    /// **`prefix`** - an arbitrary string to be prepended to all type names. For example,
+    /// "Proto" would change `MyMessage` to `ProtoMyMessage`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Add "Proto" prefix to all generated types
+    /// config.type_name_prefix("Proto");
+    /// ```
+    pub fn type_name_prefix<P>(&mut self, prefix: P) -> &mut Self
+    where
+        P: AsRef<str>,
+    {
+        self.type_name_prefixes
+            .insert(".".to_string(), prefix.as_ref().to_string());
+        self
+    }
+
+    /// Configure package-specific type name suffixes.
+    ///
+    /// This allows different suffix settings for different proto packages,
+    /// which is especially useful for cross-crate compatibility when importing
+    /// proto files from external crates.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - package paths with their desired suffix. Paths starting with '.'
+    /// are treated as fully-qualified package names. Paths without a leading '.' are
+    /// treated as relative and suffix-matched.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Apply "Proto" suffix to a specific package
+    /// config.package_type_name_suffix([(".my_package", "Proto")]);
+    ///
+    /// // Apply different suffixes to different packages
+    /// config.package_type_name_suffix([
+    ///     (".external_api", "External"),  // external API types
+    ///     (".internal", "Internal"),       // internal types
+    /// ]);
+    ///
+    /// // Apply suffix to all packages under a namespace
+    /// config.package_type_name_suffix([("my_company", "Pb")]);
+    /// ```
+    pub fn package_type_name_suffix<I, P, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (P, S)>,
+        P: AsRef<str>,
+        S: AsRef<str>,
+    {
+        for (path, suffix) in paths {
+            self.type_name_suffixes
+                .insert(path.as_ref().to_string(), suffix.as_ref().to_string());
+        }
+        self
+    }
+
+    /// Configure package-specific type name prefixes.
+    ///
+    /// This allows different prefix settings for different proto packages,
+    /// which is especially useful for cross-crate compatibility when importing
+    /// proto files from external crates.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - package paths with their desired prefix. Paths starting with '.'
+    /// are treated as fully-qualified package names. Paths without a leading '.' are
+    /// treated as relative and suffix-matched.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Apply "Proto" prefix to a specific package
+    /// config.package_type_name_prefix([(".my_package", "Proto")]);
+    ///
+    /// // Apply different prefixes to different packages
+    /// config.package_type_name_prefix([
+    ///     (".external_api", "External"),  // external API types
+    ///     (".internal", "Internal"),       // internal types
+    /// ]);
+    ///
+    /// // Apply prefix to all packages under a namespace
+    /// config.package_type_name_prefix([("my_company", "Pb")]);
+    /// ```
+    pub fn package_type_name_prefix<I, P, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (P, S)>,
+        P: AsRef<str>,
+        S: AsRef<str>,
+    {
+        for (path, prefix) in paths {
+            self.type_name_prefixes
+                .insert(path.as_ref().to_string(), prefix.as_ref().to_string());
+        }
         self
     }
 
@@ -1193,6 +1323,8 @@ impl default::Default for Config {
             skip_source_info: false,
             include_file: None,
             prost_path: None,
+            type_name_prefixes: PathMap::default(),
+            type_name_suffixes: PathMap::default(),
             #[cfg(feature = "format")]
             fmt: true,
         }
@@ -1219,6 +1351,8 @@ impl fmt::Debug for Config {
             .field("disable_comments", &self.disable_comments)
             .field("skip_debug", &self.skip_debug)
             .field("prost_path", &self.prost_path)
+            .field("type_name_prefixes", &self.type_name_prefixes)
+            .field("type_name_suffixes", &self.type_name_suffixes)
             .finish()
     }
 }

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package type_name_imports;
+
+import "google/protobuf/timestamp.proto";
+import "type_name_external_package.proto";
+
+// Test imported types with package-specific suffixes
+message ImportTestMessage {
+    // Test importing a well-known type (google.protobuf.Timestamp)
+    // Well-known types are handled by prost_types, so they don't get suffixes
+    google.protobuf.Timestamp created_at = 1;
+
+    // Test local nested message to ensure suffix applies to local types
+    message NestedMessage {
+        string content = 1;
+    }
+
+    NestedMessage nested = 2;
+
+    // Test importing from external package with different suffix
+    external_package.ExternalMessage external_ref = 3;
+    external_package.ExternalStatus external_status = 4;
+}
