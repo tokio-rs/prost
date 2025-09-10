@@ -5,28 +5,29 @@
 extern crate alloc;
 extern crate proc_macro;
 
-use anyhow::{bail, Error};
+use anyhow::{bail, Context, Error};
 use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed,
-    FieldsUnnamed, Ident, Index, Variant,
+    punctuated::Punctuated, Data, DataEnum, DataStruct, DeriveInput, Expr, ExprLit, Fields,
+    FieldsNamed, FieldsUnnamed, Ident, Index, Variant,
 };
+use syn::{Attribute, Lit, Meta, MetaNameValue, Path, Token};
 
 mod field;
 use crate::field::Field;
 
+use self::field::set_option;
+
 fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse2(input)?;
-
     let ident = input.ident;
 
-    syn::custom_keyword!(skip_debug);
-    let skip_debug = input
-        .attrs
-        .into_iter()
-        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+    let Attributes {
+        skip_debug,
+        prost_path,
+    } = Attributes::new(input.attrs)?;
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -105,14 +106,14 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let encoded_len = fields
         .iter()
-        .map(|(field_ident, field)| field.encoded_len(quote!(self.#field_ident)));
+        .map(|(field_ident, field)| field.encoded_len(&prost_path, quote!(self.#field_ident)));
 
     let encode = fields
         .iter()
-        .map(|(field_ident, field)| field.encode(quote!(self.#field_ident)));
+        .map(|(field_ident, field)| field.encode(&prost_path, quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|(field_ident, field)| {
-        let merge = field.merge(quote!(value));
+        let merge = field.merge(&prost_path, quote!(value));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
         let tags = Itertools::intersperse(tags, quote!(|));
 
@@ -141,7 +142,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let default = if is_struct {
         let default = fields.iter().map(|(field_ident, field)| {
-            let value = field.default();
+            let value = field.default(&prost_path);
             quote!(#field_ident: #value,)
         });
         quote! {#ident {
@@ -149,7 +150,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }}
     } else {
         let default = fields.iter().map(|(_, field)| {
-            let value = field.default();
+            let value = field.default(&prost_path);
             quote!(#value,)
         });
         quote! {#ident (
@@ -159,7 +160,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let methods = fields
         .iter()
-        .flat_map(|(field_ident, field)| field.methods(field_ident))
+        .flat_map(|(field_ident, field)| field.methods(&prost_path, field_ident))
         .collect::<Vec<_>>();
     let methods = if methods.is_empty() {
         quote!()
@@ -173,9 +174,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     let expanded = quote! {
-        impl #impl_generics ::prost::Message for #ident #ty_generics #where_clause {
+        impl #impl_generics #prost_path::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
-            fn encode_raw(&self, buf: &mut impl ::prost::bytes::BufMut) {
+            fn encode_raw(&self, buf: &mut impl #prost_path::bytes::BufMut) {
                 #(#encode)*
             }
 
@@ -183,15 +184,15 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             fn merge_field(
                 &mut self,
                 tag: u32,
-                wire_type: ::prost::encoding::wire_type::WireType,
-                buf: &mut impl ::prost::bytes::Buf,
-                ctx: ::prost::encoding::DecodeContext,
-            ) -> ::core::result::Result<(), ::prost::DecodeError>
+                wire_type: #prost_path::encoding::wire_type::WireType,
+                buf: &mut impl #prost_path::bytes::Buf,
+                ctx: #prost_path::encoding::DecodeContext,
+            ) -> ::core::result::Result<(), #prost_path::DecodeError>
             {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+                    _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx),
                 }
             }
 
@@ -215,7 +216,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         expanded
     } else {
         let debugs = unsorted_fields.iter().map(|(field_ident, field)| {
-            let wrapper = field.debug(quote!(self.#field_ident));
+            let wrapper = field.debug(&prost_path, quote!(self.#field_ident));
             let call = if is_struct {
                 quote!(builder.field(stringify!(#field_ident), &wrapper))
             } else {
@@ -263,6 +264,8 @@ pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let input: DeriveInput = syn::parse2(input)?;
     let ident = input.ident;
+
+    let Attributes { prost_path, .. } = Attributes::new(input.attrs)?;
 
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -347,12 +350,12 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         }
 
         impl #impl_generics ::core::convert::TryFrom::<i32> for #ident #ty_generics #where_clause {
-            type Error = ::prost::UnknownEnumValue;
+            type Error = #prost_path::UnknownEnumValue;
 
-            fn try_from(value: i32) -> ::core::result::Result<#ident, ::prost::UnknownEnumValue> {
+            fn try_from(value: i32) -> ::core::result::Result<#ident, #prost_path::UnknownEnumValue> {
                 match value {
                     #(#try_from,)*
-                    _ => ::core::result::Result::Err(::prost::UnknownEnumValue(value)),
+                    _ => ::core::result::Result::Err(#prost_path::UnknownEnumValue(value)),
                 }
             }
         }
@@ -371,11 +374,10 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let ident = input.ident;
 
-    syn::custom_keyword!(skip_debug);
-    let skip_debug = input
-        .attrs
-        .into_iter()
-        .any(|a| a.path().is_ident("prost") && a.parse_args::<skip_debug>().is_ok());
+    let Attributes {
+        skip_debug,
+        prost_path,
+    } = Attributes::new(input.attrs)?;
 
     let variants = match input.data {
         Data::Enum(DataEnum { variants, .. }) => variants,
@@ -429,13 +431,13 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     }
 
     let encode = fields.iter().map(|(variant_ident, field)| {
-        let encode = field.encode(quote!(*value));
+        let encode = field.encode(&prost_path, quote!(*value));
         quote!(#ident::#variant_ident(ref value) => { #encode })
     });
 
     let merge = fields.iter().map(|(variant_ident, field)| {
         let tag = field.tags()[0];
-        let merge = field.merge(quote!(value));
+        let merge = field.merge(&prost_path, quote!(value));
         quote! {
             #tag => if let ::core::option::Option::Some(#ident::#variant_ident(value)) = field {
                 #merge
@@ -448,14 +450,14 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     });
 
     let encoded_len = fields.iter().map(|(variant_ident, field)| {
-        let encoded_len = field.encoded_len(quote!(*value));
+        let encoded_len = field.encoded_len(&prost_path, quote!(*value));
         quote!(#ident::#variant_ident(ref value) => #encoded_len)
     });
 
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
-            pub fn encode(&self, buf: &mut impl ::prost::bytes::BufMut) {
+            pub fn encode(&self, buf: &mut impl #prost_path::bytes::BufMut) {
                 match *self {
                     #(#encode,)*
                 }
@@ -465,10 +467,10 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             pub fn merge(
                 field: &mut ::core::option::Option<#ident #ty_generics>,
                 tag: u32,
-                wire_type: ::prost::encoding::wire_type::WireType,
-                buf: &mut impl ::prost::bytes::Buf,
-                ctx: ::prost::encoding::DecodeContext,
-            ) -> ::core::result::Result<(), ::prost::DecodeError>
+                wire_type: #prost_path::encoding::wire_type::WireType,
+                buf: &mut impl #prost_path::bytes::Buf,
+                ctx: #prost_path::encoding::DecodeContext,
+            ) -> ::core::result::Result<(), #prost_path::DecodeError>
             {
                 match tag {
                     #(#merge,)*
@@ -490,7 +492,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         expanded
     } else {
         let debug = fields.iter().map(|(variant_ident, field)| {
-            let wrapper = field.debug(quote!(*value));
+            let wrapper = field.debug(&prost_path, quote!(*value));
             quote!(#ident::#variant_ident(ref value) => {
                 let wrapper = #wrapper;
                 f.debug_tuple(stringify!(#variant_ident))
@@ -517,6 +519,73 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 #[proc_macro_derive(Oneof, attributes(prost))]
 pub fn oneof(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     try_oneof(input.into()).unwrap().into()
+}
+
+/// Get the items belonging to the 'prost' list attribute, e.g. `#[prost(foo, bar="baz")]`.
+fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
+    let mut result = Vec::new();
+    for attr in attrs.iter() {
+        if let Meta::List(meta_list) = &attr.meta {
+            if meta_list.path.is_ident("prost") {
+                result.extend(
+                    meta_list
+                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?
+                        .into_iter(),
+                )
+            }
+        }
+    }
+    Ok(result)
+}
+
+/// Extracts the path to prost specified using the `#[prost(prost_path = "...")]` attribute. When
+/// missing, falls back to default, which is `::prost`.
+fn get_prost_path(attrs: &[Meta]) -> Result<Path, Error> {
+    let mut prost_path = None;
+
+    for attr in attrs {
+        match attr {
+            Meta::NameValue(MetaNameValue {
+                path,
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(lit), ..
+                    }),
+                ..
+            }) if path.is_ident("prost_path") => {
+                let path: Path =
+                    syn::parse_str(&lit.value()).context("invalid prost_path argument")?;
+
+                set_option(&mut prost_path, path, "duplicate prost_path attributes")?;
+            }
+            _ => continue,
+        }
+    }
+
+    let prost_path =
+        prost_path.unwrap_or_else(|| syn::parse_str("::prost").expect("default prost_path"));
+
+    Ok(prost_path)
+}
+
+struct Attributes {
+    skip_debug: bool,
+    prost_path: Path,
+}
+
+impl Attributes {
+    fn new(attrs: Vec<Attribute>) -> Result<Self, Error> {
+        syn::custom_keyword!(skip_debug);
+        let skip_debug = attrs.iter().any(|a| a.parse_args::<skip_debug>().is_ok());
+
+        let attrs = prost_attrs(attrs)?;
+        let prost_path = get_prost_path(&attrs)?;
+
+        Ok(Self {
+            skip_debug,
+            prost_path,
+        })
+    }
 }
 
 #[cfg(test)]
