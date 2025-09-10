@@ -197,6 +197,10 @@ mod test {
             let roundtrip_value = decode_varint(&mut encoded_copy).expect("decoding failed");
             assert_eq!(value, roundtrip_value);
 
+            let (roundtrip_value, advance) = decode_varint_slice(encoded).expect("decoding failed");
+            assert_eq!(value, roundtrip_value);
+            assert_eq!(encoded.len(), advance);
+
             let mut encoded_copy = encoded;
             let roundtrip_value =
                 decode_varint_slow(&mut encoded_copy).expect("slow decoding failed");
