@@ -1,4 +1,4 @@
-#![allow(clippy::large_enum_variant, clippy::unreadable_literal)]
+#![allow(clippy::large_enum_variant)]
 
 pub mod conformance {
     use std::path::Path;
