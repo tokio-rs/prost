@@ -35,8 +35,6 @@ mod bootstrap;
 #[cfg(test)]
 mod debug;
 #[cfg(test)]
-mod deprecated_field;
-#[cfg(test)]
 mod derive_copy;
 #[cfg(test)]
 mod enum_keyword_variant;
