@@ -578,4 +578,23 @@ mod tests {
         let actual = String::from_utf8(buf).unwrap();
         assert_eq_fixture_contents!("src/fixtures/write_includes/_.includes.rs", actual);
     }
+
+    #[test]
+    fn test_generate_deprecated() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            "src/fixtures/deprecated/_all_deprecated.rs",
+            tempdir.path().join("all_deprecated.rs")
+        );
+    }
 }

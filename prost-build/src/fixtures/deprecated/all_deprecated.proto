@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package all_deprecated;
+
+message Test {
+  oneof test3 {
+    string oneof_outdated = 4 [deprecated = true];
+  }
+}
+
+enum Test2 {
+  not_outdated = 0 [deprecated = true];
+  outdated = 1 [deprecated = true];
+}
