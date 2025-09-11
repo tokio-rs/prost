@@ -1,0 +1,16 @@
+[package]
+name = "prost_path"
+version = "0.1.0"
+authors = ["Jerko Steiner <jerko.steiner@gmail.com>"]
+edition = "2021"
+publish = false
+license = "MIT"
+
+[dependencies]
+reexported_prost = { path = "../reexported-prost" }
+
+[build-dependencies]
+prost-build = { path = "../../prost-build" }
+
+[package.metadata.cargo-machete]
+ignored = ["reexported_prost"]

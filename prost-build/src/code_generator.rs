@@ -257,6 +257,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             },
             self.context.prost_path()
         ));
+        self.append_prost_path_attribute();
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -375,6 +376,13 @@ impl<'b> CodeGenerator<'_, 'b> {
         for attribute in self.context.message_attributes(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str(attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_prost_path_attribute(&mut self) {
+        if let Some(prost_path_attribute) = self.context.prost_path_attribute() {
+            self.buf.push_str(prost_path_attribute);
             self.buf.push('\n');
         }
     }
@@ -630,6 +638,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             },
             self.context.prost_path()
         ));
+        self.append_prost_path_attribute();
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
@@ -742,6 +751,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             dbg,
             self.context.prost_path(),
         ));
+        self.append_prost_path_attribute();
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
         self.push_indent();

@@ -30,7 +30,7 @@ impl MessageGraph {
             let package = format!(
                 "{}{}",
                 if file.package.is_some() { "." } else { "" },
-                file.package.as_ref().map(String::as_str).unwrap_or("")
+                file.package.as_deref().unwrap_or("")
             );
             for msg in &file.message_type {
                 msg_graph.add_message(&package, msg);

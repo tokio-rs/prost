@@ -1,5 +1,4 @@
 #![cfg(test)]
-#![allow(clippy::float_cmp)]
 
 use core::{f32, f64};
 
