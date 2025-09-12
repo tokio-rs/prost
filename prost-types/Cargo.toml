@@ -28,5 +28,9 @@ serde = { version = "1.0.219", features = ["std"], optional = true }
 proptest = "1"
 serde_json = "1.0.140"
 
+# ignore "unused dependency" false positive used as dev dependency
+[package.metadata.cargo-udeps.ignore]
+serde_json = []
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
