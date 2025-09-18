@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto3.presence;
+package proto3_presence;
 
 message A {
   optional int32 b = 1;
