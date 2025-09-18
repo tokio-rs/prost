@@ -83,9 +83,8 @@ mod ident_conversion;
 #[cfg(test)]
 mod oneof_name_conflict;
 
-mod test_enum_named_option_value {
-    include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
-}
+#[cfg(test)]
+mod option_enum;
 
 #[cfg(test)]
 mod result_enum;
