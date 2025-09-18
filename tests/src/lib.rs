@@ -97,9 +97,8 @@ mod test_result_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/mystruct.optionn.rs"));
 }
 
-mod test_result_named_result_value {
-    include!(concat!(env!("OUT_DIR"), "/mystruct.result.rs"));
-}
+#[cfg(test)]
+mod result_struct;
 
 /// Also for testing custom attributes, but on oneofs.
 ///
