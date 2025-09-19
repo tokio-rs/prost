@@ -117,7 +117,7 @@ fn main() {
         .compile_protos(&[src.join("result_enum.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("result_struct.proto")], includes)
         .unwrap();
 
