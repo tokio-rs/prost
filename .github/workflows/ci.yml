@@ -220,6 +220,13 @@ jobs:
       - name: tests-no-std cargo-no-std-check
         run: cargo no-std-check --manifest-path tests-no-std/Cargo.toml
 
+  semver-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+
   check-readme:
     name: Check README
     runs-on: ubuntu-latest
