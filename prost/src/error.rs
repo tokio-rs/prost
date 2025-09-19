@@ -1,11 +1,10 @@
 //! Protobuf encoding and decoding errors.
 
-use alloc::borrow::Cow;
+use crate::encoding::WireType;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-
 use core::fmt;
 
 /// A Protobuf message decoding error.
@@ -21,7 +20,7 @@ pub struct DecodeError {
 #[derive(Clone, PartialEq, Eq)]
 struct Inner {
     /// A 'best effort' root cause description.
-    description: Cow<'static, str>,
+    description: DecodeErrorKind,
     /// A stack of (message, field) name pairs, which identify the specific
     /// message type and field where decoding failed. The stack contains an
     /// entry per level of nesting.
@@ -34,10 +33,10 @@ impl DecodeError {
     /// Meant to be used only by `Message` implementations.
     #[doc(hidden)]
     #[cold]
-    pub fn new(description: impl Into<Cow<'static, str>>) -> DecodeError {
+    pub fn new(description: DecodeErrorKind) -> DecodeError {
         DecodeError {
             inner: Box::new(Inner {
-                description: description.into(),
+                description,
                 stack: Vec::new(),
             }),
         }
@@ -67,7 +66,71 @@ impl fmt::Display for DecodeError {
         for &(message, field) in &self.inner.stack {
             write!(f, "{message}.{field}: ")?;
         }
-        f.write_str(&self.inner.description)
+        write!(f, "{}", self.inner.description)
+    }
+}
+
+impl From<DecodeErrorKind> for DecodeError {
+    fn from(description: DecodeErrorKind) -> Self {
+        DecodeError {
+            inner: Box::new(Inner {
+                description,
+                stack: Vec::new(),
+            }),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DecodeErrorKind {
+    /// Length delimiter exceeds maximum usize value
+    LengthDelimiterTooLarge,
+    /// Invalid varint
+    InvalidVarint,
+    /// Recursion limit reached
+    RecursionLimitReached,
+    /// Invalid wire type value
+    InvalidWireType { value: u64 },
+    /// Invalid key value
+    InvalidKey { key: u64 },
+    /// Invalid tag value: 0
+    InvalidTag,
+    /// Invalid wire type
+    UnexpectedWireType {
+        actual: WireType,
+        expected: WireType,
+    },
+    /// Buffer underflow
+    BufferUnderflow,
+    /// Delimited length exceeded
+    DelimitedLengthExceeded,
+    /// Unexpected end group tag
+    UnexpectedEndGroupTag,
+    /// Invalid string value: data is not UTF-8 encoded
+    InvalidString,
+}
+
+impl fmt::Display for DecodeErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::LengthDelimiterTooLarge => {
+                write!(f, "length delimiter exceeds maximum usize value")
+            }
+            Self::InvalidVarint => write!(f, "invalid varint"),
+            Self::RecursionLimitReached => write!(f, "recursion limit reached"),
+            Self::InvalidWireType { value } => write!(f, "invalid wire type value: {value}"),
+            Self::InvalidKey { key } => write!(f, "invalid key value: {key}"),
+            Self::InvalidTag => write!(f, "invalid tag value: 0"),
+            Self::UnexpectedWireType { actual, expected } => {
+                write!(f, "invalid wire type: {actual:?} (expected {expected:?})")
+            }
+            Self::BufferUnderflow => write!(f, "buffer underflow"),
+            Self::DelimitedLengthExceeded => write!(f, "delimited length exceeded"),
+            Self::UnexpectedEndGroupTag => write!(f, "unexpected end group tag"),
+            Self::InvalidString => {
+                write!(f, "invalid string value: data is not UTF-8 encoded")
+            }
+        }
     }
 }
 
@@ -155,26 +218,26 @@ mod test {
 
     #[test]
     fn test_push() {
-        let mut decode_error = DecodeError::new("something failed");
+        let mut decode_error = DecodeError::new(DecodeErrorKind::InvalidVarint);
         decode_error.push("Foo bad", "bar.foo");
         decode_error.push("Baz bad", "bar.baz");
 
         assert_eq!(
             decode_error.to_string(),
-            "failed to decode Protobuf message: Foo bad.bar.foo: Baz bad.bar.baz: something failed"
+            "failed to decode Protobuf message: Foo bad.bar.foo: Baz bad.bar.baz: invalid varint"
         );
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_into_std_io_error() {
-        let decode_error = DecodeError::new("something failed");
+        let decode_error = DecodeError::new(DecodeErrorKind::InvalidVarint);
         let std_io_error = std::io::Error::from(decode_error);
 
         assert_eq!(std_io_error.kind(), std::io::ErrorKind::InvalidData);
         assert_eq!(
             std_io_error.to_string(),
-            "failed to decode Protobuf message: something failed"
+            "failed to decode Protobuf message: invalid varint"
         );
     }
 }
