@@ -97,10 +97,6 @@ fn main() {
         .unwrap();
 
     config
-        .compile_protos(&[src.join("deprecated_field.proto")], includes)
-        .unwrap();
-
-    config
         .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 

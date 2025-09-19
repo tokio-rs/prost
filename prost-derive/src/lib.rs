@@ -277,8 +277,9 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     };
 
     // Map the variants into 'fields'.
-    let mut variants: Vec<(Ident, Expr)> = Vec::new();
+    let mut variants: Vec<(Ident, Expr, Option<TokenStream>)> = Vec::new();
     for Variant {
+        attrs,
         ident,
         fields,
         discriminant,
@@ -291,9 +292,15 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
                 bail!("Enumeration variants may not have fields")
             }
         }
-
         match discriminant {
-            Some((_, expr)) => variants.push((ident, expr)),
+            Some((_, expr)) => {
+                let deprecated_attr = if attrs.iter().any(|v| v.path().is_ident("deprecated")) {
+                    Some(quote!(#[allow(deprecated)]))
+                } else {
+                    None
+                };
+                variants.push((ident, expr, deprecated_attr))
+            }
             None => bail!("Enumeration variants must have a discriminant"),
         }
     }
@@ -302,16 +309,16 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
         panic!("Enumeration must have at least one variant");
     }
 
-    let default = variants[0].0.clone();
+    let (default, _, default_deprecated) = variants[0].clone();
 
-    let is_valid = variants.iter().map(|(_, value)| quote!(#value => true));
+    let is_valid = variants.iter().map(|(_, value, _)| quote!(#value => true));
     let from = variants
         .iter()
-        .map(|(variant, value)| quote!(#value => ::core::option::Option::Some(#ident::#variant)));
+        .map(|(variant, value, deprecated)| quote!(#value => ::core::option::Option::Some(#deprecated #ident::#variant)));
 
     let try_from = variants
         .iter()
-        .map(|(variant, value)| quote!(#value => ::core::result::Result::Ok(#ident::#variant)));
+        .map(|(variant, value, deprecated)| quote!(#value => ::core::result::Result::Ok(#deprecated #ident::#variant)));
 
     let is_valid_doc = format!("Returns `true` if `value` is a variant of `{ident}`.");
     let from_i32_doc =
@@ -339,7 +346,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
 
         impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
             fn default() -> #ident {
-                #ident::#default
+                #default_deprecated #ident::#default
             }
         }
 
@@ -389,7 +396,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     // Map the variants into 'fields'.
-    let mut fields: Vec<(Ident, Field)> = Vec::new();
+    let mut fields: Vec<(Ident, Field, Option<TokenStream>)> = Vec::new();
     for Variant {
         attrs,
         ident: variant_ident,
@@ -407,19 +414,24 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         if variant_fields.len() != 1 {
             bail!("Oneof enum variants must have a single field");
         }
+        let deprecated_attr = if attrs.iter().any(|v| v.path().is_ident("deprecated")) {
+            Some(quote!(#[allow(deprecated)]))
+        } else {
+            None
+        };
         match Field::new_oneof(attrs)? {
-            Some(field) => fields.push((variant_ident, field)),
+            Some(field) => fields.push((variant_ident, field, deprecated_attr)),
             None => bail!("invalid oneof variant: oneof variants may not be ignored"),
         }
     }
 
     // Oneof variants cannot be oneofs themselves, so it's impossible to have a field with multiple
     // tags.
-    assert!(fields.iter().all(|(_, field)| field.tags().len() == 1));
+    assert!(fields.iter().all(|(_, field, _)| field.tags().len() == 1));
 
     if let Some(duplicate_tag) = fields
         .iter()
-        .flat_map(|(_, field)| field.tags())
+        .flat_map(|(_, field, _)| field.tags())
         .duplicates()
         .next()
     {
@@ -430,28 +442,29 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         );
     }
 
-    let encode = fields.iter().map(|(variant_ident, field)| {
+    let encode = fields.iter().map(|(variant_ident, field, deprecated)| {
         let encode = field.encode(&prost_path, quote!(*value));
-        quote!(#ident::#variant_ident(ref value) => { #encode })
+        quote!(#deprecated #ident::#variant_ident(ref value) => { #encode })
     });
 
-    let merge = fields.iter().map(|(variant_ident, field)| {
+    let merge = fields.iter().map(|(variant_ident, field, deprecated)| {
         let tag = field.tags()[0];
         let merge = field.merge(&prost_path, quote!(value));
         quote! {
+            #deprecated
             #tag => if let ::core::option::Option::Some(#ident::#variant_ident(value)) = field {
                 #merge
             } else {
                 let mut owned_value = ::core::default::Default::default();
                 let value = &mut owned_value;
-                #merge.map(|_| *field = ::core::option::Option::Some(#ident::#variant_ident(owned_value)))
+                #merge.map(|_| *field = ::core::option::Option::Some(#deprecated #ident::#variant_ident(owned_value)))
             }
         }
     });
 
-    let encoded_len = fields.iter().map(|(variant_ident, field)| {
+    let encoded_len = fields.iter().map(|(variant_ident, field, deprecated)| {
         let encoded_len = field.encoded_len(&prost_path, quote!(*value));
-        quote!(#ident::#variant_ident(ref value) => #encoded_len)
+        quote!(#deprecated #ident::#variant_ident(ref value) => #encoded_len)
     });
 
     let expanded = quote! {
@@ -491,9 +504,9 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = if skip_debug {
         expanded
     } else {
-        let debug = fields.iter().map(|(variant_ident, field)| {
+        let debug = fields.iter().map(|(variant_ident, field, deprecated)| {
             let wrapper = field.debug(&prost_path, quote!(*value));
-            quote!(#ident::#variant_ident(ref value) => {
+            quote!(#deprecated #ident::#variant_ident(ref value) => {
                 let wrapper = #wrapper;
                 f.debug_tuple(stringify!(#variant_ident))
                     .field(&wrapper)
