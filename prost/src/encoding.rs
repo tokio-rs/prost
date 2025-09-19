@@ -714,7 +714,7 @@ pub mod bytes {
         // > types and strings, if the same field appears multiple times, the parser accepts the
         // > last value it sees.
         //
-        // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
+        // [1]: https://protobuf.dev/programming-guides/encoding/#last-one-wins
         //
         // This is intended for A and B both being Bytes so it is zero-copy.
         // Some combinations of A and B types may cause a double-copy,

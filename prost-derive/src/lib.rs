@@ -87,7 +87,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // Sort the fields by tag number so that fields will be encoded in tag order.
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
-    // See: https://developers.google.com/protocol-buffers/docs/encoding#order
+    // See: https://protobuf.dev/programming-guides/encoding/#order
     fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
     let fields = fields;
 

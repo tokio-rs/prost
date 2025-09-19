@@ -6,7 +6,7 @@
 
 # *PROST!*
 
-`prost` is a [Protocol Buffers](https://developers.google.com/protocol-buffers/)
+`prost` is a [Protocol Buffers](https://protobuf.dev/)
 implementation for the [Rust Language](https://www.rust-lang.org/). `prost`
 generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
@@ -17,7 +17,7 @@ Compared to other Protocol Buffers implementations, `prost`
 * Retains comments from `.proto` files in generated Rust code.
 * Allows existing Rust types (not generated from a `.proto`) to be serialized
   and deserialized by adding attributes.
-* Uses the [`bytes::{Buf, BufMut}`](https://github.com/carllerche/bytes)
+* Uses the [`bytes::{Buf, BufMut}`](https://github.com/tokio-rs/bytes)
   abstractions for serialization instead of `std::io::{Read, Write}`.
 * Respects the Protobuf `package` specifier when organizing generated code
   into Rust modules.
@@ -73,7 +73,7 @@ Prost can now generate code for `.proto` files that don't have a package spec.
 `prost` will translate the Protobuf package into
 a Rust module. For example, given the `package` specifier:
 
-[package]: https://developers.google.com/protocol-buffers/docs/proto#packages
+[package]: https://protobuf.dev/programming-guides/proto3/#packages
 
 ```protobuf,ignore
 package foo.bar;

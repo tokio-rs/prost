@@ -244,9 +244,9 @@ pub trait ServiceGenerator {
 /// ```
 ///
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
-/// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
-/// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
-/// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
+/// [2]: https://doc.rust-lang.org/cargo/reference/build-script-examples.html
+/// [3]: https://protobuf.dev/programming-guides/proto3/#importing
+/// [4]: https://protobuf.dev/programming-guides/proto3/#packages
 pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]) -> Result<()> {
     Config::new().compile_protos(protos, includes)
 }
@@ -274,7 +274,7 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 ///
 /// [`protox`]: https://github.com/andrewhickman/protox
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
-/// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
+/// [2]: https://doc.rust-lang.org/cargo/reference/build-script-examples.html
 pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
     Config::new().compile_fds(fds)
 }

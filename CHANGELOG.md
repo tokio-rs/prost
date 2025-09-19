@@ -1,6 +1,6 @@
 # Prost version 0.14.1
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 ## ⚠️ Revert emission of `rerun` commands
 
@@ -56,7 +56,7 @@ For more details, see [issue #1296](https://github.com/tokio-rs/prost/issues/129
 
 # Prost version 0.14.0
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 ## Breaking changes
 - prost: Relax Message Debug trait bound (#1147)
@@ -108,7 +108,7 @@ _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/
 
 # Prost version 0.13.5
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 ## Features
 
@@ -144,7 +144,7 @@ _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/
 
 # Prost version 0.13.4
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 ## Features
 
@@ -182,7 +182,7 @@ _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/
 
 # Prost version 0.13.3
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 
 ### Features
@@ -221,7 +221,7 @@ _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/
 
 # Prost version 0.13.2
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 ## Features
 
@@ -275,7 +275,7 @@ _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/
 
 # Prost version 0.13.1
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 ## Bug fixes
 
@@ -285,7 +285,7 @@ _PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/
 
 **note**: this version was yanked in favor of 0.13.1
 
-_PROST!_ is a [Protocol Buffers](https://developers.google.com/protocol-buffers/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
 
 This major update brings new features and fixes:
 

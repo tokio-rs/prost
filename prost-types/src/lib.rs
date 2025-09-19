@@ -38,7 +38,7 @@
 //! - `arbitrary`: Enable integration with crate `arbitrary`. All types on this crate will implement `trait Arbitrary`.
 //! - `chrono`: Enable integration with crate `chrono`. Time related types implement conversions to/from their `chrono` equivalent.
 //!
-//! [1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
+//! [1]: https://protobuf.dev/reference/protobuf/google.protobuf/
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

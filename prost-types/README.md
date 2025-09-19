@@ -6,7 +6,7 @@
 Prost definitions of Protocol Buffers well known types. See the [Protobuf reference][1] for more
 information about well known types.
 
-[1]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf
+[1]: https://protobuf.dev/reference/protobuf/google.protobuf/
 
 ## License
 
