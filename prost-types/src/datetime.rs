@@ -542,7 +542,7 @@ pub(crate) fn parse_timestamp(s: &str) -> Option<Timestamp> {
 
 /// Parse a duration in the [Protobuf JSON encoding spec format][1].
 ///
-/// [1]: https://developers.google.com/protocol-buffers/docs/proto3#json
+/// [1]: https://protobuf.dev/programming-guides/proto3/#json
 pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
     // Check that the string is ASCII, since subsequent parsing steps use byte-level indexing.
     ensure!(s.is_ascii());
@@ -629,7 +629,7 @@ mod tests {
 
         // Mostly generated with:
         //  - date -jur <secs> +"%Y-%m-%dT%H:%M:%S.000000000Z"
-        //  - http://unixtimestamp.50x.eu/
+        //  - https://web.archive.org/web/20200920224508/https://unixtimestamp.50x.eu/
 
         case("1970-01-01T00:00:00Z", 0, 0);
 
