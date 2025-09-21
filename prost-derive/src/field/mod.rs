@@ -124,9 +124,9 @@ impl Field {
     }
 
     /// Returns a statement which clears the field.
-    pub fn clear(&self, ident: TokenStream) -> TokenStream {
+    pub fn clear(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
-            Field::Scalar(ref scalar) => scalar.clear(ident),
+            Field::Scalar(ref scalar) => scalar.clear(prost_path, ident),
             Field::Message(ref message) => message.clear(ident),
             Field::Map(ref map) => map.clear(ident),
             Field::Oneof(ref oneof) => oneof.clear(ident),

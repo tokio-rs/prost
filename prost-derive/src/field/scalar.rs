@@ -118,9 +118,20 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
-                quote! {
-                    if #ident != #default {
-                        #encode_fn(#tag, &#ident, buf);
+                match self.ty {
+                    Ty::String(StringTy::Arc) => {
+                        quote! {
+                            if #ident.as_ref() != #default {
+                                #encode_fn(#tag, &#ident, buf);
+                            }
+                        }
+                    }
+                    _ => {
+                        quote! {
+                            if #ident != #default {
+                                #encode_fn(#tag, &#ident, buf);
+                            }
+                        }
                     }
                 }
             }
@@ -172,11 +183,24 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) => {
                 let default = default.typed();
-                quote! {
-                    if #ident != #default {
-                        #encoded_len_fn(#tag, &#ident)
-                    } else {
-                        0
+                match self.ty {
+                    Ty::String(StringTy::Arc) => {
+                        quote! {
+                            if #ident.as_ref() != #default {
+                                #encoded_len_fn(#tag, &#ident)
+                            } else {
+                                0
+                            }
+                        }
+                    }
+                    _ => {
+                        quote! {
+                            if #ident != #default {
+                                #encoded_len_fn(#tag, &#ident)
+                            } else {
+                                0
+                            }
+                        }
                     }
                 }
             }
@@ -189,15 +213,19 @@ impl Field {
         }
     }
 
-    pub fn clear(&self, ident: TokenStream) -> TokenStream {
+    pub fn clear(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match self.kind {
-            Kind::Plain(ref default) | Kind::Required(ref default) => {
-                let default = default.typed();
-                match self.ty {
-                    Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
-                    _ => quote!(#ident = #default),
+            Kind::Plain(ref default) | Kind::Required(ref default) => match self.ty {
+                Ty::String(StringTy::String) | Ty::Bytes(..) => quote!(#ident.clear()),
+                Ty::String(StringTy::Arc) => {
+                    let default_owned = default.owned(prost_path);
+                    quote!(#ident = #default_owned)
                 }
-            }
+                _ => {
+                    let default_typed = default.typed();
+                    quote!(#ident = #default_typed)
+                }
+            },
             Kind::Optional(_) => quote!(#ident = ::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
         }
@@ -393,9 +421,32 @@ pub enum Ty {
     Sfixed32,
     Sfixed64,
     Bool,
-    String,
+    String(StringTy),
     Bytes(BytesTy),
     Enumeration(Path),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StringTy {
+    String,
+    Arc,
+}
+
+impl StringTy {
+    fn try_from_str(s: &str) -> Result<Self, Error> {
+        match s {
+            "string" => Ok(StringTy::String),
+            "arc" => Ok(StringTy::Arc),
+            _ => bail!("Invalid string type: {}", s),
+        }
+    }
+
+    fn rust_type(&self, prost_path: &Path) -> TokenStream {
+        match self {
+            StringTy::String => quote! { #prost_path::alloc::string::String },
+            StringTy::Arc => quote! { #prost_path::alloc::sync::Arc<str> },
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -437,7 +488,7 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("sfixed32") => Ty::Sfixed32,
             Meta::Path(ref name) if name.is_ident("sfixed64") => Ty::Sfixed64,
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
-            Meta::Path(ref name) if name.is_ident("string") => Ty::String,
+            Meta::Path(ref name) if name.is_ident("string") => Ty::String(StringTy::String),
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
             Meta::NameValue(MetaNameValue {
                 ref path,
@@ -448,6 +499,15 @@ impl Ty {
                     }),
                 ..
             }) if path.is_ident("bytes") => Ty::Bytes(BytesTy::try_from_str(&l.value())?),
+            Meta::NameValue(MetaNameValue {
+                ref path,
+                value:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Str(ref l),
+                        ..
+                    }),
+                ..
+            }) if path.is_ident("string") => Ty::String(StringTy::try_from_str(&l.value())?),
             Meta::NameValue(MetaNameValue {
                 ref path,
                 value:
@@ -482,7 +542,7 @@ impl Ty {
             "sfixed32" => Ty::Sfixed32,
             "sfixed64" => Ty::Sfixed64,
             "bool" => Ty::Bool,
-            "string" => Ty::String,
+            "string" => Ty::String(StringTy::String),
             "bytes" => Ty::Bytes(BytesTy::Vec),
             s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
                 let s = &s[enumeration_len..].trim();
@@ -518,7 +578,7 @@ impl Ty {
             Ty::Sfixed32 => "sfixed32",
             Ty::Sfixed64 => "sfixed64",
             Ty::Bool => "bool",
-            Ty::String => "string",
+            Ty::String(..) => "string",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
         }
@@ -527,7 +587,7 @@ impl Ty {
     // TODO: rename to 'owned_type'.
     pub fn rust_type(&self, prost_path: &Path) -> TokenStream {
         match self {
-            Ty::String => quote!(#prost_path::alloc::string::String),
+            Ty::String(ty) => ty.rust_type(prost_path),
             Ty::Bytes(ty) => ty.rust_type(prost_path),
             _ => self.rust_ref_type(),
         }
@@ -549,7 +609,7 @@ impl Ty {
             Ty::Sfixed32 => quote!(i32),
             Ty::Sfixed64 => quote!(i64),
             Ty::Bool => quote!(bool),
-            Ty::String => quote!(&str),
+            Ty::String(..) => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
         }
@@ -564,7 +624,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        !matches!(self, Ty::String | Ty::Bytes(..))
+        !matches!(self, Ty::String(..) | Ty::Bytes(..))
     }
 }
 
@@ -660,7 +720,7 @@ impl DefaultValue {
             Lit::Int(ref lit) if *ty == Ty::Double => DefaultValue::F64(lit.base10_parse()?),
 
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
-            Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value()),
+            Lit::Str(ref lit) if matches!(ty, Ty::String(_)) => DefaultValue::String(lit.value()),
             Lit::ByteStr(ref lit)
                 if *ty == Ty::Bytes(BytesTy::Bytes) || *ty == Ty::Bytes(BytesTy::Vec) =>
             {
@@ -769,18 +829,18 @@ impl DefaultValue {
             Ty::Uint64 | Ty::Fixed64 => DefaultValue::U64(0),
 
             Ty::Bool => DefaultValue::Bool(false),
-            Ty::String => DefaultValue::String(String::new()),
+            Ty::String(..) => DefaultValue::String(String::new()),
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
     }
 
-    pub fn owned(&self, prost_path: &Path) -> TokenStream {
+    pub fn owned(&self, _prost_path: &Path) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
-                quote!(#prost_path::alloc::string::String::new())
+                quote!(::core::default::Default::default())
             }
-            DefaultValue::String(ref value) => quote!(#value.into()),
+            DefaultValue::String(ref value) => quote!(#value.as_ref().into()),
             DefaultValue::Bytes(ref value) if value.is_empty() => {
                 quote!(::core::default::Default::default())
             }

@@ -138,7 +138,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let clear = fields
         .iter()
-        .map(|(field_ident, field)| field.clear(quote!(self.#field_ident)));
+        .map(|(field_ident, field)| field.clear(&prost_path, quote!(self.#field_ident)));
 
     let default = if is_struct {
         let default = fields.iter().map(|(field_ident, field)| {

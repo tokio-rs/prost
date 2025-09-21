@@ -1,3 +1,4 @@
+use prost::alloc::sync::Arc;
 use prost::alloc::vec;
 #[cfg(not(feature = "std"))]
 use prost::alloc::{borrow::ToOwned, string::String, vec::Vec};
@@ -64,9 +65,11 @@ pub struct ScalarTypes {
     pub _bool: bool,
     #[prost(string, tag = "014")]
     pub string: String,
-    #[prost(bytes = "vec", tag = "015")]
+    #[prost(string = "arc", tag = "015")]
+    pub string_arc: Arc<str>,
+    #[prost(bytes = "vec", tag = "016")]
     pub bytes_vec: Vec<u8>,
-    #[prost(bytes = "bytes", tag = "016")]
+    #[prost(bytes = "bytes", tag = "017")]
     pub bytes_buf: Bytes,
 
     #[prost(int32, required, tag = "101")]
