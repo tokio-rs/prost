@@ -280,7 +280,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.path.pop();
         }
         if let Some(field_name) = self
-            .config
+            .config()
             .include_unknown_fields
             .get_first(&fq_message_name)
             .cloned()
@@ -594,7 +594,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.append_field_attributes(fq_message_name, field_name);
         self.push_indent();
         self.buf
-            .push_str(&format!("pub {}: ::prost::UnknownFieldSet,\n", field_name,));
+            .push_str(&format!("pub {}: ::prost::UnknownFieldList,\n", field_name,));
     }
 
     fn append_oneof_field(

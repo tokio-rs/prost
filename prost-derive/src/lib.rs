@@ -91,8 +91,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // See: https://developers.google.com/protocol-buffers/docs/encoding#order
     fields.sort_by_key(|(_, field)| {
         (
-        field.is_unknown(),
-        field.tags().into_iter().min().unwrap_or(0)
+            field.is_unknown(),
+            field.tags().into_iter().min().unwrap_or(0),
         )
     });
     let fields = fields;
@@ -119,7 +119,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .map(|(field_ident, field)| field.encode(&prost_path, quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|(field_ident, field)| {
-        if field.is_unknown(){
+        if field.is_unknown() {
             return quote!();
         }
         let merge = field.merge(&prost_path, quote!(value));
@@ -138,7 +138,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     });
     let merge_fallback = match fields.iter().find(|&(_, f)| f.is_unknown()) {
         Some((field_ident, field)) => {
-            let merge = field.merge(quote!(value));
+            let merge = field.merge(&prost_path, quote!(value));
             quote! {
                 _ => {
                     let mut value = &mut self.#field_ident;

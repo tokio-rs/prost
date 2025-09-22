@@ -275,7 +275,7 @@ impl Config {
     /// fields during deserialization.
     ///
     /// **`field_name`** - the name of the field to place unknown fields in. A field with this
-    /// name and type `prost::UnknownFieldSet` will be added to the generated struct
+    /// name and type `prost::UnknownFieldList` will be added to the generated struct
     ///
     /// # Examples
     ///

@@ -58,4 +58,3 @@ fn test_roundtrip_unknown_fields() {
     assert_eq!(original, roundtripped);
     assert_eq!(roundtripped.unknown_fields.iter().count(), 0);
 }
-

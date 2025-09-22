@@ -28,7 +28,7 @@ pub enum Field {
     /// A group field.
     Group(group::Field),
     /// A set of unknown message fields.
-    Unknown(unknown::Field)
+    Unknown(unknown::Field),
 }
 
 impl Field {

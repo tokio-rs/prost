@@ -8,35 +8,35 @@ use crate::encoding::{self, DecodeContext, WireType};
 use crate::{DecodeError, Message};
 
 /// A set of unknown fields in a protobuf message.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct UnknownFieldSet {
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub struct UnknownFieldList {
     fields: BTreeMap<u32, Vec<UnknownField>>,
 }
 
 /// An unknown field in a protobuf message.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UnknownField {
     /// An unknown field with the `Varint` wire type.
     Varint(u64),
     /// An unknown field with the `SixtyFourBit` wire type.
-    SixtyFourBit([u8; 8]),
+    SixtyFourBit(u64),
     /// An unknown field with the `LengthDelimited` wire type.
     LengthDelimited(Bytes),
     /// An unknown field with the group wire type.
-    Group(UnknownFieldSet),
+    Group(UnknownFieldList),
     /// An unknown field with the `ThirtyTwoBit` wire type.
-    ThirtyTwoBit([u8; 4]),
+    ThirtyTwoBit(u32),
 }
 
-/// An iterator over the fields of an [UnknownFieldSet].
+/// An iterator over the fields of an [UnknownFieldList].
 #[derive(Debug)]
 pub struct UnknownFieldIter<'a> {
     tags_iter: btree_map::Iter<'a, u32, Vec<UnknownField>>,
     current_tag: Option<(u32, slice::Iter<'a, UnknownField>)>,
 }
 
-impl UnknownFieldSet {
-    /// Creates an empty [UnknownFieldSet].
+impl UnknownFieldList {
+    /// Creates an empty [UnknownFieldList].
     pub fn new() -> Self {
         Default::default()
     }
@@ -71,10 +71,9 @@ impl<'a> Iterator for UnknownFieldIter<'a> {
     }
 }
 
-impl Message for UnknownFieldSet {
-    fn encode_raw<B>(&self, buf: &mut B)
+impl Message for UnknownFieldList {
+    fn encode_raw(&self, buf: &mut impl BufMut)
     where
-        B: BufMut,
         Self: Sized,
     {
         for (&tag, fields) in &self.fields {
@@ -103,15 +102,14 @@ impl Message for UnknownFieldSet {
         }
     }
 
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         let field = match wire_type {
@@ -133,7 +131,7 @@ impl Message for UnknownFieldSet {
                 UnknownField::LengthDelimited(value)
             }
             WireType::StartGroup => {
-                let mut value = UnknownFieldSet::default();
+                let mut value = UnknownFieldList::default();
                 encoding::group::merge(tag, wire_type, &mut value, buf, ctx)?;
                 UnknownField::Group(value)
             }
