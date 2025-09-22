@@ -590,7 +590,7 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     fn append_unknown_field_set(&mut self, fq_message_name: &str, field_name: &str) {
-        self.buf.push_str("#[prost(unknown)]\n");
+        self.buf.push_str("#[prost(unknown_fields)]\n");
         self.append_field_attributes(fq_message_name, field_name);
         self.push_indent();
         self.buf
