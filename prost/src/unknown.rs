@@ -85,7 +85,7 @@ impl Message for UnknownFieldList {
                     }
                     UnknownField::SixtyFourBit(value) => {
                         encoding::encode_key(tag, WireType::SixtyFourBit, buf);
-                        buf.put_slice(value);
+                        buf.put_u64(value.clone());
                     }
                     UnknownField::LengthDelimited(value) => {
                         encoding::bytes::encode(tag, value, buf);
@@ -95,7 +95,7 @@ impl Message for UnknownFieldList {
                     }
                     UnknownField::ThirtyTwoBit(value) => {
                         encoding::encode_key(tag, WireType::ThirtyTwoBit, buf);
-                        buf.put_slice(value);
+                        buf.put_u32(value.clone());
                     }
                 }
             }
@@ -123,7 +123,9 @@ impl Message for UnknownFieldList {
                     return Err(DecodeError::new("buffer underflow"));
                 }
                 buf.copy_to_slice(&mut value);
-                UnknownField::SixtyFourBit(value)
+                //TODO: What byte direction is protobuf?
+                let return_val = u64::from_ne_bytes(value);
+                UnknownField::SixtyFourBit(return_val)
             }
             WireType::LengthDelimited => {
                 let mut value = Bytes::default();
@@ -144,7 +146,9 @@ impl Message for UnknownFieldList {
                     return Err(DecodeError::new("buffer underflow"));
                 }
                 buf.copy_to_slice(&mut value);
-                UnknownField::ThirtyTwoBit(value)
+                //TODO: What byte direction is protobuf?
+                let return_val = u32::from_ne_bytes(value);
+                UnknownField::ThirtyTwoBit(return_val)
             }
         };
 
@@ -160,12 +164,12 @@ impl Message for UnknownFieldList {
                     UnknownField::Varint(value) => {
                         encoding::key_len(tag) + encoding::encoded_len_varint(*value)
                     }
-                    UnknownField::SixtyFourBit(value) => encoding::key_len(tag) + value.len(),
+                    UnknownField::SixtyFourBit(_) => encoding::key_len(tag) + 8,
                     UnknownField::LengthDelimited(value) => {
                         encoding::bytes::encoded_len(tag, value)
                     }
                     UnknownField::Group(value) => encoding::group::encoded_len(tag, value),
-                    UnknownField::ThirtyTwoBit(value) => encoding::key_len(tag) + value.len(),
+                    UnknownField::ThirtyTwoBit(_) => encoding::key_len(tag) + 4,
                 };
             }
         }
