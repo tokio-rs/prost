@@ -94,7 +94,7 @@ impl Field {
     /// Returns a statement which encodes the field.
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
-            Field::Skip(ref ignore) => ignore.encode(ident),
+            Field::Skip(_) => TokenStream::default(),
             Field::Scalar(ref scalar) => scalar.encode(prost_path, ident),
             Field::Message(ref message) => message.encode(prost_path, ident),
             Field::Map(ref map) => map.encode(prost_path, ident),
@@ -107,7 +107,7 @@ impl Field {
     /// value into the field.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
-            Field::Skip(ref ignore) => ignore.merge(ident),
+            Field::Skip(_) => TokenStream::default(),
             Field::Scalar(ref scalar) => scalar.merge(prost_path, ident),
             Field::Message(ref message) => message.merge(prost_path, ident),
             Field::Map(ref map) => map.merge(prost_path, ident),
@@ -119,7 +119,7 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
-            Field::Skip(ref ignore) => ignore.encoded_len(ident),
+            Field::Skip(_) => quote!(0),
             Field::Scalar(ref scalar) => scalar.encoded_len(prost_path, ident),
             Field::Map(ref map) => map.encoded_len(prost_path, ident),
             Field::Message(ref msg) => msg.encoded_len(prost_path, ident),
@@ -131,7 +131,7 @@ impl Field {
     /// Returns a statement which clears the field.
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match *self {
-            Field::Skip(ref ignore) => ignore.clear(ident),
+            Field::Skip(ref skip) => skip.clear(ident),
             Field::Scalar(ref scalar) => scalar.clear(ident),
             Field::Message(ref message) => message.clear(ident),
             Field::Map(ref map) => map.clear(ident),
