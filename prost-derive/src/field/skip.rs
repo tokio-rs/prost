@@ -1,9 +1,9 @@
-﻿use anyhow::{bail, Error};
+use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Meta, Lit, MetaNameValue, Path, Expr, ExprLit};
+use syn::{Expr, ExprLit, Lit, Meta, MetaNameValue, Path};
 
-use crate::field::{set_bool, word_attr};
+use crate::field::{set_bool, set_option, word_attr};
 
 #[derive(Clone)]
 pub struct Field {
@@ -14,6 +14,7 @@ impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut skip = false;
         let mut default_fn = None;
+        let mut default_lit = None;
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
@@ -21,21 +22,13 @@ impl Field {
                 set_bool(&mut skip, "duplicate skip attribute")?;
             } else if let Meta::NameValue(MetaNameValue { path, value, .. }) = attr {
                 if path.is_ident("default") {
-                    let lit_str = match value {
+                    match value {
                         // There has to be a better way...
-                        Expr::Lit(ExprLit { lit: Lit::Str(lit), .. }) => Some(lit),
-                        _ => None,
+                        Expr::Lit(ExprLit {
+                            lit: Lit::Str(lit), ..
+                        }) => set_option(&mut default_lit, lit, "duplicate default attributes")?,
+                        _ => bail!("default attribute value must be a string literal"),
                     };
-                    if let Some(lit) = lit_str {
-                        let fn_path: Path = syn::parse_str(&lit.value())
-                            .map_err(|_| anyhow::anyhow!("invalid path for default function"))?;
-                        if default_fn.is_some() {
-                            bail!("duplicate default attribute for skipped field");
-                        }
-                        default_fn = Some(fn_path);
-                    } else {
-                        bail!("default attribute value must be a string literal");
-                    }
                 } else {
                     unknown_attrs.push(attr);
                 }
@@ -53,6 +46,15 @@ impl Field {
                 "unknown attribute(s) for skipped field: #[prost({})]",
                 quote!(#(#unknown_attrs),*)
             );
+        }
+
+        if let Some(lit) = default_lit {
+            let fn_path: Path = syn::parse_str(&lit.value())
+                .map_err(|_| anyhow::anyhow!("invalid path for default function"))?;
+            if default_fn.is_some() {
+                bail!("duplicate default attribute for skipped field");
+            }
+            default_fn = Some(fn_path);
         }
 
         Ok(Some(Field { default_fn }))
