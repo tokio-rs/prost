@@ -85,7 +85,7 @@ impl Message for UnknownFieldList {
                     }
                     UnknownField::SixtyFourBit(value) => {
                         encoding::encode_key(tag, WireType::SixtyFourBit, buf);
-                        buf.put_u64(value.clone());
+                        buf.put_u64_le(value.clone());
                     }
                     UnknownField::LengthDelimited(value) => {
                         encoding::bytes::encode(tag, value, buf);
@@ -95,7 +95,7 @@ impl Message for UnknownFieldList {
                     }
                     UnknownField::ThirtyTwoBit(value) => {
                         encoding::encode_key(tag, WireType::ThirtyTwoBit, buf);
-                        buf.put_u32(value.clone());
+                        buf.put_u32_le(value.clone());
                     }
                 }
             }
@@ -123,8 +123,8 @@ impl Message for UnknownFieldList {
                     return Err(DecodeError::new("buffer underflow"));
                 }
                 buf.copy_to_slice(&mut value);
-                //TODO: What byte direction is protobuf?
-                let return_val = u64::from_ne_bytes(value);
+                //https://protobuf.dev/programming-guides/encoding/
+                let return_val = u64::from_le_bytes(value);
                 UnknownField::SixtyFourBit(return_val)
             }
             WireType::LengthDelimited => {
@@ -146,8 +146,8 @@ impl Message for UnknownFieldList {
                     return Err(DecodeError::new("buffer underflow"));
                 }
                 buf.copy_to_slice(&mut value);
-                //TODO: What byte direction is protobuf?
-                let return_val = u32::from_ne_bytes(value);
+                //https://protobuf.dev/programming-guides/encoding/
+                let return_val = u32::from_le_bytes(value);
                 UnknownField::ThirtyTwoBit(return_val)
             }
         };
