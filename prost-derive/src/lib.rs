@@ -84,6 +84,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
 
+    // Filter out ignored fields
+    fields.retain(|(_, field)| matches!(field, Field::Skip(..)));
+
     // Sort the fields by tag number so that fields will be encoded in tag order.
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
