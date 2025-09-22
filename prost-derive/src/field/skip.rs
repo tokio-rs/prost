@@ -1,21 +1,44 @@
 ﻿use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Meta};
+use syn::{Meta, Lit, MetaNameValue, Path, Expr, ExprLit};
 
 use crate::field::{set_bool, word_attr};
 
 #[derive(Clone)]
-pub struct Field;
+pub struct Field {
+    pub default_fn: Option<Path>,
+}
 
 impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut skip = false;
+        let mut default_fn = None;
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
             if word_attr("skip", attr) {
-                set_bool(&mut skip, "duplicate ignore attribute")?;
+                set_bool(&mut skip, "duplicate skip attribute")?;
+            } else if let Meta::NameValue(MetaNameValue { path, value, .. }) = attr {
+                if path.is_ident("default") {
+                    let lit_str = match value {
+                        // There has to be a better way...
+                        Expr::Lit(ExprLit { lit: Lit::Str(lit), .. }) => Some(lit),
+                        _ => None,
+                    };
+                    if let Some(lit) = lit_str {
+                        let fn_path: Path = syn::parse_str(&lit.value())
+                            .map_err(|_| anyhow::anyhow!("invalid path for default function"))?;
+                        if default_fn.is_some() {
+                            bail!("duplicate default attribute for skipped field");
+                        }
+                        default_fn = Some(fn_path);
+                    } else {
+                        bail!("default attribute value must be a string literal");
+                    }
+                } else {
+                    unknown_attrs.push(attr);
+                }
             } else {
                 unknown_attrs.push(attr);
             }
@@ -27,30 +50,24 @@ impl Field {
 
         if !unknown_attrs.is_empty() {
             bail!(
-                "unknown attribute(s) for ignored field: #[prost({})]",
+                "unknown attribute(s) for skipped field: #[prost({})]",
                 quote!(#(#unknown_attrs),*)
             );
         }
 
-        Ok(Some(Field))
-    }
-
-    /// Returns a statement which non-ops, since the field is ignored.
-    pub fn encode(&self, _: TokenStream) -> TokenStream {
-        quote!()
-    }
-
-    /// Returns an expression which evaluates to the default value of the ignored field.
-    pub fn merge(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident.get_or_insert_with(::core::default::Default::default))
-    }
-
-    /// Returns an expression which evaluates to 0
-    pub fn encoded_len(&self, _: TokenStream) -> TokenStream {
-        quote!(0)
+        Ok(Some(Field { default_fn }))
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        quote!(#ident = ::core::default::Default::default)
+        let default = self.default_value();
+        quote!( #ident = #default; )
+    }
+
+    pub fn default_value(&self) -> TokenStream {
+        if let Some(ref path) = self.default_fn {
+            quote! { #path() }
+        } else {
+            quote! { ::core::default::Default::default() }
+        }
     }
 }
