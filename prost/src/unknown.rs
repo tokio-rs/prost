@@ -85,7 +85,7 @@ impl Message for UnknownFieldList {
                     }
                     UnknownField::SixtyFourBit(value) => {
                         encoding::encode_key(tag, WireType::SixtyFourBit, buf);
-                        buf.put_u64_le(value.clone());
+                        buf.put_u64_le(*value);
                     }
                     UnknownField::LengthDelimited(value) => {
                         encoding::bytes::encode(tag, value, buf);
@@ -95,7 +95,7 @@ impl Message for UnknownFieldList {
                     }
                     UnknownField::ThirtyTwoBit(value) => {
                         encoding::encode_key(tag, WireType::ThirtyTwoBit, buf);
-                        buf.put_u32_le(value.clone());
+                        buf.put_u32_le(*value);
                     }
                 }
             }

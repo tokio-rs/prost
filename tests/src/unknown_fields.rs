@@ -3,6 +3,7 @@ include!(concat!(env!("OUT_DIR"), "/unknown_fields.rs"));
 #[cfg(feature = "std")]
 #[test]
 fn test_iter_unknown_fields() {
+    use bytes::Bytes;
     use prost::{Message, UnknownField};
 
     let v2 = V2 {
@@ -18,19 +19,13 @@ fn test_iter_unknown_fields() {
 
     let mut fields = v1.unknown_fields.iter();
     assert_eq!(fields.next(), Some((1, &UnknownField::Varint(12345))));
-    assert_eq!(
-        fields.next(),
-        Some((2, &UnknownField::ThirtyTwoBit([0x6, 0, 0, 0])))
-    );
-    assert_eq!(
-        fields.next(),
-        Some((3, &UnknownField::SixtyFourBit([0x7, 0, 0, 0, 0, 0, 0, 0])))
-    );
+    assert_eq!(fields.next(), Some((2, &UnknownField::ThirtyTwoBit(2))));
+    assert_eq!(fields.next(), Some((3, &UnknownField::SixtyFourBit(3))));
     assert_eq!(
         fields.next(),
         Some((
             4,
-            &UnknownField::LengthDelimited(bytes::Bytes::from(&b"hello"[..]))
+            &UnknownField::LengthDelimited(Bytes::from(&b"hello"[..]))
         ))
     );
     assert_eq!(fields.next(), None);
