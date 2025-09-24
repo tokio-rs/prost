@@ -291,7 +291,7 @@ impl Config {
         if self.include_unknown_fields.is_none() {
             self.include_unknown_fields = Some(PathMap::default());
         }
-        if let Some(ref mut unknown_fields) = &mut self.include_unknown_fields {
+        if let Some(unknown_fields) = &mut self.include_unknown_fields {
             unknown_fields.insert(path.as_ref().to_string(), field_name.as_ref().to_string());
         }
         self
