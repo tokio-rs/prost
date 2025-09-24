@@ -3,10 +3,10 @@ include!(concat!(env!("OUT_DIR"), "/unknown_fields.rs"));
 #[cfg(feature = "std")]
 #[test]
 fn test_iter_unknown_fields() {
-    use bytes::Bytes;
+    use prost::bytes::Bytes;
     use prost::{Message, UnknownField};
 
-    let v2 = V2 {
+    let v2 = MessageWithData {
         a: 12345,
         b: 6,
         c: 7,
@@ -15,7 +15,7 @@ fn test_iter_unknown_fields() {
     };
 
     let bytes = v2.encode_to_vec();
-    let v1 = V1::decode(&*bytes).unwrap();
+    let v1 = BlankMessage::decode(&*bytes).unwrap();
 
     let mut fields = v1.unknown_fields.iter();
     assert_eq!(fields.next(), Some((1, &UnknownField::Varint(12345))));
@@ -38,7 +38,8 @@ fn test_iter_unknown_fields() {
 fn test_roundtrip_unknown_fields() {
     use prost::Message;
 
-    let original = V2 {
+
+    let original = MessageWithData {
         a: 12345,
         b: 6,
         c: 7,
@@ -47,9 +48,9 @@ fn test_roundtrip_unknown_fields() {
     };
 
     let original_bytes = original.encode_to_vec();
-    let roundtripped_bytes = V1::decode(&*original_bytes).unwrap().encode_to_vec();
+    let roundtripped_bytes = BlankMessage::decode(&*original_bytes).unwrap().encode_to_vec();
 
-    let roundtripped = V2::decode(&*roundtripped_bytes).unwrap();
+    let roundtripped = MessageWithData::decode(&*roundtripped_bytes).unwrap();
     assert_eq!(original, roundtripped);
     assert_eq!(roundtripped.unknown_fields.iter().count(), 0);
 }
