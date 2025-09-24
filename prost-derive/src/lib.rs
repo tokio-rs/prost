@@ -136,23 +136,24 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             },
         }
     });
-    let merge_fallback = match fields.iter().find(|&(_, f)| f.is_unknown()) {
-        Some((field_ident, field)) => {
-            let merge = field.merge(&prost_path, quote!(value));
-            quote! {
-                _ => {
-                    let mut value = &mut self.#field_ident;
-                    #merge.map_err(|mut error| {
-                        error.push(STRUCT_NAME, stringify!(#field_ident));
-                        error
-                    })
-                },
-            }
-        }
-        None => quote! {
-            _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
-        },
-    };
+    // This is generating "could not find 'prost' in list of imported crates" error
+    // let merge_fallback = match fields.iter().find(|&(_, f)| f.is_unknown()) {
+    //     Some((field_ident, field)) => {
+    //         let merge = field.merge(&prost_path, quote!(value));
+    //         quote! {
+    //             _ => {
+    //                 let mut value = &mut self.#field_ident;
+    //                 #merge.map_err(|mut error| {
+    //                     error.push(STRUCT_NAME, stringify!(#field_ident));
+    //                     error
+    //                 })
+    //             },
+    //         }
+    //     }
+    //     None => quote! {
+    //         _ => ::prost::encoding::skip_field(wire_type, tag, buf, ctx),
+    //     },
+    // };
 
     let struct_name = if fields.is_empty() {
         quote!()
@@ -218,7 +219,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    #merge_fallback
+                    _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx),
+                    //#merge_fallback
                 }
             }
 
