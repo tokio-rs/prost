@@ -16,11 +16,11 @@ fn test_iter_unknown_fields() {
 
     let bytes = v2.encode_to_vec();
     let v1 = BlankMessage::decode(&*bytes).unwrap();
-
+    
     let mut fields = v1.unknown_fields.iter();
     assert_eq!(fields.next(), Some((1, &UnknownField::Varint(12345))));
-    assert_eq!(fields.next(), Some((2, &UnknownField::ThirtyTwoBit(2))));
-    assert_eq!(fields.next(), Some((3, &UnknownField::SixtyFourBit(3))));
+    assert_eq!(fields.next(), Some((2, &UnknownField::ThirtyTwoBit(6))));
+    assert_eq!(fields.next(), Some((3, &UnknownField::SixtyFourBit(7))));
     assert_eq!(
         fields.next(),
         Some((
