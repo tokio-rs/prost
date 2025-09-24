@@ -16,7 +16,7 @@ fn test_iter_unknown_fields() {
 
     let bytes = v2.encode_to_vec();
     let v1 = BlankMessage::decode(&*bytes).unwrap();
-    
+
     let mut fields = v1.unknown_fields.iter();
     assert_eq!(fields.next(), Some((1, &UnknownField::Varint(12345))));
     assert_eq!(fields.next(), Some((2, &UnknownField::ThirtyTwoBit(6))));
@@ -38,7 +38,6 @@ fn test_iter_unknown_fields() {
 fn test_roundtrip_unknown_fields() {
     use prost::Message;
 
-
     let original = MessageWithData {
         a: 12345,
         b: 6,
@@ -48,7 +47,9 @@ fn test_roundtrip_unknown_fields() {
     };
 
     let original_bytes = original.encode_to_vec();
-    let roundtripped_bytes = BlankMessage::decode(&*original_bytes).unwrap().encode_to_vec();
+    let roundtripped_bytes = BlankMessage::decode(&*original_bytes)
+        .unwrap()
+        .encode_to_vec();
 
     let roundtripped = MessageWithData::decode(&*roundtripped_bytes).unwrap();
     assert_eq!(original, roundtripped);

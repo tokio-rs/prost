@@ -186,7 +186,7 @@ impl<'a> Context<'a> {
         // cannot implement Copy
         if let Some(unknown_fields) = &self.config().include_unknown_fields {
             if unknown_fields.get_first(fq_message_name).is_some() {
-                return false
+                return false;
             }
         };
         self.message_graph
