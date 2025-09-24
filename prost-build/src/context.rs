@@ -182,6 +182,11 @@ impl<'a> Context<'a> {
     /// Returns `true` if this message can automatically derive Copy trait.
     pub fn can_message_derive_copy(&self, fq_message_name: &str) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
+        if let Some(unknown_fields) = &self.config().include_unknown_fields {
+            if unknown_fields.get_first(fq_message_name).is_some() {
+                return false
+            }
+        };
         self.message_graph
             .get_message(fq_message_name)
             .unwrap()
