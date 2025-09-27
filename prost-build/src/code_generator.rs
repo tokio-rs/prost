@@ -79,7 +79,9 @@ impl OneofField {
         let has_type_name_conflict = parent
             .nested_type
             .iter()
-            .any(|nested| to_snake(nested.name()) == descriptor.name());
+            .map(DescriptorProto::name)
+            .chain(parent.enum_type.iter().map(EnumDescriptorProto::name))
+            .any(|type_name| to_upper_camel(type_name) == to_upper_camel(descriptor.name()));
 
         Self {
             descriptor,

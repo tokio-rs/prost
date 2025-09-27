@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package oneof_conflict;
+
+message EnumAndOneOfConflict {
+  enum Type {
+    TYPE_1 = 0;
+    TYPE_2 = 1;
+  }
+
+  message TypeOne { string field = 1; }
+  message TypeTwo { int32 field = 1; }
+  message TypeThree { Type field = 1; }
+
+  oneof type {
+    TypeOne type_one = 1;
+    TypeTwo type_two = 2;
+    TypeThree type_three = 3;
+  }
+}
+
+message NestedTypeAndOneOfConflict {
+  message Abstract { string field = 1; }
+  message TypeOne { string field = 1; }
+  message TypeTwo { int32 field = 1; }
+  message TypeThree { Abstract field = 1; }
+
+  oneof abstract {
+    Abstract abstract_ = 1;
+    TypeOne type_one = 2;
+    TypeTwo type_two = 3;
+    TypeThree type_three = 4;
+  }
+}
