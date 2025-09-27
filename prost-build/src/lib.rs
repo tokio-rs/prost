@@ -597,4 +597,27 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    #[test]
+    fn test_oneof_conflict() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/oneof_conflict/oneof_conflict.proto"],
+                &["src/fixtures/oneof_conflict"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/oneof_conflict/_oneof_conflict_formatted.rs"
+            } else {
+                "src/fixtures/oneof_conflict/_oneof_conflict.rs"
+            },
+            tempdir.path().join("oneof_conflict.rs")
+        );
+    }
 }
