@@ -1,3 +1,4 @@
+use crate::error::DecodeErrorKind;
 pub use crate::error::{DecodeError, EncodeError, UnknownEnumValue};
 pub use crate::message::Message;
 pub use crate::name::Name;
@@ -45,9 +46,7 @@ pub fn length_delimiter_len(length: usize) -> usize {
 pub fn decode_length_delimiter(mut buf: impl Buf) -> Result<usize, DecodeError> {
     let length = decode_varint(&mut buf)?;
     if length > usize::MAX as u64 {
-        return Err(DecodeError::new(
-            "length delimiter exceeds maximum usize value",
-        ));
+        return Err(DecodeErrorKind::LengthDelimiterTooLarge.into());
     }
     Ok(length as usize)
 }
