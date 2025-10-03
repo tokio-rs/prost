@@ -1,6 +1,5 @@
 syntax = "proto3";
-package myenum.result;
-
+package result_enum;
 
 enum Result {
   HELLO = 0;
