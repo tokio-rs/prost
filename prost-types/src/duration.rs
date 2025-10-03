@@ -135,7 +135,7 @@ pub enum DurationError {
     ///
     /// The [`Duration`] string format is specified in the [Protobuf JSON mapping specification][1].
     ///
-    /// [1]: https://developers.google.com/protocol-buffers/docs/proto3#json
+    /// [1]: https://protobuf.dev/programming-guides/proto3/#json
     ParseFailure,
 
     /// Indicates failure to convert a `prost_types::Duration` to a `std::time::Duration` because

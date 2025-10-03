@@ -110,7 +110,7 @@ impl Config {
     /// ```
     ///
     /// [1]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
-    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#maps
+    /// [2]: https://protobuf.dev/programming-guides/proto3/#maps
     /// [3]: https://doc.rust-lang.org/std/collections/struct.HashMap.html
     pub fn btree_map<I, S>(&mut self, paths: I) -> &mut Self
     where
@@ -170,7 +170,7 @@ impl Config {
     /// config.bytes(&["my_bytes_field", ".foo.bar"]);
     /// ```
     ///
-    /// [2]: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    /// [2]: https://protobuf.dev/programming-guides/proto3/#scalar
     /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
     pub fn bytes<I, S>(&mut self, paths: I) -> &mut Self
     where
@@ -440,7 +440,7 @@ impl Config {
     /// As with other options which take a set of paths, comments can be disabled on a per-package
     /// or per-symbol basis.
     ///
-    /// [1]: https://doc.rust-lang.org/rustdoc/documentation-tests.html#attributes
+    /// [1]: https://doc.rust-lang.org/rustdoc/write-documentation/documentation-tests.html#attributes
     /// [2]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#configuring-a-target
     pub fn disable_comments<I, S>(&mut self, paths: I) -> &mut Self
     where
@@ -1069,7 +1069,7 @@ impl Config {
         // according to [1] if any are output then those paths replace the default crate root,
         // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
         // this figured out.
-        // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
+        // [1]: https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script
 
         let file_descriptor_set = self.load_fds(protos, includes)?;
 
