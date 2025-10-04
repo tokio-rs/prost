@@ -76,11 +76,10 @@ impl OneofField {
         fields: Vec<Field>,
         path_index: i32,
     ) -> Self {
-        let has_type_name_conflict = parent
-            .nested_type
-            .iter()
-            .map(DescriptorProto::name)
-            .chain(parent.enum_type.iter().map(EnumDescriptorProto::name))
+        let nested_type_names = parent.nested_type.iter().map(DescriptorProto::name);
+        let nested_enum_names = parent.enum_type.iter().map(EnumDescriptorProto::name);
+        let has_type_name_conflict = nested_type_names
+            .chain(nested_enum_names)
             .any(|type_name| to_upper_camel(type_name) == to_upper_camel(descriptor.name()));
 
         Self {
