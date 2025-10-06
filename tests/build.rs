@@ -109,7 +109,7 @@ fn main() {
         .compile_protos(&[src.join("custom_debug.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("result_enum.proto")], includes)
         .unwrap();
 
