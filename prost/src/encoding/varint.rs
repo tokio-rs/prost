@@ -3,7 +3,7 @@ use core::num::NonZeroU64;
 
 use ::bytes::{Buf, BufMut};
 
-use crate::DecodeError;
+use crate::{error::DecodeErrorKind, DecodeError};
 
 /// Encodes an integer value into LEB128 variable length format, and writes it to the buffer.
 /// The buffer must have enough remaining space (maximum 10 bytes).
@@ -38,7 +38,7 @@ pub fn decode_varint(buf: &mut impl Buf) -> Result<u64, DecodeError> {
     let bytes = buf.chunk();
     let len = bytes.len();
     if len == 0 {
-        return Err(DecodeError::new("invalid varint"));
+        return Err(DecodeErrorKind::InvalidVarint.into());
     }
 
     let byte = bytes[0];
@@ -143,7 +143,7 @@ fn decode_varint_slice(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
 
     // We have overrun the maximum size of a varint (10 bytes) or the final byte caused an overflow.
     // Assume the data is corrupt.
-    Err(DecodeError::new("invalid varint"))
+    Err(DecodeErrorKind::InvalidVarint.into())
 }
 
 /// Decodes a LEB128-encoded variable length integer from the buffer, advancing the buffer as
@@ -163,14 +163,14 @@ fn decode_varint_slow(buf: &mut impl Buf) -> Result<u64, DecodeError> {
             // Check for u64::MAX overflow. See [`ConsumeVarint`][1] for details.
             // [1]: https://github.com/protocolbuffers/protobuf-go/blob/v1.27.1/encoding/protowire/wire.go#L358
             if count == 9 && byte >= 0x02 {
-                return Err(DecodeError::new("invalid varint"));
+                return Err(DecodeErrorKind::InvalidVarint.into());
             } else {
                 return Ok(value);
             }
         }
     }
 
-    Err(DecodeError::new("invalid varint"))
+    Err(DecodeErrorKind::InvalidVarint.into())
 }
 
 #[cfg(test)]
