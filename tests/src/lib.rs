@@ -107,6 +107,8 @@ pub mod oneof_attributes {
 
 #[cfg(test)]
 mod proto3_presence;
+#[cfg(test)]
+mod skipped_fields;
 
 use core::fmt::Debug;
 
