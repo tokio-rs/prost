@@ -106,8 +106,8 @@
 //! **For Protobuf Edition 2023 support, `protoc` version 25.0 or later is required.**
 //!
 //! Edition 2023 support was introduced in protobuf v25.0 (released November 2023).
-//! While prost works with protoc v25.0+, we recommend v27.0 or later for full conformance
-//! test support and complete editions feature coverage.
+//! While prost works with protoc v25.0+, we recommend v32.0 or later for the best
+//! compatibility and complete editions feature coverage.
 //!
 //! ### Installation
 //!

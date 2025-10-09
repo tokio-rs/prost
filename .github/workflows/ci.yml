@@ -12,8 +12,8 @@ permissions:
 
 env:
   # Minimum protoc version required for Edition 2023 support is v25.0
-  # Using v27.0+ ensures full conformance test support for editions
-  PROTOC_VERSION: '27.0'
+  # Using v32.1 for best compatibility and full conformance test support for editions
+  PROTOC_VERSION: '32.1'
   clippy_rust_version: '1.87'
 
 jobs:
