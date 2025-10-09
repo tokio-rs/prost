@@ -13,12 +13,22 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+fn set_protoc_include(path: &Path) {
+    // Safety: build scripts run before any user code spawns threads, so mutating the
+    // process environment here follows the guidelines for `std::env::set_var`.
+    unsafe {
+        env::set_var("PROTOC_INCLUDE", path);
+    }
+}
+
 fn main() {
     env_logger::init();
 
     // The source directory. The indirection is necessary in order to support the tests-2015 crate,
     // which sets the current directory to tests-2015 during build script evaluation.
     let src = Path::new("../tests/src");
+    let include = src.join("include");
+    set_protoc_include(&include);
     let includes = &[src];
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so

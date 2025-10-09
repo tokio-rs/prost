@@ -23,10 +23,36 @@ pub mod test_messages {
             "/protobuf_test_messages.proto3.rs"
         ));
     }
-    pub mod protobuf_unittest {
-        include!(concat!(env!("OUT_DIR"), "/protobuf_unittest.rs"));
+    pub mod proto2_unittest {
+        include!(concat!(env!("OUT_DIR"), "/proto2_unittest.rs"));
     }
-    pub mod protobuf_unittest_import {
-        include!(concat!(env!("OUT_DIR"), "/protobuf_unittest_import.rs"));
+    pub mod proto2_unittest_import {
+        include!(concat!(env!("OUT_DIR"), "/proto2_unittest_import.rs"));
     }
+
+    pub mod editions {
+        pub mod proto2 {
+            include!(concat!(
+                env!("OUT_DIR"),
+                "/protobuf_test_messages.editions.proto2.rs"
+            ));
+        }
+        pub mod proto3 {
+            include!(concat!(
+                env!("OUT_DIR"),
+                "/protobuf_test_messages.editions.proto3.rs"
+            ));
+        }
+        pub mod edition2023 {
+            include!(concat!(
+                env!("OUT_DIR"),
+                "/protobuf_test_messages.editions.rs"
+            ));
+        }
+        // Re-export for convenience
+        pub use edition2023::TestAllTypesEdition2023;
+    }
+
+    pub use proto2_unittest as protobuf_unittest;
+    pub use proto2_unittest_import as protobuf_unittest_import;
 }

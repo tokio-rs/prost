@@ -46,6 +46,8 @@ fn main() -> Result<()> {
         .unwrap();
 
     let proto_dir = src_dir.join("src");
+    let editions_dir = src_dir.join("editions/golden");
+    let conformance_test_protos_dir = src_dir.join("conformance/test_protos");
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
@@ -61,6 +63,20 @@ fn main() -> Result<()> {
                 proto_dir.join("google/protobuf/unittest.proto"),
             ],
             &[proto_dir],
+        )
+        .unwrap();
+
+    // Generate editions test messages for conformance testing
+    // Note: Not using btree_map for editions messages due to circular reference issues
+    prost_build::Config::new()
+        .protoc_executable(&protoc_executable)
+        .compile_protos(
+            &[
+                editions_dir.join("test_messages_proto2_editions.proto"),
+                editions_dir.join("test_messages_proto3_editions.proto"),
+                conformance_test_protos_dir.join("test_messages_edition2023.proto"),
+            ],
+            &[&editions_dir, &conformance_test_protos_dir],
         )
         .unwrap();
 
@@ -99,7 +115,7 @@ fn install_protoc_and_conformance_test_runner(
 
     // Build and install protoc, the protobuf libraries, and the conformance test runner.
     cmake::Config::new(src_dir)
-        .define("CMAKE_CXX_STANDARD", "14")
+        .define("CMAKE_CXX_STANDARD", "17")
         .define("ABSL_PROPAGATE_CXX_STD", "ON")
         .define("CMAKE_INSTALL_PREFIX", prefix_dir)
         .define(

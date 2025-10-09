@@ -15,6 +15,7 @@ members = [
   "tests/prost-path",
   "tests/reexported-prost",
   "tests/single-include",
+  "examples/edition-2023",
   "fuzz",
 ]
 

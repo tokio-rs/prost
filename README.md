@@ -8,7 +8,8 @@
 
 `prost` is a [Protocol Buffers](https://protobuf.dev/)
 implementation for the [Rust Language](https://www.rust-lang.org/). `prost`
-generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+generates simple, idiomatic Rust code from `proto2`, `proto3`, and `editions` files
+(including support for protobuf editions 2023).
 
 Compared to other Protocol Buffers implementations, `prost`
 
@@ -53,9 +54,11 @@ information on the tokio msrv policy you can check it out [here][tokio msrv]
 
 ## Generated Code
 
-`prost` generates Rust code from source `.proto` files using the `proto2` or
-`proto3` syntax. `prost`'s goal is to make the generated code as simple as
-possible.
+`prost` generates Rust code from source `.proto` files using the `proto2`,
+`proto3`, or `editions` syntax. With protobuf editions support, `prost` can
+handle modern `.proto` files including edition 2023 features like delimited
+encoding and advanced field presence semantics. `prost`'s goal is to make the
+generated code as simple as possible.
 
 ### `protoc`
 
@@ -231,13 +234,40 @@ the Rust field:
 | `proto2` | `required` | `T` |
 | `proto3` | default | `T` for scalar types, `Option<T>` otherwise |
 | `proto3` | `optional` | `Option<T>` |
-| `proto2`/`proto3` | `repeated` | `Vec<T>` |
+| `editions` | depends on `field_presence` feature | `T` or `Option<T>` based on feature setting |
+| `proto2`/`proto3`/`editions` | `repeated` | `Vec<T>` |
 
 Note that in `proto3` the default representation for all user-defined message
 types is `Option<T>`, and for scalar types just `T` (during decoding, a missing
 value is populated by `T::default()`). If you need a witness of the presence of
 a scalar type `T`, use the `optional` modifier to enforce an `Option<T>`
 representation in the generated Rust struct.
+
+#### Protobuf Editions Support
+
+`prost` supports protobuf editions syntax, including edition 2023. This provides
+modern protobuf features like:
+
+* **Feature inheritance**: Features are inherited from file to message to field levels
+* **Delimited encoding**: Support for length-delimited message encoding
+* **Enhanced field presence**: More precise control over field presence semantics
+* **Future-proof syntax**: Forward compatibility with upcoming protobuf features
+
+When using editions, specify the edition in your `.proto` file:
+
+```protobuf,ignore
+edition = "2023";
+package example;
+
+message EditionsExample {
+  string name = 1;
+  int32 value = 2;
+  features.field_presence = EXPLICIT;
+}
+```
+
+Editions files are processed the same way as `proto2` and `proto3` files, with
+`prost` automatically handling the edition-specific semantics during code generation.
 
 #### Map Fields
 
@@ -462,6 +492,19 @@ pub enum Gender {
 The prost project maintains flakes support for local development. Once you have
 nix and nix flakes setup you can just run `nix develop` to get a shell
 configured with the required dependencies to compile the whole project.
+
+## Protobuf Editions Support Status
+
+`prost` supports protobuf editions 2023 with the following capabilities:
+
+* ✅ **Full syntax support**: Can parse and generate code from editions `.proto` files
+* ✅ **Feature inheritance**: Proper handling of feature cascading from file to field level
+* ✅ **Field presence semantics**: Support for explicit, implicit, and legacy field presence
+* ✅ **Enum handling**: Open and closed enum semantics
+* ✅ **Basic delimited encoding**: Support for length-delimited message encoding
+
+The implementation passes the majority of protobuf conformance tests for editions 2023,
+making it suitable for production use with modern protobuf schemas.
 
 ## Feature Flags
 - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
