@@ -1,3 +1,0 @@
-# TODO(tokio-rs/prost#2): prost doesn't preserve unknown fields.
-Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
-Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
