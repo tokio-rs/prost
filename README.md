@@ -511,8 +511,9 @@ making it suitable for production use with modern protobuf schemas.
 **Minimum `protoc` version: v25.0** (released November 2023)
 
 Edition 2023 support was introduced in protobuf v25.0. While prost works with any protoc
-v25.0 or later, we recommend using **v32.0+** for the best compatibility and full editions
-feature support. The project CI uses v32.1.
+v25.0 or later, we recommend using the latest stable version for the best compatibility
+and full editions feature support. The project CI uses v3.32.1 (using the 3.x version
+numbering scheme from the protobuf v3 era, equivalent to the newer v32.1).
 
 ## Feature Flags
 - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
