@@ -6,6 +6,9 @@ use prost::Message;
 use protobuf::conformance::{
     conformance_request, conformance_response, ConformanceRequest, ConformanceResponse, WireFormat,
 };
+use protobuf::test_messages::editions::edition2023::TestAllTypesEdition2023;
+use protobuf::test_messages::editions::proto2::TestAllTypesProto2 as TestAllTypesProto2Editions;
+use protobuf::test_messages::editions::proto3::TestAllTypesProto3 as TestAllTypesProto3Editions;
 use protobuf::test_messages::proto2::TestAllTypesProto2;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
 use tests::{roundtrip, RoundtripResult};
@@ -96,6 +99,15 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     let roundtrip = match request.message_type.as_str() {
         "protobuf_test_messages.proto2.TestAllTypesProto2" => roundtrip::<TestAllTypesProto2>(&buf),
         "protobuf_test_messages.proto3.TestAllTypesProto3" => roundtrip::<TestAllTypesProto3>(&buf),
+        "protobuf_test_messages.editions.proto2.TestAllTypesProto2" => {
+            roundtrip::<TestAllTypesProto2Editions>(&buf)
+        }
+        "protobuf_test_messages.editions.proto3.TestAllTypesProto3" => {
+            roundtrip::<TestAllTypesProto3Editions>(&buf)
+        }
+        "protobuf_test_messages.editions.TestAllTypesEdition2023" => {
+            roundtrip::<TestAllTypesEdition2023>(&buf)
+        }
         _ => {
             return conformance_response::Result::ParseError(format!(
                 "unknown message type: {}",

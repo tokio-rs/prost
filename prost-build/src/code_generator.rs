@@ -22,8 +22,11 @@ use crate::Config;
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
 
+mod features;
+use features::{FeatureValues, FieldFeatures};
+use prost_types::feature_set::MessageEncoding;
+
 mod syntax;
-use syntax::Syntax;
 
 /// State object for the code generation process on a single input file.
 pub struct CodeGenerator<'a, 'b> {
@@ -31,7 +34,7 @@ pub struct CodeGenerator<'a, 'b> {
     package: String,
     type_path: Vec<String>,
     source_info: Option<SourceCodeInfo>,
-    syntax: Syntax,
+    features: FeatureValues,
     depth: u8,
     path: Vec<i32>,
     buf: &'a mut String,
@@ -46,13 +49,15 @@ fn push_indent(buf: &mut String, depth: u8) {
 struct Field {
     descriptor: FieldDescriptorProto,
     path_index: i32,
+    features: FieldFeatures,
 }
 
 impl Field {
-    fn new(descriptor: FieldDescriptorProto, path_index: i32) -> Self {
+    fn new(descriptor: FieldDescriptorProto, path_index: i32, features: FieldFeatures) -> Self {
         Self {
             descriptor,
             path_index,
+            features,
         }
     }
 
@@ -108,6 +113,7 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     pub(crate) fn generate(context: &mut Context<'b>, file: FileDescriptorProto, buf: &mut String) {
+        let features = FeatureValues::from_file(&file);
         let source_info = file.source_code_info.map(|mut s| {
             s.location.retain(|loc| {
                 let len = loc.path.len();
@@ -119,10 +125,10 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         let mut code_gen = CodeGenerator {
             context,
-            package: file.package.unwrap_or_default(),
+            package: file.package.clone().unwrap_or_default(),
             type_path: Vec::new(),
             source_info,
-            syntax: file.syntax.as_deref().into(),
+            features,
             depth: 0,
             path: Vec::new(),
             buf,
@@ -172,6 +178,15 @@ impl<'b> CodeGenerator<'_, 'b> {
         let message_name = message.name().to_string();
         let fq_message_name = self.fq_name(&message_name);
 
+        let parent_features = self.features;
+        let message_features = message
+            .options
+            .as_ref()
+            .and_then(|options| options.features.as_ref())
+            .map(|features| parent_features.apply(Some(features)))
+            .unwrap_or(parent_features);
+        self.features = message_features;
+
         // Skip external types.
         if self
             .context
@@ -218,12 +233,15 @@ impl<'b> CodeGenerator<'_, 'b> {
             .enumerate()
             .partition_map(|(idx, proto)| {
                 let idx = idx as i32;
-                if proto.proto3_optional.unwrap_or(false) {
-                    Either::Left(Field::new(proto.clone(), idx))
+                let is_proto3_optional = proto.proto3_optional.unwrap_or(false);
+                let in_oneof = proto.oneof_index.is_some() && !is_proto3_optional;
+                let field_features = FieldFeatures::resolve(proto, self.features, in_oneof);
+                if is_proto3_optional {
+                    Either::Left(Field::new(proto.clone(), idx, field_features))
                 } else if let Some(oneof_index) = proto.oneof_index {
-                    Either::Right((oneof_index, Field::new(proto.clone(), idx)))
+                    Either::Right((oneof_index, Field::new(proto.clone(), idx, field_features)))
                 } else {
-                    Either::Left(Field::new(proto.clone(), idx))
+                    Either::Left(Field::new(proto.clone(), idx, field_features))
                 }
             });
         // Optional fields create a synthetic oneof that we want to skip
@@ -317,6 +335,8 @@ impl<'b> CodeGenerator<'_, 'b> {
 
             self.pop_mod();
         }
+
+        self.features = parent_features;
 
         if self.config().enable_type_names {
             self.append_type_name(&message_name, &fq_message_name);
@@ -417,7 +437,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         let type_ = field.descriptor.r#type();
         let repeated = field.descriptor.label() == Label::Repeated;
         let deprecated = self.deprecated(&field.descriptor);
-        let optional = self.optional(&field.descriptor);
+        let optional = field.features.is_optional(&field.descriptor);
         let boxed = self
             .context
             .should_box_message_field(fq_message_name, &field.descriptor);
@@ -439,7 +459,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field.descriptor);
+        let type_tag = self.field_type_tag(&field.descriptor, self.features);
         self.buf.push_str(&type_tag);
 
         if type_ == Type::Bytes {
@@ -459,13 +479,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             Label::Required => self.buf.push_str(", required"),
             Label::Repeated => {
                 self.buf.push_str(", repeated");
-                if can_pack(&field.descriptor)
-                    && !field
-                        .descriptor
-                        .options
-                        .as_ref()
-                        .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
-                {
+                if can_pack(&field.descriptor) && !field.features.is_packed(&field.descriptor) {
                     self.buf.push_str(", packed = \"false\"");
                 }
             }
@@ -560,7 +574,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         let map_type = self
             .context
             .map_type(fq_message_name, field.descriptor.name());
-        let key_tag = self.field_type_tag(key);
+        let key_tag = self.field_type_tag(key, self.features);
         let value_tag = self.map_value_type_tag(value);
 
         self.buf.push_str(&format!(
@@ -658,7 +672,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             }
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field.descriptor);
+            let ty_tag = self.field_type_tag(&field.descriptor, self.features);
             self.buf.push_str(&format!(
                 "#[prost({}, tag = \"{}\")]\n",
                 ty_tag,
@@ -1029,7 +1043,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn field_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        parent_features: FeatureValues,
+    ) -> Cow<'static, str> {
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -1047,7 +1065,21 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::String => Cow::Borrowed("string"),
             Type::Bytes => Cow::Borrowed("bytes"),
             Type::Group => Cow::Borrowed("group"),
-            Type::Message => Cow::Borrowed("message"),
+            Type::Message => {
+                // Check if this message field uses delimited encoding (editions feature)
+                // Apply field-level feature overrides on top of parent features
+                let mut resolved_features = parent_features;
+                if let Some(options) = &field.options {
+                    if let Some(features) = &options.features {
+                        resolved_features = resolved_features.apply(Some(features));
+                    }
+                }
+
+                if resolved_features.message_encoding == MessageEncoding::Delimited {
+                    return Cow::Borrowed("group");
+                }
+                Cow::Borrowed("message")
+            }
             Type::Enum => Cow::Owned(format!(
                 "enumeration = {:?}",
                 self.resolve_ident(field.type_name())
@@ -1061,22 +1093,9 @@ impl<'b> CodeGenerator<'_, 'b> {
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
             )),
-            _ => self.field_type_tag(field),
-        }
-    }
-
-    fn optional(&self, field: &FieldDescriptorProto) -> bool {
-        if field.proto3_optional.unwrap_or(false) {
-            return true;
-        }
-
-        if field.label() != Label::Optional {
-            return false;
-        }
-
-        match field.r#type() {
-            Type::Message => true,
-            _ => self.syntax == Syntax::Proto2,
+            Type::Group => Cow::Borrowed("message"), // Maps don't support group encoding
+            Type::Message => Cow::Borrowed("message"), // Always use message for map values, not group
+            _ => self.field_type_tag(field, self.features),
         }
     }
 

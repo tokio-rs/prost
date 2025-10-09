@@ -1,3 +1,22 @@
 # TODO(tokio-rs/prost#2): prost doesn't preserve unknown fields.
 Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
 Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
+Required.Editions_Proto2.ProtobufInput.UnknownVarint.ProtobufOutput
+Required.Editions_Proto3.ProtobufInput.UnknownVarint.ProtobufOutput
+
+# prost doesn't support UnknownOrdering (test added in Protocol Buffers v27)
+Required.Proto2.ProtobufInput.UnknownOrdering.ProtobufOutput
+Required.Proto3.ProtobufInput.UnknownOrdering.ProtobufOutput
+Required.Editions_Proto2.ProtobufInput.UnknownOrdering.ProtobufOutput
+Required.Editions_Proto3.ProtobufInput.UnknownOrdering.ProtobufOutput
+
+# prost doesn't support MessageSet wire format (old proto2 extensions feature).
+Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.ProtobufOutput
+Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.NotUnknown.ProtobufOutput
+Required.Proto2.ProtobufInput.MessageSetEncoding.UnknownExtension.ProtobufOutput
+Required.Proto2.ProtobufInput.ValidMessageSetEncoding.OutOfOrderGroupsEntries.ProtobufOutput
+Required.Proto2.ProtobufInput.ValidMessageSetEncoding.ProtobufOutput
+
+# prost doesn't support delimited encoding (https://protobuf.dev/editions/features/#message_encoding).
+Required.Editions.ProtobufInput.ValidDelimitedExtension.GroupLike.ProtobufOutput
+Required.Editions.ProtobufInput.ValidDelimitedExtension.NotGroupLike.ProtobufOutput

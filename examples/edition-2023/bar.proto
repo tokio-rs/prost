@@ -1,0 +1,18 @@
+edition = "2023";
+
+package bar;
+
+import "google/protobuf/timestamp.proto";
+
+enum Beverage {
+  BEER = 0;
+  RUM = 1;
+  WHISKEY = 2;
+}
+
+message Order {
+  google.protobuf.Timestamp timestamp = 1;
+  Beverage beverage = 2;
+  string message = 3;
+  uint32 tip = 4;
+}

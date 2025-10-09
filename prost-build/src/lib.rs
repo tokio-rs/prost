@@ -101,6 +101,16 @@
 //! `prost-build` depends on the Protocol Buffers compiler, `protoc`, to parse `.proto` files into
 //! a representation that can be transformed into Rust.
 //!
+//! ### Minimum Version
+//!
+//! **For Protobuf Edition 2023 support, `protoc` version 25.0 or later is required.**
+//!
+//! Edition 2023 support was introduced in protobuf v25.0 (released November 2023).
+//! While prost works with protoc v25.0+, we recommend using the latest stable version
+//! for the best compatibility and complete editions feature coverage.
+//!
+//! ### Installation
+//!
 //! The easiest way for `prost-build` to find `protoc` is to install it in your `PATH`.
 //! This can be done by following the [`protoc` install instructions]. `prost-build` will search
 //! the current path for `protoc` or `protoc.exe`.

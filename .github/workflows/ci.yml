@@ -11,7 +11,10 @@ permissions:
   contents: read
 
 env:
-  PROTOC_VERSION: '3.25.3'
+  # Minimum protoc version required for Edition 2023 support is v25.0
+  # Using v3.32.1 for best compatibility and full conformance test support for editions
+  # Note: taiki-e/install-action uses 3.x version numbering (not the newer v2x+ numbering)
+  PROTOC_VERSION: '3.32.1'
   clippy_rust_version: '1.87'
 
 jobs:

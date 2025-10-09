@@ -1,0 +1,13 @@
+[package]
+name = "edition-2023-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+prost = { path = "../../prost" }
+prost-types = { path = "../../prost-types" }
+serde_json = "1.0"
+
+[build-dependencies]
+prost-build = { path = "../../prost-build" }
