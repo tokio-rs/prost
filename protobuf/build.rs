@@ -54,6 +54,7 @@ fn main() -> Result<()> {
     prost_build::Config::new()
         .protoc_executable(&protoc_executable)
         .btree_map(["."])
+        .include_unknown_fields(".", "unknown_fields")
         .compile_protos(
             &[
                 proto_dir.join("google/protobuf/test_messages_proto2.proto"),
