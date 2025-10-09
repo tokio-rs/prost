@@ -181,9 +181,7 @@ impl FieldFeatures {
         let mut presence = values.field_presence;
         if field.label() == prost_types::field_descriptor_proto::Label::Required {
             presence = FieldPresence::LegacyRequired;
-        } else if in_oneof {
-            presence = FieldPresence::Explicit;
-        } else if field.proto3_optional.unwrap_or(false) {
+        } else if in_oneof || field.proto3_optional.unwrap_or(false) {
             presence = FieldPresence::Explicit;
         }
 
