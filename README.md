@@ -506,6 +506,14 @@ configured with the required dependencies to compile the whole project.
 The implementation passes the majority of protobuf conformance tests for editions 2023,
 making it suitable for production use with modern protobuf schemas.
 
+### Required Protoc Version
+
+**Minimum `protoc` version: v25.0** (released November 2023)
+
+Edition 2023 support was introduced in protobuf v25.0. While prost works with any protoc
+v25.0 or later, we recommend using **v27.0+** for the best conformance test coverage and
+full editions feature support. The project CI uses v27.0.
+
 ## Feature Flags
 - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
 - `derive`: Enable integration with `prost-derive`. Disable this feature to reduce compile times. This feature is enabled by default.
