@@ -1803,7 +1803,7 @@ pub struct Endpoint {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Usage {
     /// Requirements that must be satisfied before a consumer project can use the
-    /// service. Each requirement is of the form \<service.name>/<requirement-id>;
+    /// service. Each requirement is of the form \<service.name>/\<requirement-id>;
     /// for example 'serviceusage.googleapis.com/billing-enabled'.
     #[prost(string, repeated, tag = "1")]
     pub requirements: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -3056,8 +3056,8 @@ pub struct QuotaLimit {
     /// tier STANDARD. For example: {STANDARD:500}.
     ///
     /// To apply a regional overide for a tier, add a map entry with key
-    /// "<TIER>/<region>", where <region> is a region name. Similarly, for a zone
-    /// override, add a map entry with key "<TIER>/{zone}".
+    /// "\<TIER>/\<region>", where \<region> is a region name. Similarly, for a zone
+    /// override, add a map entry with key "\<TIER>/{zone}".
     /// Further, a wildcard can be used at the end of a zone name in order to
     /// specify zone level overrides. For example:
     /// LOW: 10, STANDARD: 50, HIGH: 100,
