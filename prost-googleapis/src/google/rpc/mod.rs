@@ -333,10 +333,8 @@ pub struct ErrorInfo {
     /// {"instanceLimitPerRequest": "100"}, if the client exceeds the number of
     /// instances that can be created in a single (batch) request.
     #[prost(map = "string, string", tag = "3")]
-    pub metadata: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub metadata:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Describes what preconditions have failed.
 ///

@@ -586,17 +586,7 @@ pub struct ResourceDescriptor {
 pub mod resource_descriptor {
     /// A description of the historical or future-looking state of the
     /// resource pattern.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum History {
         /// The "unset" value.
@@ -632,17 +622,7 @@ pub mod resource_descriptor {
         }
     }
     /// A flag representing a specific style that a resource claims to conform to.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Style {
         /// The unspecified value. Do not use.
@@ -977,17 +957,13 @@ pub struct Monitoring {
     /// different monitored resource type. A metric can be used in at most
     /// one producer destination.
     #[prost(message, repeated, tag = "1")]
-    pub producer_destinations: ::prost::alloc::vec::Vec<
-        monitoring::MonitoringDestination,
-    >,
+    pub producer_destinations: ::prost::alloc::vec::Vec<monitoring::MonitoringDestination>,
     /// Monitoring configurations for sending metrics to the consumer project.
     /// There can be multiple consumer destinations, each one must have a
     /// different monitored resource type. A metric can be used in at most
     /// one consumer destination.
     #[prost(message, repeated, tag = "2")]
-    pub consumer_destinations: ::prost::alloc::vec::Vec<
-        monitoring::MonitoringDestination,
-    >,
+    pub consumer_destinations: ::prost::alloc::vec::Vec<monitoring::MonitoringDestination>,
 }
 /// Nested message and enum types in `Monitoring`.
 pub mod monitoring {
@@ -1910,17 +1886,7 @@ pub struct LabelDescriptor {
 /// Nested message and enum types in `LabelDescriptor`.
 pub mod label_descriptor {
     /// Value types that can be used as label values.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum ValueType {
         /// A variable-length string. This is the default.
@@ -2019,10 +1985,8 @@ pub struct MonitoredResource {
     /// resource descriptor. For example, Compute Engine VM instances use the
     /// labels `"project_id"`, `"instance_id"`, and `"zone"`.
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Auxiliary metadata for a \[MonitoredResource\]\[google.api.MonitoredResource\] object.
 /// \[MonitoredResource\]\[google.api.MonitoredResource\] objects contain the minimum set of information to
@@ -2049,10 +2013,8 @@ pub struct MonitoredResourceMetadata {
     pub system_labels: ::core::option::Option<::prost_types::Struct>,
     /// Output only. A map of user-defined metadata labels.
     #[prost(map = "string, string", tag = "2")]
-    pub user_labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub user_labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Selects and configures the service controller used by the service.  The
 /// service controller handles features like abuse, quota, billing, logging,
@@ -2181,17 +2143,7 @@ pub struct MetricDescriptor {
 /// Nested message and enum types in `MetricDescriptor`.
 pub mod metric_descriptor {
     /// The kind of measurement. It describes how the data is reported.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum MetricKind {
         /// Do not use this default value.
@@ -2232,17 +2184,7 @@ pub mod metric_descriptor {
         }
     }
     /// The value type of a metric.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum ValueType {
         /// Do not use this default value.
@@ -2304,10 +2246,8 @@ pub struct Metric {
     /// The set of label values that uniquely identify this metric. All
     /// labels listed in the `MetricDescriptor` must be assigned values.
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// A descriptor for defining project properties for a service. One service may
 /// have many consumer projects, and the service may want to behave differently
@@ -2358,17 +2298,7 @@ pub struct Property {
 /// Nested message and enum types in `Property`.
 pub mod property {
     /// Supported data type of the property values
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum PropertyType {
         /// The type is unspecified, and will result in an error.

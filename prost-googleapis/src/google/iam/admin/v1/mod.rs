@@ -147,17 +147,7 @@ pub struct ListServiceAccountKeysRequest {
 pub mod list_service_account_keys_request {
     /// `KeyType` filters to selectively retrieve certain varieties
     /// of keys.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum KeyType {
         /// Unspecified key type. The presence of this in the
@@ -389,17 +379,7 @@ pub struct Role {
 /// Nested message and enum types in `Role`.
 pub mod role {
     /// A stage representing a role's lifecycle phase.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RoleLaunchStage {
         /// The user has indicated this role is currently in an Alpha phase. If this
@@ -718,17 +698,7 @@ pub struct Permission {
 /// Nested message and enum types in `Permission`.
 pub mod permission {
     /// A stage representing a permission's lifecycle phase.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum PermissionLaunchStage {
         /// The permission is currently in an alpha phase.
@@ -765,17 +735,7 @@ pub mod permission {
         }
     }
     /// The state of the permission with regards to custom roles.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum CustomRolesSupportLevel {
         /// Permission is fully supported for custom role use.

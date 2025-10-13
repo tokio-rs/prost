@@ -184,17 +184,7 @@ pub struct BindingDelta {
 /// Nested message and enum types in `BindingDelta`.
 pub mod binding_delta {
     /// The type of action performed on a Binding in a policy.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Action {
         /// Unspecified.
@@ -255,17 +245,7 @@ pub struct AuditConfigDelta {
 /// Nested message and enum types in `AuditConfigDelta`.
 pub mod audit_config_delta {
     /// The type of action performed on an audit configuration in a policy.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Action {
         /// Unspecified.
