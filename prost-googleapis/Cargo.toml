@@ -1,0 +1,13 @@
+[package]
+name = "prost-googleapis"
+description = "Prost definitions of Google API Protocol Buffers."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+
+[dependencies]
+prost = { version = "0.14.1", path = "../prost", default-features = false }
+prost-types = { version = "0.14.1", path = "../prost-types" }
