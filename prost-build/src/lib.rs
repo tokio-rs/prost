@@ -614,6 +614,7 @@ mod tests {
 
         Config::new()
             .out_dir(tempdir.path())
+            .protoc_arg("--experimental_allow_proto3_optional")
             .compile_protos(
                 &["src/fixtures/deprecated/all_deprecated.proto"],
                 &["src/fixtures/deprecated"],
