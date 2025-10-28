@@ -89,6 +89,7 @@ mod option_enum;
 #[cfg(test)]
 mod result_enum;
 
+#[cfg(test)]
 mod test_result_named_option_value {
     include!(concat!(env!("OUT_DIR"), "/mystruct.optionn.rs"));
 }
