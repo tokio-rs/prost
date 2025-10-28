@@ -16,10 +16,10 @@ use std::path::PathBuf;
 fn main() {
     env_logger::init();
 
-    // The source directory. The indirection is necessary in order to support the tests-2015 crate,
+    // The source directories. The indirection is necessary in order to support the tests-2015 crate,
     // which sets the current directory to tests-2015 during build script evaluation.
     let src = Path::new("../tests/src");
-    let includes = &[src];
+    let includes = &[src, Path::new("../third_party/protobuf/src")];
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
