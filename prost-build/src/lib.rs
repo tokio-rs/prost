@@ -143,7 +143,7 @@ mod ast;
 pub use crate::ast::{Comments, Method, Service};
 
 mod collections;
-pub(crate) use collections::{BytesType, MapType};
+pub(crate) use collections::{BytesType, MapType, StringType};
 
 mod code_generator;
 mod context;
