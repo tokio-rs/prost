@@ -7,9 +7,9 @@
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::mem;
-use core::str;
+use core::{mem, str};
 
 use ::bytes::{Buf, BufMut, Bytes};
 
@@ -557,7 +557,7 @@ macro_rules! length_delimited {
 pub mod string {
     use super::*;
 
-    pub fn encode(tag: u32, value: &String, buf: &mut impl BufMut) {
+    pub fn encode(tag: u32, value: &impl StringAdapter, buf: &mut impl BufMut) {
         encode_key(tag, WireType::LengthDelimited, buf);
         encode_varint(value.len() as u64, buf);
         buf.put_slice(value.as_bytes());
@@ -565,46 +565,21 @@ pub mod string {
 
     pub fn merge(
         wire_type: WireType,
-        value: &mut String,
+        value: &mut impl StringAdapter,
         buf: &mut impl Buf,
-        ctx: DecodeContext,
+        _ctx: DecodeContext,
     ) -> Result<(), DecodeError> {
-        // ## Unsafety
-        //
-        // `string::merge` reuses `bytes::merge`, with an additional check of utf-8
-        // well-formedness. If the utf-8 is not well-formed, or if any other error occurs, then the
-        // string is cleared, so as to avoid leaking a string field with invalid data.
-        //
-        // This implementation uses the unsafe `String::as_mut_vec` method instead of the safe
-        // alternative of temporarily swapping an empty `String` into the field, because it results
-        // in up to 10% better performance on the protobuf message decoding benchmarks.
-        //
-        // It's required when using `String::as_mut_vec` that invalid utf-8 data not be leaked into
-        // the backing `String`. To enforce this, even in the event of a panic in `bytes::merge` or
-        // in the buf implementation, a drop guard is used.
-        unsafe {
-            struct DropGuard<'a>(&'a mut Vec<u8>);
-            impl Drop for DropGuard<'_> {
-                #[inline]
-                fn drop(&mut self) {
-                    self.0.clear();
-                }
-            }
-
-            let drop_guard = DropGuard(value.as_mut_vec());
-            bytes::merge_one_copy(wire_type, drop_guard.0, buf, ctx)?;
-            match str::from_utf8(drop_guard.0) {
-                Ok(_) => {
-                    // Success; do not clear the bytes.
-                    mem::forget(drop_guard);
-                    Ok(())
-                }
-                Err(_) => Err(DecodeErrorKind::InvalidString.into()),
-            }
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)?;
+        if len > buf.remaining() as u64 {
+            return Err(DecodeErrorKind::BufferUnderflow.into());
         }
+        let len = len as usize;
+
+        value.replace_with(buf.take(len))
     }
 
-    length_delimited!(String);
+    length_delimited!(impl StringAdapter);
 
     #[cfg(test)]
     mod test {
@@ -615,13 +590,24 @@ pub mod string {
 
         proptest! {
             #[test]
-            fn check(value: String, tag in MIN_TAG..=MAX_TAG) {
-                super::test::check_type(value, tag, WireType::LengthDelimited,
+            fn check_string(value: String, tag in MIN_TAG..=MAX_TAG) {
+                super::test::check_type::<String, String>(value, tag, WireType::LengthDelimited,
                                         encode, merge, encoded_len)?;
             }
             #[test]
-            fn check_repeated(value: Vec<String>, tag in MIN_TAG..=MAX_TAG) {
+            fn check_arc_str(value: Arc<str>, tag in MIN_TAG..=MAX_TAG) {
+                super::test::check_type::<Arc<str>, Arc<str>>(value, tag, WireType::LengthDelimited,
+                                        encode, merge, encoded_len)?;
+            }
+            #[test]
+            fn check_repeated_string(value: Vec<String>, tag in MIN_TAG..=MAX_TAG) {
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)?;
+            }
+            #[test]
+            fn check_repeated_arc_str(values: Vec<Arc<str>>, tag in MIN_TAG..=MAX_TAG) {
+                super::test::check_collection_type(values, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
                                                    encoded_len_repeated)?;
             }
@@ -717,27 +703,7 @@ pub mod bytes {
         // [1]: https://protobuf.dev/programming-guides/encoding/#last-one-wins
         //
         // This is intended for A and B both being Bytes so it is zero-copy.
-        // Some combinations of A and B types may cause a double-copy,
-        // in which case merge_one_copy() should be used instead.
         value.replace_with(buf.copy_to_bytes(len));
-        Ok(())
-    }
-
-    pub(super) fn merge_one_copy(
-        wire_type: WireType,
-        value: &mut impl BytesAdapter,
-        buf: &mut impl Buf,
-        _ctx: DecodeContext,
-    ) -> Result<(), DecodeError> {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let len = decode_varint(buf)?;
-        if len > buf.remaining() as u64 {
-            return Err(DecodeErrorKind::BufferUnderflow.into());
-        }
-        let len = len as usize;
-
-        // If we must copy, make sure to copy only once.
-        value.replace_with(buf.take(len));
         Ok(())
     }
 
@@ -779,6 +745,112 @@ pub mod bytes {
                                                    encoded_len_repeated)?;
             }
         }
+    }
+}
+
+pub trait StringAdapter: sealed_string::StringAdapter {}
+
+mod sealed_string {
+    use super::{Buf, DecodeError};
+
+    pub trait StringAdapter: Default + Sized + 'static {
+        fn len(&self) -> usize;
+
+        fn as_bytes(&self) -> &[u8];
+
+        /// Replace contents of this string with the contents from a buffer.
+        /// Returns an error if the buffer contains invalid UTF-8.
+        fn replace_with(&mut self, buf: impl Buf) -> Result<(), DecodeError>;
+
+        fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+    }
+}
+
+impl StringAdapter for String {}
+
+impl sealed_string::StringAdapter for String {
+    fn len(&self) -> usize {
+        String::len(self)
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        String::as_bytes(self)
+    }
+
+    fn replace_with(&mut self, buf: impl Buf) -> Result<(), DecodeError> {
+        // ## Unsafety
+        //
+        // `string::merge` reuses `bytes::merge`, with an additional check of utf-8
+        // well-formedness. If the utf-8 is not well-formed, or if any other error occurs, then the
+        // string is cleared, so as to avoid leaking a string field with invalid data.
+        //
+        // This implementation uses the unsafe `String::as_mut_vec` method instead of the safe
+        // alternative of temporarily swapping an empty `String` into the field, because it results
+        // in up to 10% better performance on the protobuf message decoding benchmarks.
+        //
+        // It's required when using `String::as_mut_vec` that invalid utf-8 data not be leaked into
+        // the backing `String`. To enforce this, even in the event of a panic in `bytes::merge` or
+        // in the buf implementation, a drop guard is used.
+        unsafe {
+            struct DropGuard<'a>(&'a mut alloc::vec::Vec<u8>);
+            impl Drop for DropGuard<'_> {
+                #[inline]
+                fn drop(&mut self) {
+                    self.0.clear();
+                }
+            }
+
+            let vec = self.as_mut_vec();
+            let drop_guard = DropGuard(vec);
+            drop_guard.0.clear();
+            drop_guard.0.reserve(buf.remaining());
+            drop_guard.0.put(buf);
+
+            match core::str::from_utf8(drop_guard.0) {
+                Ok(_) => {
+                    core::mem::forget(drop_guard);
+                    Ok(())
+                }
+                Err(_) => Err(DecodeErrorKind::InvalidString.into()),
+            }
+        }
+    }
+}
+
+impl StringAdapter for Arc<str> {}
+
+impl sealed_string::StringAdapter for Arc<str> {
+    fn len(&self) -> usize {
+        <str>::len(self)
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        <str>::as_bytes(self)
+    }
+
+    fn replace_with(&mut self, buf: impl Buf) -> Result<(), DecodeError> {
+        // We're about to do some contortions to ensure we perform only a
+        // single allocation and a single copy.
+
+        // Allocate space for `b`
+        let mut arc: Arc<[mem::MaybeUninit<u8>]> = Arc::new_uninit_slice(buf.remaining());
+        // We just created the `Arc`, so we can get a `&mut` to the data.
+        let mut data = Arc::get_mut(&mut arc).unwrap();
+        data.put(buf);
+        // SAFETY: we just initialized the contents of `arc`.
+        let arc = unsafe { arc.assume_init() };
+        if str::from_utf8(&arc).is_err() {
+            return Err(DecodeErrorKind::InvalidString.into());
+        }
+
+        // SAFETY: [u8] and str have the same representation, therefore we are
+        // allowed to convert an `Arc<[u8]>` to an `Arc<str>`, provided we have
+        // verified the contents are valid UTF-8 (which we just did).
+        *self = unsafe { Arc::from_raw(Arc::into_raw(arc) as *const str) };
+
+        Ok(())
     }
 }
 
