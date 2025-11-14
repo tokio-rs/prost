@@ -286,7 +286,7 @@ impl Field {
 
         if let Ty::Enumeration(ref ty) = self.ty {
             let set = Ident::new(&format!("set_{ident_str}"), Span::call_site());
-            let set_doc = format!("Sets `{ident_str}` to the provided enum value.");
+            let set_doc = format!("Sets `{ident_str}` to the provided value.");
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
                     let get_doc = format!(
@@ -320,8 +320,8 @@ impl Field {
                         }
 
                         #[doc=#set_doc]
-                        pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::core::option::Option::Some(value as i32);
+                        pub fn #set(&mut self, value: ::core::option::Option<#ty>) {
+                            self.#ident = value.map(::core::convert::Into::into);
                         }
                     }
                 }

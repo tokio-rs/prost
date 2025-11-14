@@ -7,6 +7,13 @@ fn test_optional_enum_value() {
     assert_eq!(msg.v(), None);
     assert_eq!(msg.v().unwrap_or_default(), Variant::Default);
 
+    msg.set_v(Some(Variant::Default));
+    assert_eq!(msg.v(), Some(Variant::Default));
+    assert_eq!(msg.v().unwrap_or_default(), Variant::Default);
+    msg.set_v(Some(Variant::NotDefault));
+    assert_eq!(msg.v(), Some(Variant::NotDefault));
+    assert_eq!(msg.v().unwrap_or_default(), Variant::NotDefault);
+
     let msg = Message { v: None };
     assert_eq!(msg.v, None);
     assert_eq!(msg.v(), None);
