@@ -1,0 +1,12 @@
+syntax = "proto3";
+package optional_enum;
+
+enum Variant {
+  Default = 0;
+  NotDefault = 1;
+}
+
+message Message {
+  optional Variant v = 1;
+}
+
