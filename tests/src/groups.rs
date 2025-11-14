@@ -85,22 +85,109 @@ fn test_group_oneof() {
 }
 
 #[test]
-fn test_deep_nesting_group() {
+fn test_deep_nesting_group_1() {
     fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
-        let mut a = NestedGroup2::default();
+        let mut a = NestedGroup::default();
         for _ in 0..depth {
-            a = NestedGroup2 {
-                optionalgroup: Some(Box::new(nested_group2::OptionalGroup {
+            a = NestedGroup {
+                optionalgroup: Some(Box::new(nested_group::OptionalGroup {
                     nested_group: Some(a),
                 })),
+                requiredgroup: Box::new(nested_group::RequiredGroup { nested_group: None }),
+                repeatedgroup: Vec::from([nested_group::RepeatedGroup {
+                    nested_groups: Vec::from([]),
+                }]),
+                o: Some(nested_group::O::G(Box::new(nested_group::G {
+                    nested_group: None,
+                }))),
             };
         }
 
         let mut buf = Vec::new();
         a.encode(&mut buf).unwrap();
-        NestedGroup2::decode(buf.as_slice()).map(|_| ())
+        NestedGroup::decode(buf.as_slice()).map(|_| ())
     }
 
-    assert!(build_and_roundtrip(50).is_ok());
-    assert!(build_and_roundtrip(51).is_err());
+    assert!(build_and_roundtrip(49).is_ok());
+    assert!(build_and_roundtrip(50).is_err());
+}
+
+#[test]
+fn test_deep_nesting_group_2() {
+    fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+        let mut a = NestedGroup::default();
+        for _ in 0..depth {
+            a = NestedGroup {
+                optionalgroup: Some(Box::new(nested_group::OptionalGroup { nested_group: None })),
+                requiredgroup: Box::new(nested_group::RequiredGroup {
+                    nested_group: Some(a),
+                }),
+                repeatedgroup: Vec::from([nested_group::RepeatedGroup {
+                    nested_groups: Vec::from([]),
+                }]),
+                o: Some(nested_group::O::G(Box::new(nested_group::G {
+                    nested_group: None,
+                }))),
+            };
+        }
+
+        let mut buf = Vec::new();
+        a.encode(&mut buf).unwrap();
+        NestedGroup::decode(buf.as_slice()).map(|_| ())
+    }
+
+    assert!(build_and_roundtrip(49).is_ok());
+    assert!(build_and_roundtrip(50).is_err());
+}
+
+#[test]
+fn test_deep_nesting_group_3() {
+    fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+        let mut a = NestedGroup::default();
+        for _ in 0..depth {
+            a = NestedGroup {
+                optionalgroup: Some(Box::new(nested_group::OptionalGroup { nested_group: None })),
+                requiredgroup: Box::new(nested_group::RequiredGroup { nested_group: None }),
+                repeatedgroup: Vec::from([nested_group::RepeatedGroup {
+                    nested_groups: Vec::from([a]),
+                }]),
+                o: Some(nested_group::O::G(Box::new(nested_group::G {
+                    nested_group: None,
+                }))),
+            };
+        }
+
+        let mut buf = Vec::new();
+        a.encode(&mut buf).unwrap();
+        NestedGroup::decode(buf.as_slice()).map(|_| ())
+    }
+
+    assert!(build_and_roundtrip(49).is_ok());
+    assert!(build_and_roundtrip(50).is_err());
+}
+
+#[test]
+fn test_deep_nesting_group_4() {
+    fn build_and_roundtrip(depth: usize) -> Result<(), prost::DecodeError> {
+        let mut a = NestedGroup::default();
+        for _ in 0..depth {
+            a = NestedGroup {
+                optionalgroup: Some(Box::new(nested_group::OptionalGroup { nested_group: None })),
+                requiredgroup: Box::new(nested_group::RequiredGroup { nested_group: None }),
+                repeatedgroup: Vec::from([nested_group::RepeatedGroup {
+                    nested_groups: Vec::from([]),
+                }]),
+                o: Some(nested_group::O::G(Box::new(nested_group::G {
+                    nested_group: Some(a),
+                }))),
+            };
+        }
+
+        let mut buf = Vec::new();
+        a.encode(&mut buf).unwrap();
+        NestedGroup::decode(buf.as_slice()).map(|_| ())
+    }
+
+    assert!(build_and_roundtrip(49).is_ok());
+    assert!(build_and_roundtrip(50).is_err());
 }
