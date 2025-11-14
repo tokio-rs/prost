@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package unknown_fields;
+
+message BlankMessage {
+}
+
+message MessageWithData {
+  int32 a = 1;
+  fixed32 b = 2;
+  fixed64 c = 3;
+  string d = 4;
+}

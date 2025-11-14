@@ -36,6 +36,7 @@ pub struct Config {
     pub(crate) message_attributes: PathMap<String>,
     pub(crate) enum_attributes: PathMap<String>,
     pub(crate) field_attributes: PathMap<String>,
+    pub(crate) include_unknown_fields: Option<PathMap<String>>,
     pub(crate) boxed: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
@@ -263,6 +264,36 @@ impl Config {
     {
         self.type_attributes
             .insert(path.as_ref().to_string(), attribute.as_ref().to_string());
+        self
+    }
+
+    /// Preserve unknown fields for the message type.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific messages, or packages which should preserve unknown
+    /// fields during deserialization.
+    ///
+    /// **`field_name`** - the name of the field to place unknown fields in. A field with this
+    /// name and type `prost::UnknownFieldList` will be added to the generated struct
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.include_unknown_fields(".my_messages.MyMessageType", "unknown_fields");
+    /// ```
+    pub fn include_unknown_fields<P, A>(&mut self, path: P, field_name: A) -> &mut Self
+    where
+        P: AsRef<str>,
+        A: AsRef<str>,
+    {
+        if self.include_unknown_fields.is_none() {
+            self.include_unknown_fields = Some(PathMap::default());
+        }
+        if let Some(unknown_fields) = &mut self.include_unknown_fields {
+            unknown_fields.insert(path.as_ref().to_string(), field_name.as_ref().to_string());
+        }
         self
     }
 
@@ -1202,6 +1233,7 @@ impl default::Default for Config {
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
+            include_unknown_fields: None,
             boxed: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
@@ -1234,6 +1266,7 @@ impl fmt::Debug for Config {
             .field("bytes_type", &self.bytes_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
+            .field("include_unknown_fields", &self.include_unknown_fields)
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
             .field("out_dir", &self.out_dir)
