@@ -247,7 +247,7 @@ where
     T: fmt::Debug,
 {
     if let Some(ref existing) = *option {
-        bail!("{}: {:?} and {:?}", message, existing, value);
+        bail!("{message}: {existing:?} and {value:?}");
     }
     *option = Some(value);
     Ok(())
@@ -255,7 +255,7 @@ where
 
 pub fn set_bool(b: &mut bool, message: &str) -> Result<(), Error> {
     if *b {
-        bail!("{}", message);
+        bail!("{message}");
     } else {
         *b = true;
         Ok(())
@@ -291,7 +291,7 @@ fn bool_attr(key: &str, attr: &Meta) -> Result<Option<bool>, Error> {
                 }),
             ..
         }) => Ok(Some(value)),
-        _ => bail!("invalid {} attribute", key),
+        _ => bail!("invalid {key} attribute"),
     }
 }
 
@@ -320,9 +320,9 @@ pub(super) fn tag_attr(attr: &Meta) -> Result<Option<u32>, Error> {
                 .map_err(Error::from)
                 .map(Option::Some),
             Lit::Int(ref lit) => Ok(Some(lit.base10_parse()?)),
-            _ => bail!("invalid tag attribute: {:?}", attr),
+            _ => bail!("invalid tag attribute: {attr:?}"),
         },
-        _ => bail!("invalid tag attribute: {:?}", attr),
+        _ => bail!("invalid tag attribute: {attr:?}"),
     }
 }
 
@@ -351,6 +351,6 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .map(|s| s.trim().parse::<u32>().map_err(Error::from))
             .collect::<Result<Vec<u32>, _>>()
             .map(Some),
-        _ => bail!("invalid tag attribute: {:?}", attr),
+        _ => bail!("invalid tag attribute: {attr:?}"),
     }
 }
