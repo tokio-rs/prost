@@ -305,18 +305,18 @@ impl Field {
                         }
                     }
                 }
-                Kind::Optional(ref default) => {
+                Kind::Optional(_) => {
                     let get_doc = format!(
-                        "Returns the enum value of `{ident_str}`, \
-                         or the default if the field is unset or set to an invalid enum value."
+                        "Returns the optional enum value of `{ident_str}`, \
+                         or None if the field is unset or set to an invalid enum value."
                     );
                     quote! {
                         #[doc=#get_doc]
-                        pub fn #get(&self) -> #ty {
+                        pub fn #get(&self) -> ::core::option::Option<#ty> {
                             self.#ident.and_then(|x| {
                                 let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
-                            }).unwrap_or(#default)
+                            })
                         }
 
                         #[doc=#set_doc]
