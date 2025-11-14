@@ -97,6 +97,7 @@ fn main() {
         .unwrap();
 
     config
+        .type_attribute(".", "#[allow(dead_code)]")
         .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
