@@ -29,7 +29,7 @@ impl Field {
                         ..
                     }) => parse_str::<Path>(&lit.value())?,
                     Meta::List(ref list) => list.parse_args::<Ident>()?.into(),
-                    _ => bail!("invalid oneof attribute: {:?}", attr),
+                    _ => bail!("invalid oneof attribute: {attr:?}"),
                 };
                 set_option(&mut ty, t, "duplicate oneof attribute")?;
             } else if let Some(t) = tags_attr(attr)? {

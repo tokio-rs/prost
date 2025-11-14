@@ -967,7 +967,7 @@ impl Config {
                 cmd.arg(proto.as_ref());
             }
 
-            debug!("Running: {:?}", cmd);
+            debug!("Running: {cmd:?}");
 
             let output = match cmd.output() {
             Err(err) if ErrorKind::NotFound == err.kind() => return Err(Error::new(

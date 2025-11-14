@@ -409,7 +409,7 @@ impl BytesTy {
         match s {
             "vec" => Ok(BytesTy::Vec),
             "bytes" => Ok(BytesTy::Bytes),
-            _ => bail!("Invalid bytes type: {}", s),
+            _ => bail!("Invalid bytes type: {s}"),
         }
     }
 
@@ -467,7 +467,7 @@ impl Ty {
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
         let enumeration_len = "enumeration".len();
-        let error = Err(anyhow!("invalid type: {}", s));
+        let error = Err(anyhow!("invalid type: {s}"));
         let ty = match s.trim() {
             "float" => Ty::Float,
             "double" => Ty::Double,
@@ -622,7 +622,7 @@ impl DefaultValue {
         {
             Ok(Some(lit.clone()))
         } else {
-            bail!("invalid default value attribute: {:?}", attr)
+            bail!("invalid default value attribute: {attr:?}")
         }
     }
 
