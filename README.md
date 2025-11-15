@@ -1,3 +1,4 @@
+[![maintenance-status: passively-maintained](https://img.shields.io/badge/maintenance--status-passively--maintained-forestgreen)](https://gist.github.com/rusty-snake/574a91f1df9f97ec77ca308d6d731e29)
 [![continuous integration](https://github.com/tokio-rs/prost/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tokio-rs/prost/actions/workflows/ci.yml?query=branch%3Amaster)
 [![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
 [![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
@@ -468,6 +469,10 @@ configured with the required dependencies to compile the whole project.
 - `derive`: Enable integration with `prost-derive`. Disable this feature to reduce compile times. This feature is enabled by default.
 - `prost-derive`: Deprecated. Alias for `derive` feature.
 - `no-recursion-limit`: Disable the recursion limit. The recursion limit is 100 and cannot be customized. 
+
+## Contributing
+
+The current maintainer is not contributing new features and doesn't have the time to review new features. Bug fixes and small improvements are welcome. Feel free to contribute small and easily reviewable PRs. 
 
 ## FAQ
 
