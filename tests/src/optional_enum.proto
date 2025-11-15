@@ -1,12 +1,14 @@
-syntax = "proto3";
+syntax = "proto2";
 package optional_enum;
 
 enum Variant {
   Default = 0;
   NotDefault = 1;
+  OnceDefault = 2;
 }
 
 message Message {
   optional Variant v = 1;
+  optional Variant v2 = 2 [default = OnceDefault];
 }
 

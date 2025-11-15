@@ -305,10 +305,16 @@ impl Field {
                         }
                     }
                 }
-                Kind::Optional(_) => {
+                Kind::Optional(ref default) => {
+                    let get_or_default =
+                        Ident::new(&format!("{ident_str}_or_default"), Span::call_site());
                     let get_doc = format!(
                         "Returns the optional enum value of `{ident_str}`, \
                          or None if the field is unset or set to an invalid enum value."
+                    );
+                    let get_or_default_doc = format!(
+                        "Returns the enum value of `{ident_str}`, \
+                         or the default if the field is unset or set to an invalid enum value."
                     );
                     quote! {
                         #[doc=#get_doc]
@@ -317,6 +323,14 @@ impl Field {
                                 let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
                             })
+                        }
+
+                        #[doc=#get_or_default_doc]
+                        pub fn #get_or_default(&self) -> #ty {
+                            self.#ident.and_then(|x| {
+                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                result.ok()
+                            }).unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]
