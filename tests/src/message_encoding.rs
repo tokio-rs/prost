@@ -1,3 +1,4 @@
+use prost::alloc::sync::Arc;
 use prost::alloc::vec;
 #[cfg(not(feature = "std"))]
 use prost::alloc::{borrow::ToOwned, string::String, vec::Vec};
@@ -64,9 +65,11 @@ pub struct ScalarTypes {
     pub _bool: bool,
     #[prost(string, tag = "014")]
     pub string: String,
-    #[prost(bytes = "vec", tag = "015")]
+    #[prost(string = "arc_str", tag = "015")]
+    pub string_arc: Arc<str>,
+    #[prost(bytes = "vec", tag = "016")]
     pub bytes_vec: Vec<u8>,
-    #[prost(bytes = "bytes", tag = "016")]
+    #[prost(bytes = "bytes", tag = "017")]
     pub bytes_buf: Bytes,
 
     #[prost(int32, required, tag = "101")]
@@ -394,4 +397,41 @@ pub enum BasicOneof {
     Int(i32),
     #[prost(string, tag = "9")]
     String(String),
+}
+
+#[derive(Clone, PartialEq, Message)]
+pub struct ArcStrMessage {
+    #[prost(string = "arc_str", tag = "1")]
+    pub name: Arc<str>,
+
+    #[prost(string = "arc_str", optional, tag = "2")]
+    pub optional_name: Option<Arc<str>>,
+
+    #[prost(string = "arc_str", repeated, tag = "3")]
+    pub repeated_names: Vec<Arc<str>>,
+}
+
+#[test]
+fn test_arc_str() {
+    let values = [
+        ArcStrMessage {
+            name: Arc::from("hello world"),
+            optional_name: Some(Arc::from("optional")),
+            repeated_names: vec![Arc::from("first"), Arc::from("second"), Arc::from("third")],
+        },
+        ArcStrMessage {
+            name: Arc::from(""),
+            optional_name: None,
+            repeated_names: Vec::new(),
+        },
+        ArcStrMessage {
+            name: Arc::from("Hello 世界! 🦀"),
+            optional_name: Some(Arc::from("Unicode: é, ñ, ö")),
+            repeated_names: vec![Arc::from("日本語"), Arc::from("中文"), Arc::from("한글")],
+        },
+    ];
+
+    for v in values {
+        check_message(&v);
+    }
 }
