@@ -287,6 +287,26 @@ pub mod foo {
 
 [^3]: Annotations have been elided for clarity. See below for a full example.
 
+#### Unknown Fields
+
+Protobuf's unknown fields are supported for round-trip consistency of messages. 
+See the [`prost-build` documentation][prost-build] for more details on generation.
+
+***IMPORTANT***: Note that unknown fields can potentially contain a Bytes object of undefined size. This violates compile-time size constraints, and thus means that any and all objects generated with unknown fields support enabled cannot implement the `Copy` trait.
+
+When using `prost`-generated objects that include unknown fields, all unknown fields are 
+stored in a field within the struct, generally named `unknown_fields`, although it can be
+modified in the `prost-build` build-script. If you are generating a new object of a type 
+that has been marked as having unknown fields, note that you will need to either import an existing
+`unknown_fields` object, or use a default constructor to your implementation, like so:
+```rust,ignore
+let val = MessageWithUnknownFields{
+  field_one: 1u32,
+  ..Default::default()
+};
+```
+This will initialise the `unknown_fields` as empty, and allow the object to be serialized correctly.
+
 ### Services
 
 `prost-build` allows a custom code-generator to be used for processing `service`

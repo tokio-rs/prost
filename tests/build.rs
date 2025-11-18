@@ -27,8 +27,7 @@ fn main() {
     // values.
     let mut config = prost_build::Config::new();
     config.btree_map(["."]);
-    config.include_unknown_fields(".unknown_fields.BlankMessage", "unknown_fields");
-    config.include_unknown_fields(".unknown_fields.MessageWithData", "unknown_fields");
+    config.include_unknown_fields(".unknown_fields", None::<String>);
     config.type_attribute(
         "Foo.Custom.OneOfAttrs.Msg.field",
         "#[derive(PartialOrd, Ord)]",

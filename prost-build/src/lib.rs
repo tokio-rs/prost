@@ -80,6 +80,40 @@
 //! That's it! Run `cargo doc` to see documentation for the generated code. The full
 //! example project can be found on [GitHub](https://github.com/danburkert/snazzy).
 //!
+//! ## Unknown Fields
+//!
+//! `prost-build` supports unknown fields, however they need to be manually enabled in your
+//! `build.rs` build-script. This can be done by modifying the previously script like so:
+//! ```rust,no_run
+//! use std::io::Result;
+//! fn main() -> Result<()> {
+//!     //prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
+//!     let mut config = prost_build::Config::new();
+//!     config.btree_map(["."]);
+//!     // To enable unknown fields for a single message:
+//!     config.include_unknown_fields(".snazzy.items.shirt", None::<String>);
+//!     // To enable unknown fields for a whole package:
+//!     config.include_unknown_fields(".snazzy.items", None::<String>);
+//!     config.compile_protos(&["src/items.proto"], &["src/"])?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! By default, this stores all unknown fields in a unique internal field called `unknown_fields`.
+//! If you already have a field in your message with this name, you can modify the above call like
+//! so:
+//! ```rust,no_run
+//! use std::io::Result;
+//! fn main() -> Result<()> {
+//!     //prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
+//!     let mut config = prost_build::Config::new();
+//!     config.btree_map(["."]);
+//!     config.include_unknown_fields(".snazzy.items.shirt", Some("unused_unique_field_name"));
+//!     config.compile_protos(&["src/items.proto"], &["src/"])?;
+//!     Ok(())
+//! }
+//! ```
+//!
 //! ## Feature Flags
 //! - `format`: Format the generated output. This feature is enabled by default.
 //! - `cleanup-markdown`: Clean up Markdown in protobuf docs. Enable this to clean up protobuf files from third parties.
