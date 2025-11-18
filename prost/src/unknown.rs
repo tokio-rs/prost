@@ -42,7 +42,7 @@ impl UnknownFieldList {
     }
 
     /// Gets an iterator over the fields contained in this set.
-    pub fn iter(&self) -> UnknownFieldIter<'_> {
+    pub fn iter(&self) -> impl Iterator<Item = (u32, &UnknownField)> {
         UnknownFieldIter {
             tags_iter: self.fields.iter(),
             current_tag: None,
@@ -55,6 +55,7 @@ impl<'a> Iterator for UnknownFieldIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
+            //If we have a current tag, get the next value in that tag
             if let Some((tag, iter)) = &mut self.current_tag {
                 if let Some(value) = iter.next() {
                     return Some((*tag, value));
@@ -62,6 +63,7 @@ impl<'a> Iterator for UnknownFieldIter<'a> {
                     self.current_tag = None;
                 }
             }
+            //If we don't have a current tag, get the next tag, if possible
             if let Some((tag, values)) = self.tags_iter.next() {
                 self.current_tag = Some((*tag, values.iter()));
             } else {
@@ -76,27 +78,25 @@ impl Message for UnknownFieldList {
     where
         Self: Sized,
     {
-        for (&tag, fields) in &self.fields {
-            for field in fields {
-                match field {
-                    UnknownField::Varint(value) => {
-                        encoding::encode_key(tag, WireType::Varint, buf);
-                        encoding::encode_varint(*value, buf);
-                    }
-                    UnknownField::SixtyFourBit(value) => {
-                        encoding::encode_key(tag, WireType::SixtyFourBit, buf);
-                        buf.put_u64_le(*value);
-                    }
-                    UnknownField::LengthDelimited(value) => {
-                        encoding::bytes::encode(tag, value, buf);
-                    }
-                    UnknownField::Group(value) => {
-                        encoding::group::encode(tag, value, buf);
-                    }
-                    UnknownField::ThirtyTwoBit(value) => {
-                        encoding::encode_key(tag, WireType::ThirtyTwoBit, buf);
-                        buf.put_u32_le(*value);
-                    }
+        for (tag, field) in self.iter() {
+            match field {
+                UnknownField::Varint(value) => {
+                    encoding::encode_key(tag, WireType::Varint, buf);
+                    encoding::encode_varint(*value, buf);
+                }
+                UnknownField::SixtyFourBit(value) => {
+                    encoding::encode_key(tag, WireType::SixtyFourBit, buf);
+                    buf.put_u64_le(*value);
+                }
+                UnknownField::LengthDelimited(value) => {
+                    encoding::bytes::encode(tag, value, buf);
+                }
+                UnknownField::Group(value) => {
+                    encoding::group::encode(tag, value, buf);
+                }
+                UnknownField::ThirtyTwoBit(value) => {
+                    encoding::encode_key(tag, WireType::ThirtyTwoBit, buf);
+                    buf.put_u32_le(*value);
                 }
             }
         }
@@ -118,13 +118,11 @@ impl Message for UnknownFieldList {
                 UnknownField::Varint(value)
             }
             WireType::SixtyFourBit => {
-                let mut value = [0; 8];
-                if buf.remaining() < value.len() {
+                if buf.remaining() < (u64::BITS / 8) as usize {
                     return Err(DecodeError::new("buffer underflow"));
                 }
-                buf.copy_to_slice(&mut value);
                 //https://protobuf.dev/programming-guides/encoding/
-                let return_val = u64::from_le_bytes(value);
+                let return_val = buf.get_u64_le();
                 UnknownField::SixtyFourBit(return_val)
             }
             WireType::LengthDelimited => {
@@ -141,13 +139,11 @@ impl Message for UnknownFieldList {
                 return Err(DecodeError::new("unexpected end group tag"));
             }
             WireType::ThirtyTwoBit => {
-                let mut value = [0; 4];
-                if buf.remaining() < value.len() {
+                if buf.remaining() < (u32::BITS / 8) as usize {
                     return Err(DecodeError::new("buffer underflow"));
                 }
-                buf.copy_to_slice(&mut value);
                 //https://protobuf.dev/programming-guides/encoding/
-                let return_val = u32::from_le_bytes(value);
+                let return_val = buf.get_u32_le();
                 UnknownField::ThirtyTwoBit(return_val)
             }
         };
@@ -157,23 +153,17 @@ impl Message for UnknownFieldList {
     }
 
     fn encoded_len(&self) -> usize {
-        let mut len = 0;
-        for (&tag, fields) in &self.fields {
-            for field in fields {
-                len += match field {
-                    UnknownField::Varint(value) => {
-                        encoding::key_len(tag) + encoding::encoded_len_varint(*value)
-                    }
-                    UnknownField::SixtyFourBit(_) => encoding::key_len(tag) + 8,
-                    UnknownField::LengthDelimited(value) => {
-                        encoding::bytes::encoded_len(tag, value)
-                    }
-                    UnknownField::Group(value) => encoding::group::encoded_len(tag, value),
-                    UnknownField::ThirtyTwoBit(_) => encoding::key_len(tag) + 4,
-                };
-            }
-        }
-        len
+        self.iter()
+            .map(|(tag, field)| match field {
+                UnknownField::Varint(value) => {
+                    encoding::key_len(tag) + encoding::encoded_len_varint(*value)
+                }
+                UnknownField::SixtyFourBit(_) => encoding::key_len(tag) + 8,
+                UnknownField::LengthDelimited(value) => encoding::bytes::encoded_len(tag, value),
+                UnknownField::Group(value) => encoding::group::encoded_len(tag, value),
+                UnknownField::ThirtyTwoBit(_) => encoding::key_len(tag) + 4,
+            })
+            .sum()
     }
 
     fn clear(&mut self) {

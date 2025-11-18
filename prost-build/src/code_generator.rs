@@ -279,10 +279,13 @@ impl<'b> CodeGenerator<'_, 'b> {
             }
             self.path.pop();
         }
-        if let Some(unknown_fields) = &self.config().include_unknown_fields {
-            if let Some(field_name) = unknown_fields.get_first(&fq_message_name).cloned() {
-                self.append_unknown_field_set(&fq_message_name, &field_name);
-            }
+        if let Some(field_name) = &self
+            .config()
+            .include_unknown_fields
+            .get_first(&fq_message_name)
+            .cloned()
+        {
+            self.append_unknown_field_set(&fq_message_name, field_name);
         }
         self.path.pop();
 

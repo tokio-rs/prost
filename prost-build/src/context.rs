@@ -184,10 +184,13 @@ impl<'a> Context<'a> {
         assert_eq!(".", &fq_message_name[..1]);
         // Unknown fields can potentially include an unbounded Bytes object, which
         // cannot implement Copy
-        if let Some(unknown_fields) = &self.config().include_unknown_fields {
-            if unknown_fields.get_first(fq_message_name).is_some() {
-                return false;
-            }
+        if self
+            .config
+            .include_unknown_fields
+            .get_first(fq_message_name)
+            .is_some()
+        {
+            return false;
         };
         self.message_graph
             .get_message(fq_message_name)
