@@ -316,8 +316,6 @@ pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use std::fs::File;
-    use std::io::Read;
     use std::rc::Rc;
 
     use super::*;
@@ -423,6 +421,22 @@ mod tests {
             .out_dir(tempdir.path())
             .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
             .unwrap();
+
+        // Check all generated files against fixture
+        for entry in std::fs::read_dir(tempdir.path()).unwrap() {
+            let file = entry.unwrap();
+            let file_name = file.file_name().into_string().unwrap();
+
+            assert_eq!(file_name, "smoke_test.rs");
+            assert_eq_fixture_file!(
+                if cfg!(feature = "format") {
+                    "src/fixtures/smoke_test/_expected_smoke_test_formatted.rs"
+                } else {
+                    "src/fixtures/smoke_test/_expected_smoke_test.rs"
+                },
+                file.path()
+            );
+        }
     }
 
     #[test]
@@ -487,10 +501,16 @@ mod tests {
 
         config.compile_fds(fds).unwrap();
 
-        assert_eq_fixture_file!(
-            "src/fixtures/helloworld/_expected_helloworld.rs",
-            tempdir.path().join("helloworld.rs")
-        );
+        // Check all generated files against fixture
+        for entry in std::fs::read_dir(tempdir.path()).unwrap() {
+            let file = entry.unwrap();
+            let file_name = file.file_name().into_string().unwrap();
+
+            assert_eq_fixture_file!(
+                format!("src/fixtures/helloworld/_expected_{file_name}"),
+                file.path()
+            );
+        }
     }
 
     #[test]
@@ -514,17 +534,25 @@ mod tests {
 
         // Prior to PR introducing this test, the generated include file would have the file
         // google.protobuf.rs which was an empty file. Now that file should only exist if it has content
-        if let Ok(mut f) = File::open(previously_empty_proto_path) {
-            // Since this file was generated, it should not be empty.
-            let mut contents = String::new();
-            f.read_to_string(&mut contents).unwrap();
-            assert!(!contents.is_empty());
-        } else {
-            // The file wasn't generated so the result include file should not reference it
-            assert_eq_fixture_file!(
-                "src/fixtures/imports_empty/_expected_include.rs",
-                tempdir.path().join(Path::new(include_file))
-            );
+        assert!(!std::fs::exists(previously_empty_proto_path).unwrap());
+
+        // Check all generated files against fixture
+        for entry in std::fs::read_dir(tempdir.path()).unwrap() {
+            let file = entry.unwrap();
+            let file_name = file.file_name().into_string().unwrap();
+            if file_name == include_file {
+                // `google.protobuf.rs` wasn't generated so the result include file should not reference it
+                assert_eq_fixture_file!(
+                    "src/fixtures/imports_empty/_expected_include.rs",
+                    file.path()
+                );
+            } else if file_name == "com.prost_test.test.v1.rs" {
+                let content = std::fs::read_to_string(file.path()).unwrap();
+                assert!(content.contains("struct TestConfig"));
+                assert!(content.contains("struct GetTestResponse"));
+            } else {
+                panic!("Found unexpected file: {}", file_name);
+            }
         }
     }
 

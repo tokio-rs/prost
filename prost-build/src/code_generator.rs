@@ -76,10 +76,11 @@ impl OneofField {
         fields: Vec<Field>,
         path_index: i32,
     ) -> Self {
-        let has_type_name_conflict = parent
-            .nested_type
-            .iter()
-            .any(|nested| to_snake(nested.name()) == descriptor.name());
+        let nested_type_names = parent.nested_type.iter().map(DescriptorProto::name);
+        let nested_enum_names = parent.enum_type.iter().map(EnumDescriptorProto::name);
+        let has_type_name_conflict = nested_type_names
+            .chain(nested_enum_names)
+            .any(|type_name| to_upper_camel(type_name) == to_upper_camel(descriptor.name()));
 
         Self {
             descriptor,
@@ -899,7 +900,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
         let name = service.name().to_owned();
-        debug!("  service: {:?}", name);
+        debug!("  service: {name:?}");
 
         let comments = self
             .location()

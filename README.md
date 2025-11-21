@@ -1,3 +1,4 @@
+[![maintenance-status: passively-maintained](https://img.shields.io/badge/maintenance--status-passively--maintained-forestgreen)](https://gist.github.com/rusty-snake/574a91f1df9f97ec77ca308d6d731e29)
 [![continuous integration](https://github.com/tokio-rs/prost/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tokio-rs/prost/actions/workflows/ci.yml?query=branch%3Amaster)
 [![Documentation](https://docs.rs/prost/badge.svg)](https://docs.rs/prost/)
 [![Crate](https://img.shields.io/crates/v/prost.svg)](https://crates.io/crates/prost)
@@ -46,7 +47,7 @@ See the [snazzy repository][snazzy] for a simple start-to-finish example.
 
 ### MSRV
 
-`prost` follows the `tokio-rs` project's MSRV model and supports 1.71.1. For more
+`prost` follows the `tokio-rs` project's MSRV model and supports 1.82. For more
 information on the tokio msrv policy you can check it out [here][tokio msrv]
 
 [tokio msrv]: https://github.com/tokio-rs/tokio/#supported-rust-versions
@@ -489,34 +490,48 @@ configured with the required dependencies to compile the whole project.
 - `prost-derive`: Deprecated. Alias for `derive` feature.
 - `no-recursion-limit`: Disable the recursion limit. The recursion limit is 100 and cannot be customized. 
 
+## Contributing
+
+The current maintainer is not contributing new features and doesn't have the time to review new features. Bug fixes and small improvements are welcome. Feel free to contribute small and easily reviewable PRs. 
+
+Bug fixes are still important, and security fixes will be released as soon as possible. Contact the `#prost` channel in [Tokio discord](https://discord.gg/tokio) if you feel a bug or security fix is not getting enough attention.
+
+The maintainer expects the official `protobuf` project to release their rust library soon and expects it to be as fully featured as the C++ library. See their [source code](https://github.com/protocolbuffers/protobuf/tree/main/rust) and [crate](https://crates.io/crates/protobuf/4.33.1-release) for more information.
+
 ## FAQ
 
 1. **Could `prost` be implemented as a serializer for [Serde](https://serde.rs/)?**
 
-  Probably not, however I would like to hear from a Serde expert on the matter.
-  There are two complications with trying to serialize Protobuf messages with
-  Serde:
+   Probably not, however I would like to hear from a Serde expert on the matter.
+   There are two complications with trying to serialize Protobuf messages with
+   Serde:
 
-  - Protobuf fields require a numbered tag, and currently there appears to be no
-    mechanism suitable for this in `serde`.
-  - The mapping of Protobuf type to Rust type is not 1-to-1. As a result,
-    trait-based approaches to dispatching don't work very well. Example: six
-    different Protobuf field types correspond to a Rust `Vec<i32>`: `repeated
-    int32`, `repeated sint32`, `repeated sfixed32`, and their packed
-    counterparts.
+   - Protobuf fields require a numbered tag, and currently there appears to be no
+     mechanism suitable for this in `serde`.
+   - The mapping of Protobuf type to Rust type is not 1-to-1. As a result,
+     trait-based approaches to dispatching don't work very well. Example: six
+     different Protobuf field types correspond to a Rust `Vec<i32>`: `repeated
+     int32`, `repeated sint32`, `repeated sfixed32`, and their packed
+     counterparts.
 
-  But it is possible to place `serde` derive tags onto the generated types, so
-  the same structure can support both `prost` and `Serde`.
+   But it is possible to place `serde` derive tags onto the generated types, so
+   the same structure can support both `prost` and `Serde`.
 
 2. **I get errors when trying to run `cargo test` on MacOS**
 
-  If the errors are about missing `autoreconf` or similar, you can probably fix
-  them by running
+   If the errors are about missing `autoreconf` or similar, you can probably fix
+   them by running
 
-  ```ignore
-  brew install automake
-  brew install libtool
-  ```
+   ```ignore
+   brew install automake
+   brew install libtool
+   ```
+
+3. **Why are most fields are wrapped in an `Option`?**
+
+   In the `protobuf` wire protocol all fields are optional. The design of `prost` choose to expose
+   this to the user of the types. `prost` leans toward correctness and safety, aligned with Rust’s 
+   philosophy — even at the cost of verbosity.
 
 ## License
 
