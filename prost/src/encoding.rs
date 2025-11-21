@@ -1,6 +1,6 @@
 //! Utility functions and types for encoding and decoding Protobuf types.
 //!
-//! This module contains the encoding and decoding primatives for Protobuf as described in
+//! This module contains the encoding and decoding primitives for Protobuf as described in
 //! <https://protobuf.dev/programming-guides/encoding/>.
 //!
 //! This module is `pub`, but is only for prost internal use. The `prost-derive` crate needs access for its `Message` implementations.
@@ -1430,7 +1430,7 @@ mod test {
     ]);
 
     #[test]
-    /// `decode_varint` accepts a `Buf`, which can be multiple concatinated buffers.
+    /// `decode_varint` accepts a `Buf`, which can be multiple concatenated buffers.
     /// This test ensures that future optimizations don't break the
     /// `decode_varint` for non-continuous memory.
     fn split_varint_decoding() {
