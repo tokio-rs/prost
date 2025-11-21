@@ -44,6 +44,10 @@ fn bootstrap() {
             ".",
             r#"#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]"#,
         )
+        .type_attribute(
+            ".",
+            r#"#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]"#,
+        )
         .out_dir(tempdir.path())
         .compile_protos(
             &[
