@@ -884,7 +884,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
         let name = service.name().to_owned();
-        debug!("  service: {:?}", name);
+        debug!("  service: {name:?}");
 
         let comments = self
             .location()

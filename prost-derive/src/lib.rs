@@ -97,11 +97,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .duplicates()
         .next()
     {
-        bail!(
-            "message {} has multiple fields with tag {}",
-            ident,
-            duplicate_tag
-        )
+        bail!("message {ident} has multiple fields with tag {duplicate_tag}",)
     };
 
     let encoded_len = fields
@@ -435,11 +431,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         .duplicates()
         .next()
     {
-        bail!(
-            "invalid oneof {}: multiple variants have tag {}",
-            ident,
-            duplicate_tag
-        );
+        bail!("invalid oneof {ident}: multiple variants have tag {duplicate_tag}");
     }
 
     let encode = fields.iter().map(|(variant_ident, field, deprecated)| {
