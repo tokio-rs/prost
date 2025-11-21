@@ -5,6 +5,7 @@ use core::slice;
 use bytes::{Buf, BufMut, Bytes};
 
 use crate::encoding::{self, DecodeContext, WireType};
+use crate::error::DecodeErrorKind;
 use crate::{DecodeError, Message};
 
 /// A set of unknown fields in a protobuf message.
@@ -119,7 +120,7 @@ impl Message for UnknownFieldList {
             }
             WireType::SixtyFourBit => {
                 if buf.remaining() < (u64::BITS / 8) as usize {
-                    return Err(DecodeError::new("buffer underflow"));
+                    return Err(DecodeErrorKind::BufferUnderflow.into());
                 }
                 //https://protobuf.dev/programming-guides/encoding/
                 let return_val = buf.get_u64_le();
@@ -136,11 +137,11 @@ impl Message for UnknownFieldList {
                 UnknownField::Group(value)
             }
             WireType::EndGroup => {
-                return Err(DecodeError::new("unexpected end group tag"));
+                return Err(DecodeErrorKind::UnexpectedEndGroupTag.into());
             }
             WireType::ThirtyTwoBit => {
                 if buf.remaining() < (u32::BITS / 8) as usize {
-                    return Err(DecodeError::new("buffer underflow"));
+                    return Err(DecodeErrorKind::BufferUnderflow.into());
                 }
                 //https://protobuf.dev/programming-guides/encoding/
                 let return_val = buf.get_u32_le();
