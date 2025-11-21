@@ -84,11 +84,17 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
 
-    // Sort the fields by tag number so that fields will be encoded in tag order.
+    // Sort the fields by tag number so that fields will be encoded in tag order,
+    // and unknown fields are encoded last.
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
     // See: https://protobuf.dev/programming-guides/encoding/#order
-    fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
+    fields.sort_by_key(|(_, field)| {
+        (
+            field.is_unknown(),
+            field.tags().into_iter().min().unwrap_or(0),
+        )
+    });
     let fields = fields;
 
     if let Some(duplicate_tag) = fields
@@ -109,6 +115,9 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .map(|(field_ident, field)| field.encode(&prost_path, quote!(self.#field_ident)));
 
     let merge = fields.iter().map(|(field_ident, field)| {
+        if field.is_unknown() {
+            return quote!();
+        }
         let merge = field.merge(&prost_path, quote!(value));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
         let tags = Itertools::intersperse(tags, quote!(|));
@@ -123,6 +132,23 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             },
         }
     });
+    let merge_fallback = match fields.iter().find(|&(_, f)| f.is_unknown()) {
+        Some((field_ident, field)) => {
+            let merge = field.merge(&prost_path, quote!(value));
+            quote! {
+                _ => {
+                    let mut value = &mut self.#field_ident;
+                    #merge.map_err(|mut error| {
+                        error.push(STRUCT_NAME, stringify!(#field_ident));
+                        error
+                    })
+                },
+            }
+        }
+        None => quote! {
+            _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx),
+        },
+    };
 
     let struct_name = if fields.is_empty() {
         quote!()
@@ -188,7 +214,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx),
+                    #merge_fallback
                 }
             }
 
