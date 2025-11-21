@@ -286,7 +286,7 @@ impl Field {
 
         if let Ty::Enumeration(ref ty) = self.ty {
             let set = Ident::new(&format!("set_{ident_str}"), Span::call_site());
-            let set_doc = format!("Sets `{ident_str}` to the provided enum value.");
+            let set_doc = format!("Sets `{ident_str}` to the provided value.");
             Some(match self.kind {
                 Kind::Plain(ref default) | Kind::Required(ref default) => {
                     let get_doc = format!(
@@ -306,13 +306,27 @@ impl Field {
                     }
                 }
                 Kind::Optional(ref default) => {
+                    let get_or_default =
+                        Ident::new(&format!("{ident_str}_or_default"), Span::call_site());
                     let get_doc = format!(
+                        "Returns the optional enum value of `{ident_str}`, \
+                         or None if the field is unset or set to an invalid enum value."
+                    );
+                    let get_or_default_doc = format!(
                         "Returns the enum value of `{ident_str}`, \
                          or the default if the field is unset or set to an invalid enum value."
                     );
                     quote! {
                         #[doc=#get_doc]
-                        pub fn #get(&self) -> #ty {
+                        pub fn #get(&self) -> ::core::option::Option<#ty> {
+                            self.#ident.and_then(|x| {
+                                let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
+                                result.ok()
+                            })
+                        }
+
+                        #[doc=#get_or_default_doc]
+                        pub fn #get_or_default(&self) -> #ty {
                             self.#ident.and_then(|x| {
                                 let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
                                 result.ok()
@@ -320,8 +334,8 @@ impl Field {
                         }
 
                         #[doc=#set_doc]
-                        pub fn #set(&mut self, value: #ty) {
-                            self.#ident = ::core::option::Option::Some(value as i32);
+                        pub fn #set(&mut self, value: ::core::option::Option<#ty>) {
+                            self.#ident = value.map(::core::convert::Into::into);
                         }
                     }
                 }
