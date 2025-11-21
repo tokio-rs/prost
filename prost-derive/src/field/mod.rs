@@ -34,11 +34,12 @@ impl Field {
     /// If the meta items are invalid, an error will be returned.
     /// If the field should be ignored, `None` is returned.
     pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
+        let deprecated = attrs.iter().any(|v| v.path().is_ident("deprecated"));
         let attrs = prost_attrs(attrs)?;
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
+        let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag, deprecated)? {
             Field::Scalar(field)
         } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
             Field::Message(field)
