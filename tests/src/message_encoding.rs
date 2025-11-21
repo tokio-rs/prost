@@ -1,3 +1,7 @@
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+
+use prost::alloc::collections::BTreeMap;
 use prost::alloc::vec;
 #[cfg(not(feature = "std"))]
 use prost::alloc::{borrow::ToOwned, string::String, vec::Vec};
@@ -394,4 +398,37 @@ pub enum BasicOneof {
     Int(i32),
     #[prost(string, tag = "9")]
     String(String),
+}
+
+#[test]
+fn roundtrip() {
+    let basic = Basic {
+        int32: 123,
+        bools: Vec::from([true, false, true]),
+        string: "Hello".into(),
+        optional_string: Some("World".into()),
+        enumeration: 12,
+        #[cfg(feature = "std")]
+        enumeration_map: HashMap::from([(1, 2), (3, 4)]),
+        #[cfg(feature = "std")]
+        string_map: HashMap::from([("foo".into(), "bar".into()), ("baz".into(), "boo".into())]),
+        enumeration_btree_map: BTreeMap::from([(5, 6), (7, 8)]),
+        string_btree_map: BTreeMap::from([
+            ("xfoo".into(), "xbar".into()),
+            ("xbaz".into(), "xboo".into()),
+        ]),
+        oneof: Some(BasicOneof::Int(456)),
+        #[cfg(feature = "std")]
+        bytes_map: HashMap::from([("foo".into(), "bar".into()), ("baz".into(), "boo".into())]),
+    };
+
+    let msg = Compound {
+        optional_message: Some(basic.clone()),
+        required_message: basic.clone(),
+        repeated_message: Vec::from([basic.clone()]),
+        #[cfg(feature = "std")]
+        message_map: HashMap::from([(1, basic.clone()), (2, basic.clone())]),
+        message_btree_map: BTreeMap::from([(3, basic.clone()), (4, basic.clone())]),
+    };
+    check_message(&msg);
 }
