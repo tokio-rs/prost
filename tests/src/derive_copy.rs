@@ -1,6 +1,7 @@
+#![allow(dead_code)]
+
 include!(concat!(env!("OUT_DIR"), "/derive_copy.rs"));
 
-#[allow(dead_code)]
 trait TestCopyIsImplemented: Copy {}
 
 impl TestCopyIsImplemented for EmptyMsg {}
