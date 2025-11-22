@@ -5,6 +5,7 @@ members = [
   "prost",
   "prost-build",
   "prost-derive",
+  "prost-googleapis",
   "prost-types",
   "protobuf",
   "tests",
