@@ -13,7 +13,7 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          packages = with pkgs; [ cargo rustc ];
+          packages = with pkgs; [ cargo rustc rustfmt ];
           buildInputs = with pkgs; [ pkg-config protobuf curl cmake ninja ];
         };
       });
