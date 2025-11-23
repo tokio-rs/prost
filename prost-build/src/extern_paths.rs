@@ -22,7 +22,12 @@ pub struct ExternPaths {
 }
 
 impl ExternPaths {
-    pub fn new(paths: &[(String, String)], prost_types: bool) -> Result<ExternPaths, String> {
+    pub fn new(
+        paths: &[(String, String)],
+        prost_path: &str,
+        prost_types_path: &str,
+        prost_types: bool,
+    ) -> Result<ExternPaths, String> {
         let mut extern_paths = ExternPaths {
             extern_paths: HashMap::new(),
         };
@@ -32,11 +37,11 @@ impl ExternPaths {
         }
 
         if prost_types {
-            extern_paths.insert(".google.protobuf".to_string(), "::prost_types".to_string())?;
+            extern_paths.insert(".google.protobuf".to_string(), prost_types_path.to_string())?;
             extern_paths.insert(".google.protobuf.BoolValue".to_string(), "bool".to_string())?;
             extern_paths.insert(
                 ".google.protobuf.BytesValue".to_string(),
-                "::prost::alloc::vec::Vec<u8>".to_string(),
+                format!("{prost_path}::alloc::vec::Vec<u8>"),
             )?;
             extern_paths.insert(
                 ".google.protobuf.DoubleValue".to_string(),
@@ -48,7 +53,7 @@ impl ExternPaths {
             extern_paths.insert(".google.protobuf.Int64Value".to_string(), "i64".to_string())?;
             extern_paths.insert(
                 ".google.protobuf.StringValue".to_string(),
-                "::prost::alloc::string::String".to_string(),
+                format!("{prost_path}::alloc::string::String"),
             )?;
             extern_paths.insert(
                 ".google.protobuf.UInt32Value".to_string(),
@@ -130,6 +135,8 @@ mod tests {
                 (".foo.Fuzz".to_string(), "::foo4::Fuzz".to_string()),
                 (".a.b.c.d.e.f".to_string(), "::abc::def".to_string()),
             ],
+            "::prost",
+            "::prost_types",
             false,
         )
         .unwrap();
@@ -156,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_well_known_types() {
-        let paths = ExternPaths::new(&[], true).unwrap();
+        let paths = ExternPaths::new(&[], "::prost", "::prost_types", true).unwrap();
 
         let case = |proto_ident: &str, resolved_ident: &str| {
             assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
@@ -164,13 +171,43 @@ mod tests {
 
         case(".google.protobuf.Value", "::prost_types::Value");
         case(".google.protobuf.Duration", "::prost_types::Duration");
+        case(
+            ".google.protobuf.BytesValue",
+            "::prost::alloc::vec::Vec<u8>",
+        );
+        case(".google.protobuf.Empty", "()");
+    }
+
+    #[test]
+    fn test_well_known_types_reexported_prost() {
+        let paths = ExternPaths::new(
+            &[],
+            "::some_crate::prost",
+            "::some_crate::prost_types",
+            true,
+        )
+        .unwrap();
+
+        let case = |proto_ident: &str, resolved_ident: &str| {
+            assert_eq!(paths.resolve_ident(proto_ident).unwrap(), resolved_ident);
+        };
+
+        case(".google.protobuf.Value", "::some_crate::prost_types::Value");
+        case(
+            ".google.protobuf.Duration",
+            "::some_crate::prost_types::Duration",
+        );
+        case(
+            ".google.protobuf.BytesValue",
+            "::some_crate::prost::alloc::vec::Vec<u8>",
+        );
         case(".google.protobuf.Empty", "()");
     }
 
     #[test]
     fn test_error_fully_qualified() {
         let paths = [("foo".to_string(), "bar".to_string())];
-        let err = ExternPaths::new(&paths, false).unwrap_err();
+        let err = ExternPaths::new(&paths, "::prost", "::prost_types", false).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Protobuf paths must be fully qualified (begin with a leading '.'): foo"
@@ -180,7 +217,7 @@ mod tests {
     #[test]
     fn test_error_invalid_path() {
         let paths = [(".foo.".to_string(), "bar".to_string())];
-        let err = ExternPaths::new(&paths, false).unwrap_err();
+        let err = ExternPaths::new(&paths, "::prost", "::prost_types", false).unwrap_err();
         assert_eq!(
             err.to_string(),
             "invalid fully-qualified Protobuf path: .foo."
@@ -193,7 +230,7 @@ mod tests {
             (".foo".to_string(), "bar".to_string()),
             (".foo".to_string(), "bar".to_string()),
         ];
-        let err = ExternPaths::new(&paths, false).unwrap_err();
+        let err = ExternPaths::new(&paths, "::prost", "::prost_types", false).unwrap_err();
         assert_eq!(err.to_string(), "duplicate extern Protobuf path: .foo")
     }
 }

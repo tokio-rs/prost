@@ -9,9 +9,9 @@ use multimap::MultiMap;
 use prost_types::field_descriptor_proto::{Label, Type};
 use prost_types::source_code_info::Location;
 use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FieldOptions, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-    SourceCodeInfo,
+    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, EnumValueOptions,
+    FieldDescriptorProto, FieldOptions, FileDescriptorProto, OneofDescriptorProto,
+    ServiceDescriptorProto, SourceCodeInfo,
 };
 
 use crate::ast::{Comments, Method, Service};
@@ -76,10 +76,11 @@ impl OneofField {
         fields: Vec<Field>,
         path_index: i32,
     ) -> Self {
-        let has_type_name_conflict = parent
-            .nested_type
-            .iter()
-            .any(|nested| to_snake(nested.name()) == descriptor.name());
+        let nested_type_names = parent.nested_type.iter().map(DescriptorProto::name);
+        let nested_enum_names = parent.enum_type.iter().map(EnumDescriptorProto::name);
+        let has_type_name_conflict = nested_type_names
+            .chain(nested_enum_names)
+            .any(|type_name| to_upper_camel(type_name) == to_upper_camel(descriptor.name()));
 
         Self {
             descriptor,
@@ -257,6 +258,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             },
             self.context.prost_path()
         ));
+        self.append_prost_path_attribute();
         self.append_skip_debug(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
@@ -375,6 +377,13 @@ impl<'b> CodeGenerator<'_, 'b> {
         for attribute in self.context.message_attributes(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str(attribute);
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_prost_path_attribute(&mut self) {
+        if let Some(prost_path_attribute) = self.context.prost_path_attribute() {
+            self.buf.push_str(prost_path_attribute);
             self.buf.push('\n');
         }
     }
@@ -630,6 +639,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             },
             self.context.prost_path()
         ));
+        self.append_prost_path_attribute();
         self.append_skip_debug(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
@@ -642,6 +652,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.path.push(field.path_index);
             self.append_doc(fq_message_name, Some(field.descriptor.name()));
             self.path.pop();
+
+            if self.deprecated(&field.descriptor) {
+                self.push_indent();
+                self.buf.push_str("#[deprecated]\n");
+            }
 
             self.push_indent();
             let ty_tag = self.field_type_tag(&field.descriptor);
@@ -737,6 +752,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             dbg,
             self.context.prost_path(),
         ));
+        self.append_prost_path_attribute();
         self.push_indent();
         self.buf.push_str("#[repr(i32)]\n");
         self.push_indent();
@@ -754,6 +770,10 @@ impl<'b> CodeGenerator<'_, 'b> {
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
             self.append_field_attributes(&fq_proto_enum_name, variant.proto_name);
+            if variant.deprecated {
+                self.push_indent();
+                self.buf.push_str("#[deprecated]\n");
+            }
             self.push_indent();
             self.buf.push_str(&variant.generated_variant_name);
             self.buf.push_str(" = ");
@@ -800,6 +820,10 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.depth += 1;
 
         for variant in variant_mappings.iter() {
+            if variant.deprecated {
+                self.push_indent();
+                self.buf.push_str("#[allow(deprecated)]\n");
+            }
             self.push_indent();
             self.buf.push_str("Self::");
             self.buf.push_str(&variant.generated_variant_name);
@@ -833,7 +857,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.push_indent();
             self.buf.push('\"');
             self.buf.push_str(variant.proto_name);
-            self.buf.push_str("\" => Some(Self::");
+            self.buf.push_str("\" => Some(");
+            if variant.deprecated {
+                self.buf.push_str("#[allow(deprecated)] ");
+            }
+            self.buf.push_str("Self::");
             self.buf.push_str(&variant.generated_variant_name);
             self.buf.push_str("),\n");
         }
@@ -856,7 +884,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
         let name = service.name().to_owned();
-        debug!("  service: {:?}", name);
+        debug!("  service: {name:?}");
 
         let comments = self
             .location()
@@ -1097,6 +1125,7 @@ struct EnumVariantMapping<'a> {
     proto_name: &'a str,
     proto_number: i32,
     generated_variant_name: String,
+    deprecated: bool,
 }
 
 fn build_enum_value_mappings<'a>(
@@ -1132,7 +1161,15 @@ fn build_enum_value_mappings<'a>(
             proto_name: value.name(),
             proto_number: value.number(),
             generated_variant_name,
+            deprecated: enum_field_deprecated(value),
         })
     }
     mappings
+}
+
+fn enum_field_deprecated(value: &EnumValueDescriptorProto) -> bool {
+    value
+        .options
+        .as_ref()
+        .is_some_and(EnumValueOptions::deprecated)
 }

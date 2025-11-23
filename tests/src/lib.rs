@@ -1,8 +1,4 @@
-#![allow(
-    clippy::cognitive_complexity,
-    clippy::module_inception,
-    clippy::unreadable_literal
-)]
+#![allow(clippy::module_inception)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
@@ -14,7 +10,7 @@ cfg_if! {
     if #[cfg(feature = "edition-2015")] {
         extern crate anyhow;
         extern crate core;
-        extern crate prost;
+        pub extern crate prost;
         extern crate prost_types;
         extern crate protobuf;
         #[cfg(test)]
@@ -23,6 +19,8 @@ cfg_if! {
         extern crate tempfile;
     }
 }
+
+pub use prost as reexported_prost;
 
 pub mod decode_error;
 pub mod extern_paths;
@@ -34,8 +32,6 @@ pub mod unittest;
 mod bootstrap;
 #[cfg(test)]
 mod debug;
-#[cfg(test)]
-mod deprecated_field;
 #[cfg(test)]
 mod derive_copy;
 #[cfg(test)]
@@ -87,21 +83,17 @@ mod ident_conversion;
 #[cfg(test)]
 mod oneof_name_conflict;
 
-mod test_enum_named_option_value {
-    include!(concat!(env!("OUT_DIR"), "/myenum.optionn.rs"));
-}
+#[cfg(test)]
+mod option_enum;
 
-mod test_enum_named_result_value {
-    include!(concat!(env!("OUT_DIR"), "/myenum.result.rs"));
-}
+#[cfg(test)]
+mod result_enum;
 
-mod test_result_named_option_value {
-    include!(concat!(env!("OUT_DIR"), "/mystruct.optionn.rs"));
-}
+#[cfg(test)]
+mod option_struct;
 
-mod test_result_named_result_value {
-    include!(concat!(env!("OUT_DIR"), "/mystruct.result.rs"));
-}
+#[cfg(test)]
+mod result_struct;
 
 /// Also for testing custom attributes, but on oneofs.
 ///
@@ -112,11 +104,8 @@ pub mod oneof_attributes {
     include!(concat!(env!("OUT_DIR"), "/foo.custom.one_of_attrs.rs"));
 }
 
-pub mod proto3 {
-    pub mod presence {
-        include!(concat!(env!("OUT_DIR"), "/proto3.presence.rs"));
-    }
-}
+#[cfg(test)]
+mod proto3_presence;
 
 use core::fmt::Debug;
 
@@ -138,7 +127,6 @@ pub enum RoundtripResult {
     Error(anyhow::Error),
 }
 
-#[allow(clippy::uninlined_format_args)]
 impl RoundtripResult {
     /// Unwrap the roundtrip result.
     pub fn unwrap(self) -> Vec<u8> {
@@ -319,16 +307,6 @@ mod tests {
         // https://github.com/tokio-rs/prost/issues/267
         let buf = vec![b'C'; 1 << 20];
         <() as Message>::decode(&buf[..]).err().unwrap();
-    }
-
-    #[test]
-    fn test_proto3_presence() {
-        let msg = proto3::presence::A {
-            b: Some(42),
-            foo: Some(proto3::presence::a::Foo::C(13)),
-        };
-
-        check_message(&msg);
     }
 
     #[test]

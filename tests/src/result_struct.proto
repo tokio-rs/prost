@@ -1,6 +1,5 @@
 syntax = "proto3";
-package mystruct.result;
-
+package result_struct;
 
 message Result {
   string msg = 1;

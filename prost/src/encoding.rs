@@ -1,11 +1,11 @@
 //! Utility functions and types for encoding and decoding Protobuf types.
 //!
-//! Meant to be used only from `Message` implementations.
-
-#![allow(clippy::implicit_hasher, clippy::ptr_arg)]
+//! This module contains the encoding and decoding primitives for Protobuf as described in
+//! <https://protobuf.dev/programming-guides/encoding/>.
+//!
+//! This module is `pub`, but is only for prost internal use. The `prost-derive` crate needs access for its `Message` implementations.
 
 use alloc::collections::BTreeMap;
-use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::mem;
@@ -13,6 +13,7 @@ use core::str;
 
 use ::bytes::{Buf, BufMut, Bytes};
 
+use crate::error::DecodeErrorKind;
 use crate::DecodeError;
 use crate::Message;
 
@@ -83,7 +84,7 @@ impl DecodeContext {
     #[inline]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         if self.recurse_count == 0 {
-            Err(DecodeError::new("recursion limit reached"))
+            Err(DecodeErrorKind::RecursionLimitReached.into())
         } else {
             Ok(())
         }
@@ -91,7 +92,6 @@ impl DecodeContext {
 
     #[cfg(feature = "no-recursion-limit")]
     #[inline]
-    #[allow(clippy::unnecessary_wraps)] // needed in other features
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         Ok(())
     }
@@ -115,13 +115,13 @@ pub fn encode_key(tag: u32, wire_type: WireType, buf: &mut impl BufMut) {
 pub fn decode_key(buf: &mut impl Buf) -> Result<(u32, WireType), DecodeError> {
     let key = decode_varint(buf)?;
     if key > u64::from(u32::MAX) {
-        return Err(DecodeError::new(format!("invalid key value: {key}")));
+        return Err(DecodeErrorKind::InvalidKey { key }.into());
     }
     let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key as u32 >> 3;
 
     if tag < MIN_TAG {
-        return Err(DecodeError::new("invalid tag value: 0"));
+        return Err(DecodeErrorKind::InvalidTag.into());
     }
 
     Ok((tag, wire_type))
@@ -149,7 +149,7 @@ where
     let len = decode_varint(buf)?;
     let remaining = buf.remaining();
     if len > remaining as u64 {
-        return Err(DecodeError::new("buffer underflow"));
+        return Err(DecodeErrorKind::BufferUnderflow.into());
     }
 
     let limit = remaining - len as usize;
@@ -158,7 +158,7 @@ where
     }
 
     if buf.remaining() != limit {
-        return Err(DecodeError::new("delimited length exceeded"));
+        return Err(DecodeErrorKind::DelimitedLengthExceeded.into());
     }
     Ok(())
 }
@@ -180,18 +180,18 @@ pub fn skip_field(
             match inner_wire_type {
                 WireType::EndGroup => {
                     if inner_tag != tag {
-                        return Err(DecodeError::new("unexpected end group tag"));
+                        return Err(DecodeErrorKind::UnexpectedEndGroupTag.into());
                     }
                     break 0;
                 }
                 _ => skip_field(inner_wire_type, inner_tag, buf, ctx.enter_recursion())?,
             }
         },
-        WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
+        WireType::EndGroup => return Err(DecodeErrorKind::UnexpectedEndGroupTag.into()),
     };
 
     if len > buf.remaining() as u64 {
-        return Err(DecodeError::new("buffer underflow"));
+        return Err(DecodeErrorKind::BufferUnderflow.into());
     }
 
     buf.advance(len as usize);
@@ -396,7 +396,7 @@ macro_rules! fixed_width {
             ) -> Result<(), DecodeError> {
                 check_wire_type($wire_type, wire_type)?;
                 if buf.remaining() < $width {
-                    return Err(DecodeError::new("buffer underflow"));
+                    return Err(DecodeErrorKind::BufferUnderflow.into());
                 }
                 *value = buf.$get();
                 Ok(())
@@ -538,6 +538,7 @@ macro_rules! length_delimited {
         }
 
         #[inline]
+        #[allow(clippy::ptr_arg)]
         pub fn encoded_len(tag: u32, value: &$ty) -> usize {
             key_len(tag) + encoded_len_varint(value.len() as u64) + value.len()
         }
@@ -598,9 +599,7 @@ pub mod string {
                     mem::forget(drop_guard);
                     Ok(())
                 }
-                Err(_) => Err(DecodeError::new(
-                    "invalid string value: data is not UTF-8 encoded",
-                )),
+                Err(_) => Err(DecodeErrorKind::InvalidString.into()),
             }
         }
     }
@@ -685,6 +684,8 @@ impl sealed::BytesAdapter for Vec<u8> {
 }
 
 pub mod bytes {
+    use crate::error::DecodeErrorKind;
+
     use super::*;
 
     pub fn encode(tag: u32, value: &impl BytesAdapter, buf: &mut impl BufMut) {
@@ -702,7 +703,7 @@ pub mod bytes {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(DecodeError::new("buffer underflow"));
+            return Err(DecodeErrorKind::BufferUnderflow.into());
         }
         let len = len as usize;
 
@@ -713,7 +714,7 @@ pub mod bytes {
         // > types and strings, if the same field appears multiple times, the parser accepts the
         // > last value it sees.
         //
-        // [1]: https://developers.google.com/protocol-buffers/docs/encoding#optional
+        // [1]: https://protobuf.dev/programming-guides/encoding/#last-one-wins
         //
         // This is intended for A and B both being Bytes so it is zero-copy.
         // Some combinations of A and B types may cause a double-copy,
@@ -731,7 +732,7 @@ pub mod bytes {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(DecodeError::new("buffer underflow"));
+            return Err(DecodeErrorKind::BufferUnderflow.into());
         }
         let len = len as usize;
 
@@ -865,6 +866,8 @@ pub mod message {
 }
 
 pub mod group {
+    use crate::error::DecodeErrorKind;
+
     use super::*;
 
     pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
@@ -893,7 +896,7 @@ pub mod group {
             let (field_tag, field_wire_type) = decode_key(buf)?;
             if field_wire_type == WireType::EndGroup {
                 if field_tag != tag {
-                    return Err(DecodeError::new("unexpected end group tag"));
+                    return Err(DecodeErrorKind::UnexpectedEndGroupTag.into());
                 }
                 return Ok(());
             }
@@ -1425,4 +1428,35 @@ mod test {
         (String, string),
         (Vec<u8>, bytes)
     ]);
+
+    #[test]
+    /// `decode_varint` accepts a `Buf`, which can be multiple concatenated buffers.
+    /// This test ensures that future optimizations don't break the
+    /// `decode_varint` for non-continuous memory.
+    fn split_varint_decoding() {
+        let mut test_values = Vec::<u64>::with_capacity(10 * 2);
+        test_values.push(128);
+        for i in 2..9 {
+            test_values.push((1 << (7 * i)) - 1);
+            test_values.push(1 << (7 * i));
+        }
+
+        for v in test_values {
+            let mut buf = BytesMut::with_capacity(10);
+            encode_varint(v, &mut buf);
+            let half_len = buf.len() / 2;
+            let len = buf.len();
+            // this weird sequence here splits the buffer into two instances of Bytes
+            // which we then stitch together with `bytes::buf::Buf::chain`
+            // which ensures the varint bytes are not in a single chunk
+            let b2 = buf.split_off(half_len);
+            let mut c = buf.chain(b2);
+
+            // make sure all the bytes are inside
+            assert_eq!(c.remaining(), len);
+            // make sure the first chunk is split as we expected
+            assert_eq!(c.chunk().len(), half_len);
+            assert_eq!(v, decode_varint(&mut c).unwrap());
+        }
+    }
 }

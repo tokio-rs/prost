@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package prost_path;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+message Msg {
+  int32 a = 1;
+  string b = 2;
+  oneof c {
+    AnEnum d = 3;
+    string e = 4;
+  };
+  google.protobuf.Timestamp timestamp = 5;
+  google.protobuf.Value value = 6;
+}
+
+enum AnEnum {
+    A = 0;
+    B = 1;
+};

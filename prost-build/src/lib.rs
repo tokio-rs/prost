@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://docs.rs/prost-build/0.14.1")]
-#![allow(clippy::option_as_ref_deref, clippy::format_push_string)]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
@@ -245,9 +244,9 @@ pub trait ServiceGenerator {
 /// ```
 ///
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
-/// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
-/// [3]: https://developers.google.com/protocol-buffers/docs/proto3#importing-definitions
-/// [4]: https://developers.google.com/protocol-buffers/docs/proto#packages
+/// [2]: https://doc.rust-lang.org/cargo/reference/build-script-examples.html
+/// [3]: https://protobuf.dev/programming-guides/proto3/#importing
+/// [4]: https://protobuf.dev/programming-guides/proto3/#packages
 pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]) -> Result<()> {
     Config::new().compile_protos(protos, includes)
 }
@@ -275,7 +274,7 @@ pub fn compile_protos(protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]
 ///
 /// [`protox`]: https://github.com/andrewhickman/protox
 /// [1]: https://doc.rust-lang.org/std/macro.include.html
-/// [2]: http://doc.crates.io/build-script.html#case-study-code-generation
+/// [2]: https://doc.rust-lang.org/cargo/reference/build-script-examples.html
 pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
     Config::new().compile_fds(fds)
 }
@@ -283,15 +282,13 @@ pub fn compile_fds(fds: FileDescriptorSet) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use std::fs::File;
-    use std::io::Read;
     use std::rc::Rc;
 
     use super::*;
 
     macro_rules! assert_eq_fixture_file {
         ($expected_path:expr, $actual_path:expr) => {{
-            let actual = std::fs::read_to_string($actual_path).unwrap();
+            let actual = std::fs::read_to_string($actual_path).expect("Failed to read actual file");
 
             // Normalizes windows and Linux-style EOL
             let actual = actual.replace("\r\n", "\n");
@@ -302,13 +299,14 @@ mod tests {
 
     macro_rules! assert_eq_fixture_contents {
         ($expected_path:expr, $actual:expr) => {{
-            let expected = std::fs::read_to_string($expected_path).unwrap();
+            let expected =
+                std::fs::read_to_string($expected_path).expect("Failed to read expected file");
 
             // Normalizes windows and Linux-style EOL
             let expected = expected.replace("\r\n", "\n");
 
             if expected != $actual {
-                std::fs::write($expected_path, &$actual).unwrap();
+                std::fs::write($expected_path, &$actual).expect("Failed to write expected file");
             }
 
             assert_eq!(expected, $actual);
@@ -389,6 +387,22 @@ mod tests {
             .out_dir(tempdir.path())
             .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
             .unwrap();
+
+        // Check all generated files against fixture
+        for entry in std::fs::read_dir(tempdir.path()).unwrap() {
+            let file = entry.unwrap();
+            let file_name = file.file_name().into_string().unwrap();
+
+            assert_eq!(file_name, "smoke_test.rs");
+            assert_eq_fixture_file!(
+                if cfg!(feature = "format") {
+                    "src/fixtures/smoke_test/_expected_smoke_test_formatted.rs"
+                } else {
+                    "src/fixtures/smoke_test/_expected_smoke_test.rs"
+                },
+                file.path()
+            );
+        }
     }
 
     #[test]
@@ -453,10 +467,16 @@ mod tests {
 
         config.compile_fds(fds).unwrap();
 
-        assert_eq_fixture_file!(
-            "src/fixtures/helloworld/_expected_helloworld.rs",
-            tempdir.path().join("helloworld.rs")
-        );
+        // Check all generated files against fixture
+        for entry in std::fs::read_dir(tempdir.path()).unwrap() {
+            let file = entry.unwrap();
+            let file_name = file.file_name().into_string().unwrap();
+
+            assert_eq_fixture_file!(
+                format!("src/fixtures/helloworld/_expected_{file_name}"),
+                file.path()
+            );
+        }
     }
 
     #[test]
@@ -480,17 +500,25 @@ mod tests {
 
         // Prior to PR introducing this test, the generated include file would have the file
         // google.protobuf.rs which was an empty file. Now that file should only exist if it has content
-        if let Ok(mut f) = File::open(previously_empty_proto_path) {
-            // Since this file was generated, it should not be empty.
-            let mut contents = String::new();
-            f.read_to_string(&mut contents).unwrap();
-            assert!(!contents.is_empty());
-        } else {
-            // The file wasn't generated so the result include file should not reference it
-            assert_eq_fixture_file!(
-                "src/fixtures/imports_empty/_expected_include.rs",
-                tempdir.path().join(Path::new(include_file))
-            );
+        assert!(!std::fs::exists(previously_empty_proto_path).unwrap());
+
+        // Check all generated files against fixture
+        for entry in std::fs::read_dir(tempdir.path()).unwrap() {
+            let file = entry.unwrap();
+            let file_name = file.file_name().into_string().unwrap();
+            if file_name == include_file {
+                // `google.protobuf.rs` wasn't generated so the result include file should not reference it
+                assert_eq_fixture_file!(
+                    "src/fixtures/imports_empty/_expected_include.rs",
+                    file.path()
+                );
+            } else if file_name == "com.prost_test.test.v1.rs" {
+                let content = std::fs::read_to_string(file.path()).unwrap();
+                assert!(content.contains("struct TestConfig"));
+                assert!(content.contains("struct GetTestResponse"));
+            } else {
+                panic!("Found unexpected file: {}", file_name);
+            }
         }
     }
 
@@ -577,5 +605,24 @@ mod tests {
             .unwrap();
         let actual = String::from_utf8(buf).unwrap();
         assert_eq_fixture_contents!("src/fixtures/write_includes/_.includes.rs", actual);
+    }
+
+    #[test]
+    fn test_generate_deprecated() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            "src/fixtures/deprecated/_all_deprecated.rs",
+            tempdir.path().join("all_deprecated.rs")
+        );
     }
 }

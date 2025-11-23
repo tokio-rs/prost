@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package all_deprecated;
+
+message Test {
+  string not_outdated = 1;
+  string outdated = 2 [deprecated = true];
+  optional string optional_not_outdated = 3;
+  optional string optional_outdated = 4 [deprecated = true];
+  Test2 enum_not_outdated = 5;
+  Test2 enum_outdated = 6 [deprecated = true];
+  optional Test2 optional_enum_not_outdated = 7;
+  optional Test2 optional_enum_outdated = 8 [deprecated = true];
+  repeated Test2 repeated_enum_not_outdated = 9;
+  repeated Test2 repeated_enum_outdated = 10 [deprecated = true];
+
+  oneof test3 {
+    string oneof_not_outdated = 11;
+    string oneof_outdated = 12 [deprecated = true];
+  }
+}
+
+enum Test2 {
+  not_outdated = 0;
+  outdated = 1 [deprecated = true];
+}

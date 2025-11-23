@@ -10,6 +10,7 @@ cfg_if! {
 
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 fn main() {
@@ -17,8 +18,8 @@ fn main() {
 
     // The source directory. The indirection is necessary in order to support the tests-2015 crate,
     // which sets the current directory to tests-2015 during build script evaluation.
-    let src = PathBuf::from("../tests/src");
-    let includes = &[src.clone()];
+    let src = Path::new("../tests/src");
+    let includes = &[src];
 
     // Generate BTreeMap fields for all messages. This forces encoded output to be consistent, so
     // that encode/decode roundtrips can use encoded output for comparison. Otherwise trying to
@@ -96,10 +97,6 @@ fn main() {
         .unwrap();
 
     config
-        .compile_protos(&[src.join("deprecated_field.proto")], includes)
-        .unwrap();
-
-    config
         .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
@@ -112,19 +109,19 @@ fn main() {
         .compile_protos(&[src.join("custom_debug.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("result_enum.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("result_struct.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("option_enum.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
         .compile_protos(&[src.join("option_struct.proto")], includes)
         .unwrap();
 
