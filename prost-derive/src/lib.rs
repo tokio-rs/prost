@@ -114,29 +114,30 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|(field_ident, field)| field.encode(&prost_path, quote!(self.#field_ident)));
 
-    let merge = fields.iter().map(|(field_ident, field)| {
-        if field.is_unknown() {
-            return quote!();
-        }
-        let merge = field.merge(&prost_path, quote!(value));
-        let tags = field.tags().into_iter().map(|tag| quote!(#tag));
-        let tags = Itertools::intersperse(tags, quote!(|));
+    let mut unknown_field_exists: bool = false;
 
-        quote! {
-            #(#tags)* => {
-                let mut value = &mut self.#field_ident;
-                #merge.map_err(|mut error| {
-                    error.push(STRUCT_NAME, stringify!(#field_ident));
-                    error
-                })
-            },
-        }
-    });
-    let merge_fallback = match fields.iter().find(|&(_, f)| f.is_unknown()) {
-        Some((field_ident, field)) => {
+    let mut merge = fields
+        .iter()
+        .map(|(field_ident, field)| {
             let merge = field.merge(&prost_path, quote!(value));
+            let tags = field.tags().into_iter().map(|tag| quote!(#tag));
+            let tags = Itertools::intersperse(tags, quote!(|));
+
+            if field.is_unknown() {
+                unknown_field_exists = true;
+                return quote! {
+                    _ => {
+                        let mut value = &mut self.#field_ident;
+                        #merge.map_err(|mut error| {
+                            error.push(STRUCT_NAME, stringify!(#field_ident));
+                            error
+                        })
+                    },
+                };
+            }
+
             quote! {
-                _ => {
+                #(#tags)* => {
                     let mut value = &mut self.#field_ident;
                     #merge.map_err(|mut error| {
                         error.push(STRUCT_NAME, stringify!(#field_ident));
@@ -144,11 +145,12 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                     })
                 },
             }
-        }
-        None => quote! {
-            _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx),
-        },
-    };
+        })
+        .collect::<Vec<_>>();
+
+    if !unknown_field_exists {
+        merge.push(quote! { _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx), });
+    }
 
     let struct_name = if fields.is_empty() {
         quote!()
@@ -214,7 +216,6 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #struct_name
                 match tag {
                     #(#merge)*
-                    #merge_fallback
                 }
             }
 
