@@ -114,8 +114,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|(field_ident, field)| field.encode(&prost_path, quote!(self.#field_ident)));
 
-    let mut unknown_field_exists: bool = false;
-
+    let mut unknown_field_ident: Option<(&TokenStream, &Field)> = None;
     let mut merge = fields
         .iter()
         .map(|(field_ident, field)| {
@@ -124,31 +123,34 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             let tags = Itertools::intersperse(tags, quote!(|));
 
             if field.is_unknown() {
-                unknown_field_exists = true;
-                return quote! {
-                    _ => {
+                unknown_field_ident = Some((field_ident, field));
+                quote!()
+            } else {
+                quote! {
+                    #(#tags)* => {
                         let mut value = &mut self.#field_ident;
                         #merge.map_err(|mut error| {
                             error.push(STRUCT_NAME, stringify!(#field_ident));
                             error
                         })
                     },
-                };
-            }
-
-            quote! {
-                #(#tags)* => {
-                    let mut value = &mut self.#field_ident;
-                    #merge.map_err(|mut error| {
-                        error.push(STRUCT_NAME, stringify!(#field_ident));
-                        error
-                    })
-                },
+                }
             }
         })
         .collect::<Vec<_>>();
 
-    if !unknown_field_exists {
+    if let Some((field_ident, field)) = unknown_field_ident {
+        let field_merge = field.merge(&prost_path, quote!(value));
+        merge.push(quote! {
+            _ => {
+                let mut value = &mut self.#field_ident;
+                #field_merge.map_err(|mut error| {
+                    error.push(STRUCT_NAME, stringify!(#field_ident));
+                    error
+                })
+            },
+        });
+    } else {
         merge.push(quote! { _ => #prost_path::encoding::skip_field(wire_type, tag, buf, ctx), });
     }
 
