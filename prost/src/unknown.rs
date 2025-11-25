@@ -1,7 +1,5 @@
-use alloc::collections::btree_map::{self, BTreeMap};
+use alloc::collections::btree_map::BTreeMap;
 use alloc::vec::Vec;
-use core::slice;
-
 use bytes::{Buf, BufMut, Bytes};
 
 use crate::encoding::{self, DecodeContext, WireType};
@@ -29,13 +27,6 @@ pub enum UnknownField {
     ThirtyTwoBit(u32),
 }
 
-/// An iterator over the fields of an [UnknownFieldList].
-#[derive(Debug)]
-pub struct UnknownFieldIter<'a> {
-    tags_iter: btree_map::Iter<'a, u32, Vec<UnknownField>>,
-    current_tag: Option<(u32, slice::Iter<'a, UnknownField>)>,
-}
-
 impl UnknownFieldList {
     /// Creates an empty [UnknownFieldList].
     pub fn new() -> Self {
@@ -44,33 +35,9 @@ impl UnknownFieldList {
 
     /// Gets an iterator over the fields contained in this set.
     pub fn iter(&self) -> impl Iterator<Item = (u32, &UnknownField)> {
-        UnknownFieldIter {
-            tags_iter: self.fields.iter(),
-            current_tag: None,
-        }
-    }
-}
-
-impl<'a> Iterator for UnknownFieldIter<'a> {
-    type Item = (u32, &'a UnknownField);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            //If we have a current tag, get the next value in that tag
-            if let Some((tag, iter)) = &mut self.current_tag {
-                if let Some(value) = iter.next() {
-                    return Some((*tag, value));
-                } else {
-                    self.current_tag = None;
-                }
-            }
-            //If we don't have a current tag, get the next tag, if possible
-            if let Some((tag, values)) = self.tags_iter.next() {
-                self.current_tag = Some((*tag, values.iter()));
-            } else {
-                return None;
-            }
-        }
+        self.fields
+            .iter()
+            .flat_map(|(tag, iter)| core::iter::repeat(*tag).zip(iter))
     }
 }
 
