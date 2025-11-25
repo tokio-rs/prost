@@ -99,7 +99,7 @@
 //! }
 //! ```
 //!
-//! By default, this stores all unknown fields in a unique internal field called `unknown_fields`.
+//! By default, this stores all unknown fields in a unique internal field called `_unknown_fields`.
 //! If you already have a field in your message with this name, you can modify the above call like
 //! so:
 //! ```rust,no_run

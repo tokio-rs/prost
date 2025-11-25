@@ -296,7 +296,7 @@ impl Config {
     {
         let field_name: String = match override_field_name {
             Some(x) => x.as_ref().to_string(),
-            None => "unknown_fields".to_string(),
+            None => "_unknown_fields".to_string(),
         };
         self.include_unknown_fields
             .insert(path.as_ref().to_string(), field_name);
