@@ -21,9 +21,7 @@ PROST_CRATE_MATCHER="(prost|prost-[a-z]+)"
 
 # Update the README.md.
 sed -i -E "s/version = \"${VERSION_MATCHER}\"/version = \"${VERSION}\"/" "$DIR/README.md"
-sed -i -E "s/version = \"${VERSION_MATCHER}\"/version = \"${VERSION}\"/" "$DIR/prost/README.md"
 sed -i -E "s/${PROST_CRATE_MATCHER} = \"${VERSION_MATCHER}\"/\1 = \"${MINOR}\"/" "$DIR/README.md"
-sed -i -E "s/${PROST_CRATE_MATCHER} = \"${VERSION_MATCHER}\"/\1 = \"${MINOR}\"/" "$DIR/prost/README.md"
 
 # Update html_root_url attributes.
 sed -i -E "s~html_root_url = \"https://docs\.rs/${PROST_CRATE_MATCHER}/$VERSION_MATCHER\"~html_root_url = \"https://docs.rs/\1/${VERSION}\"~" \
