@@ -5,10 +5,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     fenix.url = "github:nix-community/fenix";
-    rust_manifest = {
-      url = "https://static.rust-lang.org/dist/2023-08-03/channel-rust-1.71.1.toml";
-      flake = false;
-    };
   };
 
   outputs =
@@ -17,7 +13,6 @@
       nixpkgs,
       flake-utils,
       fenix,
-      rust_manifest,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -44,7 +39,10 @@
           };
         devShells."rust_minimum_version" =
           let
-            rustpkgs = (fenix.packages.${system}.fromManifestFile rust_manifest).completeToolchain;
+            rustpkgs = (fenix.packages.${system}.fromToolchainName {
+              name = "1.82";
+              sha256 = "sha256-yMuSb5eQPO/bHv+Bcf/US8LVMbf/G/0MSfiPwBhiPpk=";
+            }).completeToolchain;
           in
           pkgs.mkShell {
             packages = [
