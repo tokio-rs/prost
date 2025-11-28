@@ -23,6 +23,7 @@ use crate::BytesType;
 use crate::MapType;
 use crate::Module;
 use crate::ServiceGenerator;
+use crate::StringType;
 
 /// Configuration options for Protobuf code generation.
 ///
@@ -32,6 +33,7 @@ pub struct Config {
     pub(crate) service_generator: Option<Box<dyn ServiceGenerator>>,
     pub(crate) map_type: PathMap<MapType>,
     pub(crate) bytes_type: PathMap<BytesType>,
+    pub(crate) string_type: PathMap<StringType>,
     pub(crate) type_attributes: PathMap<String>,
     pub(crate) message_attributes: PathMap<String>,
     pub(crate) enum_attributes: PathMap<String>,
@@ -180,6 +182,65 @@ impl Config {
         for matcher in paths {
             self.bytes_type
                 .insert(matcher.as_ref().to_string(), BytesType::Bytes);
+        }
+        self
+    }
+
+    /// Configure the code generator to generate Rust [`Arc<str>`](std::sync::Arc) fields for Protobuf
+    /// [`string`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `Arc<str>` for Protobuf `string` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf string field matches any of the
+    /// paths, a Rust `Arc<str>` field is generated instead of the default [`String`].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.arc_str(&[".my_messages.MyMessageType.my_string_field"]);
+    ///
+    /// // Match all string fields in a message type.
+    /// config.arc_str(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all string fields in a package.
+    /// config.arc_str(&[".my_messages"]);
+    ///
+    /// // Match all string fields.
+    /// config.arc_str(&["."]);
+    ///
+    /// // Match all string fields in a nested message.
+    /// config.arc_str(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_string_field'.
+    /// config.arc_str(&["my_string_field"]);
+    ///
+    /// // Match all fields named 'my_string_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.arc_str(&["MyMessageType.my_string_field"]);
+    ///
+    /// // Match all fields named 'my_string_field', and all fields in the 'foo.bar' package.
+    /// config.arc_str(&["my_string_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// [2]: https://protobuf.dev/programming-guides/proto3/#scalar
+    pub fn arc_str<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.string_type.clear();
+        for matcher in paths {
+            self.string_type
+                .insert(matcher.as_ref().to_string(), StringType::ArcStr);
         }
         self
     }
@@ -1198,6 +1259,7 @@ impl default::Default for Config {
             service_generator: None,
             map_type: PathMap::default(),
             bytes_type: PathMap::default(),
+            string_type: PathMap::default(),
             type_attributes: PathMap::default(),
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),

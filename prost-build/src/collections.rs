@@ -55,3 +55,24 @@ impl BytesType {
         }
     }
 }
+
+/// The string type to output for Protobuf `string` fields.
+#[non_exhaustive]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
+pub(crate) enum StringType {
+    /// The [`prost::alloc::string::String`] type.
+    #[default]
+    String,
+    /// The [`std::sync::Arc<str>`] type.
+    ArcStr,
+}
+
+impl StringType {
+    /// The `prost-derive` annotation type corresponding to the string type.
+    pub fn annotation(&self) -> &'static str {
+        match self {
+            StringType::String => "string",
+            StringType::ArcStr => "arc_str",
+        }
+    }
+}
