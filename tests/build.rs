@@ -122,6 +122,10 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .compile_protos(&[src.join("optional_enum.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .compile_protos(&[src.join("option_struct.proto")], includes)
         .unwrap();
 
