@@ -462,7 +462,7 @@ pub enum Gender {
 
 The prost project supports development using Nix flakes. Once you have Nix and flakes enabled, you can simply run:
 
-```
+```bash
 nix develop
 ```
 
@@ -470,7 +470,7 @@ This will drop you into a shell with all dependencies configured to build the en
 
 If you want to use the minimum supported Rust version as required by Tokio [see MSRV](#msrv), run:
 
-```
+```bash
 nix develop .#rust_minimum_version
 ```
 
