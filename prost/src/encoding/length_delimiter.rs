@@ -9,7 +9,7 @@ use crate::encoding::varint::{decode_varint, encode_varint, encoded_len_varint};
 
 /// Encodes a length delimiter to the buffer.
 ///
-/// See [Message.encode_length_delimited] for more info.
+/// See [Message::encode_length_delimited] for more info.
 ///
 /// An error will be returned if the buffer does not have sufficient capacity to encode the
 /// delimiter.
@@ -35,7 +35,7 @@ pub fn length_delimiter_len(length: usize) -> usize {
 /// Decodes a length delimiter from the buffer.
 ///
 /// This method allows the length delimiter to be decoded independently of the message, when the
-/// message is encoded with [Message.encode_length_delimited].
+/// message is encoded with [Message::encode_length_delimited].
 ///
 /// An error may be returned in two cases:
 ///
