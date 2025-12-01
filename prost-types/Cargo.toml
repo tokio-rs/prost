@@ -16,14 +16,21 @@ doctest = false
 default = ["std"]
 std = ["prost/std"]
 arbitrary = ["dep:arbitrary"]
+serde = ["dep:serde", "std"]
 
 [dependencies]
 prost = { version = "0.14.2", path = "../prost", default-features = false, features = ["derive"] }
 arbitrary = { version = "1.4", features = ["derive"], optional = true }
 chrono = { version = "0.4.34", default-features = false, optional = true }
+serde = { version = "1.0.219", features = ["std"], optional = true }
 
 [dev-dependencies]
 proptest = "1"
+serde_json = "1.0.140"
+
+# ignore "unused dependency" false positive used as dev dependency
+[package.metadata.cargo-udeps.ignore]
+development = ["serde_json"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
