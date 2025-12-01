@@ -1,4 +1,4 @@
-use crate::{error::DecodeErrorKind, DecodeError};
+use crate::{decode_error_kind, DecodeError};
 
 /// Represent the wire type for protobuf encoding.
 ///
@@ -26,7 +26,7 @@ impl TryFrom<u64> for WireType {
             3 => Ok(WireType::StartGroup),
             4 => Ok(WireType::EndGroup),
             5 => Ok(WireType::ThirtyTwoBit),
-            _ => Err(DecodeErrorKind::InvalidWireType { value }.into()),
+            _ => Err(decode_error_kind::InvalidWireType::new(value).into()),
         }
     }
 }
@@ -36,7 +36,7 @@ impl TryFrom<u64> for WireType {
 #[inline]
 pub fn check_wire_type(expected: WireType, actual: WireType) -> Result<(), DecodeError> {
     if expected != actual {
-        return Err(DecodeErrorKind::UnexpectedWireType { actual, expected }.into());
+        return Err(decode_error_kind::UnexpectedWireType::new(actual, expected).into());
     }
     Ok(())
 }
