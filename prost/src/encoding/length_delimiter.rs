@@ -1,4 +1,4 @@
-use crate::error::DecodeErrorKind;
+use crate::error::decode_error_kind;
 pub use crate::error::{DecodeError, EncodeError, UnknownEnumValue};
 pub use crate::message::Message;
 pub use crate::name::Name;
@@ -18,7 +18,8 @@ pub fn encode_length_delimiter(length: usize, buf: &mut impl BufMut) -> Result<(
     let required = encoded_len_varint(length);
     let remaining = buf.remaining_mut();
     if required > remaining {
-        return Err(EncodeError::new(required, remaining));
+        // `new_unchecked` is fine: we verified that `required > remaining`
+        return Err(EncodeError::new_unchecked(required, remaining));
     }
     encode_varint(length, buf);
     Ok(())
@@ -46,7 +47,7 @@ pub fn length_delimiter_len(length: usize) -> usize {
 pub fn decode_length_delimiter(mut buf: impl Buf) -> Result<usize, DecodeError> {
     let length = decode_varint(&mut buf)?;
     if length > usize::MAX as u64 {
-        return Err(DecodeErrorKind::LengthDelimiterTooLarge.into());
+        return Err(decode_error_kind::LengthDelimiterTooLarge::new().into());
     }
     Ok(length as usize)
 }

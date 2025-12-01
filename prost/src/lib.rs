@@ -20,7 +20,10 @@ pub mod encoding;
 pub use crate::encoding::length_delimiter::{
     decode_length_delimiter, encode_length_delimiter, length_delimiter_len,
 };
-pub use crate::error::{DecodeError, EncodeError, UnknownEnumValue};
+pub use crate::error::{
+    decode_error_kind, DecodeError, DecodeErrorKind, EncodeError, ErrorPath, ErrorPathSegment,
+    UnknownEnumValue,
+};
 pub use crate::message::Message;
 pub use crate::name::Name;
 

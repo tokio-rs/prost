@@ -13,9 +13,8 @@ use core::str;
 
 use ::bytes::{Buf, BufMut, Bytes};
 
-use crate::error::DecodeErrorKind;
-use crate::DecodeError;
 use crate::Message;
+use crate::{decode_error_kind, DecodeError};
 
 pub mod varint;
 pub use varint::{decode_varint, encode_varint, encoded_len_varint};
@@ -84,7 +83,7 @@ impl DecodeContext {
     #[inline]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
         if self.recurse_count == 0 {
-            Err(DecodeErrorKind::RecursionLimitReached.into())
+            Err(decode_error_kind::RecursionLimitReached::new().into())
         } else {
             Ok(())
         }
@@ -115,13 +114,13 @@ pub fn encode_key(tag: u32, wire_type: WireType, buf: &mut impl BufMut) {
 pub fn decode_key(buf: &mut impl Buf) -> Result<(u32, WireType), DecodeError> {
     let key = decode_varint(buf)?;
     if key > u64::from(u32::MAX) {
-        return Err(DecodeErrorKind::InvalidKey { key }.into());
+        return Err(decode_error_kind::InvalidKey::new(key).into());
     }
     let wire_type = WireType::try_from(key & 0x07)?;
     let tag = key as u32 >> 3;
 
     if tag < MIN_TAG {
-        return Err(DecodeErrorKind::InvalidTag.into());
+        return Err(decode_error_kind::InvalidTag::new().into());
     }
 
     Ok((tag, wire_type))
@@ -149,7 +148,7 @@ where
     let len = decode_varint(buf)?;
     let remaining = buf.remaining();
     if len > remaining as u64 {
-        return Err(DecodeErrorKind::BufferUnderflow.into());
+        return Err(decode_error_kind::BufferUnderflow::new().into());
     }
 
     let limit = remaining - len as usize;
@@ -158,7 +157,7 @@ where
     }
 
     if buf.remaining() != limit {
-        return Err(DecodeErrorKind::DelimitedLengthExceeded.into());
+        return Err(decode_error_kind::BufferUnderflow::new().into());
     }
     Ok(())
 }
@@ -180,18 +179,18 @@ pub fn skip_field(
             match inner_wire_type {
                 WireType::EndGroup => {
                     if inner_tag != tag {
-                        return Err(DecodeErrorKind::UnexpectedEndGroupTag.into());
+                        return Err(decode_error_kind::UnexpectedEndGroupTag::new().into());
                     }
                     break 0;
                 }
                 _ => skip_field(inner_wire_type, inner_tag, buf, ctx.enter_recursion())?,
             }
         },
-        WireType::EndGroup => return Err(DecodeErrorKind::UnexpectedEndGroupTag.into()),
+        WireType::EndGroup => return Err(decode_error_kind::UnexpectedEndGroupTag::new().into()),
     };
 
     if len > buf.remaining() as u64 {
-        return Err(DecodeErrorKind::BufferUnderflow.into());
+        return Err(decode_error_kind::BufferUnderflow::new().into());
     }
 
     buf.advance(len as usize);
@@ -396,7 +395,7 @@ macro_rules! fixed_width {
             ) -> Result<(), DecodeError> {
                 check_wire_type($wire_type, wire_type)?;
                 if buf.remaining() < $width {
-                    return Err(DecodeErrorKind::BufferUnderflow.into());
+                    return Err(decode_error_kind::BufferUnderflow::new().into());
                 }
                 *value = buf.$get();
                 Ok(())
@@ -599,7 +598,7 @@ pub mod string {
                     mem::forget(drop_guard);
                     Ok(())
                 }
-                Err(_) => Err(DecodeErrorKind::InvalidString.into()),
+                Err(_) => Err(decode_error_kind::InvalidString::new().into()),
             }
         }
     }
@@ -684,8 +683,6 @@ impl sealed::BytesAdapter for Vec<u8> {
 }
 
 pub mod bytes {
-    use crate::error::DecodeErrorKind;
-
     use super::*;
 
     pub fn encode(tag: u32, value: &impl BytesAdapter, buf: &mut impl BufMut) {
@@ -703,7 +700,7 @@ pub mod bytes {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(DecodeErrorKind::BufferUnderflow.into());
+            return Err(decode_error_kind::BufferUnderflow::new().into());
         }
         let len = len as usize;
 
@@ -732,7 +729,7 @@ pub mod bytes {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let len = decode_varint(buf)?;
         if len > buf.remaining() as u64 {
-            return Err(DecodeErrorKind::BufferUnderflow.into());
+            return Err(decode_error_kind::BufferUnderflow::new().into());
         }
         let len = len as usize;
 
@@ -866,8 +863,6 @@ pub mod message {
 }
 
 pub mod group {
-    use crate::error::DecodeErrorKind;
-
     use super::*;
 
     pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
@@ -896,7 +891,7 @@ pub mod group {
             let (field_tag, field_wire_type) = decode_key(buf)?;
             if field_wire_type == WireType::EndGroup {
                 if field_tag != tag {
-                    return Err(DecodeErrorKind::UnexpectedEndGroupTag.into());
+                    return Err(decode_error_kind::UnexpectedEndGroupTag::new().into());
                 }
                 return Ok(());
             }
