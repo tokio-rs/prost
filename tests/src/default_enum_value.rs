@@ -9,16 +9,19 @@ include!(concat!(env!("OUT_DIR"), "/default_enum_value.rs"));
 #[test]
 fn test_default_enum() {
     let msg = Test::default();
-    assert_eq!(msg.privacy_level_1(), PrivacyLevel::One);
-    assert_eq!(msg.privacy_level_3(), PrivacyLevel::PrivacyLevelThree);
+    assert_eq!(msg.privacy_level_1_or_default(), PrivacyLevel::One);
     assert_eq!(
-        msg.privacy_level_4(),
+        msg.privacy_level_3_or_default(),
+        PrivacyLevel::PrivacyLevelThree
+    );
+    assert_eq!(
+        msg.privacy_level_4_or_default(),
         PrivacyLevel::PrivacyLevelprivacyLevelFour
     );
 
     let msg = CMsgRemoteClientBroadcastHeader::default();
     assert_eq!(
-        msg.msg_type(),
+        msg.msg_type_or_default(),
         ERemoteClientBroadcastMsg::KERemoteClientBroadcastMsgDiscovery
     );
 }
