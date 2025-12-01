@@ -87,6 +87,9 @@ mod oneof_name_conflict;
 mod option_enum;
 
 #[cfg(test)]
+mod optional_enum;
+
+#[cfg(test)]
 mod result_enum;
 
 #[cfg(test)]
