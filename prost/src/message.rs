@@ -50,7 +50,8 @@ pub trait Message: Send + Sync {
         let required = self.encoded_len();
         let remaining = buf.remaining_mut();
         if required > remaining {
-            return Err(EncodeError::new(required, remaining));
+            // `new_unchecked` is fine: we verified that `required > remaining`
+            return Err(EncodeError::new_unchecked(required, remaining));
         }
 
         self.encode_raw(buf);
@@ -79,7 +80,8 @@ pub trait Message: Send + Sync {
         let required = len + encoded_len_varint(len as u64);
         let remaining = buf.remaining_mut();
         if required > remaining {
-            return Err(EncodeError::new(required, remaining));
+          // `new_unchecked` is fine: we verified that `required > remaining`
+            return Err(EncodeError::new_unchecked(required, remaining));
         }
         encode_varint(len as u64, buf);
         self.encode_raw(buf);
