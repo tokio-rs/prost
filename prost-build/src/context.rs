@@ -184,6 +184,7 @@ impl<'a> Context<'a> {
         assert_eq!(".", &fq_message_name[..1]);
         self.message_graph
             .get_message(fq_message_name)
+            .ok_or_else(|| format!("The message `{fq_message_name}` not found in a message graph built from the `FileDescriptorSet`. Please verify the `prost-build` config and compile protos invocation."))
             .unwrap()
             .field
             .iter()
