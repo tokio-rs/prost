@@ -9,6 +9,7 @@ use crate::{DecodeError, Message};
 /// A set of unknown fields in a protobuf message.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct UnknownFieldList {
+    /// A Map of unknown unique field tags, and the data within them
     fields: BTreeMap<u32, Vec<UnknownField>>,
 }
 

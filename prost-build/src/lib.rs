@@ -87,28 +87,13 @@
 //! ```rust,no_run
 //! use std::io::Result;
 //! fn main() -> Result<()> {
-//!     //prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
 //!     let mut config = prost_build::Config::new();
-//!     config.btree_map(["."]);
 //!     // To enable unknown fields for a single message:
-//!     config.include_unknown_fields(".snazzy.items.shirt", None::<String>);
+//!     config.include_unknown_fields(".snazzy.items.shirt", "_unknown_fields");
 //!     // To enable unknown fields for a whole package:
-//!     config.include_unknown_fields(".snazzy.items", None::<String>);
-//!     config.compile_protos(&["src/items.proto"], &["src/"])?;
-//!     Ok(())
-//! }
-//! ```
-//!
-//! By default, this stores all unknown fields in a unique internal field called `_unknown_fields`.
-//! If you already have a field in your message with this name, you can modify the above call like
-//! so:
-//! ```rust,no_run
-//! use std::io::Result;
-//! fn main() -> Result<()> {
-//!     //prost_build::compile_protos(&["src/items.proto"], &["src/"])?;
-//!     let mut config = prost_build::Config::new();
-//!     config.btree_map(["."]);
-//!     config.include_unknown_fields(".snazzy.items.shirt", Some("unused_unique_field_name"));
+//!     config.include_unknown_fields(".snazzy.items", "_unknown_fields");
+//!     // To enable unknown fields for all packages and messages
+//!     config.include_unknown_fields(".", "_unknown_fields");
 //!     config.compile_protos(&["src/items.proto"], &["src/"])?;
 //!     Ok(())
 //! }

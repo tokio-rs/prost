@@ -27,7 +27,6 @@ fn main() {
     // values.
     let mut config = prost_build::Config::new();
     config.btree_map(["."]);
-    config.include_unknown_fields(".unknown_fields", None::<String>);
     config.type_attribute(
         "Foo.Custom.OneOfAttrs.Msg.field",
         "#[derive(PartialOrd, Ord)]",
@@ -187,7 +186,8 @@ fn main() {
         .compile_protos(&[src.join("no_package.proto")], includes)
         .unwrap();
 
-    config
+    prost_build::Config::new()
+        .include_unknown_fields(".unknown_fields", "_unknown_fields")
         .compile_protos(&[src.join("unknown_fields.proto")], includes)
         .unwrap();
 

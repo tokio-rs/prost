@@ -276,30 +276,20 @@ impl Config {
     ///
     /// **`override_field_name`** - the name of the field to place unknown fields in. A field
     /// with this name and type `prost::UnknownFieldList` will be added to the generated struct.
-    /// The default field used is named `unknown_fields`.
     ///
     /// # Examples
     ///
     /// ```rust
     /// # let mut config = prost_build::Config::new();
-    /// config.include_unknown_fields(".my_messages.MyMessageType", None::<String>);
-    /// config.include_unknown_fields(".my_messages.MyMessageType", Some("unique_field_name"));
+    /// config.include_unknown_fields(".my_messages.MyMessageType", "_unknown_fields");
     /// ```
-    pub fn include_unknown_fields<P, A>(
-        &mut self,
-        path: P,
-        override_field_name: Option<A>,
-    ) -> &mut Self
+    pub fn include_unknown_fields<P, A>(&mut self, path: P, field_name: A) -> &mut Self
     where
         P: AsRef<str>,
         A: AsRef<str>,
     {
-        let field_name: String = match override_field_name {
-            Some(x) => x.as_ref().to_string(),
-            None => "_unknown_fields".to_string(),
-        };
         self.include_unknown_fields
-            .insert(path.as_ref().to_string(), field_name);
+            .insert(path.as_ref().to_string(), field_name.as_ref().to_string());
         self
     }
 
