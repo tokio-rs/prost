@@ -9,7 +9,8 @@ use crate::{DecodeError, Message};
 /// A set of unknown fields in a protobuf message.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct UnknownFieldList {
-    /// A Map of unknown unique field tags, and the data within them
+    /// A Map of unknown unique field tags, and the data within them. This is stored as a Vec for
+    /// potential repeated values
     fields: BTreeMap<u32, Vec<UnknownField>>,
 }
 
@@ -35,6 +36,8 @@ impl UnknownFieldList {
     }
 
     /// Gets an iterator over the fields contained in this set.
+    /// Each item is a tuple of the unknown field's unique field tag, and a singular unknown field
+    /// stored within it
     pub fn iter(&self) -> impl Iterator<Item = (u32, &UnknownField)> {
         self.fields
             .iter()
