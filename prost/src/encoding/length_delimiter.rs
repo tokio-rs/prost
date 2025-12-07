@@ -9,7 +9,7 @@ use crate::encoding::varint::{decode_varint, encode_varint, encoded_len_varint};
 
 /// Encodes a length delimiter to the buffer.
 ///
-/// See [Message.encode_length_delimited] for more info.
+/// See [Message::encode_length_delimited] for more info.
 ///
 /// An error will be returned if the buffer does not have sufficient capacity to encode the
 /// delimiter.
@@ -35,7 +35,7 @@ pub fn length_delimiter_len(length: usize) -> usize {
 /// Decodes a length delimiter from the buffer.
 ///
 /// This method allows the length delimiter to be decoded independently of the message, when the
-/// message is encoded with [Message.encode_length_delimited].
+/// message is encoded with [Message::encode_length_delimited].
 ///
 /// An error may be returned in two cases:
 ///
@@ -43,6 +43,18 @@ pub fn length_delimiter_len(length: usize) -> usize {
 ///    input is required to decode the full delimiter.
 ///  * If the supplied buffer contains 10 bytes or more, then the buffer contains an invalid
 ///    delimiter, and typically the buffer should be considered corrupt.
+///
+/// # Examples
+///
+/// ```
+/// use prost::bytes::Bytes;
+///
+/// let mut buf = Bytes::from(vec![0x04, 0x0a, 0x02, 0x01, 0x02]);
+/// let len = prost::decode_length_delimiter(&mut buf).unwrap();
+///
+/// assert_eq!(len, 4);
+/// assert_eq!(&buf[..], [0x0a, 0x02, 0x01, 0x02]);
+/// ```
 pub fn decode_length_delimiter(mut buf: impl Buf) -> Result<usize, DecodeError> {
     let length = decode_varint(&mut buf)?;
     if length > usize::MAX as u64 {
