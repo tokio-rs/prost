@@ -184,6 +184,7 @@ fn main() {
             ".custom_scalar.Msg.g",
         ])
         .custom_scalar(
+            prost_types::field_descriptor_proto::Type::String,
             "crate::custom_scalar::MyStringInterface",
             [
                 ".custom_scalar.Msg.a",

@@ -12,6 +12,7 @@ use log::debug;
 use log::trace;
 
 use prost::Message;
+use prost_types::field_descriptor_proto::Type;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::code_generator::CodeGenerator;
@@ -36,7 +37,7 @@ pub struct Config {
     pub(crate) message_attributes: PathMap<String>,
     pub(crate) enum_attributes: PathMap<String>,
     pub(crate) field_attributes: PathMap<String>,
-    pub(crate) custom_scalar: PathMap<String>,
+    pub(crate) custom_scalar: PathMap<(Type, String)>,
     pub(crate) boxed: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
@@ -376,7 +377,12 @@ impl Config {
         self
     }
 
-    pub fn custom_scalar<M, I, S>(&mut self, module_path: M, paths: I) -> &mut Self
+    pub fn custom_scalar<M, I, S>(
+        &mut self,
+        proto_type: Type,
+        module_path: M,
+        paths: I,
+    ) -> &mut Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -385,7 +391,7 @@ impl Config {
         for matcher in paths {
             self.custom_scalar.insert(
                 matcher.as_ref().to_string(),
-                module_path.as_ref().to_string(),
+                (proto_type, module_path.as_ref().to_string()),
             );
         }
         self

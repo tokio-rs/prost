@@ -190,7 +190,13 @@ impl<'a> Context<'a> {
         self.config
             .custom_scalar
             .get_first_field(fq_message_name, field.name())
-            .cloned()
+            .and_then(|(ty, interface)| {
+                if field.r#type() == *ty {
+                    Some(interface.clone())
+                } else {
+                    None
+                }
+            })
     }
 
     /// Returns `true` if this message can automatically derive Copy trait.
