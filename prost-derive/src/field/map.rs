@@ -126,9 +126,9 @@ impl Field {
     /// Returns a statement which encodes the map field.
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
-        let key_mod = self.key_ty.module();
-        let ke = quote!(#prost_path::encoding::#key_mod::encode);
-        let kl = quote!(#prost_path::encoding::#key_mod::encoded_len);
+        let key_mod = self.key_ty.encoding_module(prost_path);
+        let ke = quote!(#key_mod::encode);
+        let kl = quote!(#key_mod::encoded_len);
         let module = self.map_ty.module();
         match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
@@ -147,9 +147,9 @@ impl Field {
                 }
             }
             ValueTy::Scalar(value_ty) => {
-                let val_mod = value_ty.module();
-                let ve = quote!(#prost_path::encoding::#val_mod::encode);
-                let vl = quote!(#prost_path::encoding::#val_mod::encoded_len);
+                let val_mod = value_ty.encoding_module(prost_path);
+                let ve = quote!(#val_mod::encode);
+                let vl = quote!(#val_mod::encoded_len);
                 quote! {
                     #prost_path::encoding::#module::encode(
                         #ke,
@@ -179,8 +179,8 @@ impl Field {
     /// Returns an expression which evaluates to the result of merging a decoded key value pair
     /// into the map.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let key_mod = self.key_ty.module();
-        let km = quote!(#prost_path::encoding::#key_mod::merge);
+        let key_mod = self.key_ty.encoding_module(prost_path);
+        let km = quote!(#key_mod::merge);
         let module = self.map_ty.module();
         match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
@@ -197,9 +197,9 @@ impl Field {
                 }
             }
             ValueTy::Scalar(value_ty) => {
-                let val_mod = value_ty.module();
-                let vm = quote!(#prost_path::encoding::#val_mod::merge);
-                quote!(#prost_path::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
+                let val_mod = value_ty.encoding_module(prost_path);
+                let vm = quote!(#val_mod::merge);
+                quote!(::prost::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
             }
             ValueTy::Message => quote! {
                 #prost_path::encoding::#module::merge(
@@ -216,8 +216,8 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the map.
     pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         let tag = self.tag;
-        let key_mod = self.key_ty.module();
-        let kl = quote!(#prost_path::encoding::#key_mod::encoded_len);
+        let key_mod = self.key_ty.encoding_module(prost_path);
+        let kl = quote!(#key_mod::encoded_len);
         let module = self.map_ty.module();
         match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
@@ -233,8 +233,8 @@ impl Field {
                 }
             }
             ValueTy::Scalar(value_ty) => {
-                let val_mod = value_ty.module();
-                let vl = quote!(#prost_path::encoding::#val_mod::encoded_len);
+                let val_mod = value_ty.encoding_module(prost_path);
+                let vl = quote!(#val_mod::encoded_len);
                 quote!(#prost_path::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
             }
             ValueTy::Message => quote! {
@@ -256,7 +256,7 @@ impl Field {
     pub fn methods(&self, prost_path: &Path, ident: &TokenStream) -> Option<TokenStream> {
         if let ValueTy::Scalar(scalar::Ty::Enumeration(ty)) = &self.value_ty {
             let key_ty = self.key_ty.rust_type(prost_path);
-            let key_ref_ty = self.key_ty.rust_ref_type();
+            let key_ref_ty = self.key_ty.rust_ref_type(prost_path);
 
             let get = Ident::new(&format!("get_{ident}"), Span::call_site());
             let insert = Ident::new(&format!("insert_{ident}"), Span::call_site());
@@ -366,7 +366,8 @@ fn key_ty_from_str(s: &str) -> Result<scalar::Ty, Error> {
         | scalar::Ty::Sfixed32
         | scalar::Ty::Sfixed64
         | scalar::Ty::Bool
-        | scalar::Ty::String => Ok(ty),
+        | scalar::Ty::String
+        | scalar::Ty::CustomScalar(_) => Ok(ty),
         _ => bail!("invalid map key type: {s}"),
     }
 }
