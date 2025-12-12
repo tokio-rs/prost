@@ -168,7 +168,7 @@ impl Field {
 
     pub fn methods(&self, prost_path: &Path, ident: &TokenStream) -> Option<TokenStream> {
         match *self {
-            Field::Scalar(ref scalar) => scalar.methods(ident),
+            Field::Scalar(ref scalar) => scalar.methods(prost_path, ident),
             Field::Map(ref map) => map.methods(prost_path, ident),
             _ => None,
         }
