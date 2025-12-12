@@ -1145,6 +1145,45 @@ pub mod btree_map {
     map!(BTreeMap);
 }
 
+pub trait CustomScalarInterface {
+    type Type: Default + Clone + PartialEq + Eq + core::hash::Hash;
+    type RefType<'x>;
+
+    fn encoded_len(tag: u32, value: &Self::Type) -> usize;
+    fn encode(tag: u32, value: &Self::Type, buf: &mut impl BufMut);
+
+    fn encoded_len_repeated(tag: u32, values: &[Self::Type]) -> usize {
+        values.iter().map(|v| Self::encoded_len(tag, v)).sum()
+    }
+    fn encode_repeated(tag: u32, values: &[Self::Type], buf: &mut impl BufMut) {
+        for value in values {
+            Self::encode(tag, value, buf);
+        }
+    }
+
+    fn merge(
+        wire_type: WireType,
+        value: &mut Self::Type,
+        buf: &mut impl Buf,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>;
+    fn merge_repeated(
+        wire_type: WireType,
+        values: &mut Vec<Self::Type>,
+        buf: &mut impl Buf,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut value = Self::Type::default();
+        Self::merge(wire_type, &mut value, buf, ctx)?;
+        values.push(value);
+        Ok(())
+    }
+
+    fn is_default(value: &Self::Type) -> bool;
+    fn get<'x>(value: &'x Option<Self::Type>) -> Self::RefType<'x>;
+}
+
 #[cfg(test)]
 mod test {
     #[cfg(not(feature = "std"))]
