@@ -179,6 +179,20 @@ impl<'a> Context<'a> {
         false
     }
 
+    pub fn get_custom_scalar_module_path(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+    ) -> Option<String> {
+        if matches!(field.r#type(), Type::Message | Type::Group) {
+            return None;
+        }
+        self.config
+            .custom_scalar
+            .get_first_field(fq_message_name, field.name())
+            .cloned()
+    }
+
     /// Returns `true` if this message can automatically derive Copy trait.
     pub fn can_message_derive_copy(&self, fq_message_name: &str) -> bool {
         assert_eq!(".", &fq_message_name[..1]);

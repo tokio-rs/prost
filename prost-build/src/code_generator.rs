@@ -422,7 +422,14 @@ impl<'b> CodeGenerator<'_, 'b> {
         let boxed = self
             .context
             .should_box_message_field(fq_message_name, &field.descriptor);
-        let ty = self.resolve_type(&field.descriptor, fq_message_name);
+        let custom_module_path = self
+            .context
+            .get_custom_scalar_module_path(&field.descriptor, fq_message_name);
+        let ty = self.resolve_type(
+            &field.descriptor,
+            fq_message_name,
+            custom_module_path.as_deref(),
+        );
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -440,7 +447,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field.descriptor);
+        let type_tag = self.field_type_tag(&field.descriptor, custom_module_path.as_deref());
         self.buf.push_str(&type_tag);
 
         if type_ == Type::Bytes {
@@ -545,8 +552,14 @@ impl<'b> CodeGenerator<'_, 'b> {
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) {
-        let key_ty = self.resolve_type(key, fq_message_name);
-        let value_ty = self.resolve_type(value, fq_message_name);
+        let field_name = format!("{}.{}", fq_message_name, field.descriptor.name());
+        let custom_module_path_key = self.context.get_custom_scalar_module_path(key, &field_name);
+        let custom_module_path_value = self
+            .context
+            .get_custom_scalar_module_path(value, &field_name);
+        let key_ty = self.resolve_type(key, fq_message_name, custom_module_path_key.as_deref());
+        let value_ty =
+            self.resolve_type(value, fq_message_name, custom_module_path_value.as_deref());
 
         debug!(
             "    map field: {:?}, key type: {:?}, value type: {:?}",
@@ -561,8 +574,8 @@ impl<'b> CodeGenerator<'_, 'b> {
         let map_type = self
             .context
             .map_type(fq_message_name, field.descriptor.name());
-        let key_tag = self.field_type_tag(key);
-        let value_tag = self.map_value_type_tag(value);
+        let key_tag = self.field_type_tag(key, custom_module_path_key.as_deref());
+        let value_tag = self.map_value_type_tag(value, custom_module_path_value.as_deref());
 
         self.buf.push_str(&format!(
             "#[prost({} = \"{}, {}\", tag = \"{}\")]\n",
@@ -659,7 +672,10 @@ impl<'b> CodeGenerator<'_, 'b> {
             }
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field.descriptor);
+            let custom_module_path = self
+                .context
+                .get_custom_scalar_module_path(&field.descriptor, fq_message_name);
+            let ty_tag = self.field_type_tag(&field.descriptor, custom_module_path.as_deref());
             self.buf.push_str(&format!(
                 "#[prost({}, tag = \"{}\")]\n",
                 ty_tag,
@@ -668,7 +684,11 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.append_field_attributes(&oneof_name, field.descriptor.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field.descriptor, fq_message_name);
+            let ty = self.resolve_type(
+                &field.descriptor,
+                fq_message_name,
+                custom_module_path.as_deref(),
+            );
 
             let boxed = self.context.should_box_oneof_field(
                 fq_message_name,
@@ -973,7 +993,20 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+    fn resolve_type(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+        custom_scalar_module_path: Option<&str>,
+    ) -> String {
+        if let Some(module_path) = custom_scalar_module_path {
+            return format!(
+                "<{} as {}::encoding::CustomScalarInterface>::Type",
+                module_path,
+                self.context.prost_path()
+            );
+        }
+
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -1030,7 +1063,14 @@ impl<'b> CodeGenerator<'_, 'b> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn field_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        custom_scalar_module_path: Option<&str>,
+    ) -> Cow<'static, str> {
+        if let Some(module_path) = custom_scalar_module_path {
+            return Cow::Owned(format!("custom_scalar({})", module_path));
+        }
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -1056,13 +1096,21 @@ impl<'b> CodeGenerator<'_, 'b> {
         }
     }
 
-    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn map_value_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        custom_scalar_module_path: Option<&str>,
+    ) -> Cow<'static, str> {
+        if let Some(module_path) = custom_scalar_module_path {
+            return Cow::Owned(format!("custom_scalar({})", module_path));
+        }
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
             )),
-            _ => self.field_type_tag(field),
+
+            _ => self.field_type_tag(field, custom_scalar_module_path),
         }
     }
 

@@ -36,6 +36,7 @@ pub struct Config {
     pub(crate) message_attributes: PathMap<String>,
     pub(crate) enum_attributes: PathMap<String>,
     pub(crate) field_attributes: PathMap<String>,
+    pub(crate) custom_scalar: PathMap<String>,
     pub(crate) boxed: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
@@ -372,6 +373,21 @@ impl Config {
         P: AsRef<str>,
     {
         self.boxed.insert(path.as_ref().to_string(), ());
+        self
+    }
+
+    pub fn custom_scalar<M, I, S>(&mut self, module_path: M, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+        M: AsRef<str>,
+    {
+        for matcher in paths {
+            self.custom_scalar.insert(
+                matcher.as_ref().to_string(),
+                module_path.as_ref().to_string(),
+            );
+        }
         self
     }
 
@@ -1202,6 +1218,7 @@ impl default::Default for Config {
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
+            custom_scalar: PathMap::default(),
             boxed: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
