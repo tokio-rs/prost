@@ -178,6 +178,27 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .btree_map([
+            ".custom_scalar.Msg.e",
+            ".custom_scalar.Msg.f",
+            ".custom_scalar.Msg.g",
+        ])
+        .custom_scalar(
+            "crate::custom_scalar::MyStringInterface",
+            [
+                ".custom_scalar.Msg.a",
+                ".custom_scalar.Msg.b",
+                ".custom_scalar.Msg.c",
+                ".custom_scalar.Msg.d",
+                ".custom_scalar.Msg.e",
+                ".custom_scalar.Msg.f.value",
+                ".custom_scalar.Msg.g.key",
+            ],
+        )
+        .compile_protos(&[src.join("custom_scalar.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .compile_protos(&[src.join("oneof_name_conflict.proto")], includes)
         .unwrap();
 
