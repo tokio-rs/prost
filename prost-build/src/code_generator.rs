@@ -450,7 +450,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         let type_tag = self.field_type_tag(&field.descriptor, custom_module_path.as_deref());
         self.buf.push_str(&type_tag);
 
-        if type_ == Type::Bytes {
+        if type_ == Type::Bytes && custom_module_path.is_none() {
             let bytes_type = self
                 .context
                 .bytes_type(fq_message_name, field.descriptor.name());

@@ -13,4 +13,5 @@ message Msg {
   map<string, string> e = 5;
   map<string, string> f = 6;
   map<string, string> g = 7;
+  bytes h = 8;
 }

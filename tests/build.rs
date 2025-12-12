@@ -196,6 +196,11 @@ fn main() {
                 ".custom_scalar.Msg.g.key",
             ],
         )
+        .custom_scalar(
+            prost_types::field_descriptor_proto::Type::Bytes,
+            "crate::custom_scalar::MyVecInterface",
+            [".custom_scalar.Msg.h"],
+        )
         .compile_protos(&[src.join("custom_scalar.proto")], includes)
         .unwrap();
 
