@@ -1,6 +1,7 @@
 //! Protobuf encoding and decoding errors.
 
 use crate::encoding::WireType;
+use alloc::borrow::Cow;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
@@ -30,9 +31,24 @@ struct Inner {
 }
 
 impl DecodeError {
+    /// Creates a new `DecodeError` with a 'best effort' root cause description.
+    ///
+    /// Meant to be used only by `Message` implementations.
+    #[deprecated(
+        since = "0.14.2",
+        note = "This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release."
+    )]
+    #[cold]
+    pub fn new(description: impl Into<Cow<'static, str>>) -> DecodeError {
+        DecodeErrorKind::Other {
+            description: description.into(),
+        }
+        .into()
+    }
+
     /// Creates a new `DecodeError` with a DecodeErrorKind::UnexpectedTypeUrl.
     ///
-    /// Meant to be used only by `prost_types::Any` implementation.
+    /// Must only be used by `prost_types::Any` implementation.
     #[doc(hidden)]
     #[cold]
     pub fn new_unexpected_type_url(
@@ -115,6 +131,8 @@ pub(crate) enum DecodeErrorKind {
     InvalidString,
     /// Unexpected type URL
     UnexpectedTypeUrl { actual: String, expected: String },
+    /// A textual description of a problem
+    Other { description: Cow<'static, str> },
 }
 
 impl fmt::Display for DecodeErrorKind {
@@ -140,6 +158,9 @@ impl fmt::Display for DecodeErrorKind {
             }
             Self::UnexpectedTypeUrl { actual, expected } => {
                 write!(f, "unexpected type URL.type_url: expected type URL: \"{expected}\" (got: \"{actual}\")")
+            }
+            Self::Other { description } => {
+                write!(f, "{description}")
             }
         }
     }
