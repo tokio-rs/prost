@@ -458,6 +458,41 @@ pub enum Gender {
 }
 ```
 
+### Skipping Fields of Existing Types
+You may skip encoding or decoding fields in existing Rust types using the `skip`
+attribute. This will prevent the field from being encoded or decoded as part of
+the Protobuf message but otherwise allow the field to be part of the Rust type.
+
+```rust,ignore
+use prost;
+use prost::Message;
+
+#[derive(Clone, PartialEq, Message)]
+struct Person {
+    #[prost(string, tag = "1")]
+    pub id: String,
+    #[prost(skip)]
+    pub temp_data: String, // This field will be skipped
+}
+```
+
+If the skipped field type does not implement `Default`, you must provide a
+default value for the field using the `default` attribute.
+
+```rust,ignore
+use prost;
+use prost::Message;
+use std::collections::HashMap;
+
+#[derive(Clone, PartialEq, Message)]
+struct Person {
+    #[prost(string, tag = "1")]
+    pub id: String,
+    #[prost(skip, default = "HashMap::new()")]
+    pub temp_data: HashMap<String, String>, // This field will be skipped
+}
+```
+
 ## Nix
 
 The prost project maintains flakes support for local development. Once you have

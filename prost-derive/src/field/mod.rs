@@ -3,6 +3,7 @@ mod map;
 mod message;
 mod oneof;
 mod scalar;
+mod skip;
 
 use std::fmt;
 use std::slice;
@@ -26,6 +27,8 @@ pub enum Field {
     Oneof(oneof::Field),
     /// A group field.
     Group(group::Field),
+    /// An ignored field.
+    Skip(skip::Field),
 }
 
 impl Field {
@@ -36,9 +39,9 @@ impl Field {
     pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
 
-        // TODO: check for ignore attribute.
-
-        let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
+        let field = if let Some(field) = skip::Field::new(&attrs)? {
+            Field::Skip(field)
+        } else if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
             Field::Scalar(field)
         } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
             Field::Message(field)
@@ -62,8 +65,6 @@ impl Field {
     pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
 
-        // TODO: check for ignore attribute.
-
         let field = if let Some(field) = scalar::Field::new_oneof(&attrs)? {
             Field::Scalar(field)
         } else if let Some(field) = message::Field::new_oneof(&attrs)? {
@@ -81,6 +82,7 @@ impl Field {
 
     pub fn tags(&self) -> Vec<u32> {
         match *self {
+            Field::Skip(_) => vec![],
             Field::Scalar(ref scalar) => vec![scalar.tag],
             Field::Message(ref message) => vec![message.tag],
             Field::Map(ref map) => vec![map.tag],
@@ -92,6 +94,7 @@ impl Field {
     /// Returns a statement which encodes the field.
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
+            Field::Skip(_) => TokenStream::default(),
             Field::Scalar(ref scalar) => scalar.encode(prost_path, ident),
             Field::Message(ref message) => message.encode(prost_path, ident),
             Field::Map(ref map) => map.encode(prost_path, ident),
@@ -104,6 +107,7 @@ impl Field {
     /// value into the field.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
+            Field::Skip(_) => TokenStream::default(),
             Field::Scalar(ref scalar) => scalar.merge(prost_path, ident),
             Field::Message(ref message) => message.merge(prost_path, ident),
             Field::Map(ref map) => map.merge(prost_path, ident),
@@ -115,6 +119,7 @@ impl Field {
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match *self {
+            Field::Skip(_) => quote!(0),
             Field::Scalar(ref scalar) => scalar.encoded_len(prost_path, ident),
             Field::Map(ref map) => map.encoded_len(prost_path, ident),
             Field::Message(ref msg) => msg.encoded_len(prost_path, ident),
@@ -126,6 +131,7 @@ impl Field {
     /// Returns a statement which clears the field.
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match *self {
+            Field::Skip(ref skip) => skip.clear(ident),
             Field::Scalar(ref scalar) => scalar.clear(ident),
             Field::Message(ref message) => message.clear(ident),
             Field::Map(ref map) => map.clear(ident),
@@ -137,6 +143,7 @@ impl Field {
     pub fn default(&self, prost_path: &Path) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(prost_path),
+            Field::Skip(ref skip) => skip.default(),
             _ => quote!(::core::default::Default::default()),
         }
     }
