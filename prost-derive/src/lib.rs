@@ -151,9 +151,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // For Default implementation, use all_fields (including skipped)
     let default = if is_struct {
         let default = all_fields.iter().map(|(field_ident, field)| {
-            let value = match field {
-                _ => field.default(&prost_path),
-            };
+            let value = field.default(&prost_path);
             quote!(#field_ident: #value,)
         });
         quote! {#ident {
@@ -161,9 +159,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }}
     } else {
         let default = all_fields.iter().map(|(_, field)| {
-            let value = match field {
-                _ => field.default(&prost_path),
-            };
+            let value = field.default(&prost_path);
             quote!(#value,)
         });
         quote! {#ident (
