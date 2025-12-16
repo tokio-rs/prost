@@ -25,8 +25,10 @@ fn skipped_field_serial_equality() {
     struct TypeWithSkippedField {
         #[prost(string, tag = "1")]
         value: String,
-        #[prost(skip, default = "create_hashmap")]
+        #[prost(skip, default = "create_hashmap()")]
         pub temp_data: BTreeMap<String, String>, // This field will be skipped
+        #[prost(skip, default = "\"hello world\".to_string()")]
+        pub temp_data2: String, // This field will be skipped
     }
 
     let a = TypeWithoutSkippedField {
@@ -35,6 +37,7 @@ fn skipped_field_serial_equality() {
     let b = TypeWithSkippedField {
         value: "hello".to_string(),
         temp_data: create_hashmap(),
+        temp_data2: "hello world".to_string(),
     };
 
     // Encoded forms should be equal

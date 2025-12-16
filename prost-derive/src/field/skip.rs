@@ -1,19 +1,19 @@
 use anyhow::{bail, Error};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Expr, ExprLit, Lit, Meta, MetaNameValue, Path};
+use syn::{Expr, ExprLit, Lit, Meta, MetaNameValue};
 
 use crate::field::{set_bool, set_option, word_attr};
 
 #[derive(Clone)]
 pub struct Field {
-    pub default_fn: Option<Path>,
+    pub default_expr: Option<Expr>,
 }
 
 impl Field {
     pub fn new(attrs: &[Meta]) -> Result<Option<Field>, Error> {
         let mut skip = false;
-        let mut default_fn = None;
+        let mut default_expr = None;
         let mut default_lit = None;
         let mut unknown_attrs = Vec::new();
 
@@ -49,25 +49,25 @@ impl Field {
         }
 
         if let Some(lit) = default_lit {
-            let fn_path: Path = syn::parse_str(&lit.value())
+            let fn_path: Expr = syn::parse_str(&lit.value())
                 .map_err(|_| anyhow::anyhow!("invalid path for default function"))?;
-            if default_fn.is_some() {
+            if default_expr.is_some() {
                 bail!("duplicate default attribute for skipped field");
             }
-            default_fn = Some(fn_path);
+            default_expr = Some(fn_path);
         }
 
-        Ok(Some(Field { default_fn }))
+        Ok(Some(Field { default_expr }))
     }
 
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        let default = self.default_value();
+        let default = self.default();
         quote!( #ident = #default; )
     }
 
-    pub fn default_value(&self) -> TokenStream {
-        if let Some(ref path) = self.default_fn {
-            quote! { #path() }
+    pub fn default(&self) -> TokenStream {
+        if let Some(ref expr) = self.default_expr {
+            quote! { #expr }
         } else {
             quote! { ::core::default::Default::default() }
         }

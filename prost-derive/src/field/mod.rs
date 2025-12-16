@@ -143,6 +143,7 @@ impl Field {
     pub fn default(&self, prost_path: &Path) -> TokenStream {
         match *self {
             Field::Scalar(ref scalar) => scalar.default(prost_path),
+            Field::Skip(ref skip) => skip.default(),
             _ => quote!(::core::default::Default::default()),
         }
     }
