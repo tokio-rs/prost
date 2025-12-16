@@ -487,7 +487,7 @@ use std::collections::HashMap;
 struct Person {
     #[prost(string, tag = "1")]
     pub id: String,
-    #[prost(skip, default = "HashMap::new")]
+    #[prost(skip, default = "HashMap::new()")]
     pub temp_data: HashMap<String, String>, // This field will be skipped
 }
 ```
