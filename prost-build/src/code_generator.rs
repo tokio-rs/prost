@@ -15,6 +15,7 @@ use prost_types::{
 };
 
 use crate::ast::{Comments, Method, Service};
+use crate::collections::StringType;
 use crate::context::Context;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::Config;
@@ -449,6 +450,17 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .bytes_type(fq_message_name, field.descriptor.name());
             self.buf
                 .push_str(&format!(" = {:?}", bytes_type.annotation()));
+        }
+
+        if type_ == Type::String {
+            let string_type = self
+                .context
+                .string_type(fq_message_name, field.descriptor.name());
+            // Only emit the annotation if it's not the default type
+            if string_type != StringType::String {
+                self.buf
+                    .push_str(&format!(" = {:?}", string_type.annotation()));
+            }
         }
 
         match field.descriptor.label() {
@@ -982,7 +994,17 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", self.context.prost_path()),
+            Type::String => {
+                let string_type = self.context.string_type(fq_message_name, field.name());
+                match string_type {
+                    StringType::String => {
+                        format!("{}::alloc::string::String", self.context.prost_path())
+                    }
+                    StringType::ArcStr => {
+                        format!("{}::alloc::sync::Arc<str>", self.context.prost_path())
+                    }
+                }
+            }
             Type::Bytes => self
                 .context
                 .bytes_type(fq_message_name, field.name())
