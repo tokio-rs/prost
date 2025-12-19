@@ -178,6 +178,33 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .btree_map([
+            ".custom_scalar.Msg.e",
+            ".custom_scalar.Msg.f",
+            ".custom_scalar.Msg.g",
+        ])
+        .custom_scalar(
+            prost_types::field_descriptor_proto::Type::String,
+            "crate::custom_scalar::MyStringInterface",
+            [
+                ".custom_scalar.Msg.a",
+                ".custom_scalar.Msg.b",
+                ".custom_scalar.Msg.c",
+                ".custom_scalar.Msg.d",
+                ".custom_scalar.Msg.e",
+                ".custom_scalar.Msg.f.value",
+                ".custom_scalar.Msg.g.key",
+            ],
+        )
+        .custom_scalar(
+            prost_types::field_descriptor_proto::Type::Bytes,
+            "crate::custom_scalar::MyVecInterface",
+            [".custom_scalar.Msg.h"],
+        )
+        .compile_protos(&[src.join("custom_scalar.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .compile_protos(&[src.join("oneof_name_conflict.proto")], includes)
         .unwrap();
 

@@ -17,6 +17,8 @@ mod types;
 #[doc(hidden)]
 pub mod encoding;
 
+pub use encoding::CustomScalarInterface;
+
 pub use crate::encoding::length_delimiter::{
     decode_length_delimiter, encode_length_delimiter, length_delimiter_len,
 };
