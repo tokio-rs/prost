@@ -1243,6 +1243,45 @@ mod test {
         Ok(())
     }
 
+    // Generic function used for testing that a value round trips when put into a map
+    pub fn check_entry_roundtrip<T, M, Insert, Get, E, Merge, EQ, L>(
+        t: T,
+        insert: Insert,
+        get: Get,
+        encode: E,
+        merge: Merge,
+        equal: EQ,
+        len: L,
+    ) -> TestCaseResult
+    where
+        T: Debug + Default + PartialEq,
+        M: Sized + Default,
+        Insert: Fn(&mut M, i32, T) -> Option<T>,
+        Get: for<'a> Fn(&'a M, &i32) -> Option<&'a T>,
+        E: FnOnce(u32, &M, &mut BytesMut),
+        Merge: Fn(&mut M, &mut Bytes, DecodeContext) -> Result<(), DecodeError>,
+        EQ: Fn(&T, &T) -> bool,
+        L: Fn(u32, &M) -> usize,
+    {
+        let tag = 1u32;
+        let mut map = M::default();
+        insert(&mut map, 1, t);
+        let mut buf = BytesMut::with_capacity(len(tag, &map));
+        encode(tag, &map, &mut buf);
+
+        let mut decoded = M::default();
+        let mut bytes = buf.freeze();
+
+        while bytes.has_remaining() {
+            let _ = decode_key(&mut bytes).unwrap();
+            merge(&mut decoded, &mut bytes, DecodeContext::default()).unwrap();
+        }
+        let original = get(&map, &1).unwrap();
+        let modified = get(&decoded, &1).unwrap();
+        prop_assert!(equal(&original, &modified));
+        Ok(())
+    }
+
     pub fn check_collection_type<T, B, E, M, L>(
         value: T,
         tag: u32,
@@ -1331,12 +1370,16 @@ mod test {
     #[cfg(feature = "std")]
     macro_rules! map_tests {
         (keys: $keys:tt,
-         vals: $vals:tt) => {
+         vals: $vals:tt,
+         floats: $floats:tt,
+         ) => {
             mod hash_map {
                 map_tests!(@private HashMap, hash_map, $keys, $vals);
+                map_tests!(@private HashMap, hash_map, $floats);
             }
             mod btree_map {
                 map_tests!(@private BTreeMap, btree_map, $keys, $vals);
+                map_tests!(@private BTreeMap, btree_map, $floats);
             }
         };
 
@@ -1360,10 +1403,38 @@ mod test {
 
         (@private $map_type:ident,
                   $mod_name:ident,
+                  [$(($val_ty:ident, $val_proto:ident, $func:ident)),*]) => {
+            $(
+                mod $func {
+                    use std::collections::$map_type;
+                    use proptest::prelude::*;
+                    use crate::encoding::*;
+                    use crate::encoding::test::check_entry_roundtrip;
+                proptest! {
+                    #[test]
+                    fn $func(v in any::<$val_ty>()) {
+                        check_entry_roundtrip(
+                            v,
+                            $map_type::insert,
+                            $map_type::get,
+                            |tag, m, buf| $mod_name::encode(crate::encoding::int32::encode, crate::encoding::int32::encoded_len, $val_proto::encode, $val_proto::encoded_len, tag, m, buf),
+                            |map, buf, context| $mod_name::merge(crate::encoding::int32::merge, $val_proto::merge, map, buf, context),
+                            |lhs, rhs| $val_ty::to_bits(*lhs) == $val_ty::to_bits(*rhs),
+                            |tag, map| $mod_name::encoded_len(crate::encoding::int32::encoded_len, $val_proto::encoded_len, tag, map)
+                        )?;
+                    }
+                }
+                }
+            )*
+        };
+
+        (@private $map_type:ident,
+                  $mod_name:ident,
                   ($key_ty:ty, $key_proto:ident),
-                  [$(($val_ty:ty, $val_proto:ident)),*]) => {
+                  [$(($val_ty:ty, $val_proto:ident, $another_name:ident)),*]) => {
             $(
                 proptest! {
+
                     #[test]
                     fn $val_proto(values: $map_type<$key_ty, $val_ty>, tag in MIN_TAG..=MAX_TAG) {
                         check_collection_type(values, tag, WireType::LengthDelimited,
@@ -1412,22 +1483,23 @@ mod test {
         (String, string)
     ],
     vals: [
-        (f32, float),
-        (f64, double),
-        (i32, int32),
-        (i64, int64),
-        (u32, uint32),
-        (u64, uint64),
-        (i32, sint32),
-        (i64, sint64),
-        (u32, fixed32),
-        (u64, fixed64),
-        (i32, sfixed32),
-        (i64, sfixed64),
-        (bool, bool),
-        (String, string),
-        (Vec<u8>, bytes)
-    ]);
+        (f32, float, float2),
+        (f64, double, double2),
+        (i32, int32, int322),
+        (i64, int64, int642),
+        (u32, uint32, uint322),
+        (u64, uint64, uint642),
+        (i32, sint32, sint322),
+        (i64, sint64, sint642),
+        (u32, fixed32, fixed322),
+        (u64, fixed64, fixed642),
+        (i32, sfixed32, sfixed322),
+        (i64, sfixed64, sfixed642),
+        (bool, bool, bool2),
+        (String, string, string2),
+        (Vec<u8>, bytes, bytes2)
+    ],
+    floats: [(f32, float, test_float_roundtrip), (f64, double, test_double_roundtrip)],);
 
     #[test]
     /// `decode_varint` accepts a `Buf`, which can be multiple concatenated buffers.
