@@ -97,6 +97,42 @@ impl DecodeContext {
     }
 }
 
+/// Trait for checking if a value equals its default.
+///
+/// This trait exists because IEEE 754 floats have `-0.0 == 0.0`, but they are
+/// distinct bit patterns. For map encoding, we need to preserve `-0.0` values
+/// rather than treating them as the default `0.0`.
+pub trait IsDefault: PartialEq {
+    #[inline]
+    fn is_default(&self, default: &Self) -> bool {
+        self == default
+    }
+}
+
+impl IsDefault for f32 {
+    #[inline]
+    fn is_default(&self, default: &Self) -> bool {
+        self.to_bits() == default.to_bits()
+    }
+}
+
+impl IsDefault for f64 {
+    #[inline]
+    fn is_default(&self, default: &Self) -> bool {
+        self.to_bits() == default.to_bits()
+    }
+}
+
+impl<T: PartialEq> IsDefault for Option<T> {}
+impl<T: PartialEq> IsDefault for Vec<T> {}
+impl IsDefault for bool {}
+impl IsDefault for i32 {}
+impl IsDefault for i64 {}
+impl IsDefault for u32 {}
+impl IsDefault for u64 {}
+impl IsDefault for String {}
+impl IsDefault for Bytes {}
+
 pub const MIN_TAG: u32 = 1;
 pub const MAX_TAG: u32 = (1 << 29) - 1;
 
@@ -966,7 +1002,7 @@ macro_rules! map {
             buf: &mut B,
         ) where
             K: Default + Eq + Hash + Ord,
-            V: Default + PartialEq,
+            V: Default + IsDefault,
             B: BufMut,
             KE: Fn(u32, &K, &mut B),
             KL: Fn(u32, &K) -> usize,
@@ -1012,7 +1048,7 @@ macro_rules! map {
         ) -> usize
         where
             K: Default + Eq + Hash + Ord,
-            V: Default + PartialEq,
+            V: Default + IsDefault,
             KL: Fn(u32, &K) -> usize,
             VL: Fn(u32, &V) -> usize,
         {
@@ -1034,7 +1070,7 @@ macro_rules! map {
             buf: &mut B,
         ) where
             K: Default + Eq + Hash + Ord,
-            V: PartialEq,
+            V: IsDefault,
             B: BufMut,
             KE: Fn(u32, &K, &mut B),
             KL: Fn(u32, &K) -> usize,
@@ -1043,7 +1079,7 @@ macro_rules! map {
         {
             for (key, val) in values.iter() {
                 let skip_key = key == &K::default();
-                let skip_val = val == val_default;
+                let skip_val = val.is_default(val_default);
 
                 let len = (if skip_key { 0 } else { key_encoded_len(1, key) })
                     + (if skip_val { 0 } else { val_encoded_len(2, val) });
@@ -1111,7 +1147,7 @@ macro_rules! map {
         ) -> usize
         where
             K: Default + Eq + Hash + Ord,
-            V: PartialEq,
+            V: IsDefault,
             KL: Fn(u32, &K) -> usize,
             VL: Fn(u32, &V) -> usize,
         {
@@ -1123,7 +1159,7 @@ macro_rules! map {
                             0
                         } else {
                             key_encoded_len(1, key)
-                        }) + (if val == val_default {
+                        }) + (if val.is_default(val_default) {
                             0
                         } else {
                             val_encoded_len(2, val)
@@ -1278,7 +1314,7 @@ mod test {
         }
         let original = get(&map, &1).unwrap();
         let modified = get(&decoded, &1).unwrap();
-        prop_assert!(equal(&original, &modified));
+        prop_assert!(equal(original, modified));
         Ok(())
     }
 

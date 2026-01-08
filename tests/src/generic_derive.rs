@@ -1,4 +1,4 @@
-pub trait CustomType: prost::Message + Default + core::fmt::Debug {}
+pub trait CustomType: prost::Message + Default + core::fmt::Debug + PartialEq {}
 
 impl CustomType for u64 {}
 
@@ -11,7 +11,7 @@ enum GenericEnum<A: CustomType> {
     Number(u64),
 }
 
-#[derive(Clone, prost::Message)]
+#[derive(Clone, prost::Message, PartialEq)]
 struct GenericMessage<A: CustomType> {
     #[prost(message, tag = "1")]
     data: Option<A>,

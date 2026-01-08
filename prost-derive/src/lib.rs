@@ -207,6 +207,8 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 #default
             }
         }
+
+        impl #impl_generics #prost_path::encoding::IsDefault for #ident #ty_generics #where_clause {}
     };
     let expanded = if skip_debug {
         expanded
