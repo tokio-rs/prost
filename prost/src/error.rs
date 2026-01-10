@@ -39,6 +39,7 @@ impl DecodeError {
         note = "This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release."
     )]
     #[cold]
+    #[doc(hidden)]
     pub fn new(description: impl Into<Cow<'static, str>>) -> DecodeError {
         DecodeErrorKind::Other {
             description: description.into(),
