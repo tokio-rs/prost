@@ -2,17 +2,17 @@ name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
   merge_group:
-    branches: [ "master" ]
+    branches: ["master"]
 
 permissions:
   contents: read
 
 env:
-  PROTOC_VERSION: '3.25.3'
-  clippy_rust_version: '1.87'
+  PROTOC_VERSION: "3.25.3"
+  clippy_rust_version: "1.87"
 
 jobs:
   # Depends on all actions that are required for a "successful" CI run.
@@ -60,8 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
       - name: install protoc
         uses: taiki-e/install-action@v2
         with:
@@ -74,7 +72,7 @@ jobs:
           components: clippy
       - run: cargo clippy --workspace --exclude protobuf --all-features --tests -- -D warnings
       - name: enable edition 2024 lints in `prost-derive` macros
-        run: sed -i 's/edition = "[0-9]*"/edition = "2024"/' Cargo.toml 
+        run: sed -i 's/edition = "[0-9]*"/edition = "2024"/' Cargo.toml
       - name: set MSRV to clippy version to enable more lints
         run: sed -i 's/rust-version = "[.0-9]*"/rust-version = "${{ env.clippy_rust_version }}"/' Cargo.toml
       - name: clippy with edition 2024
@@ -84,8 +82,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
       - name: install protoc
         uses: taiki-e/install-action@v2
         with:
@@ -112,8 +108,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
       - uses: dtolnay/rust-toolchain@nightly
       - name: install protoc
         uses: taiki-e/install-action@v2
@@ -140,8 +134,6 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
       - name: install toolchain (${{ matrix.toolchain }})
         uses: dtolnay/rust-toolchain@master
         with:
