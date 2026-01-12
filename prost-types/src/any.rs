@@ -49,6 +49,7 @@ impl Name for Any {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prost::{bytes, encoding, Message};
 
     #[test]
     fn check_any_serialization() {
@@ -64,5 +65,57 @@ mod tests {
 
         // Wrong type URL
         assert!(any.to_msg::<Duration>().is_err());
+    }
+    #[derive(Clone, PartialEq, Debug, Default)]
+    struct Test {
+        value: i32,
+    }
+
+    impl Message for Test {
+        fn encode_raw(&self, buf: &mut impl bytes::BufMut) {
+            encoding::int32::encode(1, &self.value, buf);
+        }
+
+        fn merge_field(
+            &mut self,
+            tag: u32,
+            wire_type: encoding::WireType,
+            buf: &mut impl bytes::Buf,
+            ctx: encoding::DecodeContext,
+        ) -> Result<(), crate::DecodeError> {
+            if tag == 1 {
+                encoding::int32::merge(wire_type, &mut self.value, buf, ctx)
+            } else {
+                encoding::skip_field(wire_type, tag, buf, ctx)
+            }
+        }
+
+        fn encoded_len(&self) -> usize {
+            encoding::int32::encoded_len(1, &self.value)
+        }
+
+        fn clear(&mut self) {
+            self.value = 0;
+        }
+    }
+
+    impl crate::Name for Test {
+        const PACKAGE: &'static str = ""; // Empty package
+        const NAME: &'static str = "Test";
+    }
+
+    #[test]
+    fn dynamic_cast_round_trip() {
+        let msg = Test::default();
+        let any = Any::from_msg(&msg).unwrap();
+        let result: Result<Test, _> = any.to_msg();
+        result.expect("This should parse!");
+    }
+
+    #[test]
+    fn default_type_url_should_parse() {
+        let type_url = Test::type_url(); //any.type_url;
+        TypeUrl::new(&type_url)
+            .expect("The URL created by the default implementation should parse");
     }
 }
