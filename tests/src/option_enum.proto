@@ -1,6 +1,5 @@
 syntax = "proto3";
-package myenum.optionn;
-
+package option_enum;
 
 enum Option {
   HELLO = 0;

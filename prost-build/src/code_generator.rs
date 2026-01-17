@@ -76,10 +76,11 @@ impl OneofField {
         fields: Vec<Field>,
         path_index: i32,
     ) -> Self {
-        let has_type_name_conflict = parent
-            .nested_type
-            .iter()
-            .any(|nested| to_snake(nested.name()) == descriptor.name());
+        let nested_type_names = parent.nested_type.iter().map(DescriptorProto::name);
+        let nested_enum_names = parent.enum_type.iter().map(EnumDescriptorProto::name);
+        let has_type_name_conflict = nested_type_names
+            .chain(nested_enum_names)
+            .any(|type_name| to_upper_camel(type_name) == to_upper_camel(descriptor.name()));
 
         Self {
             descriptor,
@@ -572,13 +573,25 @@ impl<'b> CodeGenerator<'_, 'b> {
         ));
         self.append_field_attributes(fq_message_name, field.descriptor.name());
         self.push_indent();
-        self.buf.push_str(&format!(
-            "pub {}: {}<{}, {}>,\n",
-            field.rust_name(),
-            map_type.rust_type(),
-            key_ty,
-            value_ty
-        ));
+        match map_type {
+            crate::MapType::HashMap => {
+                self.buf.push_str(&format!(
+                    "pub {}: ::std::collections::HashMap<{}, {}>,\n",
+                    field.rust_name(),
+                    key_ty,
+                    value_ty
+                ));
+            }
+            crate::MapType::BTreeMap => {
+                self.buf.push_str(&format!(
+                    "pub {}: {}::alloc::collections::BTreeMap<{}, {}>,\n",
+                    field.rust_name(),
+                    self.context.prost_path(),
+                    key_ty,
+                    value_ty
+                ));
+            }
+        }
     }
 
     fn append_oneof_field(
@@ -684,8 +697,9 @@ impl<'b> CodeGenerator<'_, 'b> {
 
             if boxed {
                 self.buf.push_str(&format!(
-                    "{}(::prost::alloc::boxed::Box<{}>),\n",
+                    "{}({}::alloc::boxed::Box<{}>),\n",
                     to_upper_camel(field.descriptor.name()),
+                    self.context.prost_path(),
                     ty
                 ));
             } else {
@@ -883,7 +897,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
     fn push_service(&mut self, service: ServiceDescriptorProto) {
         let name = service.name().to_owned();
-        debug!("  service: {:?}", name);
+        debug!("  service: {name:?}");
 
         let comments = self
             .location()
@@ -982,11 +996,12 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => format!("{}::alloc::string::String", self.context.prost_path()),
-            Type::Bytes => self
-                .context
-                .bytes_type(fq_message_name, field.name())
-                .rust_type()
-                .to_owned(),
+            Type::Bytes => match self.context.bytes_type(fq_message_name, field.name()) {
+                crate::BytesType::Vec => {
+                    format!("{}::alloc::vec::Vec<u8>", self.context.prost_path())
+                }
+                crate::BytesType::Bytes => format!("{}::bytes::Bytes", self.context.prost_path()),
+            },
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

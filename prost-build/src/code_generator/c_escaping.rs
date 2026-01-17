@@ -69,7 +69,7 @@ pub(super) fn unescape_c_escape_string(s: &str) -> Vec<u8> {
                     let mut octal = 0;
                     for _ in 0..3 {
                         if p < len && src[p] >= b'0' && src[p] <= b'7' {
-                            debug!("\toctal: {}", octal);
+                            debug!("\toctal: {octal}");
                             octal = octal * 8 + (src[p] - b'0');
                             p += 1;
                         } else {

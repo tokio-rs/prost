@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.14.1")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.14.3")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -87,7 +87,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // Sort the fields by tag number so that fields will be encoded in tag order.
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
-    // See: https://developers.google.com/protocol-buffers/docs/encoding#order
+    // See: https://protobuf.dev/programming-guides/encoding/#order
     fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
     let fields = fields;
 
@@ -97,11 +97,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .duplicates()
         .next()
     {
-        bail!(
-            "message {} has multiple fields with tag {}",
-            ident,
-            duplicate_tag
-        )
+        bail!("message {ident} has multiple fields with tag {duplicate_tag}",)
     };
 
     let encoded_len = fields
@@ -435,11 +431,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         .duplicates()
         .next()
     {
-        bail!(
-            "invalid oneof {}: multiple variants have tag {}",
-            ident,
-            duplicate_tag
-        );
+        bail!("invalid oneof {ident}: multiple variants have tag {duplicate_tag}");
     }
 
     let encode = fields.iter().map(|(variant_ident, field, deprecated)| {
