@@ -766,13 +766,6 @@ impl fmt::Display for TimestampError {
             TimestampError::InvalidDateTime => {
                 write!(f, "invalid date or time")
             }
-            #[cfg(feature = "chrono")]
-            TimestampError::OutOfChronoDateTimeRanges(timestamp) => {
-                write!(
-                    f,
-                    "{timestamp} is not representable in `DateTime, NaiveDateTime, NaiveDate, NaiveTime` because it is out of range",
-                )
-            }
         }
     }
 }
