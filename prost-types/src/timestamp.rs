@@ -154,21 +154,28 @@ impl Add<Duration> for Timestamp {
             seconds_from_nanos -= 1;
         }
 
-        if cfg!(debug_assertions) {
+        //Kani runs in test mode, then debug_assertions is true, causing different error
+        //conditions than in production execution
+        if cfg!(debug_assertions) && !cfg!(kani) {
             // If in debug_assertions mode cause default overflow panic
             let seconds = self.seconds + rhs.seconds + (seconds_from_nanos as i64);
             Self { seconds, nanos }
         } else {
-            let seconds = self
-                .seconds
-                .saturating_add(rhs.seconds)
-                .saturating_add(seconds_from_nanos as i64);
+            // In production execution if overflowed then use saturating values
+            let (seconds, overflowed) = match self.seconds.overflowing_add(rhs.seconds) {
+                (seconds, true) => (seconds, true),
+                (seconds, false) => seconds.overflowing_add(seconds_from_nanos as i64),
+            };
             Self {
                 seconds,
-                nanos: match seconds {
-                    i64::MAX => Self::MAX.nanos,
-                    i64::MIN => Self::MIN.nanos,
-                    _ => nanos,
+                nanos: if overflowed {
+                    nanos
+                } else {
+                    match seconds {
+                        i64::MAX => Self::MAX.nanos,
+                        i64::MIN => Self::MIN.nanos,
+                        _ => nanos,
+                    }
                 },
             }
         }
@@ -179,10 +186,30 @@ impl Sub<Duration> for Timestamp {
     type Output = Timestamp;
 
     fn sub(self, rhs: Duration) -> Self::Output {
-        let negated_duration = Duration {
-            seconds: -rhs.seconds,
-            nanos: -rhs.nanos,
+        //Kani runs in test mode, then debug_assertions is true, causing different error
+        //conditions than in production execution
+        let negated_duration = if cfg!(debug_assertions) && !cfg!(kani) {
+            // If in debug_assertions mode cause default overflow panic
+            Duration {
+                seconds: -rhs.seconds,
+                nanos: -rhs.nanos,
+            }
+        } else {
+            // In production execution if overflowed then use saturating values
+            let (seconds, overflowed) = rhs.seconds.overflowing_neg();
+            let nanos = if overflowed {
+                match seconds {
+                    i64::MAX => Self::MAX.nanos,
+                    i64::MIN => Self::MIN.nanos,
+                    _ => rhs.nanos.saturating_neg(),
+                }
+            } else {
+                rhs.nanos.saturating_neg()
+            };
+
+            Duration { seconds, nanos }
         };
+
         self.add(negated_duration)
     }
 }
@@ -592,19 +619,15 @@ mod proofs_ops {
             nanos: kani::any(),
         };
 
-        kani::assume(i64::MAX / 3 > ts.seconds);
-        kani::assume(i64::MIN / 3 < ts.seconds);
-        kani::assume(i64::MAX / 3 > dur.seconds);
-        kani::assume(i64::MIN / 3 < dur.seconds);
-
-        kani::assume(i32::MAX != ts.nanos);
-        kani::assume(i32::MAX != dur.nanos);
-        kani::assume(i32::MIN != ts.nanos);
-        kani::assume(i32::MIN != dur.nanos);
+        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
+        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
+        kani::assume(dur.nanos <= Timestamp::MAX.nanos);
+        kani::assume(dur.nanos >= Timestamp::MIN.nanos);
 
         let result = ts + dur;
 
         assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
+        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
     }
 
     #[kani::proof]
@@ -618,19 +641,20 @@ mod proofs_ops {
             nanos: kani::any(),
         };
 
-        kani::assume(i64::MAX / 3 > ts.seconds);
-        kani::assume(i64::MIN / 3 < ts.seconds);
-        kani::assume(i64::MAX / 3 > dur.seconds);
-        kani::assume(i64::MIN / 3 < dur.seconds);
+        kani::assume(ts.seconds <= Timestamp::MAX.seconds);
+        kani::assume(ts.seconds >= Timestamp::MIN.seconds);
+        kani::assume(dur.seconds <= Timestamp::MAX.seconds);
+        kani::assume(dur.seconds >= Timestamp::MIN.seconds);
 
-        kani::assume(i32::MAX != ts.nanos);
-        kani::assume(i32::MAX != dur.nanos);
-        kani::assume(i32::MIN != ts.nanos);
-        kani::assume(i32::MIN != dur.nanos);
+        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
+        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
+        kani::assume(dur.nanos <= Timestamp::MAX.nanos);
+        kani::assume(dur.nanos >= Timestamp::MIN.nanos);
 
         let result = ts - dur;
 
         assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
+        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
     }
 
     #[kani::proof]
@@ -643,12 +667,15 @@ mod proofs_ops {
 
         kani::assume(divisor != 0);
 
-        kani::assume(i64::MAX / 3 > ts.seconds);
-        kani::assume(i64::MIN / 3 < ts.seconds);
+        kani::assume(ts.seconds <= Timestamp::MAX.seconds);
+        kani::assume(ts.seconds >= Timestamp::MIN.seconds);
+        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
+        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
 
         let result = ts / divisor;
 
         assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
+        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
     }
 
     #[kani::proof]
@@ -660,9 +687,15 @@ mod proofs_ops {
         let divisor: f32 = kani::any();
         kani::assume(divisor.is_finite() && divisor.abs() > 1e-9);
 
+        kani::assume(ts.seconds <= Timestamp::MAX.seconds);
+        kani::assume(ts.seconds >= Timestamp::MIN.seconds);
+        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
+        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
+
         let result = ts / divisor;
 
         assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
+        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
     }
 }
 
