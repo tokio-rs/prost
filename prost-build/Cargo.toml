@@ -20,8 +20,8 @@ itertools = { version = ">=0.10, <=0.14", default-features = false, features = [
 log = "0.4.4"
 multimap = { version = ">=0.8, <=0.10", default-features = false }
 petgraph = { version = "0.8", default-features = false, features = ["std"] }
-prost = { version = "0.14.1", path = "../prost", default-features = false }
-prost-types = { version = "0.14.1", path = "../prost-types", default-features = false }
+prost = { version = "0.14.3", path = "../prost", default-features = false }
+prost-types = { version = "0.14.3", path = "../prost-types", default-features = false }
 tempfile = "3"
 regex = { version = "1.8.1", default-features = false, features = ["std", "unicode-bool"] }
 
@@ -31,7 +31,7 @@ syn = { version = "2", features = ["full"], optional = true }
 
 # These two must be kept in sync, used for `cleanup-markdown` feature.
 pulldown-cmark = { version = "0.13", optional = true, default-features = false }
-pulldown-cmark-to-cmark = { version = "21", optional = true }
+pulldown-cmark-to-cmark = { version = "22", optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.11", default-features = false }

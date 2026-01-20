@@ -1,3 +1,81 @@
+# Prost version 0.14.2
+
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## ⚠️ Heads-up
+
+- Increase MSRV to 1.82 (#1356)
+- Update maintenance status to Passively Maintained (#1359)
+
+  This excerpt is from the readme:
+  > The current maintainer is not contributing new features and doesn't have the time to review new features. Bug fixes and small improvements are welcome. Feel free to contribute small and easily reviewable PRs. 
+  > 
+  > Bug fixes are still important, and security fixes will be released as soon as possible. Contact the `#prost` channel in [Tokio discord](https://discord.gg/tokio) if you feel a bug or security fix is not getting enough attention.
+  > 
+  > The maintainer expects the official `protobuf` project to release their rust library soon and expects it to be as fully featured as the C++ library. See their [source code](https://github.com/protocolbuffers/protobuf/tree/main/rust) and [crate](https://crates.io/crates/protobuf/4.33.1-release) for more information.
+
+## 🚀 Features
+
+- Configure prost path via `prost_build::Config` or `#[(prost(prost_path = "::prost")]` (#1274)
+- Support for deprecated enum and oneof fields (#1316)
+
+## 🐛 Bug Fixes
+
+- *(prost-build)* Resolve OneOf type name conflict with embedded message (#1294)
+- *(prost-build)* Avoid OneOf type collision with enums and keyword names (#1341)
+
+## 💼 Dependencies
+
+- Use `trait Error` from core (#1179)
+- *(deps)* Update protobuf to v25.8 (#1323)
+- *(deps)* Update criterion requirement from 0.6 to 0.7 (#1308)
+- *(deps)* Update petgraph to 0.8 (#1327)
+- *(deps)* Bump actions/upload-artifact from 4 to 5 (#1351)
+- *(deps)* Bump actions/checkout from 5 to 6 (#1370)
+- Bump actions/checkout to v5 (#1312)
+- Update clippy to version 1.87 (#1292)
+- Replace once_cell dependency by std lib (#1119)
+
+## 📚 Documentation
+
+- Update outdated link is test documentation (#1289)
+- Describe use of encoding module (#1322)
+- Update the readme MSRV to the actual number (#1331)
+- Update URLs after manual review (#1336)
+- Answer why fields are wrapped in option (#1358)
+
+## 🎨 Styling
+
+- Add spaces to derive arguments in generated code (#1290)
+- Use variables directly in the `format!` string (#1293)
+- Remove unneeded lint allow statements (#1326)
+- Remove allocation in tests (#1332)
+- Simplify DecodeError description to an enum (#1330)
+- Use variables directly in the `format!` string (#1361)
+- Fix typo in prost/src/encoding.rs (#1369)
+
+## 🧪 Testing
+
+- Rename package of `ident_conversion` (#1291)
+- Add test for split buffer varint decoding (#1321)
+- Add descriptive reason of test failure (#1320)
+- Additionally test `decode_varint_slice` with roundtrips (#1325)
+- *(result_struct)* Move tests to separate module (#1333)
+- *(proto3_presence)* Move test to separate module (#1334)
+- *(result_enum)* Move test to separate module (#1342)
+- *(option_enum)* Move test to separate module (#1344)
+- *(option_struct)* Move tests to separate module (#1345)
+- *(message_encoding)* Roundtrip `Coumpound` (#1365)
+- *(no_unused_results)* Add roundtrip for Test message (#1364)
+- *(ServiceGenerator)* Verify the content of all generated files (#1357)
+- *(derive_copy)* Allow dead code (#1362)
+- Always choose macOS 14 (#1324)
+
+## ⚙️ Miscellaneous Tasks
+
+- Replace duplicate README by a symlink (#1303)
+- Add `cargo-semver-checks` (#1337)
+
 # Prost version 0.14.1
 
 _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.

@@ -38,20 +38,22 @@
           pkgs.mkShell {
             packages = [
               rustpkgs
-            ] ++ default_pkgs;
+            ]
+            ++ default_pkgs;
           };
         devShells."rust_minimum_version" =
           let
-            rustpkgs = (fenix.packages.${system}.fromToolchainName {
-              name = "1.82";
-              sha256 = "sha256-yMuSb5eQPO/bHv+Bcf/US8LVMbf/G/0MSfiPwBhiPpk=";
-            }).completeToolchain;
+            rustpkgs =
+              (fenix.packages.${system}.fromToolchainName {
+                name = "1.82";
+                sha256 = "sha256-yMuSb5eQPO/bHv+Bcf/US8LVMbf/G/0MSfiPwBhiPpk=";
+              }).completeToolchain;
           in
           pkgs.mkShell {
             packages = [
               rustpkgs
-            ] ++ default_pkgs;
+            ]
+            ++ default_pkgs;
           };
-      }
     );
 }

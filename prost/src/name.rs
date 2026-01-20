@@ -21,7 +21,11 @@ pub trait Name: Message {
     /// By default, this is the package name followed by the message name.
     /// Fully-qualified names must be unique within a domain of Type URLs.
     fn full_name() -> String {
-        format!("{}.{}", Self::PACKAGE, Self::NAME)
+        if Self::PACKAGE.is_empty() {
+            Self::NAME.into()
+        } else {
+            format!("{}.{}", Self::PACKAGE, Self::NAME)
+        }
     }
 
     /// Type URL for this [`Message`], which by default is the full name with a
