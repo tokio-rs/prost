@@ -15,7 +15,6 @@
       self,
       nixpkgs,
       flake-utils,
-      fenix,
       rust-overlay,
     }:
     flake-utils.lib.eachDefaultSystem (
