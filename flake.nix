@@ -8,6 +8,10 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -16,13 +20,18 @@
       nixpkgs,
       flake-utils,
       fenix,
+      rust-overlay,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+        cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        rustVersion = cargoToml.workspace.package.rust-version;
         default_pkgs = with pkgs; [
-          protobuf
           cmake
           pkg-config
           protobuf
@@ -43,11 +52,7 @@
           };
         devShells."rust_minimum_version" =
           let
-            rustpkgs =
-              (fenix.packages.${system}.fromToolchainName {
-                name = "1.82";
-                sha256 = "sha256-yMuSb5eQPO/bHv+Bcf/US8LVMbf/G/0MSfiPwBhiPpk=";
-              }).completeToolchain;
+            rustpkgs = pkgs.rust-bin.stable."${rustVersion}.0".default;
           in
           pkgs.mkShell {
             packages = [
@@ -55,5 +60,6 @@
             ]
             ++ default_pkgs;
           };
+      }
     );
 }
