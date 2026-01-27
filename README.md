@@ -468,7 +468,7 @@ nix develop
 
 This will drop you into a shell with all dependencies configured to build the entire project.
 
-If you want to use the minimum supported Rust version as required by Tokio [see MSRV](#msrv), run:
+If you want to use the minimum supported Rust version ([see MSRV](#msrv)) as required by policy, run:
 
 ```bash
 nix develop .#rust_minimum_version
