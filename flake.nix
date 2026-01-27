@@ -4,10 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -42,7 +38,9 @@
       {
         devShells.default =
           let
-            rustpkgs = fenix.packages.${system}.stable.completeToolchain;
+            rustpkgs = pkgs.rust-bin.stable.latest.default.override {
+              extensions = [ "rust-src" "rust-analyzer" ];
+            };
           in
           pkgs.mkShell {
             packages = [
@@ -52,7 +50,9 @@
           };
         devShells."rust_minimum_version" =
           let
-            rustpkgs = pkgs.rust-bin.stable."${rustVersion}.0".default;
+            rustpkgs = pkgs.rust-bin.stable."${rustVersion}.0".default.override {
+              extensions = [ "rust-src" "rust-analyzer" ];
+            };
           in
           pkgs.mkShell {
             packages = [
