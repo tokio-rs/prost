@@ -6,6 +6,7 @@
 //! This module is `pub`, but is only for prost internal use. The `prost-derive` crate needs access for its `Message` implementations.
 
 use alloc::collections::BTreeMap;
+use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::mem;
@@ -683,6 +684,35 @@ impl sealed::BytesAdapter for Vec<u8> {
     }
 }
 
+impl BytesAdapter for VecDeque<u8> {}
+
+impl sealed::BytesAdapter for VecDeque<u8> {
+    fn len(&self) -> usize {
+        VecDeque::len(self)
+    }
+
+    fn replace_with(&mut self, mut buf: impl Buf) {
+        self.clear();
+        self.reserve(buf.remaining());
+
+        while buf.has_remaining() {
+            let chunk = buf.chunk();
+            self.extend(chunk.iter().copied());
+            buf.advance(chunk.len());
+        }
+    }
+
+    fn append_to(&self, buf: &mut impl BufMut) {
+        let (a, b) = self.as_slices();
+        if !a.is_empty() {
+            buf.put_slice(a);
+        }
+        if !b.is_empty() {
+            buf.put_slice(b);
+        }
+    }
+}
+
 pub mod bytes {
     use crate::error::DecodeErrorKind;
 
@@ -765,6 +795,13 @@ pub mod bytes {
             }
 
             #[test]
+            fn check_vec_deque(value: VecDeque<u8>, tag in MIN_TAG..=MAX_TAG) {
+                let value: VecDeque<u8> = VecDeque::from(value);
+                super::test::check_type::<VecDeque<u8>, VecDeque<u8>>(value, tag, WireType::LengthDelimited,
+                                                        encode, merge, encoded_len)?;
+            }
+
+            #[test]
             fn check_repeated_vec(value: Vec<Vec<u8>>, tag in MIN_TAG..=MAX_TAG) {
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
@@ -774,6 +811,14 @@ pub mod bytes {
             #[test]
             fn check_repeated_bytes(value: Vec<Vec<u8>>, tag in MIN_TAG..=MAX_TAG) {
                 let value = value.into_iter().map(Bytes::from).collect();
+                super::test::check_collection_type(value, tag, WireType::LengthDelimited,
+                                                   encode_repeated, merge_repeated,
+                                                   encoded_len_repeated)?;
+            }
+
+            #[test]
+            fn check_repeated_vec_deque(value: VecDeque<VecDeque<u8>>, tag in MIN_TAG..=MAX_TAG) {
+                let value = value.into_iter().map(VecDeque::from).collect();
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
                                                    encoded_len_repeated)?;

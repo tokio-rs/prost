@@ -5,6 +5,8 @@
 //! the `prost-types` crate in order to avoid a cyclic dependency between `prost` and
 //! `prost-build`.
 
+use alloc::collections::VecDeque;
+
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -431,6 +433,48 @@ impl Message for Bytes {
 
 /// `google.protobuf.BytesValue`
 impl Name for Bytes {
+    const NAME: &'static str = "BytesValue";
+    const PACKAGE: &'static str = "google.protobuf";
+
+    fn type_url() -> String {
+        googleapis_type_url_for::<Self>()
+    }
+}
+
+/// `google.protobuf.BytesValue`
+impl Message for VecDeque<u8> {
+    fn encode_raw(&self, buf: &mut impl BufMut) {
+        if !self.is_empty() {
+            bytes::encode(1, self, buf)
+        }
+    }
+    fn merge_field(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut impl Buf,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        if tag == 1 {
+            bytes::merge(wire_type, self, buf, ctx)
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+    fn encoded_len(&self) -> usize {
+        if !self.is_empty() {
+            bytes::encoded_len(1, self)
+        } else {
+            0
+        }
+    }
+    fn clear(&mut self) {
+        self.clear();
+    }
+}
+
+/// `google.protobuf.BytesValue`
+impl Name for VecDeque<u8> {
     const NAME: &'static str = "BytesValue";
     const PACKAGE: &'static str = "google.protobuf";
 

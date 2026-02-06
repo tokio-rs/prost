@@ -665,7 +665,9 @@ impl DefaultValue {
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
             Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value()),
             Lit::ByteStr(ref lit)
-                if *ty == Ty::Bytes(BytesTy::Bytes) || *ty == Ty::Bytes(BytesTy::Vec) =>
+                if *ty == Ty::Bytes(BytesTy::Bytes)
+                    || *ty == Ty::Bytes(BytesTy::Vec)
+                    || *ty == Ty::Bytes(BytesTy::VecDeque) =>
             {
                 DefaultValue::Bytes(lit.value())
             }

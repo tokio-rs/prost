@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 
 use prost::alloc::collections::BTreeMap;
+use prost::alloc::collections::VecDeque;
 use prost::alloc::vec;
 #[cfg(not(feature = "std"))]
 use prost::alloc::{borrow::ToOwned, string::String, vec::Vec};
@@ -72,6 +73,8 @@ pub struct ScalarTypes {
     pub bytes_vec: Vec<u8>,
     #[prost(bytes = "bytes", tag = "016")]
     pub bytes_buf: Bytes,
+    #[prost(bytes = "vec_deque", tag = "017")]
+    pub bytes_vec_deque: VecDeque<u8>,
 
     #[prost(int32, required, tag = "101")]
     pub required_int32: i32,
@@ -105,6 +108,8 @@ pub struct ScalarTypes {
     pub required_bytes_vec: Vec<u8>,
     #[prost(bytes = "bytes", required, tag = "116")]
     pub required_bytes_buf: Bytes,
+    #[prost(bytes = "vec_deque", required, tag = "117")]
+    pub required_bytes_vec_deque: VecDeque<u8>,
 
     #[prost(int32, optional, tag = "201")]
     pub optional_int32: Option<i32>,
@@ -139,6 +144,8 @@ pub struct ScalarTypes {
     pub optional_bytes_vec: Option<Vec<u8>>,
     #[prost(bytes = "bytes", optional, tag = "216")]
     pub optional_bytes_buf: Option<Bytes>,
+    #[prost(bytes = "vec_deque", optional, tag = "217")]
+    pub optional_bytes_vec_deque: Option<VecDeque<u8>>,
 
     #[prost(int32, repeated, packed = "false", tag = "301")]
     pub repeated_int32: Vec<i32>,
@@ -172,6 +179,8 @@ pub struct ScalarTypes {
     pub repeated_bytes_vec: Vec<Vec<u8>>,
     #[prost(bytes = "bytes", repeated, packed = "false", tag = "317")]
     pub repeated_bytes_buf: Vec<Bytes>,
+    #[prost(bytes = "vec_deque", repeated, packed = "false", tag = "318")]
+    pub repeated_bytes_vec_deque: Vec<VecDeque<u8>>,
 
     #[prost(int32, repeated, tag = "401")]
     pub packed_int32: Vec<i32>,
@@ -206,6 +215,8 @@ pub struct ScalarTypes {
     pub packed_bytes_vec: Vec<Vec<u8>>,
     #[prost(bytes = "bytes", repeated, tag = "417")]
     pub packed_bytes_buf: Vec<Bytes>,
+    #[prost(bytes = "vec_deque", repeated, tag = "418")]
+    pub packed_bytes_vec_deque: Vec<VecDeque<u8>>,
 }
 
 #[test]
@@ -300,6 +311,9 @@ pub struct DefaultValues {
     #[prost(bytes = "bytes", tag = "8", default = "b\"foo\\x00bar\"")]
     pub bytes_buf: Bytes,
 
+    #[prost(bytes = "vec_deque", tag = "9", default = "b\"foo\\x00bar\"")]
+    pub bytes_vec_deque: VecDeque<u8>,
+
     #[prost(enumeration = "BasicEnumeration", tag = "4", default = "ONE")]
     pub enumeration: i32,
 
@@ -318,6 +332,7 @@ fn check_default_values() {
     assert_eq!(&default.string, "forty two");
     assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
     assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
+    assert_eq!(&default.bytes_vec_deque.as_ref(), b"foo\0bar");
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);
