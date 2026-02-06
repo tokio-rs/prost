@@ -184,6 +184,66 @@ impl Config {
         self
     }
 
+    /// Configure the code generator to generate Rust [`VecDeque`][1] fields for Protobuf
+    /// [`bytes`][2] type fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use a Rust
+    /// `VecDeque` for Protobuf `map` fields. Paths are specified in terms of the Protobuf type
+    /// name (not the generated Rust type name). Paths with a leading `.` are treated as fully
+    /// qualified names. Paths without a leading `.` are treated as relative, and are suffix
+    /// matched on the fully qualified field name. If a Protobuf map field matches any of the
+    /// paths, a Rust `VecDeque` field is generated instead of the default [`Vec<u8>`][3].
+    ///
+    /// The matching is done on the Protobuf names, before converting to Rust-friendly casing
+    /// standards.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Match a specific field in a message type.
+    /// config.vec_deque(&[".my_messages.MyMessageType.my_vec_deque_field"]);
+    ///
+    /// // Match all vec_deque fields in a message type.
+    /// config.vec_deque(&[".my_messages.MyMessageType"]);
+    ///
+    /// // Match all vec_deque fields in a package.
+    /// config.vec_deque(&[".my_messages"]);
+    ///
+    /// // Match all vec_deque fields. Specially useful in `no_std` contexts.
+    /// config.vec_deque(&["."]);
+    ///
+    /// // Match all vec_deque fields in a nested message.
+    /// config.vec_deque(&[".my_messages.MyMessageType.MyNestedMessageType"]);
+    ///
+    /// // Match all fields named 'my_vec_deque_field'.
+    /// config.vec_deque(&["my_vec_deque_field"]);
+    ///
+    /// // Match all fields named 'my_vec_deque_field' in messages named 'MyMessageType', regardless of
+    /// // package or nesting.
+    /// config.vec_deque(&["MyMessageType.my_vec_deque_field"]);
+    ///
+    /// // Match all fields named 'my_vec_deque_field', and all fields in the 'foo.bar' package.
+    /// config.vec_deque(&["my_vec_deque_field", ".foo.bar"]);
+    /// ```
+    ///
+    /// [2]: https://protobuf.dev/programming-guides/proto3/#scalar
+    /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
+    pub fn vec_deque<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.bytes_type.clear();
+        for matcher in paths {
+            self.bytes_type
+                .insert(matcher.as_ref().to_string(), BytesType::VecDeque);
+        }
+        self
+    }
+
     /// Add additional attribute to matched fields.
     ///
     /// # Arguments

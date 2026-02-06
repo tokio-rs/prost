@@ -17,7 +17,7 @@ use prost_types::{
 use crate::ast::{Comments, Method, Service};
 use crate::context::Context;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
-use crate::Config;
+use crate::{BytesType, Config};
 
 mod c_escaping;
 use c_escaping::unescape_c_escape_string;
@@ -518,9 +518,17 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         let prost_path = self.context.prost_path();
 
+        let bytes_type = self
+            .context
+            .bytes_type(fq_message_name, field.descriptor.name());
         if repeated {
-            self.buf
-                .push_str(&format!("{prost_path}::alloc::vec::Vec<"));
+            if bytes_type == BytesType::Vec {
+                self.buf
+                    .push_str(&format!("{prost_path}::alloc::vec::Vec<"));
+            } else if bytes_type == BytesType::VecDeque {
+                self.buf
+                    .push_str(&format!("{prost_path}::alloc::collections::VecDeque<"));
+            }
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
@@ -1000,7 +1008,15 @@ impl<'b> CodeGenerator<'_, 'b> {
                 crate::BytesType::Vec => {
                     format!("{}::alloc::vec::Vec<u8>", self.context.prost_path())
                 }
-                crate::BytesType::Bytes => format!("{}::bytes::Bytes", self.context.prost_path()),
+                crate::BytesType::Bytes => {
+                    format!("{}::bytes::Bytes", self.context.prost_path())
+                }
+                crate::BytesType::VecDeque => {
+                    format!(
+                        "{}::alloc::collections::VecDeque<u8>",
+                        self.context.prost_path()
+                    )
+                }
             },
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }

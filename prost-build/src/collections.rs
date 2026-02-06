@@ -18,6 +18,8 @@ pub(crate) enum BytesType {
     Vec,
     /// The [`bytes::Bytes`](prost::bytes::Bytes) type.
     Bytes,
+    /// The [`std::collections::VecDeque`] type.
+    VecDeque,
 }
 
 impl MapType {
@@ -36,6 +38,7 @@ impl BytesType {
         match self {
             BytesType::Vec => "vec",
             BytesType::Bytes => "bytes",
+            BytesType::VecDeque => "vec_deque",
         }
     }
 }

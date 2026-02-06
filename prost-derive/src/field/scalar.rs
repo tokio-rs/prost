@@ -402,6 +402,7 @@ pub enum Ty {
 pub enum BytesTy {
     Vec,
     Bytes,
+    VecDeque,
 }
 
 impl BytesTy {
@@ -409,6 +410,7 @@ impl BytesTy {
         match s {
             "vec" => Ok(BytesTy::Vec),
             "bytes" => Ok(BytesTy::Bytes),
+            "vec_deque" => Ok(BytesTy::VecDeque),
             _ => bail!("Invalid bytes type: {s}"),
         }
     }
@@ -417,6 +419,7 @@ impl BytesTy {
         match self {
             BytesTy::Vec => quote! { #prost_path::alloc::vec::Vec<u8> },
             BytesTy::Bytes => quote! { #prost_path::bytes::Bytes },
+            BytesTy::VecDeque => quote! { #prost_path::alloc::collections::VecDeque<u8>},
         }
     }
 }
