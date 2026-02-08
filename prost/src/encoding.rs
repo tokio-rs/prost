@@ -801,7 +801,6 @@ pub mod bytes {
 
             #[test]
             fn check_vec_deque(value: VecDeque<u8>, tag in MIN_TAG..=MAX_TAG) {
-                let value: VecDeque<u8> = VecDeque::from(value);
                 super::test::check_type::<VecDeque<u8>, VecDeque<u8>>(value, tag, WireType::LengthDelimited,
                                                         encode, merge, encoded_len)?;
             }
@@ -822,8 +821,8 @@ pub mod bytes {
             }
 
             #[test]
-            fn check_repeated_vec_deque(value: VecDeque<VecDeque<u8>>, tag in MIN_TAG..=MAX_TAG) {
-                let value = value.into_iter().map(VecDeque::from).collect();
+            fn check_repeated_vec_deque(value: Vec<VecDeque<u8>>, tag in MIN_TAG..=MAX_TAG) {
+                let value = value.into_iter().collect();
                 super::test::check_collection_type(value, tag, WireType::LengthDelimited,
                                                    encode_repeated, merge_repeated,
                                                    encoded_len_repeated)?;

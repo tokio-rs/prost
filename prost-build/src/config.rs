@@ -229,6 +229,7 @@ impl Config {
     /// config.vec_deque(&["my_vec_deque_field", ".foo.bar"]);
     /// ```
     ///
+    /// [1]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html
     /// [2]: https://protobuf.dev/programming-guides/proto3/#scalar
     /// [3]: https://doc.rust-lang.org/std/vec/struct.Vec.html
     pub fn vec_deque<I, S>(&mut self, paths: I) -> &mut Self
