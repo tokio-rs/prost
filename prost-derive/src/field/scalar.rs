@@ -206,7 +206,7 @@ impl Field {
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self, prost_path: &Path) -> TokenStream {
         match self.kind {
-            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(prost_path),
+            Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(prost_path, &self.ty),
             Kind::Optional(_) => quote!(::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(#prost_path::alloc::vec::Vec::new()),
         }
@@ -354,8 +354,16 @@ impl Field {
 
             let match_some = if self.ty.is_numeric() {
                 quote!(::core::option::Option::Some(val) => val,)
+            } else if let Ty::Bytes(BytesTy::VecDeque) = self.ty {
+                quote!(::core::option::Option::Some(ref val) => val,)
             } else {
                 quote!(::core::option::Option::Some(ref val) => &val[..],)
+            };
+
+            let default_val = if let Ty::Bytes(BytesTy::VecDeque) = self.ty {
+                quote! {::prost::encoding::bytes::empty_deque()}
+            } else {
+                quote! {#default}
             };
 
             let get_doc = format!(
@@ -367,7 +375,7 @@ impl Field {
                 pub fn #get(&self) -> #ty {
                     match self.#ident {
                         #match_some
-                        ::core::option::Option::None => #default,
+                        ::core::option::Option::None => #default_val,
                     }
                 }
             })
@@ -553,7 +561,12 @@ impl Ty {
             Ty::Sfixed64 => quote!(i64),
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
-            Ty::Bytes(..) => quote!(&[u8]),
+            // Ty::Bytes(..) => quote!(&[u8]),
+            Ty::Bytes(ref bytes_ty) => match bytes_ty {
+                // Return &VecDeque<u8> instead of a slice
+                BytesTy::VecDeque => quote!(&VecDeque<u8>),
+                _ => quote!(&[u8]),
+            },
             Ty::Enumeration(..) => quote!(i32),
         }
     }
@@ -780,7 +793,7 @@ impl DefaultValue {
         }
     }
 
-    pub fn owned(&self, prost_path: &Path) -> TokenStream {
+    pub fn owned(&self, prost_path: &Path, ty: &Ty) -> TokenStream {
         match *self {
             DefaultValue::String(ref value) if value.is_empty() => {
                 quote!(#prost_path::alloc::string::String::new())
@@ -791,7 +804,11 @@ impl DefaultValue {
             }
             DefaultValue::Bytes(ref value) => {
                 let lit = LitByteStr::new(value, Span::call_site());
-                quote!(#lit.as_ref().into())
+                if let Ty::Bytes(BytesTy::VecDeque) = ty {
+                    quote!(#prost_path::alloc::vec::Vec::from(#lit).into())
+                } else {
+                    quote!(#lit.as_ref().into())
+                }
             }
 
             ref other => other.typed(),

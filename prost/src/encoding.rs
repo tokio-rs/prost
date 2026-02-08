@@ -771,6 +771,11 @@ pub mod bytes {
         Ok(())
     }
 
+    pub fn empty_deque() -> &'static VecDeque<u8> {
+        static INSTANCE: VecDeque<u8> = VecDeque::new();
+        &INSTANCE
+    }
+
     length_delimited!(impl BytesAdapter);
 
     #[cfg(test)]

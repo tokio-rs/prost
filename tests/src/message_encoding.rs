@@ -332,7 +332,15 @@ fn check_default_values() {
     assert_eq!(&default.string, "forty two");
     assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
     assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
-    assert_eq!(&default.bytes_vec_deque.as_ref(), b"foo\0bar");
+    assert_eq!(
+        &default
+            .bytes_vec_deque
+            .iter()
+            .copied()
+            .collect::<Vec<u8>>()
+            .as_slice(),
+        b"foo\0bar"
+    );
     assert_eq!(default.enumeration, BasicEnumeration::ONE as i32);
     assert_eq!(default.optional_enumeration, None);
     assert_eq!(&default.repeated_enumeration, &[]);
