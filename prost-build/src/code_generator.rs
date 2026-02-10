@@ -433,7 +433,13 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.append_doc(fq_message_name, Some(field.descriptor.name()));
 
-        if deprecated {
+        if deprecated
+            && self
+                .config()
+                .ignore_deprecated_attributes
+                .get_first_field(fq_message_name, field.descriptor.name())
+                .is_none()
+        {
             self.push_indent();
             self.buf.push_str("#[deprecated]\n");
         }
@@ -665,7 +671,13 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.append_doc(fq_message_name, Some(field.descriptor.name()));
             self.path.pop();
 
-            if self.deprecated(&field.descriptor) {
+            if self.deprecated(&field.descriptor)
+                && self
+                    .config()
+                    .ignore_deprecated_attributes
+                    .get_first_field(fq_message_name, field.descriptor.name())
+                    .is_none()
+            {
                 self.push_indent();
                 self.buf.push_str("#[deprecated]\n");
             }

@@ -626,4 +626,44 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    #[test]
+    fn test_ignore_deprecated_attribute() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .ignore_deprecated_attribute(".")
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            "src/fixtures/deprecated/_all_deprecated_ignore_deprecated.rs",
+            tempdir.path().join("all_deprecated.rs")
+        );
+    }
+
+    #[test]
+    fn test_remove_single_deprecated_attribute() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .ignore_deprecated_attribute(".all_deprecated.Test.outdated")
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            "src/fixtures/deprecated/_all_deprecated_ignore_single_deprecated.rs",
+            tempdir.path().join("all_deprecated.rs")
+        );
+    }
 }

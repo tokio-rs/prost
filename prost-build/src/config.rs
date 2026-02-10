@@ -53,6 +53,7 @@ pub struct Config {
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
     pub(crate) prost_types_path: Option<String>,
+    pub(crate) ignore_deprecated_attributes: PathMap<()>,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -372,6 +373,30 @@ impl Config {
         P: AsRef<str>,
     {
         self.boxed.insert(path.as_ref().to_string(), ());
+        self
+    }
+
+    /// Remove any `deprecated` field attribute from matching fields.
+    ///
+    /// # Arguments
+    ///
+    /// **`path`** - a path matching any number of fields. These fields will have any `deprecated` field attribute removed.
+    /// This is useful when you would like to make use of a `deprecated` protobuf field in your code without having to
+    /// mark all call sites as `#[allow(deprecated)]`.
+    /// For details about matching fields see [`btree_map`](Self::btree_map).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.ignore_deprecated_attribute(".my_messages.MyMessageType.my_field");
+    /// ```
+    pub fn ignore_deprecated_attribute<P>(&mut self, path: P) -> &mut Self
+    where
+        P: AsRef<str>,
+    {
+        self.ignore_deprecated_attributes
+            .insert(path.as_ref().to_string(), ());
         self
     }
 
@@ -1219,6 +1244,7 @@ impl default::Default for Config {
             include_file: None,
             prost_path: None,
             prost_types_path: None,
+            ignore_deprecated_attributes: PathMap::default(),
             #[cfg(feature = "format")]
             fmt: true,
         }
@@ -1245,6 +1271,10 @@ impl fmt::Debug for Config {
             .field("disable_comments", &self.disable_comments)
             .field("skip_debug", &self.skip_debug)
             .field("prost_path", &self.prost_path)
+            .field(
+                "ignore_deprecated_attributes",
+                &self.ignore_deprecated_attributes,
+            )
             .finish()
     }
 }
