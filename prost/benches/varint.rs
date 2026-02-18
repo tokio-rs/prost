@@ -28,7 +28,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
                     for &value in &encode_values {
                         encode_varint(value, &mut buf);
                     }
-                    criterion::black_box(&buf);
+                    std::hint::black_box(&buf);
                 })
             }
         })
@@ -50,7 +50,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
                     while buf.has_remaining() {
                         let result = decode_varint(&mut buf);
                         debug_assert!(result.is_ok());
-                        criterion::black_box(&result);
+                        std::hint::black_box(&result);
                     }
                 })
             }
@@ -65,7 +65,7 @@ fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>)
                 for &value in &values {
                     sum += encoded_len_varint(value);
                 }
-                criterion::black_box(sum);
+                std::hint::black_box(sum);
             })
         })
         .throughput(Throughput::Bytes(decoded_len));
