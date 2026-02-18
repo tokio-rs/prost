@@ -53,6 +53,7 @@ pub struct Config {
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
     pub(crate) prost_types_path: Option<String>,
+    pub(crate) emit_rerun_if_changed: bool,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -795,6 +796,16 @@ impl Config {
     }
 
     // IMPROVEMENT: https://github.com/tokio-rs/prost/pull/1022/files#r1563818651
+    /// Enable or disable emitting `cargo:rerun-if-changed` directives for proto files.
+    ///
+    /// When enabled, the build script will emit rerun directives for all proto files
+    /// and include directories, ensuring regeneration when proto files change.
+    /// Defaults to `false`.
+    pub fn emit_rerun_if_changed(&mut self, enable: bool) -> &mut Self {
+        self.emit_rerun_if_changed = enable;
+        self
+    }
+
     /// Configures the code generator to format the output code via `prettyplease`.
     ///
     /// By default, this is enabled but if the `format` feature is not enabled this does
@@ -1034,11 +1045,18 @@ impl Config {
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
     ) -> Result<()> {
-        // TODO: This should probably emit 'rerun-if-changed=PATH' directives for cargo, however
-        // according to [1] if any are output then those paths replace the default crate root,
-        // which is undesirable. Figure out how to do it in an additive way; perhaps gcc-rs has
-        // this figured out.
-        // [1]: https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script
+        if self.emit_rerun_if_changed {
+            for path in protos.iter() {
+                println!("cargo:rerun-if-changed={}", path.as_ref().display());
+            }
+
+            for path in includes.iter() {
+                // Cargo will watch the **entire** directory recursively. If we
+                // could figure out which files are imported by our protos we
+                // could specify only those files instead.
+                println!("cargo:rerun-if-changed={}", path.as_ref().display());
+            }
+        }
 
         let file_descriptor_set = self.load_fds(protos, includes)?;
 
@@ -1219,6 +1237,7 @@ impl default::Default for Config {
             include_file: None,
             prost_path: None,
             prost_types_path: None,
+            emit_rerun_if_changed: false,
             #[cfg(feature = "format")]
             fmt: true,
         }
