@@ -20,7 +20,7 @@ prost-types = { path = "../prost-types" }
 
 [dev-dependencies]
 prost-build = { path = "../prost-build", features = ["cleanup-markdown"] }
-tempfile = "3"
+tempfile = { version = "3", default-features = false }
 protobuf = { path = "../protobuf" }
 
 [build-dependencies]

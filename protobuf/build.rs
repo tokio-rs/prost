@@ -77,6 +77,11 @@ set(protobuf_BUILD_CONFORMANCE {conformance})
 set(protobuf_BUILD_TESTS OFF)
 set(protobuf_ABSL_PROVIDER "module")
 
+# Workaround for older Abseil (LTS 20230802) with newer compiler (GCC 15)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include\;cstdint>)
+endif()
+
 # On macOS with Nix, abseil's multi-arch support conflicts with Nix's --target flags.
 # Only apply workaround if we detect Nix environment (CMAKE_C_FLAGS contains --target).
 if(APPLE AND CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
