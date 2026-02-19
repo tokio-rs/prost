@@ -83,7 +83,7 @@
 //! ## Unknown Fields
 //!
 //! `prost-build` supports unknown fields, however they need to be manually enabled in your
-//! `build.rs` build-script. This can be done by modifying the previously script like so:
+//! `build.rs` build-script. This can be done by modifying the previous build-script like so:
 //! ```rust,no_run
 //! use std::io::Result;
 //! fn main() -> Result<()> {

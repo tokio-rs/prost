@@ -293,20 +293,27 @@ pub mod foo {
 Protobuf's unknown fields are supported for round-trip consistency of messages. 
 See the [`prost-build` documentation][prost-build] for more details on generation.
 
-***IMPORTANT***: Note that unknown fields can potentially contain a Bytes object of undefined size. This violates compile-time size constraints, and thus means that any and all objects generated with unknown fields support enabled cannot implement the `Copy` trait.
+***IMPORTANT***: Note that unknown fields can potentially contain a Bytes object
+of undefined size. This violates compile-time size constraints, and thus means 
+that any and all objects generated with unknown fields support enabled cannot 
+implement the `Copy` trait.
 
-When using `prost`-generated objects that include unknown fields, all unknown fields are 
-stored in a field within the struct, generally named `_unknown_fields`, although it can be
-modified in the `prost-build` build-script. If you are generating a new object of a type 
-that has been marked as having unknown fields, note that you will need to either import an existing
-`_unknown_fields` object, or use a default constructor to your implementation, like so:
+When using `prost`-generated objects that include unknown fields, all unknown 
+fields are stored in a field within the struct, whose name is set in the 
+`prost-build` build script. This field is recommended to be named `_unknown_fields`. 
+Protobuf style guide discourages underscores as the initial character in a 
+field or message, so this name limits potential collisions. If you are generating
+a new object of a type that has been marked as having unknown fields, note that 
+you will need to either import an existing `_unknown_fields` object, or use a 
+default constructor to your implementation, like so:
 ```rust,ignore
 let val = MessageWithUnknownFields{
   field_one: 1u32,
   ..Default::default()
 };
 ```
-This will initialise the `_unknown_fields` as empty, and allow the object to be serialized correctly.
+This will initialise the `_unknown_fields` as empty, and allow the object to be 
+serialized correctly.
 
 ### Services
 
