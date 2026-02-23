@@ -626,4 +626,30 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    #[test]
+    fn test_generate_packed_encoding() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &[
+                    "src/fixtures/packed_encoding/proto3_packed.proto",
+                    "src/fixtures/packed_encoding/proto2_packed.proto",
+                ],
+                &["src/fixtures/packed_encoding"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            "src/fixtures/packed_encoding/_expected_packed_encoding_proto3.rs",
+            tempdir.path().join("packed_encoding_proto3.rs")
+        );
+        assert_eq_fixture_file!(
+            "src/fixtures/packed_encoding/_expected_packed_encoding_proto2.rs",
+            tempdir.path().join("packed_encoding_proto2.rs")
+        );
+    }
 }
