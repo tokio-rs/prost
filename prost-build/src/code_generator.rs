@@ -460,11 +460,6 @@ impl<'b> CodeGenerator<'_, 'b> {
             Label::Required => self.buf.push_str(", required"),
             Label::Repeated => {
                 self.buf.push_str(", repeated");
-                // Use the raw `packed` field (`Option<bool>`) instead of the
-                // `packed()` accessor, which defaults to `false` when unset.
-                // In proto3, unset `packed` should default to `true` for packable
-                // repeated fields.
-                let syntax_default_packed = self.syntax == Syntax::Proto3;
                 if can_pack(&field.descriptor)
                     && !field
                         .descriptor
