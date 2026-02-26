@@ -48,6 +48,7 @@ pub struct Config {
     pub(crate) protoc_executable: PathBuf,
     pub(crate) disable_comments: PathMap<()>,
     pub(crate) skip_debug: PathMap<()>,
+    pub(crate) skip_field_names: PathMap<()>,
     pub(crate) skip_protoc_run: bool,
     pub(crate) skip_source_info: bool,
     pub(crate) include_file: Option<PathBuf>,
@@ -433,6 +434,24 @@ impl Config {
         self.skip_debug.clear();
         for matcher in paths {
             self.skip_debug.insert(matcher.as_ref().to_string(), ());
+        }
+        self
+    }
+
+    /// Skips generating field names in `Message` trait implementations.
+    ///
+    /// When enabled, `stringify!()` calls that embed struct and field names
+    /// into the binary are removed. Useful for security-sensitive applications
+    /// where leaking type information into binaries is undesirable.
+    pub fn skip_field_names<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.skip_field_names.clear();
+        for matcher in paths {
+            self.skip_field_names
+                .insert(matcher.as_ref().to_string(), ());
         }
         self
     }
@@ -1214,6 +1233,7 @@ impl default::Default for Config {
             protoc_executable: protoc_from_env(),
             disable_comments: PathMap::default(),
             skip_debug: PathMap::default(),
+            skip_field_names: PathMap::default(),
             skip_protoc_run: false,
             skip_source_info: false,
             include_file: None,
@@ -1244,6 +1264,7 @@ impl fmt::Debug for Config {
             .field("protoc_args", &self.protoc_args)
             .field("disable_comments", &self.disable_comments)
             .field("skip_debug", &self.skip_debug)
+            .field("skip_field_names", &self.skip_field_names)
             .field("prost_path", &self.prost_path)
             .finish()
     }
