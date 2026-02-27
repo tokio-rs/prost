@@ -443,14 +443,6 @@ impl<'b> CodeGenerator<'_, 'b> {
         let type_tag = self.field_type_tag(&field.descriptor);
         self.buf.push_str(&type_tag);
 
-        if type_ == Type::Bytes {
-            let bytes_type = self
-                .context
-                .bytes_type(fq_message_name, field.descriptor.name());
-            self.buf
-                .push_str(&format!(" = {:?}", bytes_type.annotation()));
-        }
-
         match field.descriptor.label() {
             Label::Optional => {
                 if optional {
@@ -506,6 +498,21 @@ impl<'b> CodeGenerator<'_, 'b> {
                 self.buf.push_str(&enum_value);
             } else {
                 self.buf.push_str(&default.escape_default().to_string());
+            }
+        }
+
+        if let Some(type_info) = self.context.custom_type(
+            field.descriptor.r#type(),
+            fq_message_name,
+            field.descriptor.name(),
+        ) {
+            self.buf.push_str(", encoding=\"");
+            self.buf.push_str(&type_info.encoding);
+            self.buf.push('\"');
+            if let Some(module) = type_info.encoding_module.as_deref() {
+                self.buf.push_str(", encoding_module=\"");
+                self.buf.push_str(module);
+                self.buf.push('\"');
             }
         }
 
@@ -987,6 +994,18 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+        if let Some(type_info) =
+            self.context
+                .custom_type(field.r#type(), fq_message_name, field.name())
+        {
+            if field.r#type() == Type::Bytes {
+                return type_info
+                    .ty
+                    .replace("{prost_path}", self.context.prost_path());
+            } else {
+                return type_info.ty.clone();
+            }
+        }
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -996,12 +1015,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
             Type::String => format!("{}::alloc::string::String", self.context.prost_path()),
-            Type::Bytes => match self.context.bytes_type(fq_message_name, field.name()) {
-                crate::BytesType::Vec => {
-                    format!("{}::alloc::vec::Vec<u8>", self.context.prost_path())
-                }
-                crate::BytesType::Bytes => format!("{}::bytes::Bytes", self.context.prost_path()),
-            },
+            Type::Bytes => format!("{}::alloc::vec::Vec<u8>", self.context.prost_path()),
             Type::Group | Type::Message => self.resolve_ident(field.type_name()),
         }
     }

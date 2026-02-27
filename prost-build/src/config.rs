@@ -7,11 +7,13 @@ use std::fs;
 use std::io::{Error, ErrorKind, Result, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::rc::Rc;
 
 use log::debug;
 use log::trace;
 
 use prost::Message;
+use prost_types::field_descriptor_proto::Type;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::code_generator::CodeGenerator;
@@ -19,10 +21,16 @@ use crate::context::Context;
 use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
 use crate::path::PathMap;
-use crate::BytesType;
 use crate::MapType;
 use crate::Module;
 use crate::ServiceGenerator;
+
+#[derive(Debug)]
+pub(crate) struct CustomTypeInfo {
+    pub(crate) ty: String,
+    pub(crate) encoding: String,
+    pub(crate) encoding_module: Option<String>,
+}
 
 /// Configuration options for Protobuf code generation.
 ///
@@ -31,7 +39,7 @@ pub struct Config {
     pub(crate) file_descriptor_set_path: Option<PathBuf>,
     pub(crate) service_generator: Option<Box<dyn ServiceGenerator>>,
     pub(crate) map_type: PathMap<MapType>,
-    pub(crate) bytes_type: PathMap<BytesType>,
+    pub(crate) custom_type: HashMap<Type, PathMap<Rc<CustomTypeInfo>>>,
     pub(crate) type_attributes: PathMap<String>,
     pub(crate) message_attributes: PathMap<String>,
     pub(crate) enum_attributes: PathMap<String>,
@@ -176,10 +184,38 @@ impl Config {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.bytes_type.clear();
+        self.custom_type.remove(&Type::Bytes);
+        self.custom_type(
+            Type::Bytes,
+            "{prost_path}::bytes::Bytes",
+            "BytesEncoding",
+            None,
+            paths,
+        )
+    }
+
+    fn custom_type<I, S, TS, ES>(
+        &mut self,
+        proto_type: Type,
+        user_type: TS,
+        encoding: ES,
+        encoding_module: Option<&str>,
+        paths: I,
+    ) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+        TS: AsRef<str>,
+        ES: AsRef<str>,
+    {
+        let info = Rc::new(CustomTypeInfo {
+            ty: user_type.as_ref().to_owned(),
+            encoding: encoding.as_ref().to_owned(),
+            encoding_module: encoding_module.map(ToOwned::to_owned),
+        });
+        let map = self.custom_type.entry(proto_type).or_default();
         for matcher in paths {
-            self.bytes_type
-                .insert(matcher.as_ref().to_string(), BytesType::Bytes);
+            map.insert(matcher.as_ref().to_string(), Rc::clone(&info));
         }
         self
     }
@@ -1197,7 +1233,7 @@ impl default::Default for Config {
             file_descriptor_set_path: None,
             service_generator: None,
             map_type: PathMap::default(),
-            bytes_type: PathMap::default(),
+            custom_type: HashMap::default(),
             type_attributes: PathMap::default(),
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
@@ -1231,7 +1267,7 @@ impl fmt::Debug for Config {
             .field("file_descriptor_set_path", &self.file_descriptor_set_path)
             .field("service_generator", &self.service_generator.is_some())
             .field("map_type", &self.map_type)
-            .field("bytes_type", &self.bytes_type)
+            .field("custom_type", &self.custom_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)

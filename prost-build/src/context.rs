@@ -1,13 +1,13 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, rc::Rc};
 
 use prost_types::{
     field_descriptor_proto::{Label, Type},
     FieldDescriptorProto,
 };
 
-use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType, ServiceGenerator};
+use crate::{config::CustomTypeInfo, extern_paths::ExternPaths};
+use crate::{Config, MapType, ServiceGenerator};
 
 /// The context providing all the global information needed to generate code.
 /// It also provides a more disciplined access to Config
@@ -101,13 +101,17 @@ impl<'a> Context<'a> {
             .map(|s| s.as_str())
     }
 
-    /// Returns the bytes type configured for the named message field.
-    pub(crate) fn bytes_type(&self, fq_message_name: &str, field_name: &str) -> BytesType {
+    /// Returns the custom type configured for the named message field.
+    pub(crate) fn custom_type(
+        &self,
+        field_type: Type,
+        fq_message_name: &str,
+        field_name: &str,
+    ) -> Option<Rc<CustomTypeInfo>> {
         self.config
-            .bytes_type
-            .get_first_field(fq_message_name, field_name)
-            .copied()
-            .unwrap_or_default()
+            .custom_type
+            .get(&field_type)
+            .and_then(|m| m.get_first_field(fq_message_name, field_name).cloned())
     }
 
     /// Returns the map type configured for the named message field.
