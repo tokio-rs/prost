@@ -625,4 +625,81 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    #[test]
+    fn test_custom_string() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .custom_string(&["."], "my_crate::CustomStr")
+            .compile_protos(
+                &["src/fixtures/custom_string/custom_string.proto"],
+                &["src/fixtures/custom_string"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/custom_string/_expected_custom_string_formatted.rs"
+            } else {
+                "src/fixtures/custom_string/_expected_custom_string.rs"
+            },
+            tempdir.path().join("custom_string.rs")
+        );
+    }
+
+    #[test]
+    fn test_custom_string_selective() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        // Only replace string fields in Basic.name and WithOneof
+        Config::new()
+            .out_dir(tempdir.path())
+            .custom_string(
+                &[".custom_string.Basic.name", ".custom_string.WithOneof"],
+                "my_crate::CustomStr",
+            )
+            .compile_protos(
+                &["src/fixtures/custom_string/custom_string.proto"],
+                &["src/fixtures/custom_string"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/custom_string/_expected_custom_string_selective_formatted.rs"
+            } else {
+                "src/fixtures/custom_string/_expected_custom_string_selective.rs"
+            },
+            tempdir.path().join("custom_string.rs")
+        );
+    }
+
+    #[test]
+    fn test_custom_string_with_btree_map() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .custom_string(&["."], "my_crate::CustomStr")
+            .btree_map(&["."])
+            .compile_protos(
+                &["src/fixtures/custom_string/custom_string.proto"],
+                &["src/fixtures/custom_string"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            if cfg!(feature = "format") {
+                "src/fixtures/custom_string/_expected_custom_string_btree_map_formatted.rs"
+            } else {
+                "src/fixtures/custom_string/_expected_custom_string_btree_map.rs"
+            },
+            tempdir.path().join("custom_string.rs")
+        );
+    }
 }

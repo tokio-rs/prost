@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package custom_string;
+
+// Basic message with string and non-string fields.
+message Basic {
+  string name = 1;
+  string description = 2;
+  int32 id = 3;
+  bytes data = 4;
+}
+
+// Message with repeated string field.
+message WithRepeated {
+  repeated string tags = 1;
+  string label = 2;
+}
+
+// Message with map fields containing string keys and/or values.
+message WithMap {
+  map<string, string> labels = 1;
+  map<string, int32> counts = 2;
+  map<int32, string> names = 3;
+}
+
+// Message with a oneof containing a string variant.
+message WithOneof {
+  oneof value {
+    string text = 1;
+    int32 number = 2;
+  }
+}
