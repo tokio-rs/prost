@@ -7,7 +7,7 @@ use prost_types::{
 
 use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
-use crate::{BytesType, Config, MapType, ServiceGenerator};
+use crate::{BytesType, Config, MapType, ServiceGenerator, StringType};
 
 /// The context providing all the global information needed to generate code.
 /// It also provides a more disciplined access to Config
@@ -116,6 +116,15 @@ impl<'a> Context<'a> {
             .map_type
             .get_first_field(fq_message_name, field_name)
             .copied()
+            .unwrap_or_default()
+    }
+
+    /// Returns the string type configured for the named message field.
+    pub(crate) fn string_type(&self, fq_message_name: &str, field_name: &str) -> StringType {
+        self.config
+            .string_type
+            .get_first_field(fq_message_name, field_name)
+            .cloned()
             .unwrap_or_default()
     }
 

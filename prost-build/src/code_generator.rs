@@ -422,7 +422,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         let boxed = self
             .context
             .should_box_message_field(fq_message_name, &field.descriptor);
-        let ty = self.resolve_type(&field.descriptor, fq_message_name);
+        let ty = self.resolve_type(&field.descriptor, fq_message_name, field.descriptor.name());
 
         debug!(
             "    field: {:?}, type: {:?}, boxed: {}",
@@ -440,7 +440,8 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.push_indent();
         self.buf.push_str("#[prost(");
-        let type_tag = self.field_type_tag(&field.descriptor);
+        let type_tag =
+            self.field_type_tag(&field.descriptor, fq_message_name, field.descriptor.name());
         self.buf.push_str(&type_tag);
 
         if type_ == Type::Bytes {
@@ -545,24 +546,21 @@ impl<'b> CodeGenerator<'_, 'b> {
         key: &FieldDescriptorProto,
         value: &FieldDescriptorProto,
     ) {
-        let key_ty = self.resolve_type(key, fq_message_name);
-        let value_ty = self.resolve_type(value, fq_message_name);
+        let map_field_name = field.descriptor.name();
+        let key_ty = self.resolve_type(key, fq_message_name, map_field_name);
+        let value_ty = self.resolve_type(value, fq_message_name, map_field_name);
 
         debug!(
             "    map field: {:?}, key type: {:?}, value type: {:?}",
-            field.descriptor.name(),
-            key_ty,
-            value_ty
+            map_field_name, key_ty, value_ty
         );
 
-        self.append_doc(fq_message_name, Some(field.descriptor.name()));
+        self.append_doc(fq_message_name, Some(map_field_name));
         self.push_indent();
 
-        let map_type = self
-            .context
-            .map_type(fq_message_name, field.descriptor.name());
-        let key_tag = self.field_type_tag(key);
-        let value_tag = self.map_value_type_tag(value);
+        let map_type = self.context.map_type(fq_message_name, map_field_name);
+        let key_tag = self.field_type_tag(key, fq_message_name, map_field_name);
+        let value_tag = self.map_value_type_tag(value, fq_message_name, map_field_name);
 
         self.buf.push_str(&format!(
             "#[prost({} = \"{}, {}\", tag = \"{}\")]\n",
@@ -671,7 +669,8 @@ impl<'b> CodeGenerator<'_, 'b> {
             }
 
             self.push_indent();
-            let ty_tag = self.field_type_tag(&field.descriptor);
+            let ty_tag =
+                self.field_type_tag(&field.descriptor, fq_message_name, field.descriptor.name());
             self.buf.push_str(&format!(
                 "#[prost({}, tag = \"{}\")]\n",
                 ty_tag,
@@ -680,7 +679,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.append_field_attributes(&oneof_name, field.descriptor.name());
 
             self.push_indent();
-            let ty = self.resolve_type(&field.descriptor, fq_message_name);
+            let ty = self.resolve_type(&field.descriptor, fq_message_name, field.descriptor.name());
 
             let boxed = self.context.should_box_oneof_field(
                 fq_message_name,
@@ -986,7 +985,12 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str("}\n");
     }
 
-    fn resolve_type(&self, field: &FieldDescriptorProto, fq_message_name: &str) -> String {
+    fn resolve_type(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+        field_name: &str,
+    ) -> String {
         match field.r#type() {
             Type::Float => String::from("f32"),
             Type::Double => String::from("f64"),
@@ -995,7 +999,12 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Int32 | Type::Sfixed32 | Type::Sint32 | Type::Enum => String::from("i32"),
             Type::Int64 | Type::Sfixed64 | Type::Sint64 => String::from("i64"),
             Type::Bool => String::from("bool"),
-            Type::String => format!("{}::alloc::string::String", self.context.prost_path()),
+            Type::String => match self.context.string_type(fq_message_name, field_name) {
+                crate::StringType::String => {
+                    format!("{}::alloc::string::String", self.context.prost_path())
+                }
+                crate::StringType::Custom(custom_type) => custom_type.clone(),
+            },
             Type::Bytes => match self.context.bytes_type(fq_message_name, field.name()) {
                 crate::BytesType::Vec => {
                     format!("{}::alloc::vec::Vec<u8>", self.context.prost_path())
@@ -1044,7 +1053,12 @@ impl<'b> CodeGenerator<'_, 'b> {
             .join("::")
     }
 
-    fn field_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn field_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+        field_name: &str,
+    ) -> Cow<'static, str> {
         match field.r#type() {
             Type::Float => Cow::Borrowed("float"),
             Type::Double => Cow::Borrowed("double"),
@@ -1059,7 +1073,10 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Sfixed32 => Cow::Borrowed("sfixed32"),
             Type::Sfixed64 => Cow::Borrowed("sfixed64"),
             Type::Bool => Cow::Borrowed("bool"),
-            Type::String => Cow::Borrowed("string"),
+            Type::String => match self.context.string_type(fq_message_name, field_name) {
+                crate::StringType::String => Cow::Borrowed("string"),
+                crate::StringType::Custom(_) => Cow::Borrowed("custom_string"),
+            },
             Type::Bytes => Cow::Borrowed("bytes"),
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
@@ -1070,13 +1087,18 @@ impl<'b> CodeGenerator<'_, 'b> {
         }
     }
 
-    fn map_value_type_tag(&self, field: &FieldDescriptorProto) -> Cow<'static, str> {
+    fn map_value_type_tag(
+        &self,
+        field: &FieldDescriptorProto,
+        fq_message_name: &str,
+        field_name: &str,
+    ) -> Cow<'static, str> {
         match field.r#type() {
             Type::Enum => Cow::Owned(format!(
                 "enumeration({})",
                 self.resolve_ident(field.type_name())
             )),
-            _ => self.field_type_tag(field),
+            _ => self.field_type_tag(field, fq_message_name, field_name),
         }
     }
 

@@ -39,3 +39,14 @@ impl BytesType {
         }
     }
 }
+
+/// The string type to output for Protobuf `string` fields.
+#[non_exhaustive]
+#[derive(Default, Clone, Debug, PartialEq)]
+pub(crate) enum StringType {
+    /// The default [`prost::alloc::string::String`] type.
+    #[default]
+    String,
+    /// A custom type that implements `prost::Message` with raw string semantics.
+    Custom(std::string::String),
+}

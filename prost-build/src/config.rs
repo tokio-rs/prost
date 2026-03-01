@@ -23,6 +23,7 @@ use crate::BytesType;
 use crate::MapType;
 use crate::Module;
 use crate::ServiceGenerator;
+use crate::StringType;
 
 /// Configuration options for Protobuf code generation.
 ///
@@ -32,6 +33,7 @@ pub struct Config {
     pub(crate) service_generator: Option<Box<dyn ServiceGenerator>>,
     pub(crate) map_type: PathMap<MapType>,
     pub(crate) bytes_type: PathMap<BytesType>,
+    pub(crate) string_type: PathMap<StringType>,
     pub(crate) type_attributes: PathMap<String>,
     pub(crate) message_attributes: PathMap<String>,
     pub(crate) enum_attributes: PathMap<String>,
@@ -180,6 +182,46 @@ impl Config {
         for matcher in paths {
             self.bytes_type
                 .insert(matcher.as_ref().to_string(), BytesType::Bytes);
+        }
+        self
+    }
+
+    /// Configure the code generator to use a custom string type for Protobuf `string` fields.
+    ///
+    /// The custom type must implement `prost::Message` with raw string semantics: `encode_raw`
+    /// writes raw UTF-8 bytes, `merge` reads all remaining bytes as raw content (not tag-value
+    /// pairs), `encoded_len` returns the byte length, and `clear` resets to empty.
+    ///
+    /// # Arguments
+    ///
+    /// **`paths`** - paths to specific fields, messages, or packages which should use the custom
+    /// string type. Path matching works the same as [`btree_map`](Self::btree_map).
+    ///
+    /// **`custom_type`** - the fully qualified Rust type path to use instead of `String`
+    /// (e.g., `"flexstr::SharedStr"`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Replace all string fields with a custom type.
+    /// config.custom_string(&["."], "flexstr::SharedStr");
+    ///
+    /// // Replace string fields in a specific message.
+    /// config.custom_string(&[".my_messages.MyMessageType"], "flexstr::SharedStr");
+    /// ```
+    pub fn custom_string<I, S, T>(&mut self, paths: I, custom_type: T) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+        T: AsRef<str>,
+    {
+        self.string_type.clear();
+        for matcher in paths {
+            self.string_type.insert(
+                matcher.as_ref().to_string(),
+                StringType::Custom(custom_type.as_ref().to_string()),
+            );
         }
         self
     }
@@ -1198,6 +1240,7 @@ impl default::Default for Config {
             service_generator: None,
             map_type: PathMap::default(),
             bytes_type: PathMap::default(),
+            string_type: PathMap::default(),
             type_attributes: PathMap::default(),
             message_attributes: PathMap::default(),
             enum_attributes: PathMap::default(),
@@ -1232,6 +1275,7 @@ impl fmt::Debug for Config {
             .field("service_generator", &self.service_generator.is_some())
             .field("map_type", &self.map_type)
             .field("bytes_type", &self.bytes_type)
+            .field("string_type", &self.string_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
             .field("prost_types", &self.prost_types)
