@@ -633,7 +633,7 @@ mod tests {
 
         Config::new()
             .out_dir(tempdir.path())
-            .custom_string(&["."], "my_crate::CustomStr")
+            .custom_string(["."], "my_crate::CustomStr")
             .compile_protos(
                 &["src/fixtures/custom_string/custom_string.proto"],
                 &["src/fixtures/custom_string"],
@@ -659,7 +659,7 @@ mod tests {
         Config::new()
             .out_dir(tempdir.path())
             .custom_string(
-                &[".custom_string.Basic.name", ".custom_string.WithOneof"],
+                [".custom_string.Basic.name", ".custom_string.WithOneof"],
                 "my_crate::CustomStr",
             )
             .compile_protos(
@@ -685,8 +685,8 @@ mod tests {
 
         Config::new()
             .out_dir(tempdir.path())
-            .custom_string(&["."], "my_crate::CustomStr")
-            .btree_map(&["."])
+            .custom_string(["."], "my_crate::CustomStr")
+            .btree_map(["."])
             .compile_protos(
                 &["src/fixtures/custom_string/custom_string.proto"],
                 &["src/fixtures/custom_string"],
