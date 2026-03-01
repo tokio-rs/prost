@@ -256,6 +256,12 @@ impl Field {
 
     /// Returns a fragment for formatting the field `ident` in `Debug`.
     pub fn debug(&self, prost_path: &Path, wrapper_name: TokenStream) -> TokenStream {
+        // CustomString: concrete type is unknown at derive time, so use a
+        // pass-through identity wrapper for all kinds.
+        if self.ty == Ty::CustomString {
+            return self.debug_inner(wrapper_name);
+        }
+
         let wrapper = self.debug_inner(quote!(Inner));
         let inner_ty = self.ty.rust_type(prost_path);
         match self.kind {
