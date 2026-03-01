@@ -117,10 +117,18 @@ impl Field {
 
         match self.kind {
             Kind::Plain(ref default) => {
-                let default = default.typed();
-                quote! {
-                    if #ident != #default {
-                        #encode_fn(#tag, &#ident, buf);
+                if self.ty == Ty::CustomString {
+                    quote! {
+                        if #prost_path::Message::encoded_len(&#ident) > 0 {
+                            #encode_fn(#tag, &#ident, buf);
+                        }
+                    }
+                } else {
+                    let default = default.typed();
+                    quote! {
+                        if #ident != #default {
+                            #encode_fn(#tag, &#ident, buf);
+                        }
                     }
                 }
             }
@@ -171,12 +179,22 @@ impl Field {
 
         match self.kind {
             Kind::Plain(ref default) => {
-                let default = default.typed();
-                quote! {
-                    if #ident != #default {
-                        #encoded_len_fn(#tag, &#ident)
-                    } else {
-                        0
+                if self.ty == Ty::CustomString {
+                    quote! {
+                        if #prost_path::Message::encoded_len(&#ident) > 0 {
+                            #encoded_len_fn(#tag, &#ident)
+                        } else {
+                            0
+                        }
+                    }
+                } else {
+                    let default = default.typed();
+                    quote! {
+                        if #ident != #default {
+                            #encoded_len_fn(#tag, &#ident)
+                        } else {
+                            0
+                        }
                     }
                 }
             }
@@ -189,12 +207,13 @@ impl Field {
         }
     }
 
-    pub fn clear(&self, ident: TokenStream) -> TokenStream {
+    pub fn clear(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
                 let default = default.typed();
                 match self.ty {
                     Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
+                    Ty::CustomString => quote!(#prost_path::Message::clear(&mut #ident)),
                     _ => quote!(#ident = #default),
                 }
             }
@@ -396,6 +415,10 @@ pub enum Ty {
     String,
     Bytes(BytesTy),
     Enumeration(Path),
+    /// A custom string type that implements `prost::Message` with raw UTF-8
+    /// content semantics. Used for replacing protobuf `string` fields with
+    /// custom types.
+    CustomString,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -438,6 +461,7 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("sfixed64") => Ty::Sfixed64,
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
             Meta::Path(ref name) if name.is_ident("string") => Ty::String,
+            Meta::Path(ref name) if name.is_ident("custom_string") => Ty::CustomString,
             Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
             Meta::NameValue(MetaNameValue {
                 ref path,
@@ -483,6 +507,7 @@ impl Ty {
             "sfixed64" => Ty::Sfixed64,
             "bool" => Ty::Bool,
             "string" => Ty::String,
+            "custom_string" => Ty::CustomString,
             "bytes" => Ty::Bytes(BytesTy::Vec),
             s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
                 let s = &s[enumeration_len..].trim();
@@ -519,6 +544,7 @@ impl Ty {
             Ty::Sfixed64 => "sfixed64",
             Ty::Bool => "bool",
             Ty::String => "string",
+            Ty::CustomString => "custom_string",
             Ty::Bytes(..) => "bytes",
             Ty::Enumeration(..) => "enum",
         }
@@ -528,6 +554,10 @@ impl Ty {
     pub fn rust_type(&self, prost_path: &Path) -> TokenStream {
         match self {
             Ty::String => quote!(#prost_path::alloc::string::String),
+            // CustomString: concrete type is unknown at derive time; the field's
+            // declared type in the struct is used directly. This fallback is only
+            // reached by the debug() wrapper which is unused for Plain fields.
+            Ty::CustomString => quote!(#prost_path::alloc::string::String),
             Ty::Bytes(ty) => ty.rust_type(prost_path),
             _ => self.rust_ref_type(),
         }
@@ -550,6 +580,7 @@ impl Ty {
             Ty::Sfixed64 => quote!(i64),
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
+            Ty::CustomString => quote!(&str),
             Ty::Bytes(..) => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
         }
@@ -564,7 +595,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        !matches!(self, Ty::String | Ty::Bytes(..))
+        !matches!(self, Ty::String | Ty::CustomString | Ty::Bytes(..))
     }
 }
 
@@ -609,6 +640,9 @@ pub enum DefaultValue {
     Bytes(Vec<u8>),
     Enumeration(TokenStream),
     Path(Path),
+    /// Default value via `Default::default()`. Used for custom types whose
+    /// concrete type is unknown at derive time (e.g., `CustomString`).
+    Default,
 }
 
 impl DefaultValue {
@@ -770,6 +804,7 @@ impl DefaultValue {
 
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
+            Ty::CustomString => DefaultValue::Default,
             Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
@@ -789,15 +824,16 @@ impl DefaultValue {
                 quote!(#lit.as_ref().into())
             }
 
+            DefaultValue::Default => quote!(::core::default::Default::default()),
             ref other => other.typed(),
         }
     }
 
     pub fn typed(&self) -> TokenStream {
-        if let DefaultValue::Enumeration(_) = *self {
-            quote!(#self as i32)
-        } else {
-            quote!(#self)
+        match *self {
+            DefaultValue::Enumeration(_) => quote!(#self as i32),
+            DefaultValue::Default => quote!(::core::default::Default::default()),
+            _ => quote!(#self),
         }
     }
 }
@@ -819,6 +855,9 @@ impl ToTokens for DefaultValue {
             }
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
+            DefaultValue::Default => {
+                tokens.append_all(quote!(::core::default::Default::default()));
+            }
         }
     }
 }

@@ -1145,6 +1145,67 @@ pub mod btree_map {
     map!(BTreeMap);
 }
 
+/// Encoding for custom string types that implement [`Message`] with raw UTF-8
+/// content semantics.
+///
+/// This module is designed for types that replace `String` in protobuf-generated
+/// structs while maintaining wire compatibility with protobuf `string` fields.
+/// The replacement type must implement [`Message`] where:
+/// - `encode_raw` writes raw UTF-8 bytes
+/// - `merge` reads all remaining bytes as raw content (**must** override the
+///   default which calls `decode_key` in a loop)
+/// - `encoded_len` returns the raw byte length
+/// - `clear` resets to the default/empty value
+///
+/// The encode and encoded_len paths delegate to [`message`] encoding (which
+/// produces identical wire format). The merge path reads the varint length
+/// prefix and raw bytes directly — it does **not** enter a merge loop expecting
+/// nested protobuf tag-value pairs.
+pub mod custom_string {
+    use super::*;
+
+    pub use message::{encode, encode_repeated, encoded_len, encoded_len_repeated};
+
+    /// Merges a length-delimited raw value into `msg`.
+    ///
+    /// Reads a varint length prefix followed by that many raw bytes, then
+    /// delegates to [`Message::merge`] on the raw bytes.
+    pub fn merge<M, B>(
+        wire_type: WireType,
+        msg: &mut M,
+        buf: &mut B,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        M: Message,
+        B: Buf,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let len = decode_varint(buf)? as usize;
+        if len > buf.remaining() {
+            return Err(DecodeErrorKind::BufferUnderflow.into());
+        }
+        msg.merge(buf.copy_to_bytes(len))
+    }
+
+    /// Merges a length-delimited raw value into a new element appended to `messages`.
+    pub fn merge_repeated<M>(
+        wire_type: WireType,
+        messages: &mut Vec<M>,
+        buf: &mut impl Buf,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        M: Message + Default,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut msg = M::default();
+        merge(WireType::LengthDelimited, &mut msg, buf, ctx)?;
+        messages.push(msg);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     #[cfg(not(feature = "std"))]
