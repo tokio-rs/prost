@@ -100,6 +100,41 @@ impl DecodeContext {
 pub const MIN_TAG: u32 = 1;
 pub const MAX_TAG: u32 = (1 << 29) - 1;
 
+pub trait Encoding {
+    type Type: Default;
+
+    fn encoded_len(tag: u32, value: &Self::Type) -> usize;
+    fn encode(tag: u32, value: &Self::Type, buf: &mut impl BufMut);
+    fn merge<B: Buf>(
+        wire_type: WireType,
+        value: &mut Self::Type,
+        buf: &mut B,
+        _ctx: DecodeContext,
+    ) -> Result<(), DecodeError>;
+
+    #[inline]
+    fn encoded_len_repeated(tag: u32, values: &[Self::Type]) -> usize {
+        values.iter().map(|v| Self::encoded_len(tag, v)).sum()
+    }
+    fn encode_repeated(tag: u32, values: &[Self::Type], buf: &mut impl BufMut) {
+        for value in values {
+            Self::encode(tag, value, buf);
+        }
+    }
+    fn merge_repeated<B: Buf>(
+        wire_type: WireType,
+        values: &mut Vec<Self::Type>,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut value = Self::Type::default();
+        Self::merge(wire_type, &mut value, buf, ctx)?;
+        values.push(value);
+        Ok(())
+    }
+}
+
 /// Encodes a Protobuf field key, which consists of a wire type designator and
 /// the field tag.
 #[inline]
