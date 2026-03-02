@@ -22,12 +22,21 @@ impl Field {
         let mut packed = None;
         let mut default = None;
         let mut tag = None;
+        let mut encoding_ty = None;
+        let mut encoding_module = None;
 
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
             if let Some(t) = Ty::from_attr(attr)? {
                 set_option(&mut ty, t, "duplicate type attributes")?;
+            } else if let Some((t, encoding)) = legacy_bytes_attr(attr)? {
+                if let Some(existing) = ty.as_ref() {
+                    bail!("duplicate type attributes: {existing:?} and {t:?}");
+                }
+                ty = Some(t);
+                encoding_ty = Some(encoding);
+                encoding_module = Some(None);
             } else if let Some(p) = bool_attr("packed", attr)? {
                 set_option(&mut packed, p, "duplicate packed attributes")?;
             } else if let Some(t) = tag_attr(attr)? {
@@ -87,7 +96,7 @@ impl Field {
         };
 
         Ok(Some(Field {
-            ty: TyWithEncoding::try_from(ty, None, None)?,
+            ty: TyWithEncoding::try_from(ty, encoding_ty, encoding_module.flatten())?,
             kind,
             tag,
         }))
@@ -213,7 +222,7 @@ impl Field {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
                 let default = default.typed();
                 match self.ty.ty {
-                    Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
+                    Ty::String | Ty::Bytes => quote!(#ident.clear()),
                     _ => quote!(#ident = #default),
                 }
             }
@@ -257,7 +266,7 @@ impl Field {
     /// Returns a fragment for formatting the field `ident` in `Debug`.
     pub fn debug(&self, prost_path: &Path, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
-        let inner_ty = self.ty.ty.rust_type(prost_path);
+        let inner_ty = self.ty.owned_type(prost_path);
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
@@ -413,30 +422,32 @@ pub enum Ty {
     Sfixed64,
     Bool,
     String,
-    Bytes(BytesTy),
+    Bytes,
     Enumeration(Path),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum BytesTy {
-    Vec,
-    Bytes,
-}
-
-impl BytesTy {
-    fn try_from_str(s: &str) -> Result<Self, Error> {
-        match s {
-            "vec" => Ok(BytesTy::Vec),
-            "bytes" => Ok(BytesTy::Bytes),
-            _ => bail!("Invalid bytes type: {s}"),
-        }
-    }
-
-    fn rust_type(&self, prost_path: &Path) -> TokenStream {
-        match self {
-            BytesTy::Vec => quote! { #prost_path::alloc::vec::Vec<u8> },
-            BytesTy::Bytes => quote! { #prost_path::bytes::Bytes },
-        }
+fn legacy_bytes_attr(attr: &Meta) -> Result<Option<(Ty, Ident)>, Error> {
+    match *attr {
+        Meta::NameValue(MetaNameValue {
+            ref path,
+            value:
+                Expr::Lit(ExprLit {
+                    lit: Lit::Str(ref l),
+                    ..
+                }),
+            ..
+        }) if path.is_ident("bytes") => match l.value().as_str() {
+            "vec" => Ok(Some((
+                Ty::Bytes,
+                Ident::new("VecU8Encoding", Span::call_site()),
+            ))),
+            "bytes" => Ok(Some((
+                Ty::Bytes,
+                Ident::new("BytesEncoding", Span::call_site()),
+            ))),
+            s => bail!("Invalid bytes type: {s}"),
+        },
+        _ => Ok(None),
     }
 }
 
@@ -457,16 +468,7 @@ impl Ty {
             Meta::Path(ref name) if name.is_ident("sfixed64") => Ty::Sfixed64,
             Meta::Path(ref name) if name.is_ident("bool") => Ty::Bool,
             Meta::Path(ref name) if name.is_ident("string") => Ty::String,
-            Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes(BytesTy::Vec),
-            Meta::NameValue(MetaNameValue {
-                ref path,
-                value:
-                    Expr::Lit(ExprLit {
-                        lit: Lit::Str(ref l),
-                        ..
-                    }),
-                ..
-            }) if path.is_ident("bytes") => Ty::Bytes(BytesTy::try_from_str(&l.value())?),
+            Meta::Path(ref name) if name.is_ident("bytes") => Ty::Bytes,
             Meta::NameValue(MetaNameValue {
                 ref path,
                 value:
@@ -502,7 +504,7 @@ impl Ty {
             "sfixed64" => Ty::Sfixed64,
             "bool" => Ty::Bool,
             "string" => Ty::String,
-            "bytes" => Ty::Bytes(BytesTy::Vec),
+            "bytes" => Ty::Bytes,
             s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
                 let s = &s[enumeration_len..].trim();
                 match s.chars().next() {
@@ -538,16 +540,16 @@ impl Ty {
             Ty::Sfixed64 => "sfixed64",
             Ty::Bool => "bool",
             Ty::String => "string",
-            Ty::Bytes(..) => "bytes",
+            Ty::Bytes => "bytes",
             Ty::Enumeration(..) => "enum",
         }
     }
 
-    // TODO: rename to 'owned_type'.
+    // TODO: remove (still use for map.rs keys)
     pub fn rust_type(&self, prost_path: &Path) -> TokenStream {
         match self {
             Ty::String => quote!(#prost_path::alloc::string::String),
-            Ty::Bytes(ty) => ty.rust_type(prost_path),
+            Ty::Bytes => quote!(#prost_path::alloc::vec::Vec),
             _ => self.rust_ref_type(),
         }
     }
@@ -569,7 +571,7 @@ impl Ty {
             Ty::Sfixed64 => quote!(i64),
             Ty::Bool => quote!(bool),
             Ty::String => quote!(&str),
-            Ty::Bytes(..) => quote!(&[u8]),
+            Ty::Bytes => quote!(&[u8]),
             Ty::Enumeration(..) => quote!(i32),
         }
     }
@@ -583,7 +585,7 @@ impl Ty {
 
     /// Returns false if the scalar type is length delimited (i.e., `string` or `bytes`).
     pub fn is_numeric(&self) -> bool {
-        !matches!(self, Ty::String | Ty::Bytes(..))
+        !matches!(self, Ty::String | Ty::Bytes)
     }
 }
 
@@ -620,8 +622,11 @@ impl TyWithEncoding<Ty> {
         encoding_ty: Option<Ident>,
         encoding_module: Option<Path>,
     ) -> Result<Self, Error> {
-        if encoding_module.is_some() || encoding_ty.is_some() {
-            bail!("not implemented yet");
+        if encoding_module.is_some() {
+            bail!("not supported yet");
+        }
+        if encoding_ty.is_some() && !matches!(ty, Ty::Bytes) {
+            bail!("only the bytes type support the encoding attibute");
         }
 
         if encoding_ty.is_none() {
@@ -636,10 +641,48 @@ impl TyWithEncoding<Ty> {
     }
 
     pub fn default_encoding(ty: Ty) -> Self {
+        let encoding_ty = match ty {
+            Ty::Bytes => Some(Ident::new("VecU8Encoding", Span::call_site())),
+            _ => None,
+        };
+
         Self {
             ty,
-            encoding_ty: None,
+            encoding_ty,
             encoding_module: None,
+        }
+    }
+
+    pub fn owned_type(&self, prost_path: &Path) -> TokenStream {
+        match (self.encoding_ty.as_ref(), self.encoding_module.as_ref()) {
+            (None, _) | (Some(_), None) => {
+                // for types with encoding in our control, we use direct type
+                // to make the generated code simpler and hopefully faster to compile
+                match self.ty {
+                    Ty::Bytes => {
+                        if self
+                            .encoding_ty
+                            .as_ref()
+                            .is_none_or(|ty| ty == "VecU8Encoding")
+                        {
+                            quote! ( #prost_path::alloc::vec::Vec<u8> )
+                        } else {
+                            assert!(self
+                                .encoding_ty
+                                .as_ref()
+                                .is_some_and(|ty| ty == "BytesEncoding"));
+                            quote! ( #prost_path::bytes::Bytes )
+                        }
+                    }
+                    _ => match self.ty {
+                        Ty::String => quote!(#prost_path::alloc::string::String),
+                        _ => self.ty.rust_ref_type(),
+                    },
+                }
+            }
+            (Some(ty), Some(module)) => {
+                quote!(<#module::#ty as #prost_path::encoding::Encoding>::Type)
+            }
         }
     }
 }
@@ -710,11 +753,7 @@ impl DefaultValue {
 
             Lit::Bool(ref lit) if *ty == Ty::Bool => DefaultValue::Bool(lit.value),
             Lit::Str(ref lit) if *ty == Ty::String => DefaultValue::String(lit.value()),
-            Lit::ByteStr(ref lit)
-                if *ty == Ty::Bytes(BytesTy::Bytes) || *ty == Ty::Bytes(BytesTy::Vec) =>
-            {
-                DefaultValue::Bytes(lit.value())
-            }
+            Lit::ByteStr(ref lit) if *ty == Ty::Bytes => DefaultValue::Bytes(lit.value()),
 
             Lit::Str(ref lit) => {
                 let value = lit.value();
@@ -819,7 +858,7 @@ impl DefaultValue {
 
             Ty::Bool => DefaultValue::Bool(false),
             Ty::String => DefaultValue::String(String::new()),
-            Ty::Bytes(..) => DefaultValue::Bytes(Vec::new()),
+            Ty::Bytes => DefaultValue::Bytes(Vec::new()),
             Ty::Enumeration(ref path) => DefaultValue::Enumeration(quote!(#path::default())),
         }
     }

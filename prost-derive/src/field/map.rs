@@ -353,8 +353,8 @@ impl Field {
             }
         };
         match &self.value_ty {
-            ValueTy::Scalar(TyWithEncoding { ty, .. }) => {
-                if let scalar::Ty::Bytes(_) = *ty {
+            ValueTy::Scalar(ty) => {
+                if let scalar::Ty::Bytes = &ty.ty {
                     return quote! {
                         struct #wrapper_name<'a>(&'a dyn ::core::fmt::Debug);
                         impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
@@ -365,7 +365,7 @@ impl Field {
                     };
                 }
 
-                let value = ty.rust_type(prost_path);
+                let value = ty.owned_type(prost_path);
                 quote! {
                     struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
