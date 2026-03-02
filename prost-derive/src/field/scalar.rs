@@ -110,13 +110,18 @@ impl Field {
     }
 
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let module = self.ty.ty.module();
         let encode_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
             Kind::Repeated => quote!(encode_repeated),
             Kind::Packed => quote!(encode_packed),
         };
-        let encode_fn = quote!(#prost_path::encoding::#module::#encode_fn);
+        let encode_fn = match self.ty.encoding_ty(prost_path) {
+            Some(encoding_ty) => quote!(#encoding_ty::#encode_fn),
+            None => {
+                let module = self.ty.ty.module();
+                quote!(#prost_path::encoding::#module::#encode_fn)
+            }
+        };
         let tag = self.tag;
 
         match self.kind {
@@ -142,12 +147,17 @@ impl Field {
     /// Returns an expression which evaluates to the result of merging a decoded
     /// scalar value into the field.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let module = self.ty.ty.module();
         let merge_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
         };
-        let merge_fn = quote!(#prost_path::encoding::#module::#merge_fn);
+        let merge_fn = match self.ty.encoding_ty(prost_path) {
+            Some(encoding_ty) => quote!(#encoding_ty::#merge_fn),
+            None => {
+                let module = self.ty.ty.module();
+                quote!(#prost_path::encoding::#module::#merge_fn)
+            }
+        };
 
         match self.kind {
             Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
@@ -164,13 +174,18 @@ impl Field {
 
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let module = self.ty.ty.module();
         let encoded_len_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encoded_len),
             Kind::Repeated => quote!(encoded_len_repeated),
             Kind::Packed => quote!(encoded_len_packed),
         };
-        let encoded_len_fn = quote!(#prost_path::encoding::#module::#encoded_len_fn);
+        let encoded_len_fn = match self.ty.encoding_ty(prost_path) {
+            Some(encoding_ty) => quote!(#encoding_ty::#encoded_len_fn),
+            None => {
+                let module = self.ty.ty.module();
+                quote!(#prost_path::encoding::#module::#encoded_len_fn)
+            }
+        };
         let tag = self.tag;
 
         match self.kind {

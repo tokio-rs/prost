@@ -173,6 +173,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         impl #impl_generics #prost_path::Message for #ident #ty_generics #where_clause {
             #[allow(unused_variables)]
             fn encode_raw(&self, buf: &mut impl #prost_path::bytes::BufMut) {
+                use #prost_path::encoding::Encoding as _;
                 #(#encode)*
             }
 
@@ -185,6 +186,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
                 ctx: #prost_path::encoding::DecodeContext,
             ) -> ::core::result::Result<(), #prost_path::DecodeError>
             {
+                use #prost_path::encoding::Encoding as _;
                 #struct_name
                 match tag {
                     #(#merge)*
@@ -194,6 +196,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
             #[inline]
             fn encoded_len(&self) -> usize {
+                use #prost_path::encoding::Encoding as _;
                 0 #(+ #encoded_len)*
             }
 
@@ -463,6 +466,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
             pub fn encode(&self, buf: &mut impl #prost_path::bytes::BufMut) {
+                use #prost_path::encoding::Encoding as _;
                 match *self {
                     #(#encode,)*
                 }
@@ -477,6 +481,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 ctx: #prost_path::encoding::DecodeContext,
             ) -> ::core::result::Result<(), #prost_path::DecodeError>
             {
+                use #prost_path::encoding::Encoding as _;
                 match tag {
                     #(#merge,)*
                     _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
@@ -486,6 +491,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             /// Returns the encoded length of the message without a length delimiter.
             #[inline]
             pub fn encoded_len(&self) -> usize {
+                use #prost_path::encoding::Encoding as _;
                 match *self {
                     #(#encoded_len,)*
                 }
