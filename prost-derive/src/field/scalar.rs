@@ -5,12 +5,12 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Expr, ExprLit, Ident, Index, Lit, LitByteStr, Meta, MetaNameValue, Path};
 
-use crate::field::{bool_attr, set_option, tag_attr, Label};
+use crate::field::{bool_attr, set_option, tag_attr, Label, TyWithEncoding};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
 pub struct Field {
-    pub ty: Ty,
+    pub ty: TyWithEncoding<Ty>,
     pub kind: Kind,
     pub tag: u32,
 }
@@ -86,7 +86,11 @@ impl Field {
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        Ok(Some(Field { ty, kind, tag }))
+        Ok(Some(Field {
+            ty: TyWithEncoding::try_from(ty, None, None)?,
+            kind,
+            tag,
+        }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
@@ -106,7 +110,7 @@ impl Field {
     }
 
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let module = self.ty.module();
+        let module = self.ty.ty.module();
         let encode_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
             Kind::Repeated => quote!(encode_repeated),
@@ -138,7 +142,7 @@ impl Field {
     /// Returns an expression which evaluates to the result of merging a decoded
     /// scalar value into the field.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let module = self.ty.module();
+        let module = self.ty.ty.module();
         let merge_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
@@ -160,7 +164,7 @@ impl Field {
 
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        let module = self.ty.module();
+        let module = self.ty.ty.module();
         let encoded_len_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encoded_len),
             Kind::Repeated => quote!(encoded_len_repeated),
@@ -193,7 +197,7 @@ impl Field {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {
                 let default = default.typed();
-                match self.ty {
+                match self.ty.ty {
                     Ty::String | Ty::Bytes(..) => quote!(#ident.clear()),
                     _ => quote!(#ident = #default),
                 }
@@ -214,7 +218,7 @@ impl Field {
 
     /// An inner debug wrapper, around the base type.
     fn debug_inner(&self, wrap_name: TokenStream) -> TokenStream {
-        if let Ty::Enumeration(ref ty) = self.ty {
+        if let Ty::Enumeration(ref ty) = self.ty.ty {
             quote! {
                 struct #wrap_name<'a>(&'a i32);
                 impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
@@ -238,7 +242,7 @@ impl Field {
     /// Returns a fragment for formatting the field `ident` in `Debug`.
     pub fn debug(&self, prost_path: &Path, wrapper_name: TokenStream) -> TokenStream {
         let wrapper = self.debug_inner(quote!(Inner));
-        let inner_ty = self.ty.rust_type(prost_path);
+        let inner_ty = self.ty.ty.rust_type(prost_path);
         match self.kind {
             Kind::Plain(_) | Kind::Required(_) => self.debug_inner(wrapper_name),
             Kind::Optional(_) => quote! {
@@ -284,7 +288,7 @@ impl Field {
             Err(_) => quote!(#ident),
         };
 
-        if let Ty::Enumeration(ref ty) = self.ty {
+        if let Ty::Enumeration(ref ty) = self.ty.ty {
             let set = Ident::new(&format!("set_{ident_str}"), Span::call_site());
             let set_doc = format!("Sets `{ident_str}` to the provided enum value.");
             Some(match self.kind {
@@ -350,9 +354,9 @@ impl Field {
                 }
             })
         } else if let Kind::Optional(ref default) = self.kind {
-            let ty = self.ty.rust_ref_type();
+            let ty = self.ty.ty.rust_ref_type();
 
-            let match_some = if self.ty.is_numeric() {
+            let match_some = if self.ty.ty.is_numeric() {
                 quote!(::core::option::Option::Some(val) => val,)
             } else {
                 quote!(::core::option::Option::Some(ref val) => &val[..],)
@@ -593,6 +597,36 @@ pub enum Kind {
     Repeated,
     /// A packed repeated scalar field.
     Packed,
+}
+
+impl TyWithEncoding<Ty> {
+    pub fn try_from(
+        ty: Ty,
+        encoding_ty: Option<Ident>,
+        encoding_module: Option<Path>,
+    ) -> Result<Self, Error> {
+        if encoding_module.is_some() || encoding_ty.is_some() {
+            bail!("not implemented yet");
+        }
+
+        if encoding_ty.is_none() {
+            Ok(Self::default_encoding(ty))
+        } else {
+            Ok(Self {
+                ty,
+                encoding_ty,
+                encoding_module,
+            })
+        }
+    }
+
+    pub fn default_encoding(ty: Ty) -> Self {
+        Self {
+            ty,
+            encoding_ty: None,
+            encoding_module: None,
+        }
+    }
 }
 
 /// Scalar Protobuf field default value.

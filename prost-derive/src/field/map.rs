@@ -4,7 +4,7 @@ use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::{Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Path, Token};
 
-use crate::field::{scalar, set_option, tag_attr};
+use crate::field::{scalar, set_option, tag_attr, TyWithEncoding};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -39,7 +39,7 @@ impl MapTy {
 fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
     let kind = scalar::Kind::Plain(scalar::DefaultValue::new(&ty));
     scalar::Field {
-        ty,
+        ty: TyWithEncoding::default_encoding(ty),
         kind,
         tag: 0, // Not used here
     }
