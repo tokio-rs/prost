@@ -817,6 +817,57 @@ pub mod bytes {
     }
 }
 
+pub struct VecU8Encoding;
+pub struct BytesEncoding;
+
+impl Encoding for VecU8Encoding {
+    type Type = Vec<u8>;
+
+    #[inline]
+    fn encoded_len(tag: u32, value: &Self::Type) -> usize {
+        bytes::encoded_len(tag, value)
+    }
+
+    #[inline]
+    fn encode(tag: u32, value: &Self::Type, buf: &mut impl BufMut) {
+        bytes::encode(tag, value, buf);
+    }
+
+    #[inline]
+    fn merge<B: Buf>(
+        wire_type: WireType,
+        value: &mut Self::Type,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        bytes::merge_one_copy(wire_type, value, buf, ctx)
+    }
+}
+
+impl Encoding for BytesEncoding {
+    type Type = Bytes;
+
+    #[inline]
+    fn encoded_len(tag: u32, value: &Self::Type) -> usize {
+        bytes::encoded_len(tag, value)
+    }
+
+    #[inline]
+    fn encode(tag: u32, value: &Self::Type, buf: &mut impl BufMut) {
+        bytes::encode(tag, value, buf);
+    }
+
+    #[inline]
+    fn merge<B: Buf>(
+        wire_type: WireType,
+        value: &mut Self::Type,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        bytes::merge(wire_type, value, buf, ctx)
+    }
+}
+
 pub mod message {
     use super::*;
 
