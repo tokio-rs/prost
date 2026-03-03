@@ -417,7 +417,7 @@ impl<'b> CodeGenerator<'_, 'b> {
     fn append_field(&mut self, fq_message_name: &str, field: &Field) {
         let type_ = field.descriptor.r#type();
         let repeated = field.descriptor.label() == Label::Repeated;
-        let deprecated = self.deprecated(&field.descriptor);
+        let deprecated = self.deprecated(&field.descriptor, fq_message_name);
         let optional = self.optional(&field.descriptor);
         let boxed = self
             .context
@@ -433,13 +433,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.append_doc(fq_message_name, Some(field.descriptor.name()));
 
-        if deprecated
-            && self
-                .config()
-                .ignore_deprecated_attributes
-                .get_first_field(fq_message_name, field.descriptor.name())
-                .is_none()
-        {
+        if deprecated {
             self.push_indent();
             self.buf.push_str("#[deprecated]\n");
         }
@@ -671,13 +665,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.append_doc(fq_message_name, Some(field.descriptor.name()));
             self.path.pop();
 
-            if self.deprecated(&field.descriptor)
-                && self
-                    .config()
-                    .ignore_deprecated_attributes
-                    .get_first_field(fq_message_name, field.descriptor.name())
-                    .is_none()
-            {
+            if self.deprecated(&field.descriptor, fq_message_name) {
                 self.push_indent();
                 self.buf.push_str("#[deprecated]\n");
             }
@@ -1108,8 +1096,13 @@ impl<'b> CodeGenerator<'_, 'b> {
     }
 
     /// Returns `true` if the field options includes the `deprecated` option.
-    fn deprecated(&self, field: &FieldDescriptorProto) -> bool {
+    fn deprecated(&self, field: &FieldDescriptorProto, fully_qualified_message_name: &str) -> bool {
         field.options.as_ref().is_some_and(FieldOptions::deprecated)
+            && self
+                .config()
+                .ignore_deprecated_attributes
+                .get_first_field(fully_qualified_message_name, field.name())
+                .is_none()
     }
 
     /// Returns the fully-qualified name, starting with a dot
