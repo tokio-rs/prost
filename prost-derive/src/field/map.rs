@@ -4,7 +4,7 @@ use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::{Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Path, Token};
 
-use crate::field::{scalar, set_option, tag_attr, TyWithEncoding};
+use crate::field::{ident_attr, path_attr, scalar, set_option, tag_attr, TyWithEncoding};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -57,6 +57,8 @@ impl Field {
     pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
+        let mut value_encoding_ty = None;
+        let mut value_encoding_module = None;
 
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
@@ -103,6 +105,18 @@ impl Field {
                     (map_ty, key_ty_from_str(&k)?, ValueTy::from_str(&v)?),
                     "duplicate map type attribute",
                 )?;
+            } else if let Some(ty) = ident_attr("value_encoding", attr)? {
+                set_option(
+                    &mut value_encoding_ty,
+                    ty,
+                    "duplicate value_encoding attributes",
+                )?;
+            } else if let Some(module) = path_attr("value_encoding_module", attr)? {
+                set_option(
+                    &mut value_encoding_module,
+                    module,
+                    "duplicate value_encoding_module attributes",
+                )?;
             } else {
                 return Ok(None);
             }
@@ -112,7 +126,11 @@ impl Field {
             (Some((map_ty, key_ty, value_ty)), Some(tag)) => Some(Field {
                 map_ty,
                 key_ty,
-                value_ty,
+                value_ty: value_ty.with_encoding(
+                    value_encoding_ty,
+                    value_encoding_module,
+                    "value",
+                )?,
                 tag,
             }),
             _ => None,
@@ -420,6 +438,48 @@ impl ValueTy {
             Ok(ValueTy::Message)
         } else {
             bail!("invalid map value type: {s}");
+        }
+    }
+
+    fn with_encoding(
+        self,
+        encoding_ty: Option<Ident>,
+        encoding_module: Option<syn::Path>,
+        prefix: &str,
+    ) -> Result<Self, Error> {
+        match self {
+            ValueTy::Scalar(ty) => {
+                if encoding_module.is_some() && encoding_ty.is_none() {
+                    bail!(
+                        "{prefix}_encoding_module attribute can only be applied in pair with {prefix}_encoding attribute"
+                    );
+                }
+
+                if encoding_ty.is_some() && !matches!(ty.ty, scalar::Ty::Bytes) {
+                    bail!("only the bytes type support the {prefix}_encoding attibute");
+                }
+
+                if encoding_ty.is_some() {
+                    Ok(ValueTy::Scalar(TyWithEncoding {
+                        ty: ty.ty,
+                        encoding_ty,
+                        encoding_module,
+                    }))
+                } else {
+                    Ok(ValueTy::Scalar(ty))
+                }
+            }
+            ValueTy::Message => {
+                if encoding_ty.is_some() {
+                    bail!("message value type does not support the {prefix}_encoding attribute");
+                }
+                if encoding_module.is_some() {
+                    bail!(
+                        "message value type does not support the {prefix}_encoding_module attribute"
+                    );
+                }
+                Ok(ValueTy::Message)
+            }
         }
     }
 

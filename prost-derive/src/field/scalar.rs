@@ -5,7 +5,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{parse_str, Expr, ExprLit, Ident, Index, Lit, LitByteStr, Meta, MetaNameValue, Path};
 
-use crate::field::{bool_attr, set_option, tag_attr, Label, TyWithEncoding};
+use crate::field::{bool_attr, ident_attr, path_attr, set_option, tag_attr, Label, TyWithEncoding};
 
 /// A scalar protobuf field.
 #[derive(Clone)]
@@ -34,6 +34,9 @@ impl Field {
                 if let Some(existing) = ty.as_ref() {
                     bail!("duplicate type attributes: {existing:?} and {t:?}");
                 }
+                if encoding_ty.is_some() || encoding_module.is_some() {
+                    bail!("legacy bytes notation can not be used with 'encoding' and 'encoding_module' attributes");
+                }
                 ty = Some(t);
                 encoding_ty = Some(encoding);
                 encoding_module = Some(None);
@@ -45,6 +48,14 @@ impl Field {
                 set_option(&mut label, l, "duplicate label attributes")?;
             } else if let Some(d) = DefaultValue::from_attr(attr)? {
                 set_option(&mut default, d, "duplicate default attributes")?;
+            } else if let Some(ty) = ident_attr("encoding", attr)? {
+                set_option(&mut encoding_ty, ty, "duplicate encoding attributes")?;
+            } else if let Some(module) = path_attr("encoding_module", attr)? {
+                set_option(
+                    &mut encoding_module,
+                    Some(module),
+                    "duplicate encoding_module attributes",
+                )?;
             } else {
                 unknown_attrs.push(attr);
             }
@@ -622,8 +633,8 @@ impl TyWithEncoding<Ty> {
         encoding_ty: Option<Ident>,
         encoding_module: Option<Path>,
     ) -> Result<Self, Error> {
-        if encoding_module.is_some() {
-            bail!("not supported yet");
+        if encoding_module.is_some() && encoding_ty.is_none() {
+            bail!("encoding_module attribute can only be applied in pair with encoding attribute");
         }
         if encoding_ty.is_some() && !matches!(ty, Ty::Bytes) {
             bail!("only the bytes type support the encoding attibute");
