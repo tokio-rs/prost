@@ -300,11 +300,11 @@ implement the `Copy` trait.
 
 When using `prost`-generated objects that include unknown fields, all unknown 
 fields are stored in a field within the struct, whose name is set in the 
-`prost-build` build script. This field is recommended to be named `_unknown_fields`. 
+`prost-build` build script. This field is recommended to be named `unknown_fields_`. 
 Protobuf style guide discourages underscores as the initial character in a 
 field or message, so this name limits potential collisions. If you are generating
 a new object of a type that has been marked as having unknown fields, note that 
-you will need to either import an existing `_unknown_fields` object, or use a 
+you will need to either import an existing `unknown_fields_` object, or use a 
 default constructor to your implementation, like so:
 ```rust,ignore
 let val = MessageWithUnknownFields{
@@ -312,7 +312,7 @@ let val = MessageWithUnknownFields{
   ..Default::default()
 };
 ```
-This will initialise the `_unknown_fields` as empty, and allow the object to be 
+This will initialise the `unknown_fields_` as empty, and allow the object to be 
 serialized correctly.
 
 ### Services

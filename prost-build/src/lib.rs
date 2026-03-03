@@ -89,11 +89,11 @@
 //! fn main() -> Result<()> {
 //!     let mut config = prost_build::Config::new();
 //!     // To enable unknown fields for a single message:
-//!     config.include_unknown_fields(".snazzy.items.shirt", "_unknown_fields");
+//!     config.include_unknown_fields(".snazzy.items.shirt", "unknown_fields_");
 //!     // To enable unknown fields for a whole package:
-//!     config.include_unknown_fields(".snazzy.items", "_unknown_fields");
+//!     config.include_unknown_fields(".snazzy.items", "unknown_fields_");
 //!     // To enable unknown fields for all packages and messages
-//!     config.include_unknown_fields(".", "_unknown_fields");
+//!     config.include_unknown_fields(".", "unknown_fields_");
 //!     config.compile_protos(&["src/items.proto"], &["src/"])?;
 //!     Ok(())
 //! }

@@ -274,14 +274,14 @@ impl Config {
     /// **`paths`** - paths to specific messages, or packages which should preserve unknown
     /// fields during deserialization.
     ///
-    /// **`override_field_name`** - the name of the field to place unknown fields in. A field
+    /// **`field_name`** - the name of the field to place unknown fields in. A field
     /// with this name and type `prost::UnknownFieldList` will be added to the generated struct.
     ///
     /// # Examples
     ///
     /// ```rust
     /// # let mut config = prost_build::Config::new();
-    /// config.include_unknown_fields(".my_messages.MyMessageType", "_unknown_fields");
+    /// config.include_unknown_fields(".my_messages.MyMessageType", "unknown_fields_");
     /// ```
     pub fn include_unknown_fields<P, A>(&mut self, path: P, field_name: A) -> &mut Self
     where

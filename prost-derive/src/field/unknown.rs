@@ -14,8 +14,8 @@ impl Field {
         let mut unknown_attrs = Vec::new();
 
         for attr in attrs {
-            if word_attr("unknown_fields", attr) {
-                set_bool(&mut unknown, "Multiple unknown_fields in one message")?;
+            if word_attr("unknown_fields_", attr) {
+                set_bool(&mut unknown, "Multiple unknown_fields_ in one message")?;
             } else {
                 unknown_attrs.push(attr);
             }

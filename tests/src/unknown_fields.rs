@@ -30,7 +30,7 @@ fn test_iter_unknown_fields() {
     );
     assert_eq!(fields.next(), None);
 
-    assert_eq!(v2._unknown_fields.iter().count(), 0);
+    assert_eq!(v2.unknown_fields_.iter().count(), 0);
 }
 
 #[cfg(feature = "std")]
@@ -53,5 +53,5 @@ fn test_roundtrip_unknown_fields() {
 
     let roundtripped = MessageWithData::decode(&*roundtripped_bytes).unwrap();
     assert_eq!(original, roundtripped);
-    assert_eq!(roundtripped._unknown_fields.iter().count(), 0);
+    assert_eq!(roundtripped.unknown_fields_.iter().count(), 0);
 }

@@ -187,7 +187,7 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
-        .include_unknown_fields(".unknown_fields", "_unknown_fields")
+        .include_unknown_fields(".unknown_fields", "unknown_fields_")
         .compile_protos(&[src.join("unknown_fields.proto")], includes)
         .unwrap();
 
