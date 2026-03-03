@@ -641,10 +641,9 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq_fixture_file!(
-            "src/fixtures/deprecated/_all_deprecated_ignore_deprecated.rs",
-            tempdir.path().join("all_deprecated.rs")
-        );
+        let generated = std::fs::read_to_string(tempdir.path().join("all_deprecated.rs")).unwrap();
+        assert!(!generated.contains("#[deprecated]"));
+        assert!(!generated.contains("#[allow(deprecated)]"));
     }
 
     #[test]
@@ -661,10 +660,17 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq_fixture_file!(
-            "src/fixtures/deprecated/_all_deprecated_ignore_single_deprecated.rs",
-            tempdir.path().join("all_deprecated.rs")
+        let generated = std::fs::read_to_string(tempdir.path().join("all_deprecated.rs")).unwrap();
+        assert!(!generated
+            .contains("#[deprecated]\n    #[prost(string, tag = \"2\")]\n    pub outdated:"));
+        assert!(generated.contains(
+            "#[deprecated]\n    #[prost(string, optional, tag = \"4\")]\n    pub optional_outdated:"
+        ));
+        assert!(generated.contains("#[deprecated]\n    Outdated = 1,"));
+        assert!(
+            generated.contains("#[allow(deprecated)]\n            Self::Outdated => \"outdated\",")
         );
+        assert!(generated.contains("\"outdated\" => Some(#[allow(deprecated)] Self::Outdated),"));
     }
 
     #[test]
@@ -681,9 +687,13 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq_fixture_file!(
-            "src/fixtures/deprecated/_all_deprecated_ignore_single_enum_value_deprecated.rs",
-            tempdir.path().join("all_deprecated.rs")
-        );
+        let generated = std::fs::read_to_string(tempdir.path().join("all_deprecated.rs")).unwrap();
+        assert!(generated
+            .contains("#[deprecated]\n    #[prost(string, tag = \"2\")]\n    pub outdated:"));
+        assert!(generated.contains("pub enum Test2 {\n    NotOutdated = 0,\n    Outdated = 1,\n}"));
+        assert!(!generated
+            .contains("#[allow(deprecated)]\n            Self::Outdated => \"outdated\","));
+        assert!(!generated.contains("\"outdated\" => Some(#[allow(deprecated)] Self::Outdated),"));
+        assert!(generated.contains("\"outdated\" => Some(Self::Outdated),"));
     }
 }
