@@ -31,6 +31,8 @@ pub mod unittest;
 #[cfg(test)]
 mod bootstrap;
 #[cfg(test)]
+mod bytes;
+#[cfg(test)]
 mod debug;
 #[cfg(test)]
 mod derive_copy;
