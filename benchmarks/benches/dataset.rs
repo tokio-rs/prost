@@ -37,7 +37,7 @@ fn benchmark_dataset<M>(criterion: &mut Criterion, name: &str, dataset: &'static
 where
     M: prost::Message + Default + 'static,
 {
-    let mut group = criterion.benchmark_group(&format!("dataset/{}", name));
+    let mut group = criterion.benchmark_group(format!("dataset/{}", name));
 
     group.bench_function("merge", move |b| {
         let dataset = load_dataset(dataset).unwrap();
@@ -46,7 +46,7 @@ where
             for buf in &dataset.payload {
                 message.clear();
                 message.merge(buf.as_slice()).unwrap();
-                criterion::black_box(&message);
+                std::hint::black_box(&message);
             }
         });
     });
@@ -66,7 +66,7 @@ where
             for message in &messages {
                 message.encode(&mut buf).unwrap();
             }
-            criterion::black_box(&buf);
+            std::hint::black_box(&buf);
         });
     });
 
@@ -81,7 +81,7 @@ where
             .unwrap();
         b.iter(|| {
             let encoded_len = messages.iter().map(M::encoded_len).sum::<usize>();
-            criterion::black_box(encoded_len)
+            std::hint::black_box(encoded_len)
         });
     });
 }
