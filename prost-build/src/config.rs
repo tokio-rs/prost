@@ -378,11 +378,13 @@ impl Config {
 
     /// Remove any `deprecated` field attribute from matching fields.
     ///
+    /// This is useful when you would like to make use of a `deprecated` protobuf field in your code
+    /// without having to mark all call sites as `#[allow(deprecated)]`.
+    ///
     /// # Arguments
     ///
     /// **`path`** - a path matching any number of fields. These fields will have any `deprecated` field attribute removed.
-    /// This is useful when you would like to make use of a `deprecated` protobuf field in your code without having to
-    /// mark all call sites as `#[allow(deprecated)]`.
+    ///
     /// For details about matching fields see [`btree_map`](Self::btree_map).
     ///
     /// # Examples
