@@ -773,8 +773,12 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str(&enum_name);
         self.buf.push_str(" {\n");
 
-        let variant_mappings =
-            build_enum_value_mappings(&enum_name, self.config().strip_enum_prefix, enum_values);
+        let variant_mappings = build_enum_value_mappings(
+            &enum_name,
+            self.config().strip_enum_prefix,
+            enum_values,
+            |value| self.enum_value_deprecated(value, &fq_proto_enum_name),
+        );
 
         self.depth += 1;
         self.path.push(2);
@@ -1105,6 +1109,23 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .is_none()
     }
 
+    /// Returns `true` if the enum value options includes the `deprecated` option.
+    fn enum_value_deprecated(
+        &self,
+        value: &EnumValueDescriptorProto,
+        fully_qualified_enum_name: &str,
+    ) -> bool {
+        value
+            .options
+            .as_ref()
+            .is_some_and(EnumValueOptions::deprecated)
+            && self
+                .config()
+                .ignore_deprecated_attributes
+                .get_first_field(fully_qualified_enum_name, value.name())
+                .is_none()
+    }
+
     /// Returns the fully-qualified name, starting with a dot
     fn fq_name(&self, message_name: &str) -> String {
         format!(
@@ -1151,6 +1172,7 @@ fn build_enum_value_mappings<'a>(
     generated_enum_name: &str,
     do_strip_enum_prefix: bool,
     enum_values: &'a [EnumValueDescriptorProto],
+    is_deprecated: impl Fn(&EnumValueDescriptorProto) -> bool,
 ) -> Vec<EnumVariantMapping<'a>> {
     let mut numbers = HashSet::new();
     let mut generated_names = HashMap::new();
@@ -1180,15 +1202,8 @@ fn build_enum_value_mappings<'a>(
             proto_name: value.name(),
             proto_number: value.number(),
             generated_variant_name,
-            deprecated: enum_field_deprecated(value),
+            deprecated: is_deprecated(value),
         })
     }
     mappings
-}
-
-fn enum_field_deprecated(value: &EnumValueDescriptorProto) -> bool {
-    value
-        .options
-        .as_ref()
-        .is_some_and(EnumValueOptions::deprecated)
 }

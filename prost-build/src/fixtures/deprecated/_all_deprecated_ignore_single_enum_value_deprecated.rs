@@ -3,22 +3,27 @@
 pub struct Test {
     #[prost(string, tag = "1")]
     pub not_outdated: ::prost::alloc::string::String,
+    #[deprecated]
     #[prost(string, tag = "2")]
     pub outdated: ::prost::alloc::string::String,
     #[prost(string, optional, tag = "3")]
     pub optional_not_outdated: ::core::option::Option<::prost::alloc::string::String>,
+    #[deprecated]
     #[prost(string, optional, tag = "4")]
     pub optional_outdated: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration = "Test2", tag = "5")]
     pub enum_not_outdated: i32,
+    #[deprecated]
     #[prost(enumeration = "Test2", tag = "6")]
     pub enum_outdated: i32,
     #[prost(enumeration = "Test2", optional, tag = "7")]
     pub optional_enum_not_outdated: ::core::option::Option<i32>,
+    #[deprecated]
     #[prost(enumeration = "Test2", optional, tag = "8")]
     pub optional_enum_outdated: ::core::option::Option<i32>,
     #[prost(enumeration = "Test2", repeated, tag = "9")]
     pub repeated_enum_not_outdated: ::prost::alloc::vec::Vec<i32>,
+    #[deprecated]
     #[prost(enumeration = "Test2", repeated, packed = "false", tag = "10")]
     pub repeated_enum_outdated: ::prost::alloc::vec::Vec<i32>,
     #[prost(oneof = "test::Test3", tags = "11, 12")]
@@ -30,6 +35,7 @@ pub mod test {
     pub enum Test3 {
         #[prost(string, tag = "11")]
         OneofNotOutdated(::prost::alloc::string::String),
+        #[deprecated]
         #[prost(string, tag = "12")]
         OneofOutdated(::prost::alloc::string::String),
     }

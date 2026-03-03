@@ -666,4 +666,24 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    #[test]
+    fn test_remove_single_deprecated_enum_value_attribute() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .ignore_deprecated_attribute(".all_deprecated.Test2.outdated")
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        assert_eq_fixture_file!(
+            "src/fixtures/deprecated/_all_deprecated_ignore_single_enum_value_deprecated.rs",
+            tempdir.path().join("all_deprecated.rs")
+        );
+    }
 }

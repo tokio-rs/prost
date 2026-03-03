@@ -376,14 +376,14 @@ impl Config {
         self
     }
 
-    /// Remove any `deprecated` field attribute from matching fields.
+    /// Remove any `deprecated` attribute from matching fields or enum values.
     ///
-    /// This is useful when you would like to make use of a `deprecated` protobuf field in your code
+    /// This is useful when you would like to make use of deprecated protobuf fields or enum values in your code
     /// without having to mark all call sites as `#[allow(deprecated)]`.
     ///
     /// # Arguments
     ///
-    /// **`path`** - a path matching any number of fields. These fields will have any `deprecated` field attribute removed.
+    /// **`path`** - a path matching any number of fields or enum values. Matching items will have any `deprecated` attribute removed.
     ///
     /// For details about matching fields see [`btree_map`](Self::btree_map).
     ///
@@ -392,6 +392,7 @@ impl Config {
     /// ```rust
     /// # let mut config = prost_build::Config::new();
     /// config.ignore_deprecated_attribute(".my_messages.MyMessageType.my_field");
+    /// config.ignore_deprecated_attribute(".my_messages.MyEnumType.MY_VALUE");
     /// ```
     pub fn ignore_deprecated_attribute<P>(&mut self, path: P) -> &mut Self
     where
