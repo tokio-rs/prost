@@ -125,11 +125,12 @@
 //! ### Compiling `protoc` from source
 //!
 //! To compile `protoc` from source you can use the `protobuf-src` crate and
-//! set the correct environment variables.
+//! set the path to `protoc`.
 //! ```no_run,ignore, rust
-//! std::env::set_var("PROTOC", protobuf_src::protoc());
+//! let mut prost_build = prost_build::Config::new();
+//! prost_build.protoc_executable(protobuf_src::protoc());
 //!
-//! // Now compile your proto files via prost-build
+//! // Now compile your proto files with the configuration
 //! ```
 //!
 //! [`protobuf-src`]: https://docs.rs/protobuf-src
