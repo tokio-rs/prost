@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package derive_eq;
+
+// All-integer message: should derive Eq when eq_when_safe is true (default).
+message AllIntMsg {
+  int32  field1  = 1;
+  int64  field2  = 2;
+  uint32 field3  = 3;
+  uint64 field4  = 4;
+  bool   field5  = 5;
+  string field6  = 6;
+  bytes  field7  = 7;
+}
+
+// Message with a float field: must NOT derive Eq, even when safe is enabled.
+message FloatMsg {
+  int32 ok_field = 1;
+  float bad_field = 2;
+}
+
+// Message with a double field: must NOT derive Eq.
+message DoubleMsg {
+  double bad_field = 1;
+}
+
+// Composed: holds another message that is itself Eq-safe; should derive Eq.
+message ComposedSafeMsg {
+  AllIntMsg inner = 1;
+  string label = 2;
+}
+
+// Composed: holds a message that contains a float; should NOT derive Eq.
+message ComposedUnsafeMsg {
+  FloatMsg inner = 1;
+}

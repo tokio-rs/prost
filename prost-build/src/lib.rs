@@ -626,4 +626,57 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    /// `eq_when_safe(false)` must skip the automatic `Eq`/`Hash` derive on
+    /// messages that would otherwise qualify (the smoke test messages have no
+    /// fields and so are trivially Eq-safe).
+    #[test]
+    fn test_eq_when_safe_false_skips_eq() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .eq_when_safe(false)
+            .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
+            .unwrap();
+
+        let generated = std::fs::read_to_string(tempdir.path().join("smoke_test.rs")).unwrap();
+        // We want to confirm `Eq` and `Hash` are absent without false-matching
+        // `Eq` inside `PartialEq`; check the comma-separated derive list.
+        assert!(
+            !generated.contains(", Eq, "),
+            "expected no `Eq` derive when eq_when_safe(false), got:\n{generated}"
+        );
+        assert!(
+            !generated.contains(", Hash, "),
+            "expected no `Hash` derive when eq_when_safe(false), got:\n{generated}"
+        );
+        // `PartialEq` should always be present.
+        assert!(generated.contains("PartialEq"));
+    }
+
+    /// `eq_when_safe(true)` (the default) keeps emitting `Eq`/`Hash` on safe
+    /// messages, preserving existing prost behavior.
+    #[test]
+    fn test_eq_when_safe_true_emits_eq() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .out_dir(tempdir.path())
+            .eq_when_safe(true)
+            .compile_protos(&["src/fixtures/smoke_test/smoke_test.proto"], &["src"])
+            .unwrap();
+
+        let generated = std::fs::read_to_string(tempdir.path().join("smoke_test.rs")).unwrap();
+        assert!(
+            generated.contains(", Eq, "),
+            "expected `Eq` derive, got:\n{generated}"
+        );
+        assert!(
+            generated.contains(", Hash, "),
+            "expected `Hash` derive, got:\n{generated}"
+        );
+    }
 }

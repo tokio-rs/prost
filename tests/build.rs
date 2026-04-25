@@ -100,6 +100,14 @@ fn main() {
         .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
+    // derive_eq: confirms `Eq` is auto-derived where safe (default behavior),
+    // gated by Config::eq_when_safe(true).
+    prost_build::Config::new()
+        .btree_map(["."])
+        .eq_when_safe(true)
+        .compile_protos(&[src.join("derive_eq.proto")], includes)
+        .unwrap();
+
     prost_build::Config::new()
         .compile_protos(&[src.join("default_string_escape.proto")], includes)
         .unwrap();
