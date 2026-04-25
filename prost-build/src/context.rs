@@ -1,4 +1,6 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use prost_types::{
     field_descriptor_proto::{Label, Type},
@@ -20,6 +22,11 @@ pub struct Context<'a> {
     message_graph: MessageGraph,
     extern_paths: ExternPaths,
     prost_path_attribute: Option<String>,
+    /// Memoization for `can_message_derive_eq`. Keyed by fully-qualified
+    /// message name. The optional value distinguishes "in progress" (None)
+    /// from a computed result (Some(bool)). "In progress" entries let us
+    /// terminate cycles in the recursive walk without recomputing.
+    eq_cache: RefCell<HashMap<String, Option<bool>>>,
 }
 
 impl<'a> Context<'a> {
@@ -38,6 +45,7 @@ impl<'a> Context<'a> {
             message_graph,
             extern_paths,
             prost_path_attribute,
+            eq_cache: RefCell::new(HashMap::new()),
         }
     }
 
@@ -240,18 +248,65 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Returns `true` if this message can automatically derive Eq trait.
+    /// Returns `true` if this message can automatically derive `Eq`.
+    ///
+    /// Returns `false` when the user has opted out via [`Config::eq_when_safe`],
+    /// or when the message (or any nested message it contains, transitively)
+    /// has a floating point field. Results are memoized per message; cycles in
+    /// the message graph are broken by treating an in-progress walk as
+    /// `Eq`-safe so a self-referential type does not flip the result purely on
+    /// recursion.
     pub fn can_message_derive_eq(&self, fq_message_name: &str) -> bool {
-        assert_eq!(".", &fq_message_name[..1]);
-
-        let msg = self.message_graph.get_message(fq_message_name).unwrap();
-        msg.field
-            .iter()
-            .all(|field| self.can_field_derive_eq(fq_message_name, field))
+        if !self.config.eq_when_safe {
+            return false;
+        }
+        self.compute_can_message_derive_eq(fq_message_name)
     }
 
-    /// Returns `true` if the type of this field allows deriving the Eq trait.
+    fn compute_can_message_derive_eq(&self, fq_message_name: &str) -> bool {
+        assert_eq!(".", &fq_message_name[..1]);
+
+        // Fast path: previously computed.
+        if let Some(entry) = self.eq_cache.borrow().get(fq_message_name) {
+            // `None` here means we are mid-walk on this message (cycle). We
+            // treat that as `true` so a back-edge does not by itself disqualify
+            // a message; if the cycle contains a float field, another field
+            // along the walk will produce `false` and propagate.
+            return entry.unwrap_or(true);
+        }
+
+        // Mark as in-progress to break cycles.
+        self.eq_cache
+            .borrow_mut()
+            .insert(fq_message_name.to_string(), None);
+
+        let msg = self.message_graph.get_message(fq_message_name).unwrap();
+        let result = msg
+            .field
+            .iter()
+            .all(|field| self.compute_can_field_derive_eq(fq_message_name, field));
+
+        self.eq_cache
+            .borrow_mut()
+            .insert(fq_message_name.to_string(), Some(result));
+        result
+    }
+
+    /// Returns `true` if the type of this field allows deriving the `Eq` trait.
+    ///
+    /// Returns `false` if the user has opted out via [`Config::eq_when_safe`].
     pub fn can_field_derive_eq(&self, fq_message_name: &str, field: &FieldDescriptorProto) -> bool {
+        if !self.config.eq_when_safe {
+            return false;
+        }
+        self.compute_can_field_derive_eq(fq_message_name, field)
+    }
+
+    fn compute_can_field_derive_eq(
+        &self,
+        fq_message_name: &str,
+        field: &FieldDescriptorProto,
+    ) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
 
         if field.r#type() == Type::Message {
@@ -262,7 +317,7 @@ impl<'a> Context<'a> {
             {
                 false
             } else {
-                self.can_message_derive_eq(field.type_name())
+                self.compute_can_message_derive_eq(field.type_name())
             }
         } else {
             matches!(

@@ -53,6 +53,7 @@ pub struct Config {
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
     pub(crate) prost_types_path: Option<String>,
+    pub(crate) eq_when_safe: bool,
     #[cfg(feature = "format")]
     pub(crate) fmt: bool,
 }
@@ -372,6 +373,32 @@ impl Config {
         P: AsRef<str>,
     {
         self.boxed.insert(path.as_ref().to_string(), ());
+        self
+    }
+
+    /// Controls whether `Eq` is automatically derived on generated message types
+    /// when it is safe to do so.
+    ///
+    /// A derive of `Eq` is "safe" when none of the message's fields are floating
+    /// point (`f32`/`f64`) and none of its nested message fields transitively
+    /// contain a floating point field. Floating point types do not implement
+    /// `Eq`, so deriving it on a message that holds one would not compile.
+    ///
+    /// When set to `true` (the default), prost emits `#[derive(Eq, Hash)]` in
+    /// addition to the always-emitted `PartialEq` for any message that meets the
+    /// safety check. When set to `false`, prost never emits `Eq`/`Hash`, even on
+    /// messages where it would be safe; downstream code can still implement
+    /// these traits manually if desired.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// // Opt out of automatic `Eq` derives.
+    /// config.eq_when_safe(false);
+    /// ```
+    pub fn eq_when_safe(&mut self, enable: bool) -> &mut Self {
+        self.eq_when_safe = enable;
         self
     }
 
@@ -1219,6 +1246,9 @@ impl default::Default for Config {
             include_file: None,
             prost_path: None,
             prost_types_path: None,
+            // Default true preserves prost's existing behavior of auto-deriving
+            // `Eq` on messages where it is safe (no float fields, transitively).
+            eq_when_safe: true,
             #[cfg(feature = "format")]
             fmt: true,
         }
