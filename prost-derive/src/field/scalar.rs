@@ -484,7 +484,10 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
-            s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
+            s if s.len() > enumeration_len
+                && s.is_char_boundary(enumeration_len)
+                && &s[..enumeration_len] == "enumeration" =>
+            {
                 let s = &s[enumeration_len..].trim();
                 match s.chars().next() {
                     Some('<') | Some('(') => (),
@@ -833,5 +836,10 @@ mod tests {
         let ty = Ty::Enumeration(parse_str::<Path>("ExampleEnum").unwrap());
         let lit = parse_str::<Lit>("\"not-valid!\"").unwrap();
         assert!(DefaultValue::from_lit(&ty, lit).is_err());
+    }
+
+    #[test]
+    fn from_str_rejects_non_ascii_prefix_without_panic() {
+        assert!(Ty::from_str("éééééé").is_err());
     }
 }
