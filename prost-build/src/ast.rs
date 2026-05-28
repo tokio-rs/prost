@@ -45,24 +45,34 @@ impl Comments {
     pub fn append_with_indent(&self, indent_level: u8, buf: &mut String) {
         // Append blocks of detached comments.
         for detached_block in &self.leading_detached {
+            let mut in_code_block = false;
             for line in detached_block {
+                let sanitized = Self::sanitize_line(line, in_code_block);
+                if Self::is_fence(line) {
+                    in_code_block = !in_code_block;
+                }
                 for _ in 0..indent_level {
                     buf.push_str("    ");
                 }
                 buf.push_str("//");
-                buf.push_str(&Self::sanitize_line(line));
+                buf.push_str(&sanitized);
                 buf.push('\n');
             }
             buf.push('\n');
         }
 
         // Append leading comments.
+        let mut in_code_block = false;
         for line in &self.leading {
+            let sanitized = Self::sanitize_line(line, in_code_block);
+            if Self::is_fence(line) {
+                in_code_block = !in_code_block;
+            }
             for _ in 0..indent_level {
                 buf.push_str("    ");
             }
             buf.push_str("///");
-            buf.push_str(&Self::sanitize_line(line));
+            buf.push_str(&sanitized);
             buf.push('\n');
         }
 
@@ -75,12 +85,17 @@ impl Comments {
         }
 
         // Append trailing comments.
+        let mut in_code_block = false;
         for line in &self.trailing {
+            let sanitized = Self::sanitize_line(line, in_code_block);
+            if Self::is_fence(line) {
+                in_code_block = !in_code_block;
+            }
             for _ in 0..indent_level {
                 buf.push_str("    ");
             }
             buf.push_str("///");
-            buf.push_str(&Self::sanitize_line(line));
+            buf.push_str(&sanitized);
             buf.push('\n');
         }
     }
@@ -106,17 +121,26 @@ impl Comments {
             .is_some_and(|c| c != ' ' || chars.next() == Some(' '))
     }
 
+    /// Returns true if `line` is a Markdown fenced code block delimiter.
+    fn is_fence(line: &str) -> bool {
+        let t = line.trim_start();
+        t.starts_with("```") || t.starts_with("~~~")
+    }
+
     /// Sanitizes the line for rustdoc by performing the following operations:
     ///     - escape urls as <http://foo.com>
     ///     - escape `[` & `]` if not already escaped and not followed by a parenthesis or bracket
-    fn sanitize_line(line: &str) -> String {
+    ///       (skipped inside fenced code blocks, where brackets are literal)
+    fn sanitize_line(line: &str, in_code_block: bool) -> String {
         static RULE_URL: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"https?://[^\s)]+").unwrap());
         static RULE_BRACKETS: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"(^|[^\]\\])\[(([^\]]*[^\\])?)\]([^(\[]|$)").unwrap());
 
         let mut s = RULE_URL.replace_all(line, r"<$0>").to_string();
-        s = RULE_BRACKETS.replace_all(&s, r"$1\[$2\]$4").to_string();
+        if !in_code_block {
+            s = RULE_BRACKETS.replace_all(&s, r"$1\[$2\]$4").to_string();
+        }
         if Self::should_indent(&s) {
             s.insert(0, ' ');
         }
@@ -402,6 +426,22 @@ mod tests {
 
             assert_eq!(t.expected, actual, "failed {}", t.name);
         }
+    }
+
+    #[test]
+    fn test_brackets_not_escaped_in_fenced_code_blocks() {
+        let input = Comments {
+            leading_detached: vec![],
+            leading: vec![
+                " ```rust".to_string(),
+                " let a = vec![1];".to_string(),
+                " ```".to_string(),
+            ],
+            trailing: vec![],
+        };
+        let mut actual = String::new();
+        input.append_with_indent(0, &mut actual);
+        assert_eq!("/// ```rust\n/// let a = vec![1];\n/// ```\n", actual);
     }
 
     #[test]
