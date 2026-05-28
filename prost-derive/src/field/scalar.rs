@@ -483,8 +483,8 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
-            s if let Some(s) = s.strip_prefix("enumeration") => {
-                let s = s.trim();
+            s if s.starts_with("enumeration") => {
+                let s = s.strip_prefix("enumeration").unwrap().trim();
                 match s.chars().next() {
                     Some('<') | Some('(') => (),
                     _ => return error,
