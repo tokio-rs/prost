@@ -466,7 +466,6 @@ impl Ty {
     }
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
-        let enumeration_len = "enumeration".len();
         let error = Err(anyhow!("invalid type: {s}"));
         let ty = match s.trim() {
             "float" => Ty::Float,
@@ -484,11 +483,8 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
-            s if s.len() > enumeration_len
-                && s.is_char_boundary(enumeration_len)
-                && &s[..enumeration_len] == "enumeration" =>
-            {
-                let s = &s[enumeration_len..].trim();
+            s if let Some(s) = s.strip_prefix("enumeration") => {
+                let s = s.trim();
                 match s.chars().next() {
                     Some('<') | Some('(') => (),
                     _ => return error,
