@@ -1080,7 +1080,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
-                "enumeration = {:?}",
+                "enumeration = \"{}\"",
                 self.resolve_ident(field.type_name())
             )),
         }

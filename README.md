@@ -47,10 +47,9 @@ See the [snazzy repository][snazzy] for a simple start-to-finish example.
 
 ### MSRV
 
-`prost` follows the `tokio-rs` project's MSRV model and supports 1.82. For more
-information on the tokio msrv policy you can check it out [here][tokio msrv]
-
-[tokio msrv]: https://github.com/tokio-rs/tokio/#supported-rust-versions
+`prost` will keep a rolling MSRV (minimum supported rust version) policy of at least 6 months. 
+When increasing the MSRV, the new Rust version must have been released at least six months ago. 
+The current MSRV is 1.85.
 
 ## Generated Code
 

@@ -227,4 +227,4 @@ jobs:
       - name: Verify that Prost version is up to date in README
         run: grep -q "$(sed '/^version = /!d' Cargo.toml | head -n1)" README.md
       - name: Verify that MSRV version is up to date in README
-        run: grep -q "supports $(sed -n 's/rust-version = "\(.*\)"/\1/p' Cargo.toml)\." README.md
+        run: grep -q "The current MSRV is $(sed -n 's/rust-version = "\(.*\)"/\1/p' Cargo.toml)\." README.md

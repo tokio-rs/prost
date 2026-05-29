@@ -100,6 +100,10 @@ fn main() {
         .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
+    config
+        .compile_protos(&[src.join("derive_eq.proto")], includes)
+        .unwrap();
+
     prost_build::Config::new()
         .compile_protos(&[src.join("default_string_escape.proto")], includes)
         .unwrap();

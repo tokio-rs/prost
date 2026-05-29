@@ -35,6 +35,8 @@ mod debug;
 #[cfg(test)]
 mod derive_copy;
 #[cfg(test)]
+mod derive_eq;
+#[cfg(test)]
 mod enum_keyword_variant;
 #[cfg(test)]
 mod generic_derive;
