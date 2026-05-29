@@ -1,6 +1,31 @@
+# Prost version 0.14.3
+
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## ⚠️ Heads-up
+
+- Add back `DecodeError::new` (#1382)
+  
+  The `DecodeError::new()` was removed to simplify our code. It was not part of the public API, but 
+  removing it broke code in other crates. It is added back to prevent breakage across the ecosystem.
+
+## 🐛 Bug Fixes
+- Name::full_name() is correct for empty packages (#1386)
+
+## 💼 Dependencies
+
+- *(deps)* Bump actions/upload-artifact from 5 to 6 (#1381)
+- *(deps)* Update pulldown-cmark-to-cmark requirement from 21 to 22 (#1384)
+
+### ⚙️ Miscellaneous Tasks
+
+- Remove protobuf submodule and leverage cmake for it (#1389)
+
 # Prost version 0.14.2
 
 _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+**note**: this version was yanked in favor of 0.14.2
 
 ## ⚠️ Heads-up
 
