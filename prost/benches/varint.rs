@@ -8,7 +8,7 @@ use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 fn benchmark_varint(criterion: &mut Criterion, name: &str, mut values: Vec<u64>) {
     // Shuffle the values in a stable order.
     values.shuffle(&mut StdRng::seed_from_u64(0));
-    let name = format!("varint/{}", name);
+    let name = format!("varint/{name}");
 
     let encoded_len = values
         .iter()
