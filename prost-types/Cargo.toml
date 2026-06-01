@@ -29,5 +29,7 @@ proptest = "1"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 
 [lints.clippy]
+# This lint has MSRV 1.87
+manual_is_multiple_of = "allow"
 # This lint has MSRV 1.88
 collapsible_if = "allow"
