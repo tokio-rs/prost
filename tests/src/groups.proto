@@ -36,7 +36,7 @@ message NestedGroup {
     }
 
     required group RequiredGroup = 2 {
-        required NestedGroup nested_group = 1;
+        optional NestedGroup nested_group = 1;
     }
 
     repeated group RepeatedGroup = 3 {
@@ -47,11 +47,5 @@ message NestedGroup {
         group G = 4 {
             optional NestedGroup nested_group = 1;
         }
-    }
-}
-
-message NestedGroup2 {
-    optional group OptionalGroup = 1 {
-        optional NestedGroup2 nested_group = 1;
     }
 }
