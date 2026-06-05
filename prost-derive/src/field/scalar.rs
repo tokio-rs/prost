@@ -672,7 +672,7 @@ impl DefaultValue {
                 let value = value.trim();
 
                 if let Ty::Enumeration(ref path) = *ty {
-                    let variant = Ident::new(value, Span::call_site());
+                    let variant = parse_str::<Ident>(value)?;
                     return Ok(DefaultValue::Enumeration(quote!(#path::#variant)));
                 }
 
@@ -820,5 +820,18 @@ impl ToTokens for DefaultValue {
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DefaultValue, Ty};
+    use syn::{parse_str, Lit, Path};
+
+    #[test]
+    fn from_lit_rejects_invalid_enumeration_default_without_panic() {
+        let ty = Ty::Enumeration(parse_str::<Path>("ExampleEnum").unwrap());
+        let lit = parse_str::<Lit>("\"not-valid!\"").unwrap();
+        assert!(DefaultValue::from_lit(&ty, lit).is_err());
     }
 }
