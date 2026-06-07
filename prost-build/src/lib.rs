@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-build/0.14.3")]
+#![doc(html_root_url = "https://docs.rs/prost-build/0.14.4")]
 
 //! `prost-build` compiles `.proto` files into Rust.
 //!
