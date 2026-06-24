@@ -43,6 +43,16 @@ fn push_indent(buf: &mut String, depth: u8) {
     }
 }
 
+fn push_rust_string_literal_body(buf: &mut String, value: &str) {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
+    for b in value.bytes() {
+        buf.push_str("\\x");
+        buf.push(HEX[(b >> 4) as usize] as char);
+        buf.push(HEX[(b & 0x0f) as usize] as char);
+    }
+}
+
 struct Field {
     descriptor: FieldDescriptorProto,
     path_index: i32,
@@ -841,7 +851,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.buf.push_str("Self::");
             self.buf.push_str(&variant.generated_variant_name);
             self.buf.push_str(" => \"");
-            self.buf.push_str(variant.proto_name);
+            push_rust_string_literal_body(self.buf, variant.proto_name);
             self.buf.push_str("\",\n");
         }
 
@@ -869,7 +879,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         for variant in variant_mappings.iter() {
             self.push_indent();
             self.buf.push('\"');
-            self.buf.push_str(variant.proto_name);
+            push_rust_string_literal_body(self.buf, variant.proto_name);
             self.buf.push_str("\" => Some(");
             if variant.deprecated {
                 self.buf.push_str("#[allow(deprecated)] ");
