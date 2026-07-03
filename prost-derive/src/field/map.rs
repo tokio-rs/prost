@@ -4,7 +4,7 @@ use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::{Expr, ExprLit, Ident, Lit, Meta, MetaNameValue, Path, Token};
 
-use crate::field::{scalar, set_option, tag_attr};
+use crate::field::{ident_attr, path_attr, scalar, set_option, tag_attr, TyWithEncoding};
 
 #[derive(Clone, Debug)]
 pub enum MapTy {
@@ -36,8 +36,8 @@ impl MapTy {
     }
 }
 
-fn fake_scalar(ty: scalar::Ty) -> scalar::Field {
-    let kind = scalar::Kind::Plain(scalar::DefaultValue::new(&ty));
+fn fake_scalar(ty: TyWithEncoding<scalar::Ty>) -> scalar::Field {
+    let kind = scalar::Kind::Plain(scalar::DefaultValue::new(&ty.ty));
     scalar::Field {
         ty,
         kind,
@@ -57,6 +57,8 @@ impl Field {
     pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let mut types = None;
         let mut tag = None;
+        let mut value_encoding_ty = None;
+        let mut value_encoding_module = None;
 
         for attr in attrs {
             if let Some(t) = tag_attr(attr)? {
@@ -103,6 +105,18 @@ impl Field {
                     (map_ty, key_ty_from_str(&k)?, ValueTy::from_str(&v)?),
                     "duplicate map type attribute",
                 )?;
+            } else if let Some(ty) = ident_attr("value_encoding", attr)? {
+                set_option(
+                    &mut value_encoding_ty,
+                    ty,
+                    "duplicate value_encoding attributes",
+                )?;
+            } else if let Some(module) = path_attr("value_encoding_module", attr)? {
+                set_option(
+                    &mut value_encoding_module,
+                    module,
+                    "duplicate value_encoding_module attributes",
+                )?;
             } else {
                 return Ok(None);
             }
@@ -112,7 +126,11 @@ impl Field {
             (Some((map_ty, key_ty, value_ty)), Some(tag)) => Some(Field {
                 map_ty,
                 key_ty,
-                value_ty,
+                value_ty: value_ty.with_encoding(
+                    value_encoding_ty,
+                    value_encoding_module,
+                    "value",
+                )?,
                 tag,
             }),
             _ => None,
@@ -131,7 +149,10 @@ impl Field {
         let kl = quote!(#prost_path::encoding::#key_mod::encoded_len);
         let module = self.map_ty.module();
         match &self.value_ty {
-            ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
+            ValueTy::Scalar(TyWithEncoding {
+                ty: scalar::Ty::Enumeration(ty),
+                ..
+            }) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
                     #prost_path::encoding::#module::encode_with_default(
@@ -147,9 +168,19 @@ impl Field {
                 }
             }
             ValueTy::Scalar(value_ty) => {
-                let val_mod = value_ty.module();
-                let ve = quote!(#prost_path::encoding::#val_mod::encode);
-                let vl = quote!(#prost_path::encoding::#val_mod::encoded_len);
+                let (ve, vl) = match value_ty.encoding_ty(prost_path) {
+                    Some(encoding_ty) => (
+                        quote!(#encoding_ty::encode),
+                        quote!(#encoding_ty::encoded_len),
+                    ),
+                    None => {
+                        let val_mod = value_ty.ty.module();
+                        (
+                            quote!(#prost_path::encoding::#val_mod::encode),
+                            quote!(#prost_path::encoding::#val_mod::encoded_len),
+                        )
+                    }
+                };
                 quote! {
                     #prost_path::encoding::#module::encode(
                         #ke,
@@ -183,7 +214,10 @@ impl Field {
         let km = quote!(#prost_path::encoding::#key_mod::merge);
         let module = self.map_ty.module();
         match &self.value_ty {
-            ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
+            ValueTy::Scalar(TyWithEncoding {
+                ty: scalar::Ty::Enumeration(ty),
+                ..
+            }) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
                     #prost_path::encoding::#module::merge_with_default(
@@ -197,8 +231,13 @@ impl Field {
                 }
             }
             ValueTy::Scalar(value_ty) => {
-                let val_mod = value_ty.module();
-                let vm = quote!(#prost_path::encoding::#val_mod::merge);
+                let vm = match value_ty.encoding_ty(prost_path) {
+                    Some(encoding_ty) => quote!(#encoding_ty::merge),
+                    None => {
+                        let val_mod = value_ty.ty.module();
+                        quote!(#prost_path::encoding::#val_mod::merge)
+                    }
+                };
                 quote!(#prost_path::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
             }
             ValueTy::Message => quote! {
@@ -220,7 +259,10 @@ impl Field {
         let kl = quote!(#prost_path::encoding::#key_mod::encoded_len);
         let module = self.map_ty.module();
         match &self.value_ty {
-            ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
+            ValueTy::Scalar(TyWithEncoding {
+                ty: scalar::Ty::Enumeration(ty),
+                ..
+            }) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
                     #prost_path::encoding::#module::encoded_len_with_default(
@@ -233,8 +275,13 @@ impl Field {
                 }
             }
             ValueTy::Scalar(value_ty) => {
-                let val_mod = value_ty.module();
-                let vl = quote!(#prost_path::encoding::#val_mod::encoded_len);
+                let vl = match value_ty.encoding_ty(prost_path) {
+                    Some(encoding_ty) => quote!(#encoding_ty::encoded_len),
+                    None => {
+                        let val_mod = value_ty.ty.module();
+                        quote!(#prost_path::encoding::#val_mod::encoded_len)
+                    }
+                };
                 quote!(#prost_path::encoding::#module::encoded_len(#kl, #vl, #tag, &#ident))
             }
             ValueTy::Message => quote! {
@@ -254,7 +301,11 @@ impl Field {
 
     /// Returns methods to embed in the message.
     pub fn methods(&self, prost_path: &Path, ident: &TokenStream) -> Option<TokenStream> {
-        if let ValueTy::Scalar(scalar::Ty::Enumeration(ty)) = &self.value_ty {
+        if let ValueTy::Scalar(TyWithEncoding {
+            ty: scalar::Ty::Enumeration(ty),
+            ..
+        }) = &self.value_ty
+        {
             let key_ty = self.key_ty.rust_type(prost_path);
             let key_ref_ty = self.key_ty.rust_ref_type();
 
@@ -303,7 +354,8 @@ impl Field {
         };
 
         // A fake field for generating the debug wrapper
-        let key_wrapper = fake_scalar(self.key_ty.clone()).debug(prost_path, quote!(KeyWrapper));
+        let key_wrapper = fake_scalar(TyWithEncoding::default_encoding(self.key_ty.clone()))
+            .debug(prost_path, quote!(KeyWrapper));
         let key = self.key_ty.rust_type(prost_path);
         let value_wrapper = self.value_ty.debug(prost_path);
         let libname = self.map_ty.lib();
@@ -320,7 +372,7 @@ impl Field {
         };
         match &self.value_ty {
             ValueTy::Scalar(ty) => {
-                if let scalar::Ty::Bytes(_) = *ty {
+                if let scalar::Ty::Bytes = &ty.ty {
                     return quote! {
                         struct #wrapper_name<'a>(&'a dyn ::core::fmt::Debug);
                         impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
@@ -331,7 +383,7 @@ impl Field {
                     };
                 }
 
-                let value = ty.rust_type(prost_path);
+                let value = ty.owned_type(prost_path);
                 quote! {
                     struct #wrapper_name<'a>(&'a ::#libname::collections::#type_name<#key, #value>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
@@ -372,20 +424,62 @@ fn key_ty_from_str(s: &str) -> Result<scalar::Ty, Error> {
 }
 
 /// A map value type.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum ValueTy {
-    Scalar(scalar::Ty),
+    Scalar(TyWithEncoding<scalar::Ty>),
     Message,
 }
 
 impl ValueTy {
     fn from_str(s: &str) -> Result<ValueTy, Error> {
         if let Ok(ty) = scalar::Ty::from_str(s) {
-            Ok(ValueTy::Scalar(ty))
+            Ok(ValueTy::Scalar(TyWithEncoding::try_from(ty, None, None)?))
         } else if s.trim() == "message" {
             Ok(ValueTy::Message)
         } else {
             bail!("invalid map value type: {s}");
+        }
+    }
+
+    fn with_encoding(
+        self,
+        encoding_ty: Option<Ident>,
+        encoding_module: Option<syn::Path>,
+        prefix: &str,
+    ) -> Result<Self, Error> {
+        match self {
+            ValueTy::Scalar(ty) => {
+                if encoding_module.is_some() && encoding_ty.is_none() {
+                    bail!(
+                        "{prefix}_encoding_module attribute can only be applied in pair with {prefix}_encoding attribute"
+                    );
+                }
+
+                if encoding_ty.is_some() && !matches!(ty.ty, scalar::Ty::Bytes) {
+                    bail!("only the bytes type support the {prefix}_encoding attibute");
+                }
+
+                if encoding_ty.is_some() {
+                    Ok(ValueTy::Scalar(TyWithEncoding {
+                        ty: ty.ty,
+                        encoding_ty,
+                        encoding_module,
+                    }))
+                } else {
+                    Ok(ValueTy::Scalar(ty))
+                }
+            }
+            ValueTy::Message => {
+                if encoding_ty.is_some() {
+                    bail!("message value type does not support the {prefix}_encoding attribute");
+                }
+                if encoding_module.is_some() {
+                    bail!(
+                        "message value type does not support the {prefix}_encoding_module attribute"
+                    );
+                }
+                Ok(ValueTy::Message)
+            }
         }
     }
 

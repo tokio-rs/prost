@@ -3,11 +3,19 @@
 use std::iter;
 
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct PathMap<T> {
     // insertion order might actually matter (to avoid warning about legacy-derive-helpers)
     // see: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#legacy-derive-helpers
     pub(crate) matchers: Vec<(String, T)>,
+}
+
+impl<T> Default for PathMap<T> {
+    fn default() -> Self {
+        Self {
+            matchers: Vec::default(),
+        }
+    }
 }
 
 impl<T> PathMap<T> {

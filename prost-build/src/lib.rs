@@ -144,7 +144,7 @@ mod ast;
 pub use crate::ast::{Comments, Method, Service};
 
 mod collections;
-pub(crate) use collections::{BytesType, MapType};
+pub(crate) use collections::MapType;
 
 mod code_generator;
 mod context;

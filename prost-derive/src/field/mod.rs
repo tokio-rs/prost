@@ -8,6 +8,8 @@ use std::fmt;
 use std::slice;
 
 use anyhow::{bail, Error};
+use proc_macro2::Ident;
+use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::punctuated::Punctuated;
@@ -350,5 +352,63 @@ fn tags_attr(attr: &Meta) -> Result<Option<Vec<u32>>, Error> {
             .collect::<Result<Vec<u32>, _>>()
             .map(Some),
         _ => bail!("invalid tag attribute: {attr:?}"),
+    }
+}
+
+fn ident_attr(key: &str, attr: &Meta) -> Result<Option<Ident>, Error> {
+    if !attr.path().is_ident(key) {
+        return Ok(None);
+    }
+
+    match *attr {
+        Meta::NameValue(MetaNameValue {
+            value:
+                Expr::Lit(ExprLit {
+                    lit: Lit::Str(ref lit),
+                    ..
+                }),
+            ..
+        }) => Ok(Some(Ident::new(lit.value().as_str(), Span::call_site()))),
+        _ => bail!("invalid {key} attribute"),
+    }
+}
+
+fn path_attr(key: &str, attr: &Meta) -> Result<Option<syn::Path>, Error> {
+    if !attr.path().is_ident(key) {
+        return Ok(None);
+    }
+    match *attr {
+        Meta::NameValue(MetaNameValue {
+            value:
+                Expr::Lit(ExprLit {
+                    lit: Lit::Str(ref lit),
+                    ..
+                }),
+            ..
+        }) => match lit.parse() {
+            Ok(expr) => Ok(Some(expr)),
+            Err(err) => bail!("invalid {key} attribute: {err}"),
+        },
+        _ => bail!("invalid {key} attribute"),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TyWithEncoding<T> {
+    // The underlying type
+    ty: T,
+    // The encoding type
+    encoding_ty: Option<Ident>,
+    // The encoding module: this allows for encoding defined outside of `prost::encoding`
+    encoding_module: Option<syn::Path>,
+}
+
+impl<T> TyWithEncoding<T> {
+    pub fn encoding_ty(&self, prost_path: &Path) -> Option<TokenStream> {
+        match (self.encoding_ty.as_ref(), self.encoding_module.as_ref()) {
+            (Some(ty), Some(module)) => Some(quote!(#module::#ty)),
+            (Some(ty), None) => Some(quote!(#prost_path::encoding::#ty)),
+            (None, _) => None,
+        }
     }
 }
