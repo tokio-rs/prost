@@ -466,7 +466,6 @@ impl Ty {
     }
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
-        let enumeration_len = "enumeration".len();
         let error = Err(anyhow!("invalid type: {s}"));
         let ty = match s.trim() {
             "float" => Ty::Float,
@@ -484,8 +483,8 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
-            s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
-                let s = &s[enumeration_len..].trim();
+            s if s.starts_with("enumeration") => {
+                let s = s.strip_prefix("enumeration").unwrap().trim();
                 match s.chars().next() {
                     Some('<') | Some('(') => (),
                     _ => return error,
@@ -833,5 +832,10 @@ mod tests {
         let ty = Ty::Enumeration(parse_str::<Path>("ExampleEnum").unwrap());
         let lit = parse_str::<Lit>("\"not-valid!\"").unwrap();
         assert!(DefaultValue::from_lit(&ty, lit).is_err());
+    }
+
+    #[test]
+    fn from_str_rejects_non_ascii_prefix_without_panic() {
+        assert!(Ty::from_str("éééééé").is_err());
     }
 }
