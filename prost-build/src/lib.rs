@@ -626,4 +626,74 @@ mod tests {
             tempdir.path().join("all_deprecated.rs")
         );
     }
+
+    #[test]
+    fn test_ignore_deprecated_attribute() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .ignore_deprecated_attribute(".")
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        let generated = std::fs::read_to_string(tempdir.path().join("all_deprecated.rs")).unwrap();
+        assert!(!generated.contains("#[deprecated]"));
+        assert!(!generated.contains("#[allow(deprecated)]"));
+    }
+
+    #[test]
+    fn test_remove_single_deprecated_attribute() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .ignore_deprecated_attribute(".all_deprecated.Test.outdated")
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        let generated = std::fs::read_to_string(tempdir.path().join("all_deprecated.rs")).unwrap();
+        assert!(!generated
+            .contains("#[deprecated]\n    #[prost(string, tag = \"2\")]\n    pub outdated:"));
+        assert!(generated.contains(
+            "#[deprecated]\n    #[prost(string, optional, tag = \"4\")]\n    pub optional_outdated:"
+        ));
+        assert!(generated.contains("#[deprecated]\n    Outdated = 1,"));
+        assert!(
+            generated.contains("#[allow(deprecated)]\n            Self::Outdated => \"outdated\",")
+        );
+        assert!(generated.contains("\"outdated\" => Some(#[allow(deprecated)] Self::Outdated),"));
+    }
+
+    #[test]
+    fn test_remove_single_deprecated_enum_value_attribute() {
+        let _ = env_logger::try_init();
+        let tempdir = tempfile::tempdir().unwrap();
+
+        Config::new()
+            .ignore_deprecated_attribute(".all_deprecated.Test2.outdated")
+            .out_dir(tempdir.path())
+            .compile_protos(
+                &["src/fixtures/deprecated/all_deprecated.proto"],
+                &["src/fixtures/deprecated"],
+            )
+            .unwrap();
+
+        let generated = std::fs::read_to_string(tempdir.path().join("all_deprecated.rs")).unwrap();
+        assert!(generated
+            .contains("#[deprecated]\n    #[prost(string, tag = \"2\")]\n    pub outdated:"));
+        assert!(generated.contains("pub enum Test2 {\n    NotOutdated = 0,\n    Outdated = 1,\n}"));
+        assert!(!generated
+            .contains("#[allow(deprecated)]\n            Self::Outdated => \"outdated\","));
+        assert!(!generated.contains("\"outdated\" => Some(#[allow(deprecated)] Self::Outdated),"));
+        assert!(generated.contains("\"outdated\" => Some(Self::Outdated),"));
+    }
 }
