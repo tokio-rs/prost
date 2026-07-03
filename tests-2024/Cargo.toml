@@ -33,3 +33,4 @@ protobuf = { path = "../protobuf" }
 cfg-if = "1"
 env_logger = { version = "0.11", default-features = false }
 prost-build = { path = "../prost-build" }
+prost-types = { path = "../prost-types" }
