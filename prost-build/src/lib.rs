@@ -375,6 +375,7 @@ mod tests {
         fn finalize_package(&mut self, package: &str, _buf: &mut String) {
             let mut state = self.state.borrow_mut();
             state.package_names.push(package.to_string());
+            state.package_names.sort();
         }
     }
 
@@ -429,7 +430,10 @@ mod tests {
 
         let state = state.borrow();
         assert_eq!(&state.service_names, &["Greeting", "Farewell"]);
-        assert_eq!(&state.package_names, &["helloworld"]);
+        assert_eq!(
+            &state.package_names,
+            &["helloworld", "helloworld.greetings"]
+        );
         assert_eq!(state.finalized, 3);
     }
 
