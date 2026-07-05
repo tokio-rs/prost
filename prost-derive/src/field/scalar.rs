@@ -13,10 +13,15 @@ pub struct Field {
     pub ty: Ty,
     pub kind: Kind,
     pub tag: u32,
+    pub deprecated: bool,
 }
 
 impl Field {
-    pub fn new(attrs: &[Meta], inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
+    pub fn new(
+        attrs: &[Meta],
+        inferred_tag: Option<u32>,
+        deprecated: bool,
+    ) -> Result<Option<Field>, Error> {
         let mut ty = None;
         let mut label = None;
         let mut packed = None;
@@ -86,11 +91,16 @@ impl Field {
             (Some(Label::Repeated), _, false) => Kind::Repeated,
         };
 
-        Ok(Some(Field { ty, kind, tag }))
+        Ok(Some(Field {
+            ty,
+            kind,
+            tag,
+            deprecated,
+        }))
     }
 
     pub fn new_oneof(attrs: &[Meta]) -> Result<Option<Field>, Error> {
-        if let Some(mut field) = Field::new(attrs, None)? {
+        if let Some(mut field) = Field::new(attrs, None, false)? {
             match field.kind {
                 Kind::Plain(default) => {
                     field.kind = Kind::Required(default);
@@ -284,6 +294,11 @@ impl Field {
             Err(_) => quote!(#ident),
         };
 
+        let deprecated = if self.deprecated {
+            Some(quote!(#[deprecated]))
+        } else {
+            None
+        };
         if let Ty::Enumeration(ref ty) = self.ty {
             let set = Ident::new(&format!("set_{ident_str}"), Span::call_site());
             let set_doc = format!("Sets `{ident_str}` to the provided enum value.");
@@ -295,11 +310,13 @@ impl Field {
                     );
                     quote! {
                         #[doc=#get_doc]
+                        #deprecated
                         pub fn #get(&self) -> #ty {
                             ::core::convert::TryFrom::try_from(self.#ident).unwrap_or(#default)
                         }
 
                         #[doc=#set_doc]
+                        #deprecated
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = value as i32;
                         }
@@ -312,6 +329,7 @@ impl Field {
                     );
                     quote! {
                         #[doc=#get_doc]
+                        #deprecated
                         pub fn #get(&self) -> #ty {
                             self.#ident.and_then(|x| {
                                 let result: ::core::result::Result<#ty, _> = ::core::convert::TryFrom::try_from(x);
@@ -320,6 +338,7 @@ impl Field {
                         }
 
                         #[doc=#set_doc]
+                        #deprecated
                         pub fn #set(&mut self, value: #ty) {
                             self.#ident = ::core::option::Option::Some(value as i32);
                         }
@@ -333,6 +352,7 @@ impl Field {
                     let push_doc = format!("Appends the provided enum value to `{ident_str}`.");
                     quote! {
                         #[doc=#iter_doc]
+                        #deprecated
                         pub fn #get(&self) -> ::core::iter::FilterMap<
                             ::core::iter::Cloned<::core::slice::Iter<i32>>,
                             fn(i32) -> ::core::option::Option<#ty>,
@@ -343,6 +363,7 @@ impl Field {
                             })
                         }
                         #[doc=#push_doc]
+                        #deprecated
                         pub fn #push(&mut self, value: #ty) {
                             self.#ident.push(value as i32);
                         }
@@ -364,6 +385,7 @@ impl Field {
 
             Some(quote! {
                 #[doc=#get_doc]
+                #deprecated
                 pub fn #get(&self) -> #ty {
                     match self.#ident {
                         #match_some
