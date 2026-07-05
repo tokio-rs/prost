@@ -306,6 +306,17 @@ impl<'a> Context<'a> {
         self.config.skip_debug.get(fq_message_name).next().is_some()
     }
 
+    /// Returns whether the named message should skip generating field names
+    /// in the `Message` trait implementation.
+    pub fn should_skip_field_names(&self, fq_message_name: &str) -> bool {
+        assert_eq!(b'.', fq_message_name.as_bytes()[0]);
+        self.config
+            .skip_field_names
+            .get(fq_message_name)
+            .next()
+            .is_some()
+    }
+
     /// Returns the type name domain URL for the named message,
     /// or an empty string if such is not configured.
     pub fn type_name_domain(&self, fq_message_name: &str) -> &str {
