@@ -26,7 +26,7 @@ tempfile = { version = "3", default-features = false }
 regex = { version = "1.8.1", default-features = false, features = ["std", "unicode-bool"] }
 
 # feature: format
-prettyplease = { version = "0.2", optional = true }
+prettyplease = { version = "0.3", optional = true }
 syn = { version = "2", features = ["full"], optional = true }
 
 # These two must be kept in sync, used for `cleanup-markdown` feature.
