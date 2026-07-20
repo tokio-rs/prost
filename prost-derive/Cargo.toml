@@ -17,7 +17,7 @@ anyhow = "1.0.1"
 itertools = ">=0.10.1, <=0.15"
 proc-macro2 = "1.0.60"
 quote = "1"
-syn = { version = "2", features = ["extra-traits"] }
+syn = { version = "3", features = ["extra-traits"] }
 
 [lints.clippy]
 # This lint has MSRV 1.88
