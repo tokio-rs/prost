@@ -232,7 +232,8 @@ impl Name for i64 {
 /// `google.protobuf.FloatValue`
 impl Message for f32 {
     fn encode_raw(&self, buf: &mut impl BufMut) {
-        if *self != 0.0 {
+        // Compare bit patterns so that `-0.0` is not considered equal to `0.0`.
+        if self.to_bits() != 0f32.to_bits() {
             float::encode(1, self, buf)
         }
     }
@@ -250,7 +251,7 @@ impl Message for f32 {
         }
     }
     fn encoded_len(&self) -> usize {
-        if *self != 0.0 {
+        if self.to_bits() != 0f32.to_bits() {
             float::encoded_len(1, self)
         } else {
             0
@@ -274,7 +275,8 @@ impl Name for f32 {
 /// `google.protobuf.DoubleValue`
 impl Message for f64 {
     fn encode_raw(&self, buf: &mut impl BufMut) {
-        if *self != 0.0 {
+        // Compare bit patterns so that `-0.0` is not considered equal to `0.0`.
+        if self.to_bits() != 0f64.to_bits() {
             double::encode(1, self, buf)
         }
     }
@@ -292,7 +294,7 @@ impl Message for f64 {
         }
     }
     fn encoded_len(&self) -> usize {
-        if *self != 0.0 {
+        if self.to_bits() != 0f64.to_bits() {
             double::encoded_len(1, self)
         } else {
             0

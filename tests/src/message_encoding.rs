@@ -37,6 +37,122 @@ fn check_scalar_types() {
     check_message(&ScalarTypes::default());
 }
 
+/// A message with implicit presence floating point fields.
+#[derive(Clone, PartialEq, Message)]
+pub struct Zeroes {
+    #[prost(float, tag = "1")]
+    pub float: f32,
+    #[prost(double, tag = "2")]
+    pub double: f64,
+}
+
+/// `-0.0` differs from the default `0.0` and therefore has to be encoded, otherwise the sign bit
+/// is silently lost. See <https://github.com/tokio-rs/prost/issues/1177>.
+#[test]
+fn check_negative_zero_is_encoded() {
+    const FLOAT: &[u8] = &[0x0d, 0x00, 0x00, 0x00, 0x80];
+    const DOUBLE: &[u8] = &[0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80];
+    let both = [FLOAT, DOUBLE].concat();
+
+    let msg = Zeroes {
+        float: -0.0,
+        double: -0.0,
+    };
+    assert_eq!(msg.encoded_len(), both.len());
+    assert_eq!(msg.encode_to_vec(), both);
+
+    // Decoding preserves the sign, and re-encoding reproduces the original bytes.
+    let decoded = Zeroes::decode(both.as_slice()).unwrap();
+    assert_eq!(decoded.float.to_bits(), (-0.0f32).to_bits());
+    assert_eq!(decoded.double.to_bits(), (-0.0f64).to_bits());
+    assert_eq!(decoded.encoded_len(), both.len());
+    assert_eq!(decoded.encode_to_vec(), both);
+
+    // An absent field still decodes to a positive zero which is not re-encoded.
+    let decoded = Zeroes::decode(FLOAT).unwrap();
+    assert_eq!(decoded.float.to_bits(), (-0.0f32).to_bits());
+    assert_eq!(decoded.double.to_bits(), (0.0f64).to_bits());
+    assert_eq!(decoded.encoded_len(), FLOAT.len());
+    assert_eq!(decoded.encode_to_vec(), FLOAT);
+}
+
+/// `0.0` is the default value and must not be encoded.
+#[test]
+fn check_positive_zero_is_not_encoded() {
+    let msg = Zeroes {
+        float: 0.0,
+        double: 0.0,
+    };
+    assert_eq!(msg.encoded_len(), 0);
+    assert_eq!(msg.encode_to_vec(), []);
+}
+
+/// `google.protobuf.FloatValue` and `google.protobuf.DoubleValue` have hand written `Message`
+/// implementations which need the same treatment.
+#[test]
+fn check_negative_zero_wrapper_types() {
+    let float = [0x0d, 0x00, 0x00, 0x00, 0x80];
+    assert_eq!((-0.0f32).encoded_len(), float.len());
+    assert_eq!((-0.0f32).encode_to_vec(), float);
+    assert_eq!(
+        f32::decode(float.as_slice()).unwrap().to_bits(),
+        (-0.0f32).to_bits()
+    );
+    assert_eq!((0.0f32).encoded_len(), 0);
+    assert_eq!((0.0f32).encode_to_vec(), []);
+
+    let double = [0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80];
+    assert_eq!((-0.0f64).encoded_len(), double.len());
+    assert_eq!((-0.0f64).encode_to_vec(), double);
+    assert_eq!(
+        f64::decode(double.as_slice()).unwrap().to_bits(),
+        (-0.0f64).to_bits()
+    );
+    assert_eq!((0.0f64).encoded_len(), 0);
+    assert_eq!((0.0f64).encode_to_vec(), []);
+}
+
+/// A message with implicit presence floating point fields with a custom default.
+#[derive(Clone, PartialEq, Message)]
+pub struct FloatDefaults {
+    #[prost(float, tag = "1", default = "-1.5")]
+    pub negative: f32,
+    #[prost(double, tag = "2", default = "nan")]
+    pub nan: f64,
+}
+
+/// Custom floating point defaults are compared by bit pattern too. Note that this makes a field
+/// which is equal to a `NaN` default no longer encoded, matching every other default value.
+#[test]
+fn check_float_defaults() {
+    let default = FloatDefaults::default();
+    assert_eq!(default.negative.to_bits(), (-1.5f32).to_bits());
+    assert!(default.nan.is_nan());
+    assert_eq!(default.encoded_len(), 0);
+    assert_eq!(default.encode_to_vec(), []);
+
+    // Both zeroes differ from the negative default and are encoded.
+    for (value, expected) in [
+        (0.0f32, [0x0d, 0x00, 0x00, 0x00, 0x00]),
+        (-0.0f32, [0x0d, 0x00, 0x00, 0x00, 0x80]),
+    ] {
+        let msg = FloatDefaults {
+            negative: value,
+            ..Default::default()
+        };
+        assert_eq!(msg.encoded_len(), expected.len());
+        assert_eq!(msg.encode_to_vec(), expected);
+    }
+
+    let msg = FloatDefaults {
+        nan: 0.0,
+        ..Default::default()
+    };
+    let expected = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+    assert_eq!(msg.encoded_len(), expected.len());
+    assert_eq!(msg.encode_to_vec(), expected);
+}
+
 /// A protobuf message which contains all scalar types.
 #[derive(Clone, PartialEq, Message)]
 pub struct ScalarTypes {
