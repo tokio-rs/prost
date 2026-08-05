@@ -53,7 +53,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         DataStruct {
             fields: Fields::Unit,
             ..
-        } => (false, Vec::new()),
+        } => (true, Vec::new()),
     };
 
     let mut next_tag: u32 = 1;
