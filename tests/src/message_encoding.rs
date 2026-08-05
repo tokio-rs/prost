@@ -32,6 +32,14 @@ fn check_repeated_floats() {
     });
 }
 
+#[derive(Clone, PartialEq, Message)]
+pub struct Unit;
+
+#[test]
+fn check_unit_struct() {
+    check_message(&Unit);
+}
+
 #[test]
 fn check_scalar_types() {
     check_message(&ScalarTypes::default());
