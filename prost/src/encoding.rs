@@ -523,9 +523,11 @@ pub mod open_enum {
     use super::*;
     use crate::OpenEnum;
 
+    // `OpenEnum<T>` is `#[repr(transparent)]` over the wire value, so everything
+    // here delegates to the `int32` codec without touching `T`.
+
     pub fn encode<T, B>(tag: u32, value: &OpenEnum<T>, buf: &mut B)
     where
-        T: Clone + Into<i32>,
         B: BufMut,
     {
         int32::encode(tag, &value.to_raw(), buf)
@@ -538,10 +540,9 @@ pub mod open_enum {
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        i32: TryInto<T>,
         B: Buf,
     {
-        let mut raw = 0i32;
+        let mut raw = value.to_raw();
         int32::merge(wire_type, &mut raw, buf, ctx)?;
         *value = OpenEnum::from_raw(raw);
         Ok(())
@@ -549,33 +550,16 @@ pub mod open_enum {
 
     pub fn encode_repeated<T, B>(tag: u32, values: &[OpenEnum<T>], buf: &mut B)
     where
-        T: Clone + Into<i32>,
         B: BufMut,
     {
-        for value in values {
-            encode(tag, value, buf);
-        }
+        int32::encode_repeated(tag, OpenEnum::as_raw_slice(values), buf)
     }
 
     pub fn encode_packed<T, B>(tag: u32, values: &[OpenEnum<T>], buf: &mut B)
     where
-        T: Clone + Into<i32>,
         B: BufMut,
     {
-        if values.is_empty() {
-            return;
-        }
-
-        encode_key(tag, WireType::LengthDelimited, buf);
-        let len: usize = values
-            .iter()
-            .map(|value| encoded_len_varint(value.to_raw() as u64))
-            .sum();
-        encode_varint(len as u64, buf);
-
-        for value in values {
-            encode_varint(value.to_raw() as u64, buf);
-        }
+        int32::encode_packed(tag, OpenEnum::as_raw_slice(values), buf)
     }
 
     pub fn merge_repeated<T, B>(
@@ -585,58 +569,35 @@ pub mod open_enum {
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        T: Default,
-        i32: TryInto<T>,
         B: Buf,
     {
         if wire_type == WireType::LengthDelimited {
             // Packed.
             merge_loop(values, buf, ctx, |values, buf, ctx| {
-                let mut value = Default::default();
+                let mut value = OpenEnum::from_raw(0);
                 merge(WireType::Varint, &mut value, buf, ctx)?;
                 values.push(value);
                 Ok(())
             })
         } else {
             // Unpacked.
-            let mut value = Default::default();
+            let mut value = OpenEnum::from_raw(0);
             merge(wire_type, &mut value, buf, ctx)?;
             values.push(value);
             Ok(())
         }
     }
 
-    pub fn encoded_len<T>(tag: u32, value: &OpenEnum<T>) -> usize
-    where
-        T: Clone + Into<i32>,
-    {
+    pub fn encoded_len<T>(tag: u32, value: &OpenEnum<T>) -> usize {
         int32::encoded_len(tag, &value.to_raw())
     }
 
-    pub fn encoded_len_repeated<T>(tag: u32, values: &[OpenEnum<T>]) -> usize
-    where
-        T: Clone + Into<i32>,
-    {
-        key_len(tag) * values.len()
-            + values
-                .iter()
-                .map(|value| encoded_len_varint(value.to_raw() as u64))
-                .sum::<usize>()
+    pub fn encoded_len_repeated<T>(tag: u32, values: &[OpenEnum<T>]) -> usize {
+        int32::encoded_len_repeated(tag, OpenEnum::as_raw_slice(values))
     }
 
-    pub fn encoded_len_packed<T>(tag: u32, values: &[OpenEnum<T>]) -> usize
-    where
-        T: Clone + Into<i32>,
-    {
-        if values.is_empty() {
-            0
-        } else {
-            let len = values
-                .iter()
-                .map(|value| encoded_len_varint(value.to_raw() as u64))
-                .sum::<usize>();
-            key_len(tag) + encoded_len_varint(len as u64) + len
-        }
+    pub fn encoded_len_packed<T>(tag: u32, values: &[OpenEnum<T>]) -> usize {
+        int32::encoded_len_packed(tag, OpenEnum::as_raw_slice(values))
     }
 }
 

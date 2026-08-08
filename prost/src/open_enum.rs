@@ -3,205 +3,241 @@ use crate::{DecodeError, Message, UnknownEnumValue};
 
 use bytes::{Buf, BufMut};
 
+use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
+use core::marker::PhantomData;
+use core::mem::size_of;
+use core::slice;
 
-/// Represents the value of an open enum field.
+/// Represents the value of an open enum field, which per the
+/// [Protocol Buffers guide][proto-guide] must retain values not known to the
+/// schema in use.
 ///
-/// The [Protocol Buffers guide][proto-guide] specifies that unknown values
-/// of fields with open enum types should be stored directly in the field
-/// when decoding messages. This type provides an ergonomic way to represent
-/// such values in Rust.
+/// This is a `#[repr(transparent)]` wrapper around the `i32` wire value, so it
+/// costs the same as the `i32` it replaces and every `i32` is valid. Use
+/// [`known`](Self::known) to project it into `T` for exhaustive matching, or
+/// compare it against a variant of `T` directly.
 ///
 /// [proto-guide]: https://protobuf.dev/programming-guides/enum/#definitions
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum OpenEnum<T> {
-    /// A known value of the generated enum type.
-    Known(T),
-    /// An unknown value as decoded from the message.
-    Unknown(Unknown),
+#[repr(transparent)]
+pub struct OpenEnum<T> {
+    raw: i32,
+    // `fn() -> T` rather than `T` keeps the auto traits and the impls below
+    // unconditional in `T`, without unsafe impls.
+    _marker: PhantomData<fn() -> T>,
 }
 
-impl<T> Default for OpenEnum<T>
-where
-    T: Default,
-{
-    fn default() -> Self {
-        Self::Known(T::default())
-    }
-}
-
-impl<T> From<T> for OpenEnum<T> {
-    fn from(value: T) -> Self {
-        Self::Known(value)
-    }
-}
+const _: () = assert!(size_of::<OpenEnum<()>>() == size_of::<i32>());
 
 impl<T> OpenEnum<T> {
-    /// Converts a raw integer value into an open enum value.
+    /// Converts a raw integer value from the wire into an open enum value.
     ///
-    /// This method is used to decode field values from the wire format.
-    pub fn from_raw(value: i32) -> Self
-    where
-        i32: TryInto<T>,
-    {
-        match value.try_into() {
-            Ok(v) => Self::Known(v),
-            Err(_) => Self::Unknown(Unknown(value)),
+    /// Every `i32` is representable, so this never fails.
+    pub const fn from_raw(value: i32) -> Self {
+        Self {
+            raw: value,
+            _marker: PhantomData,
         }
     }
 
     /// Converts an open enum value into its raw integer representation.
-    pub fn into_raw(self) -> i32
-    where
-        T: Into<i32>,
-    {
-        match self {
-            Self::Known(v) => v.into(),
-            Self::Unknown(u) => u.0,
-        }
+    pub const fn into_raw(self) -> i32 {
+        self.raw
     }
 
-    /// Converts an open enum value into its raw integer representation.
+    /// Returns the raw integer representation of a borrowed value.
+    pub const fn to_raw(&self) -> i32 {
+        self.raw
+    }
+
+    /// Reinterprets raw integer values as open enum values, for free.
+    pub const fn from_raw_slice(values: &[i32]) -> &[Self] {
+        // SAFETY: `OpenEnum<T>` is `#[repr(transparent)]` over `i32`, so the
+        // two slice types have identical layout, and every bit pattern of a
+        // valid `i32` is a valid `OpenEnum<T>`.
+        unsafe { slice::from_raw_parts(values.as_ptr().cast(), values.len()) }
+    }
+
+    /// Reinterprets open enum values as raw integer values, for free.
+    pub const fn as_raw_slice(values: &[Self]) -> &[i32] {
+        // SAFETY: see `from_raw_slice`.
+        unsafe { slice::from_raw_parts(values.as_ptr().cast(), values.len()) }
+    }
+}
+
+impl<T> OpenEnum<T>
+where
+    i32: TryInto<T>,
+{
+    /// Returns the value in `Some` if it is known, otherwise `None`.
     ///
-    /// This is a convenience method for borrowed values.
-    pub fn to_raw(&self) -> i32
-    where
-        T: Clone + Into<i32>,
-    {
-        match self {
-            Self::Known(v) => v.clone().into(),
-            Self::Unknown(u) => u.0,
-        }
+    /// Matching on the result is exhaustiveness checked over `T`.
+    pub fn known(self) -> Option<T> {
+        self.raw.try_into().ok()
     }
 
-    /// Returns the known value of the open enum.
+    /// Returns `true` if the value is a known variant of `T`.
+    pub fn is_known(self) -> bool {
+        self.raw.try_into().is_ok()
+    }
+
+    /// Returns the known value.
     ///
     /// # Panics
     ///
-    /// Panics if the value is in fact unknown.
+    /// Panics if the value is unknown.
     pub fn unwrap(self) -> T {
-        match self {
-            Self::Known(v) => v,
-            Self::Unknown(u) => panic!("unknown enumeration value {}", u.0),
+        match self.raw.try_into() {
+            Ok(value) => value,
+            Err(_) => panic!("unknown enumeration value {}", self.raw),
         }
     }
 
-    /// Returns the known value of the open enum, or, if the value is unknown,
-    /// returns the provided default value.
+    /// Returns the known value, or `default` if it is unknown.
     ///
-    /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
-    /// the result of a function call, it is recommended to use
-    /// [`unwrap_or_else`] and pass a lazily evaluated closure to it.
-    ///
-    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// `default` is eagerly evaluated; see [`unwrap_or_else`](Self::unwrap_or_else).
     pub fn unwrap_or(self, default: T) -> T {
-        match self {
-            Self::Known(v) => v,
-            Self::Unknown(_) => default,
-        }
+        self.raw.try_into().unwrap_or(default)
     }
 
-    /// Returns the known value of the open enum, or, if the value is unknown,
-    /// returns the value computed from the field's raw integer value by the
-    /// provided closure.
+    /// Returns the known value, or one computed from the raw value if unknown.
     pub fn unwrap_or_else<F>(self, f: F) -> T
     where
         F: FnOnce(i32) -> T,
     {
-        match self {
-            Self::Known(v) => v,
-            Self::Unknown(u) => f(u.0),
+        match self.raw.try_into() {
+            Ok(value) => value,
+            Err(_) => f(self.raw),
         }
     }
 
-    /// Returns the known value of the open enum, or, if the value is unknown,
-    /// returns the default value of the enum type.
+    /// Returns the known value, or `T::default()` if it is unknown.
     pub fn unwrap_or_default(self) -> T
     where
         T: Default,
     {
-        match self {
-            Self::Known(v) => v,
-            Self::Unknown(_) => T::default(),
-        }
+        self.raw.try_into().unwrap_or_default()
     }
 
-    /// If the value of the open enum is known, returns it in `Ok`, otherwise
-    /// returns an `Err` with the unknown value.
-    pub fn get(&self) -> Result<T, UnknownEnumValue>
-    where
-        T: Clone,
-    {
-        match self {
-            Self::Known(v) => Ok(v.clone()),
-            Self::Unknown(u) => Err(UnknownEnumValue(u.0)),
-        }
+    /// Returns the value in `Ok` if it is known, otherwise the raw value in `Err`.
+    pub fn get(&self) -> Result<T, UnknownEnumValue> {
+        self.raw.try_into().map_err(|_| UnknownEnumValue(self.raw))
     }
 
-    /// Sets the value of receiver to the provided known value.
-    pub fn set(&mut self, value: T) {
-        *self = Self::Known(value);
-    }
-
-    /// If the value of the open enum is known, returns it in `Some`, otherwise
-    /// returns `None`.
-    pub fn known(self) -> Option<T> {
-        match self {
-            Self::Known(v) => Some(v),
-            Self::Unknown(_) => None,
-        }
-    }
-
-    /// If the value of the open enum is known, returns it in `Ok`, otherwise
-    /// returns the provided error value in `Err`.
+    /// Returns the value in `Ok` if it is known, otherwise `err`.
     ///
-    /// Arguments passed to `ok_or` are eagerly evaluated; if you are passing
-    /// the result of a function call, it is recommended to use
-    /// [`ok_or_else`] and pass a lazily evaluated closure to it.
-    ///
-    /// [`ok_or_else`]: #method.ok_or_else
+    /// `err` is eagerly evaluated; see [`ok_or_else`](Self::ok_or_else).
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
-        match self {
-            Self::Known(v) => Ok(v),
-            Self::Unknown(_) => Err(err),
-        }
+        self.raw.try_into().map_err(|_| err)
     }
 
-    /// If the value of the open enum is known, returns it in `Ok`, otherwise
-    /// returns `Err` with the value computed from the field's raw integer value
-    /// by the provided closure.
+    /// Returns the value in `Ok` if it is known, otherwise `err` applied to the
+    /// raw value.
     pub fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
     where
         F: FnOnce(i32) -> E,
     {
-        match self {
-            Self::Known(v) => Ok(v),
-            Self::Unknown(u) => Err(err(u.0)),
-        }
+        self.raw.try_into().map_err(|_| err(self.raw))
     }
 }
 
-impl<T: Hash> Hash for OpenEnum<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            OpenEnum::Known(v) => v.hash(state),
-            OpenEnum::Unknown(u) => u.0.hash(state),
-        }
-    }
-}
-
-impl<T> Message for OpenEnum<T>
+impl<T> OpenEnum<T>
 where
-    T: Clone + Into<i32> + Debug + Send + Sync,
+    T: Into<i32>,
+{
+    /// Sets the receiver to a known value.
+    pub fn set(&mut self, value: T) {
+        self.raw = value.into();
+    }
+}
+
+impl<T> Copy for OpenEnum<T> {}
+
+impl<T> Clone for OpenEnum<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Default for OpenEnum<T>
+where
+    T: Default + Into<i32>,
+{
+    fn default() -> Self {
+        Self::from_raw(T::default().into())
+    }
+}
+
+impl<T> From<T> for OpenEnum<T>
+where
+    T: Into<i32>,
+{
+    fn from(value: T) -> Self {
+        Self::from_raw(value.into())
+    }
+}
+
+// The comparison and hashing impls operate on the raw value. This makes them
+// available for every `T`, and agrees with the derived impls of the generated
+// `#[repr(i32)]` enum types.
+
+impl<T> PartialEq for OpenEnum<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw == other.raw
+    }
+}
+
+impl<T> Eq for OpenEnum<T> {}
+
+impl<T> PartialOrd for OpenEnum<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for OpenEnum<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.raw.cmp(&other.raw)
+    }
+}
+
+impl<T> Hash for OpenEnum<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.raw.hash(state);
+    }
+}
+
+/// Allows `msg.field == Enum::Variant` without a conversion.
+impl<T> PartialEq<T> for OpenEnum<T>
+where
+    T: Copy + Into<i32>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.raw == (*other).into()
+    }
+}
+
+impl<T> Debug for OpenEnum<T>
+where
+    T: Debug,
     i32: TryInto<T>,
 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.raw.try_into() {
+            Ok(value) => f.debug_tuple("Known").field(&value).finish(),
+            Err(_) => f.debug_tuple("Unknown").field(&self.raw).finish(),
+        }
+    }
+}
+
+impl<T> Message for OpenEnum<T> {
     fn encoded_len(&self) -> usize {
-        self.to_raw().encoded_len()
+        self.raw.encoded_len()
     }
 
     fn encode_raw(&self, buf: &mut impl BufMut) {
-        self.to_raw().encode_raw(buf)
+        self.raw.encode_raw(buf)
     }
 
     fn merge_field(
@@ -211,42 +247,10 @@ where
         buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError> {
-        let mut raw = 0;
-        <i32 as Message>::merge_field(&mut raw, tag, wire_type, buf, ctx)?;
-        *self = OpenEnum::from_raw(raw);
-        Ok(())
+        <i32 as Message>::merge_field(&mut self.raw, tag, wire_type, buf, ctx)
     }
 
     fn clear(&mut self) {
-        *self = OpenEnum::from_raw(0);
-    }
-}
-
-/// Represents an unknown enumeration value.
-///
-/// When the Protobuf spec mandates that enumeration value sets are ‘open’,
-/// a value of this type represents an integer value not known from the
-/// presently used enum definition.
-///
-/// This wrapper type is used to ensure correctness of constructed `[OpenEnum]`
-/// values and should rarely be used by name.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Unknown(i32);
-
-impl Debug for Unknown {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<Unknown> for i32 {
-    fn from(value: Unknown) -> Self {
-        value.0
-    }
-}
-
-impl From<Unknown> for UnknownEnumValue {
-    fn from(value: Unknown) -> Self {
-        UnknownEnumValue(value.0)
+        self.raw = 0;
     }
 }

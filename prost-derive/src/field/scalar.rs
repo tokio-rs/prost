@@ -242,9 +242,9 @@ impl Field {
                 struct #wrap_name<'a>(&'a ::prost::OpenEnum<#ty>);
                 impl<'a> ::core::fmt::Debug for #wrap_name<'a> {
                     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                        match &self.0 {
-                            ::prost::OpenEnum::Known(en) => ::core::fmt::Debug::fmt(en, f),
-                            ::prost::OpenEnum::Unknown(_) => ::core::fmt::Debug::fmt(&self.0, f),
+                        match self.0.known() {
+                            ::core::option::Option::Some(en) => ::core::fmt::Debug::fmt(&en, f),
+                            ::core::option::Option::None => ::core::fmt::Debug::fmt(self.0, f),
                         }
                     }
                 }
@@ -357,10 +357,10 @@ impl Field {
                         ),
                         Some(EnumType::Open) => (
                             quote! {
-                                self.#ident.unwrap_or(::prost::OpenEnum::Known(#default))
+                                self.#ident.unwrap_or(::prost::OpenEnum::from_raw(#default as i32))
                             },
                             quote! {
-                                ::prost::OpenEnum::Known(value)
+                                ::prost::OpenEnum::from(value)
                             },
                         ),
                         Some(EnumType::Closed) => (
@@ -862,7 +862,7 @@ impl DefaultValue {
         match (self, enum_type) {
             (DefaultValue::Enumeration(..), None) => quote!(#self as i32),
             (DefaultValue::Enumeration(..), Some(EnumType::Open)) => {
-                quote!(::prost::OpenEnum::Known(#self))
+                quote!(::prost::OpenEnum::from_raw(#self as i32))
             }
             _ => quote!(#self),
         }

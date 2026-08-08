@@ -209,8 +209,10 @@ pub struct ScalarTypes {
     pub packed_bytes_buf: Vec<Bytes>,
 }
 
+/// The shared enum test suite. `$default_enumeration` is the expected
+/// `DefaultValues::enumeration`, in the instantiating module's representation.
 macro_rules! enum_tests {
-    () => {
+    ($default_enumeration:expr) => {
         #[test]
         fn check_tags_inferred() {
             check_message(&TagsInferred::default());
@@ -249,9 +251,9 @@ macro_rules! enum_tests {
             assert_eq!(&default.string, "forty two");
             assert_eq!(&default.bytes_vec.as_ref(), b"foo\0bar");
             assert_eq!(&default.bytes_buf.as_ref(), b"foo\0bar");
-            assert_eq!(default.enumeration, BasicEnumeration::ONE.into());
+            assert_eq!(default.enumeration, $default_enumeration);
             assert_eq!(default.optional_enumeration, None);
-            assert_eq!(&default.repeated_enumeration, &[]);
+            assert!(default.repeated_enumeration.is_empty());
             assert_eq!(0, default.encoded_len());
         }
 
@@ -446,7 +448,7 @@ pub mod int_enum {
         check_message(&msg);
     }
 
-    enum_tests!();
+    enum_tests!(BasicEnumeration::ONE as i32);
 }
 
 pub mod open_enum {
@@ -607,7 +609,7 @@ pub mod open_enum {
         pub repeated_enumeration: Vec<OpenEnum<BasicEnumeration>>,
     }
 
-    enum_tests!();
+    enum_tests!(::prost::OpenEnum::from(BasicEnumeration::ONE));
 }
 
 pub mod closed_enum {
@@ -776,5 +778,5 @@ pub mod closed_enum {
         pub repeated_enumeration: Vec<BasicEnumeration>,
     }
 
-    enum_tests!();
+    enum_tests!(BasicEnumeration::ONE);
 }
