@@ -91,6 +91,7 @@ impl Field {
     }
 
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        let tag = self.tag;
         match self.label {
             Label::Optional => quote! {
                 #prost_path::encoding::message::merge(wire_type,
@@ -102,7 +103,12 @@ impl Field {
                 #prost_path::encoding::message::merge(wire_type, #ident, buf, ctx)
             },
             Label::Repeated => quote! {
-                #prost_path::encoding::message::merge_repeated(wire_type, #ident, buf, ctx)
+                #prost_path::encoding::message::merge_repeated(
+                    wire_type,
+                    #ident,
+                    buf,
+                    ctx.with_field_tag(#tag),
+                )
             },
         }
     }

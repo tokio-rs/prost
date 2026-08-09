@@ -28,30 +28,42 @@ pub use length_delimiter::{
 pub mod wire_type;
 pub use wire_type::{check_wire_type, WireType};
 
+const SCOPE_LIMIT_BITS: u32 = 25;
+const SCOPE_LIMIT_MASK: u32 = (1 << SCOPE_LIMIT_BITS) - 1;
+// The all-ones scope value disables optional reservation when the boundary
+// cannot fit alongside the recursion count.
+const UNREPRESENTABLE_SCOPE_LIMIT: u32 = SCOPE_LIMIT_MASK;
+#[cfg(not(feature = "no-recursion-limit"))]
+const RECURSE_COUNT_SHIFT: u32 = SCOPE_LIMIT_BITS;
+#[cfg(not(feature = "no-recursion-limit"))]
+const _: () = assert!(crate::RECURSION_LIMIT < (1u32 << (u32::BITS - RECURSE_COUNT_SHIFT)));
+
 /// Additional information passed to every decode/merge function.
 ///
 /// The context should be passed by value and can be freely cloned. When passing
 /// to a function which is decoding a nested object, then use `enter_recursion`.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "no-recursion-limit", derive(Default))]
-pub struct DecodeContext {
-    /// How many times we can recurse in the current decode stack before we hit
-    /// the recursion limit.
-    ///
-    /// The recursion limit is defined by `RECURSION_LIMIT` and cannot be
-    /// customized. The recursion limit can be ignored by building the Prost
-    /// crate with the `no-recursion-limit` feature.
-    #[cfg(not(feature = "no-recursion-limit"))]
-    recurse_count: u32,
-}
+// The low 32 bits hold the recursion count and length-delimited scope limit.
+// The high 32 bits hold a generated repeated field's tag. Keeping the context
+// transparent over a `u64` lets decode calls carry both pieces of state in one
+// argument. Zero is not a valid protobuf tag, so it represents the untagged
+// fallback used by hand-written Message implementations.
+#[derive(Clone, Copy, Debug)]
+#[repr(transparent)]
+pub struct DecodeContext(u64);
 
 #[cfg(not(feature = "no-recursion-limit"))]
 impl Default for DecodeContext {
     #[inline]
     fn default() -> DecodeContext {
-        DecodeContext {
-            recurse_count: crate::RECURSION_LIMIT,
-        }
+        DecodeContext(u64::from(crate::RECURSION_LIMIT << RECURSE_COUNT_SHIFT))
+    }
+}
+
+#[cfg(feature = "no-recursion-limit")]
+impl Default for DecodeContext {
+    #[inline]
+    fn default() -> DecodeContext {
+        DecodeContext(0)
     }
 }
 
@@ -64,15 +76,48 @@ impl DecodeContext {
     #[cfg(not(feature = "no-recursion-limit"))]
     #[inline]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
-        DecodeContext {
-            recurse_count: self.recurse_count - 1,
-        }
+        DecodeContext(u64::from((self.0 as u32) - (1 << RECURSE_COUNT_SHIFT)))
     }
 
     #[cfg(feature = "no-recursion-limit")]
     #[inline]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
-        DecodeContext {}
+        DecodeContext(u64::from(self.0 as u32))
+    }
+
+    #[inline]
+    pub(crate) fn with_scope_limit(mut self, scope_limit: usize) -> DecodeContext {
+        let scope_limit = if scope_limit < UNREPRESENTABLE_SCOPE_LIMIT as usize {
+            scope_limit as u32
+        } else {
+            UNREPRESENTABLE_SCOPE_LIMIT
+        };
+        // Entering a length-delimited scope must not retain an outer field tag.
+        self.0 = u64::from((self.0 as u32 & !SCOPE_LIMIT_MASK) | scope_limit);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn scope_remaining(&self, buf_remaining: usize) -> Option<usize> {
+        let scope_limit = (self.0 as u32) & SCOPE_LIMIT_MASK;
+        if scope_limit == UNREPRESENTABLE_SCOPE_LIMIT {
+            None
+        } else {
+            Some(buf_remaining.saturating_sub(scope_limit as usize))
+        }
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn with_field_tag(mut self, field_tag: u32) -> DecodeContext {
+        self.0 = (self.0 & u64::from(u32::MAX)) | (u64::from(field_tag) << 32);
+        self
+    }
+
+    #[inline]
+    fn field_tag(&self) -> Option<u32> {
+        let field_tag = (self.0 >> 32) as u32;
+        (field_tag != 0).then_some(field_tag)
     }
 
     /// Checks whether the recursion limit has been reached in the stack of
@@ -83,7 +128,7 @@ impl DecodeContext {
     #[cfg(not(feature = "no-recursion-limit"))]
     #[inline]
     pub(crate) fn limit_reached(&self) -> Result<(), DecodeError> {
-        if self.recurse_count == 0 {
+        if (self.0 as u32) >> RECURSE_COUNT_SHIFT == 0 {
             Err(DecodeErrorKind::RecursionLimitReached.into())
         } else {
             Ok(())
@@ -153,8 +198,10 @@ where
     }
 
     let limit = remaining - len as usize;
+    // Preserve this envelope's end for field decoders that inspect upcoming bytes.
+    let ctx = ctx.with_scope_limit(limit);
     while buf.remaining() > limit {
-        merge(value, buf, ctx.clone())?;
+        merge(value, buf, ctx)?;
     }
 
     if buf.remaining() != limit {
@@ -785,6 +832,10 @@ pub mod bytes {
 pub mod message {
     use super::*;
 
+    // Keep both wire lookahead and requested reservations bounded.
+    const MAX_REPEATED_MESSAGE_RESERVE_BYTES: usize = 4 * 1024;
+    const MAX_REPEATED_MESSAGE_LOOKAHEAD_BYTES: usize = 2 * MAX_REPEATED_MESSAGE_RESERVE_BYTES;
+
     pub fn encode<M>(tag: u32, msg: &M, buf: &mut impl BufMut)
     where
         M: Message,
@@ -826,6 +877,7 @@ pub mod message {
         }
     }
 
+    #[inline]
     pub fn merge_repeated<M>(
         wire_type: WireType,
         messages: &mut Vec<M>,
@@ -837,9 +889,119 @@ pub mod message {
     {
         check_wire_type(WireType::LengthDelimited, wire_type)?;
         let mut msg = M::default();
+        let remaining = buf.remaining();
+        let scope_remaining = ctx.scope_remaining(remaining);
         merge(WireType::LengthDelimited, &mut msg, buf, ctx)?;
+
+        // Repeated fields are typically serialized consecutively. Count only
+        // complete, same-tag fields in the current chunk so unrelated later
+        // fields cannot cause a reservation. Hand-written Message
+        // implementations do not provide a field tag and retain the old path.
+        // Preserve the established hot-path shape for repeated-message decoding.
+        #[allow(clippy::collapsible_if)]
+        if let (Some(tag), Some(scope_remaining)) = (ctx.field_tag(), scope_remaining) {
+            if messages.len() == messages.capacity() {
+                let limit = repeated_message_reserve_limit::<M>();
+                if limit > 0 {
+                    let value_len = remaining.saturating_sub(buf.remaining());
+                    let scope_remaining = scope_remaining.saturating_sub(value_len);
+                    let count =
+                        consecutive_repeated_messages_in_scope(tag, buf, limit, scope_remaining);
+                    if count > 0 {
+                        // Reserve for the decoded message and the following fields.
+                        messages.reserve(count + 1);
+                    }
+                }
+            }
+        }
+
         messages.push(msg);
         Ok(())
+    }
+
+    fn repeated_message_reserve_limit<M>() -> usize {
+        let max_messages = MAX_REPEATED_MESSAGE_RESERVE_BYTES / core::mem::size_of::<M>().max(1);
+
+        // The reservation must also include the message already decoded above.
+        max_messages.saturating_sub(1)
+    }
+
+    fn consecutive_repeated_messages_in_scope(
+        tag: u32,
+        buf: &impl Buf,
+        limit: usize,
+        scope_remaining: usize,
+    ) -> usize {
+        // A `Buf` may be fragmented, so only inspect fields entirely contained
+        // in the current chunk without advancing the caller's buffer.
+        let key = (u64::from(tag) << 3) | u64::from(WireType::LengthDelimited as u8);
+        let chunk = buf.chunk();
+        let mut chunk = &chunk[..chunk
+            .len()
+            .min(scope_remaining)
+            .min(MAX_REPEATED_MESSAGE_LOOKAHEAD_BYTES)];
+        let mut count = 0usize;
+
+        // The common canonical one-byte envelope can advance without decoding
+        // either varint. Leave all other inputs to the generic loop below.
+        if key < 0x80 {
+            let key = key as u8;
+            while count < limit && chunk.len() >= 2 && chunk[0] == key && chunk[1] < 0x80 {
+                let len = usize::from(chunk[1]);
+                let field = &chunk[2..];
+                if len > field.len() {
+                    break;
+                }
+
+                chunk = &field[len..];
+                // `count < limit <= usize::MAX` above makes this addition safe.
+                count += 1;
+            }
+        }
+
+        while count < limit && !chunk.is_empty() {
+            let mut field = chunk;
+            if key < 0x80 && field[0] == key as u8 {
+                field = &field[1..];
+            } else {
+                let decoded_key = match decode_varint(&mut field) {
+                    Ok(decoded_key) => decoded_key,
+                    Err(_) => break,
+                };
+                if decoded_key != key {
+                    break;
+                }
+            }
+
+            let len = if let Some((&byte, remaining)) = field.split_first() {
+                if byte < 0x80 {
+                    field = remaining;
+                    usize::from(byte)
+                } else {
+                    let len = match decode_varint(&mut field) {
+                        Ok(len) => len,
+                        Err(_) => break,
+                    };
+                    match len.try_into() {
+                        Ok(len) => len,
+                        Err(_) => break,
+                    }
+                }
+            } else {
+                break;
+            };
+            if len > field.len() {
+                break;
+            }
+
+            chunk = &field[len..];
+            count = match count.checked_add(1) {
+                Some(count) => count,
+                None => break,
+            };
+        }
+
+        count
     }
 
     #[inline]
@@ -862,6 +1024,224 @@ pub mod message {
                 .map(Message::encoded_len)
                 .map(|len| len + encoded_len_varint(len as u64))
                 .sum::<usize>()
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use bytes::{Buf, Bytes};
+
+        use super::{
+            consecutive_repeated_messages_in_scope, decode_key, merge_repeated,
+            repeated_message_reserve_limit, DecodeContext, MAX_REPEATED_MESSAGE_LOOKAHEAD_BYTES,
+        };
+        use crate::alloc::vec::Vec;
+        use crate::Message;
+
+        #[derive(Clone, PartialEq, crate::Message)]
+        #[prost(prost_path = "crate")]
+        struct ScopedValue {
+            #[prost(bool, tag = "1")]
+            value: bool,
+        }
+
+        #[derive(Clone, PartialEq, crate::Message)]
+        #[prost(prost_path = "crate")]
+        struct ScopedInner {
+            #[prost(message, repeated, tag = "2")]
+            values: Vec<ScopedValue>,
+        }
+
+        #[derive(Clone, PartialEq, crate::Message)]
+        #[prost(prost_path = "crate")]
+        struct ScopedOuter {
+            #[prost(message, optional, tag = "1")]
+            inner: Option<ScopedInner>,
+            #[prost(message, repeated, tag = "2")]
+            values: Vec<ScopedValue>,
+        }
+
+        #[derive(Clone, PartialEq, crate::Message)]
+        #[prost(prost_path = "crate")]
+        struct RepeatedThenBytes {
+            #[prost(message, repeated, tag = "1")]
+            values: Vec<ScopedValue>,
+            #[prost(bytes = "vec", tag = "2")]
+            payload: Vec<u8>,
+        }
+
+        fn consecutive_repeated_messages(tag: u32, buf: &impl Buf, limit: usize) -> usize {
+            consecutive_repeated_messages_in_scope(tag, buf, limit, usize::MAX)
+        }
+
+        #[test]
+        fn field_tag_is_opt_in() {
+            let ctx = DecodeContext::default();
+            assert_eq!(None, ctx.field_tag());
+            assert_eq!(Some(1), ctx.with_field_tag(1).field_tag());
+            assert_eq!(None, ctx.with_field_tag(0).field_tag());
+        }
+
+        #[test]
+        fn recursion_clears_the_field_tag_and_preserves_the_scope() {
+            let ctx = DecodeContext::default()
+                .with_scope_limit(3)
+                .with_field_tag(1)
+                .enter_recursion();
+
+            assert_eq!(None, ctx.field_tag());
+            assert_eq!(Some(2), ctx.scope_remaining(5));
+        }
+
+        #[test]
+        fn out_of_range_scope_disables_lookahead() {
+            let ctx = DecodeContext::default().with_scope_limit(usize::MAX);
+
+            assert_eq!(None, ctx.scope_remaining(usize::MAX));
+        }
+
+        #[test]
+        fn counts_contiguous_repeated_messages() {
+            let buf = &b"\x0a\x00\x0a\x02\x08\x01\x12\x00"[..];
+
+            assert_eq!(2, consecutive_repeated_messages(1, &buf, usize::MAX));
+        }
+
+        #[test]
+        fn counts_multibyte_tags() {
+            let buf = &b"\x82\x01\x00\x82\x01\x00"[..];
+
+            assert_eq!(2, consecutive_repeated_messages(16, &buf, usize::MAX));
+        }
+
+        #[test]
+        fn counts_noncanonical_keys_and_lengths() {
+            let buf = &b"\x8a\x00\x80\x00"[..];
+
+            assert_eq!(1, consecutive_repeated_messages(1, &buf, usize::MAX));
+        }
+
+        #[test]
+        fn stops_at_a_different_tag_or_incomplete_value() {
+            let different_tag = &b"\x0a\x00\x12\x00\x0a\x00"[..];
+            let incomplete_value = &b"\x0a\x00\x0a\x02\x08"[..];
+
+            assert_eq!(
+                1,
+                consecutive_repeated_messages(1, &different_tag, usize::MAX)
+            );
+            assert_eq!(
+                1,
+                consecutive_repeated_messages(1, &incomplete_value, usize::MAX)
+            );
+        }
+
+        #[test]
+        fn stops_at_the_reservation_and_lookahead_limits() {
+            let limited = &b"\x0a\x00\x0a\x00\x0a\x00"[..];
+            assert_eq!(2, consecutive_repeated_messages(1, &limited, 2));
+
+            let mut buf = Vec::new();
+            for _ in 0..=MAX_REPEATED_MESSAGE_LOOKAHEAD_BYTES / 2 {
+                buf.extend_from_slice(b"\x0a\x00");
+            }
+            assert_eq!(
+                MAX_REPEATED_MESSAGE_LOOKAHEAD_BYTES / 2,
+                consecutive_repeated_messages(1, &buf.as_slice(), usize::MAX)
+            );
+        }
+
+        #[test]
+        fn stops_at_the_message_boundary_and_chunk_boundary() {
+            let message = &b"\x0a\x00\x0a\x00"[..];
+            assert_eq!(
+                1,
+                consecutive_repeated_messages_in_scope(1, &message, usize::MAX, 2)
+            );
+
+            let buf = Bytes::from_static(b"\x0a\x00").chain(Bytes::from_static(b"\x0a\x00"));
+            assert_eq!(1, consecutive_repeated_messages(1, &buf, usize::MAX));
+        }
+
+        #[test]
+        fn bounds_reservation_by_message_size() {
+            assert_eq!(1_023, repeated_message_reserve_limit::<[u8; 4]>());
+            assert_eq!(7, repeated_message_reserve_limit::<[u8; 512]>());
+            assert_eq!(0, repeated_message_reserve_limit::<[u8; 4_096]>());
+        }
+
+        #[test]
+        fn reserves_through_merge_repeated() {
+            let value = ScopedValue { value: true };
+            let expected_values: Vec<_> = (0..100).map(|_| value.clone()).collect();
+            let encoded = ScopedInner {
+                values: expected_values.clone(),
+            }
+            .encode_to_vec();
+            // Hand-written Message implementations do not provide a field tag
+            // and continue to call the unchanged four-argument API.
+            let mut untagged_buf = encoded.as_slice();
+            let mut untagged_values: Vec<ScopedValue> = Vec::new();
+            while untagged_buf.has_remaining() {
+                let (_, wire_type) = decode_key(&mut untagged_buf).unwrap();
+                merge_repeated(
+                    wire_type,
+                    &mut untagged_values,
+                    &mut untagged_buf,
+                    DecodeContext::default(),
+                )
+                .unwrap();
+            }
+            assert_eq!(untagged_values, expected_values);
+
+            let mut buf = encoded.as_slice();
+            let mut values: Vec<ScopedValue> = Vec::new();
+            while buf.has_remaining() {
+                let (tag, wire_type) = decode_key(&mut buf).unwrap();
+                assert_eq!(2, tag);
+                merge_repeated(
+                    wire_type,
+                    &mut values,
+                    &mut buf,
+                    DecodeContext::default().with_field_tag(tag),
+                )
+                .unwrap();
+            }
+            assert_eq!(values, expected_values);
+            assert!(values.capacity() < 128);
+
+            let decoded = ScopedInner::decode(encoded.as_slice()).unwrap();
+            assert_eq!(decoded.values, expected_values);
+            assert!(decoded.values.capacity() < 128);
+        }
+
+        #[test]
+        fn does_not_reserve_for_an_unrelated_later_field() {
+            let message = RepeatedThenBytes {
+                values: Vec::from([ScopedValue { value: true }]),
+                payload: (0..10_000).map(|_| 0).collect(),
+            };
+
+            let decoded = RepeatedThenBytes::decode(message.encode_to_vec().as_slice()).unwrap();
+            assert_eq!(decoded, message);
+            assert!(decoded.values.capacity() < 16);
+        }
+
+        #[test]
+        fn does_not_reserve_past_a_nested_message() {
+            let value = ScopedValue { value: true };
+            let message = ScopedOuter {
+                inner: Some(ScopedInner {
+                    values: Vec::from([value.clone()]),
+                }),
+                values: (0..2_048).map(|_| value.clone()).collect(),
+            };
+
+            let outer_value_count = message.values.len();
+            let encoded = message.encode_to_vec();
+            let decoded = ScopedOuter::decode(encoded.as_slice()).unwrap();
+            assert_eq!(decoded, message);
+            assert!(decoded.inner.unwrap().values.capacity() < outer_value_count / 4);
+        }
     }
 }
 
