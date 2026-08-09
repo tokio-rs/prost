@@ -31,5 +31,13 @@ proptest = "1"
 rand = "0.10"
 
 [[bench]]
+name = "repeated_message"
+harness = false
+
+[[bench]]
+name = "repeated_message_allocations"
+harness = false
+
+[[bench]]
 name = "varint"
 harness = false
