@@ -1299,7 +1299,7 @@ mod tests {
     use super::*;
     use prost_types::{
         field_descriptor_proto::{Label, Type},
-        DescriptorProto, FieldDescriptorProto,
+        DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
     };
     use std::io;
     use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -1397,26 +1397,71 @@ mod tests {
     }
 
     #[test]
-    fn test_error_missing_message_name() {
-        let fds = FileDescriptorSet {
-            file: vec![FileDescriptorProto {
-                name: Some("broken.proto".to_owned()),
-                message_type: vec![DescriptorProto::default()],
-                ..Default::default()
-            }],
-        };
+    fn test_error_missing_or_empty_message_name() {
+        for (name, expected) in [(None, "missing name"), (Some(""), "empty name")] {
+            let fds = FileDescriptorSet {
+                file: vec![FileDescriptorProto {
+                    name: Some("broken.proto".to_owned()),
+                    message_type: vec![DescriptorProto {
+                        name: name.map(str::to_owned),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+            };
 
-        let error = compile_fds_error(fds);
-        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
-
-        let message = error.to_string();
-        assert!(message.contains("message descriptor"));
-        assert!(message.contains("missing name"));
+            let error = compile_fds_error(fds);
+            assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+            assert!(error.to_string().contains("message descriptor"));
+            assert!(error.to_string().contains(expected));
+        }
     }
 
     #[test]
-    fn test_error_missing_message_field_type_name() {
-        let fds = FileDescriptorSet {
+    fn test_error_missing_or_empty_enum_name() {
+        for (name, expected) in [(None, "missing name"), (Some(""), "empty name")] {
+            let error = compile_fds_error(enum_name_fds(name));
+            assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+            assert!(error.to_string().contains("enum descriptor"));
+            assert!(error.to_string().contains(expected));
+        }
+    }
+
+    #[test]
+    fn test_error_missing_or_empty_field_type_name() {
+        for field_type in [Type::Message, Type::Group, Type::Enum] {
+            for type_name in [None, Some("")] {
+                let error = compile_fds_error(message_field_fds(field_type, type_name));
+                assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+
+                let message = error.to_string();
+                assert!(message.contains("message field"));
+                assert!(message.contains(".Broken"));
+                assert!(message.contains("type_name"));
+            }
+        }
+    }
+
+    fn enum_name_fds(name: Option<&str>) -> FileDescriptorSet {
+        FileDescriptorSet {
+            file: vec![FileDescriptorProto {
+                name: Some("broken.proto".to_owned()),
+                enum_type: vec![EnumDescriptorProto {
+                    name: name.map(str::to_owned),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+        }
+    }
+
+    fn message_field_fds(field_type: Type, type_name: Option<&str>) -> FileDescriptorSet {
+        let label = if field_type == Type::Message {
+            Label::Optional
+        } else {
+            Label::Repeated
+        };
+        FileDescriptorSet {
             file: vec![FileDescriptorProto {
                 name: Some("broken.proto".to_owned()),
                 message_type: vec![DescriptorProto {
@@ -1424,23 +1469,16 @@ mod tests {
                     field: vec![FieldDescriptorProto {
                         name: Some("child".to_owned()),
                         number: Some(1),
-                        label: Some(Label::Optional as i32),
-                        r#type: Some(Type::Message as i32),
+                        label: Some(label as i32),
+                        r#type: Some(field_type as i32),
+                        type_name: type_name.map(str::to_owned),
                         ..Default::default()
                     }],
                     ..Default::default()
                 }],
                 ..Default::default()
             }],
-        };
-
-        let error = compile_fds_error(fds);
-        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
-
-        let message = error.to_string();
-        assert!(message.contains("message field"));
-        assert!(message.contains(".Broken"));
-        assert!(message.contains("missing type_name"));
+        }
     }
 
     fn compile_fds_error(fds: FileDescriptorSet) -> io::Error {

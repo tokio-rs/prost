@@ -29,6 +29,9 @@ impl MessageGraph {
         };
 
         for file in files {
+            for enumeration in &file.enum_type {
+                descriptor_name(enumeration.name.as_deref(), "enum")?;
+            }
             let package = format!(
                 "{}{}",
                 if file.package.is_some() { "." } else { "" },
@@ -56,21 +59,28 @@ impl MessageGraph {
     /// To allow recursive messages, the message graph is used to detect recursion and automatically box the recursive field.
     /// Since repeated messages are already put in a Vec, boxing them isn’t necessary even if the reference is recursive.
     fn add_message(&mut self, package: &str, msg: &DescriptorProto) -> Result<(), String> {
-        let name = msg
-            .name
-            .as_ref()
-            .ok_or_else(|| "message descriptor is missing name".to_owned())?;
+        let name = descriptor_name(msg.name.as_deref(), "message")?;
         let msg_name = format!("{}.{}", package, name);
         let msg_index = self.get_or_insert_index(msg_name.clone());
 
+        for enumeration in &msg.enum_type {
+            descriptor_name(enumeration.name.as_deref(), "enum")?;
+        }
         for field in &msg.field {
-            if field.r#type() == Type::Message && field.label() != Label::Repeated {
+            let field_type = field.r#type();
+            if matches!(field_type, Type::Message | Type::Group | Type::Enum) {
                 let type_name = field
                     .type_name
-                    .clone()
+                    .as_ref()
                     .ok_or_else(|| format!("message field in {msg_name} is missing type_name"))?;
-                let field_index = self.get_or_insert_index(type_name);
-                self.graph.add_edge(msg_index, field_index, ());
+                if type_name.is_empty() {
+                    return Err(format!("message field in {msg_name} has empty type_name"));
+                }
+
+                if field_type == Type::Message && field.label() != Label::Repeated {
+                    let field_index = self.get_or_insert_index(type_name.clone());
+                    self.graph.add_edge(msg_index, field_index, ());
+                }
             }
         }
         self.messages.insert(msg_name.clone(), msg.clone());
@@ -100,4 +110,12 @@ impl MessageGraph {
 
         has_path_connecting(&self.graph, outer, inner, None)
     }
+}
+
+fn descriptor_name<'a>(name: Option<&'a str>, kind: &str) -> Result<&'a str, String> {
+    let name = name.ok_or_else(|| format!("{kind} descriptor is missing name"))?;
+    if name.is_empty() {
+        return Err(format!("{kind} descriptor has empty name"));
+    }
+    Ok(name)
 }
