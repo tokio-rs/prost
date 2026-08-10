@@ -1117,7 +1117,8 @@ impl Config {
         let mut modules = HashMap::new();
         let mut packages = HashMap::new();
 
-        let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1));
+        let message_graph = MessageGraph::new(requests.iter().map(|x| &x.1))
+            .map_err(|error| Error::new(ErrorKind::InvalidInput, error))?;
         let extern_paths = ExternPaths::new(
             &self.extern_paths,
             self.prost_path_or_default(),
@@ -1296,6 +1297,12 @@ pub fn protoc_include_from_env() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prost_types::{
+        field_descriptor_proto::{Label, Type},
+        DescriptorProto, FieldDescriptorProto,
+    };
+    use std::io;
+    use std::panic::{catch_unwind, AssertUnwindSafe};
 
     macro_rules! assert_starts_with {
         ($left:expr, $right:expr) => {
@@ -1387,5 +1394,64 @@ mod tests {
             .compile_fds(FileDescriptorSet::default())
             .unwrap_err();
         assert_eq!(err.to_string(), "OUT_DIR environment variable is not set")
+    }
+
+    #[test]
+    fn test_error_missing_message_name() {
+        let fds = FileDescriptorSet {
+            file: vec![FileDescriptorProto {
+                name: Some("broken.proto".to_owned()),
+                message_type: vec![DescriptorProto::default()],
+                ..Default::default()
+            }],
+        };
+
+        let error = compile_fds_error(fds);
+        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+
+        let message = error.to_string();
+        assert!(message.contains("message descriptor"));
+        assert!(message.contains("missing name"));
+    }
+
+    #[test]
+    fn test_error_missing_message_field_type_name() {
+        let fds = FileDescriptorSet {
+            file: vec![FileDescriptorProto {
+                name: Some("broken.proto".to_owned()),
+                message_type: vec![DescriptorProto {
+                    name: Some("Broken".to_owned()),
+                    field: vec![FieldDescriptorProto {
+                        name: Some("child".to_owned()),
+                        number: Some(1),
+                        label: Some(Label::Optional as i32),
+                        r#type: Some(Type::Message as i32),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+        };
+
+        let error = compile_fds_error(fds);
+        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+
+        let message = error.to_string();
+        assert!(message.contains("message field"));
+        assert!(message.contains(".Broken"));
+        assert!(message.contains("missing type_name"));
+    }
+
+    fn compile_fds_error(fds: FileDescriptorSet) -> io::Error {
+        let out_dir = tempfile::tempdir().unwrap();
+        let mut config = Config::new();
+        config.out_dir(out_dir.path());
+
+        let result = catch_unwind(AssertUnwindSafe(|| config.compile_fds(fds)));
+        assert!(result.is_ok(), "compile_fds panicked for malformed input");
+        result
+            .unwrap()
+            .expect_err("compile_fds accepted malformed input")
     }
 }

@@ -19,7 +19,9 @@ pub struct MessageGraph {
 }
 
 impl MessageGraph {
-    pub(crate) fn new<'a>(files: impl Iterator<Item = &'a FileDescriptorProto>) -> MessageGraph {
+    pub(crate) fn new<'a>(
+        files: impl Iterator<Item = &'a FileDescriptorProto>,
+    ) -> Result<MessageGraph, String> {
         let mut msg_graph = MessageGraph {
             index: HashMap::new(),
             graph: Graph::new(),
@@ -33,11 +35,11 @@ impl MessageGraph {
                 file.package.as_deref().unwrap_or("")
             );
             for msg in &file.message_type {
-                msg_graph.add_message(&package, msg);
+                msg_graph.add_message(&package, msg)?;
             }
         }
 
-        msg_graph
+        Ok(msg_graph)
     }
 
     fn get_or_insert_index(&mut self, msg_name: String) -> NodeIndex {
@@ -53,21 +55,31 @@ impl MessageGraph {
     /// Because prost does not box message fields, recursively nested messages would not compile in Rust.
     /// To allow recursive messages, the message graph is used to detect recursion and automatically box the recursive field.
     /// Since repeated messages are already put in a Vec, boxing them isn’t necessary even if the reference is recursive.
-    fn add_message(&mut self, package: &str, msg: &DescriptorProto) {
-        let msg_name = format!("{}.{}", package, msg.name.as_ref().unwrap());
+    fn add_message(&mut self, package: &str, msg: &DescriptorProto) -> Result<(), String> {
+        let name = msg
+            .name
+            .as_ref()
+            .ok_or_else(|| "message descriptor is missing name".to_owned())?;
+        let msg_name = format!("{}.{}", package, name);
         let msg_index = self.get_or_insert_index(msg_name.clone());
 
         for field in &msg.field {
             if field.r#type() == Type::Message && field.label() != Label::Repeated {
-                let field_index = self.get_or_insert_index(field.type_name.clone().unwrap());
+                let type_name = field
+                    .type_name
+                    .clone()
+                    .ok_or_else(|| format!("message field in {msg_name} is missing type_name"))?;
+                let field_index = self.get_or_insert_index(type_name);
                 self.graph.add_edge(msg_index, field_index, ());
             }
         }
         self.messages.insert(msg_name.clone(), msg.clone());
 
         for msg in &msg.nested_type {
-            self.add_message(&msg_name, msg);
+            self.add_message(&msg_name, msg)?;
         }
+
+        Ok(())
     }
 
     /// Try get a message descriptor from current message graph
