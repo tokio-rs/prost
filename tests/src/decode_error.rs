@@ -39,9 +39,11 @@ fn test_decode_error_multiple_levels() {
     *buf.last_mut().unwrap() = 0xFF;
 
     assert_eq!(
-            TestAllTypesProto3::decode(buf.as_slice()).unwrap_err().to_string(),
-            "failed to decode Protobuf message: ForeignMessage.c: TestAllTypesProto3.optional_foreign_message: TestAllTypesProto3.recursive_message: invalid varint"
-        );
+        TestAllTypesProto3::decode(buf.as_slice())
+            .unwrap_err()
+            .to_string(),
+        "failed to decode Protobuf message: ForeignMessage.c: TestAllTypesProto3.optional_foreign_message: TestAllTypesProto3.recursive_message: invalid varint"
+    );
 }
 
 #[cfg(not(target_pointer_width = "64"))]
@@ -71,7 +73,9 @@ fn test_decode_error_recursion_limit_reached() {
 
     let buf = recursve_message.encode_to_vec();
     assert_eq!(
-        TestAllTypesProto3::decode(buf.as_slice()).unwrap_err().to_string(),
+        TestAllTypesProto3::decode(buf.as_slice())
+            .unwrap_err()
+            .to_string(),
         "failed to decode Protobuf message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: TestAllTypesProto3.recursive_message: recursion limit reached"
     );
 }
@@ -98,9 +102,11 @@ fn test_decode_error_invalid_tag() {
 fn test_decode_error_unexpected_wire_type() {
     let mut buf = [0x00].as_slice();
     let mut msg = TestAllTypesProto3::default();
-    let ctx = prost::encoding::DecodeContext::default();
+    let ctx = prost::encoding::DecodeContext::new(None);
     assert_eq!(
-        msg.merge_field(1, prost::encoding::WireType::LengthDelimited, &mut buf, ctx).unwrap_err().to_string(),
+        msg.merge_field(1, prost::encoding::WireType::LengthDelimited, &mut buf, ctx)
+            .unwrap_err()
+            .to_string(),
         "failed to decode Protobuf message: TestAllTypesProto3.optional_int32: invalid wire type: LengthDelimited (expected Varint)"
     );
 }
@@ -129,9 +135,11 @@ fn test_decode_error_invalid_string() {
     *buf.last_mut().unwrap() = 0xA0;
 
     assert_eq!(
-            TestAllTypesProto3::decode(buf.as_slice()).unwrap_err().to_string(),
-            "failed to decode Protobuf message: TestAllTypesProto3.optional_string: invalid string value: data is not UTF-8 encoded"
-        );
+        TestAllTypesProto3::decode(buf.as_slice())
+            .unwrap_err()
+            .to_string(),
+        "failed to decode Protobuf message: TestAllTypesProto3.optional_string: invalid string value: data is not UTF-8 encoded"
+    );
 }
 
 #[test]
@@ -145,6 +153,6 @@ fn test_decode_error_any() {
 
     assert_eq!(
         msg.to_msg::<Timestamp>().unwrap_err().to_string(),
-            "failed to decode Protobuf message: unexpected type URL.type_url: expected type URL: \"type.googleapis.com/google.protobuf.Timestamp\" (got: \"non-existing-url\")"
-        );
+        "failed to decode Protobuf message: unexpected type URL.type_url: expected type URL: \"type.googleapis.com/google.protobuf.Timestamp\" (got: \"non-existing-url\")"
+    );
 }

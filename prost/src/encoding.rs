@@ -38,29 +38,26 @@ pub struct DecodeContext {
     /// How many times we can recurse in the current decode stack before we hit
     /// the recursion limit.
     ///
-    /// The recursion limit is defined by `RECURSION_LIMIT` and cannot be
-    /// customized. The recursion limit can be ignored by building the Prost
-    /// crate with the `no-recursion-limit` feature.
+    /// It defaults to 100 and can be changed using `prost_build::Config::recursion_limit`,
+    /// or it can be disabled entirely using the `no-recursion-limit` feature.
     #[cfg(not(feature = "no-recursion-limit"))]
     recurse_count: u32,
 }
 
-#[cfg(not(feature = "no-recursion-limit"))]
-impl Default for DecodeContext {
-    #[inline]
-    fn default() -> DecodeContext {
+impl DecodeContext {
+    #[allow(unused_variables)]
+    pub fn new(recursion_limit: Option<u32>) -> DecodeContext {
         DecodeContext {
-            recurse_count: crate::RECURSION_LIMIT,
+            #[cfg(not(feature = "no-recursion-limit"))]
+            recurse_count: recursion_limit.unwrap_or(crate::RECURSION_LIMIT),
         }
     }
-}
 
-impl DecodeContext {
     /// Call this function before recursively decoding.
     ///
     /// There is no `exit` function since this function creates a new `DecodeContext`
     /// to be used at the next level of recursion. Continue to use the old context
-    // at the previous level of recursion.
+    /// at the previous level of recursion.
     #[cfg(not(feature = "no-recursion-limit"))]
     #[inline]
     pub(crate) fn enter_recursion(&self) -> DecodeContext {
@@ -1228,7 +1225,7 @@ mod test {
             wire_type,
             &mut roundtrip_value,
             &mut buf,
-            DecodeContext::default(),
+            DecodeContext::new(None),
         )
         .map_err(|error| TestCaseError::fail(error.to_string()))?;
 
@@ -1300,7 +1297,7 @@ mod test {
                 wire_type,
                 &mut roundtrip_value,
                 &mut buf,
-                DecodeContext::default(),
+                DecodeContext::new(None),
             )
             .map_err(|error| TestCaseError::fail(error.to_string()))?;
         }
@@ -1319,7 +1316,7 @@ mod test {
             WireType::LengthDelimited,
             &mut s,
             &mut &buf[..],
-            DecodeContext::default(),
+            DecodeContext::new(None),
         );
         r.expect_err("must be an error");
         assert!(s.is_empty());

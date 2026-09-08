@@ -77,6 +77,9 @@ mod recursive_oneof;
 mod groups;
 
 #[cfg(test)]
+mod recursion_limit_field;
+
+#[cfg(test)]
 mod default_string_escape;
 
 #[cfg(test)]

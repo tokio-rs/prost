@@ -50,6 +50,7 @@ pub struct Config {
     pub(crate) skip_debug: PathMap<()>,
     pub(crate) skip_protoc_run: bool,
     pub(crate) skip_source_info: bool,
+    pub(crate) recursion_limits: PathMap<u32>,
     pub(crate) include_file: Option<PathBuf>,
     pub(crate) prost_path: Option<String>,
     pub(crate) prost_types_path: Option<String>,
@@ -1045,6 +1046,25 @@ impl Config {
         self.compile_fds(file_descriptor_set)
     }
 
+    /// Configure a custom recursion limit for certain messages.
+    ///
+    /// This defaults to 100, and can be disabled with the no-recursion-limit crate feature.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.recursion_limit("my_messages.MyMessageType", 1000);
+    /// ```
+    pub fn recursion_limit<P>(&mut self, path: P, limit: u32) -> &mut Self
+    where
+        P: AsRef<str>,
+    {
+        self.recursion_limits
+            .insert(path.as_ref().to_string(), limit);
+        self
+    }
+
     pub(crate) fn prost_path_or_default(&self) -> &str {
         self.prost_path.as_deref().unwrap_or("::prost")
     }
@@ -1215,6 +1235,7 @@ impl default::Default for Config {
             skip_debug: PathMap::default(),
             skip_protoc_run: false,
             skip_source_info: false,
+            recursion_limits: PathMap::default(),
             include_file: None,
             prost_path: None,
             prost_types_path: None,
