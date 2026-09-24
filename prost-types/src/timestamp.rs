@@ -49,16 +49,16 @@ impl Timestamp {
     /// Normalization is based on [`google::protobuf::util::CreateNormalized`][1].
     ///
     /// [1]: https://github.com/google/protobuf/blob/v3.3.2/src/google/protobuf/util/time_util.cc#L59-L77
-    pub fn try_normalize(mut self) -> Result<Timestamp, Timestamp> {
-        let before = self;
-        self.normalize();
-        // If the seconds value has changed, and is either i64::MIN or i64::MAX, then the timestamp
-        // normalization overflowed.
-        if (self.seconds == i64::MAX || self.seconds == i64::MIN) && self.seconds != before.seconds
-        {
-            Err(before)
-        } else {
-            Ok(self)
+    pub fn try_normalize(self) -> Result<Timestamp, Timestamp> {
+        let seconds = self
+            .seconds
+            .checked_add(i64::from(self.nanos.div_euclid(NANOS_PER_SECOND)));
+        match seconds {
+            Some(seconds) => Ok(Timestamp {
+                seconds,
+                nanos: self.nanos.rem_euclid(NANOS_PER_SECOND),
+            }),
+            None => Err(self),
         }
     }
 
@@ -252,6 +252,19 @@ mod proofs {
 mod tests {
     use super::*;
 
+    fn expected_try_normalize(timestamp: Timestamp) -> Result<Timestamp, Timestamp> {
+        let total = i128::from(timestamp.seconds) * 1_000_000_000 + i128::from(timestamp.nanos);
+        let minimum = i128::from(i64::MIN) * 1_000_000_000;
+        let maximum = i128::from(i64::MAX) * 1_000_000_000 + 999_999_999;
+        if !(minimum..=maximum).contains(&total) {
+            return Err(timestamp);
+        }
+        Ok(Timestamp {
+            seconds: i64::try_from(total.div_euclid(1_000_000_000)).unwrap(),
+            nanos: i32::try_from(total.rem_euclid(1_000_000_000)).unwrap(),
+        })
+    }
+
     #[cfg(feature = "std")]
     use proptest::prelude::*;
     #[cfg(feature = "std")]
@@ -410,6 +423,60 @@ mod tests {
                 case.0,
             );
         }
+    }
+
+    #[test]
+    fn check_timestamp_try_normalize_boundaries() {
+        let cases = [
+            (i64::MAX, 1_000_000_000),
+            (i64::MIN, -1_000_000_000),
+            (i64::MIN, -1),
+            (i64::MAX - 1, 1_000_000_000),
+            (i64::MIN + 1, -1_000_000_000),
+            (i64::MIN, 0),
+            (i64::MAX, 999_999_999),
+            (-1, -1),
+            (0, -1),
+            (0, i32::MIN),
+            (0, i32::MAX),
+            (i64::MAX, i32::MAX),
+            (i64::MIN, i32::MIN),
+        ];
+        for (seconds, nanos) in cases {
+            let timestamp = Timestamp { seconds, nanos };
+            assert_eq!(timestamp.try_normalize(), expected_try_normalize(timestamp));
+        }
+    }
+
+    #[cfg(feature = "std")]
+    proptest! {
+        #[test]
+        fn check_timestamp_try_normalize_oracle(
+            timestamp in timestamp_strategy(),
+        ) {
+            prop_assert_eq!(timestamp.try_normalize(), expected_try_normalize(timestamp));
+        }
+    }
+
+    #[cfg(feature = "std")]
+    fn timestamp_strategy() -> impl Strategy<Value = Timestamp> {
+        let seconds = prop_oneof![
+            any::<i64>(),
+            -2i64..=2,
+            (0i64..=2).prop_map(|offset| i64::MIN + offset),
+            (0i64..=2).prop_map(|offset| i64::MAX - offset),
+        ];
+        let nanos = prop_oneof![
+            any::<i32>(),
+            Just(i32::MIN),
+            Just(i32::MAX),
+            Just(-1_000_000_000),
+            Just(1_000_000_000),
+            Just(-1),
+            Just(0),
+            Just(999_999_999),
+        ];
+        (seconds, nanos).prop_map(|(seconds, nanos)| Timestamp { seconds, nanos })
     }
 
     #[cfg(feature = "arbitrary")]
