@@ -122,7 +122,7 @@ pub mod code_generator_response {
         /// Code generators are executed in the order in which they appear on the
         /// command line.
         ///
-        /// If |insertion_point| is present, |name| must also be present.
+        /// If \|insertion_point\| is present, \|name\| must also be present.
         #[prost(string, optional, tag = "2")]
         pub insertion_point: ::core::option::Option<::prost::alloc::string::String>,
         /// The file contents.

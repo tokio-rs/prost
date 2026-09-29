@@ -1014,7 +1014,7 @@ pub struct SourceCodeInfo {
     /// }
     /// Let's look at just the field definition:
     /// optional string foo = 1;
-    /// ^       ^^     ^^  ^  ^^^
+    /// \^       \^\^     \^\^  \^  \^\^\^
     /// a       bc     de  f  ghi
     /// We have the following locations:
     /// span   path               represents
@@ -1866,7 +1866,7 @@ pub struct Mixin {
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
     /// to +315,576,000,000 inclusive. Note: these bounds are computed from:
-    /// 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years
+    /// 60 sec/min \* 60 min/hr \* 24 hr/day \* 365.25 days/year \* 10000 years
     #[prost(int64, tag = "1")]
     pub seconds: i64,
     /// Signed fractions of a second at nanosecond resolution of the span
