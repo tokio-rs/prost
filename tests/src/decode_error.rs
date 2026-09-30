@@ -27,7 +27,10 @@ fn test_decode_error_multiple_levels() {
     use protobuf::test_messages::proto3::ForeignMessage;
     let msg = TestAllTypesProto3 {
         recursive_message: Some(Box::new(TestAllTypesProto3 {
-            optional_foreign_message: Some(ForeignMessage { c: -1 }),
+            optional_foreign_message: Some(ForeignMessage {
+                c: -1,
+                ..Default::default()
+            }),
             ..Default::default()
         })),
         ..Default::default()

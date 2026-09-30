@@ -50,6 +50,8 @@ mod no_unused_results;
 mod submessage_without_package;
 #[cfg(test)]
 mod type_names;
+#[cfg(test)]
+mod unknown_fields;
 
 #[cfg(test)]
 mod boxed_field;
