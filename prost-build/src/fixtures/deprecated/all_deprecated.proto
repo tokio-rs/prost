@@ -18,6 +18,9 @@ message Test {
     string oneof_not_outdated = 11;
     string oneof_outdated = 12 [deprecated = true];
   }
+
+  map<int32, int32> map_not_outdated = 13;
+  map<int32, int32> map_outdated = 14 [deprecated = true];
 }
 
 enum Test2 {
