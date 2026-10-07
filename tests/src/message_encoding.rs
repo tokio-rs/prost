@@ -432,3 +432,24 @@ fn roundtrip() {
     };
     check_message(&msg);
 }
+
+#[test]
+fn oneof_merge_unknown_tag() {
+    use prost::alloc::string::ToString;
+    use prost::encoding::{wire_type::WireType, DecodeContext};
+
+    let mut field = None;
+    let err = BasicOneof::merge(
+        &mut field,
+        99,
+        WireType::Varint,
+        &mut Bytes::new(),
+        DecodeContext::default(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "failed to decode Protobuf message: invalid BasicOneof tag: 99"
+    );
+    assert_eq!(field, None);
+}
