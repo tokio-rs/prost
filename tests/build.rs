@@ -97,6 +97,30 @@ fn main() {
         .unwrap();
 
     config
+        .extern_path(
+            ".derive_copy.External",
+            if cfg!(feature = "edition-2015") {
+                "::derive_copy::StringBacked"
+            } else {
+                "crate::derive_copy::StringBacked"
+            },
+        )
+        .extern_path(
+            ".derive_copy.external_prefix",
+            if cfg!(feature = "edition-2015") {
+                "::derive_copy::external_prefix"
+            } else {
+                "crate::derive_copy::external_prefix"
+            },
+        )
+        .extern_path(
+            ".google",
+            if cfg!(feature = "edition-2015") {
+                "::custom_google"
+            } else {
+                "crate::custom_google"
+            },
+        )
         .compile_protos(&[src.join("derive_copy.proto")], includes)
         .unwrap();
 
