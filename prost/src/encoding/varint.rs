@@ -9,6 +9,32 @@ use crate::{error::DecodeErrorKind, DecodeError};
 /// The buffer must have enough remaining space (maximum 10 bytes).
 #[inline]
 pub fn encode_varint(mut value: u64, buf: &mut impl BufMut) {
+    // Tags and small integers should retain the inexpensive one-byte path.
+    if value < 0x80 {
+        buf.put_u8(value as u8);
+        return;
+    }
+
+    let chunk = buf.chunk_mut();
+    if chunk.len() >= 10 {
+        // A u64 needs at most ten bytes. Write into one contiguous chunk and
+        // publish its initialized prefix once, instead of advancing per byte.
+        for i in 0..10 {
+            if value < 0x80 {
+                chunk.write_byte(i, value as u8);
+                // SAFETY: bytes 0..=i were initialized above/in earlier loop
+                // iterations, and i + 1 <= 10 <= the returned chunk length.
+                unsafe { buf.advance_mut(i + 1) };
+                return;
+            }
+            chunk.write_byte(i, (value as u8) | 0x80);
+            value >>= 7;
+        }
+        unreachable!("a u64 varint fits in ten bytes");
+    }
+
+    // Short chunks include fixed-size slices near their end and segmented
+    // buffers. The original byte writer handles capacity and chunk transitions.
     // Varints are never more than 10 bytes
     for _ in 0..10 {
         if value < 0x80 {
@@ -176,6 +202,68 @@ fn decode_varint_slow(buf: &mut impl Buf) -> Result<u64, DecodeError> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    proptest::proptest! {
+        #[test]
+        fn encode_varint_chunk_boundaries(value in proptest::num::u64::ANY) {
+            // Independent byte-at-a-time oracle, also used for short buffers.
+            let mut remaining = value;
+            let mut expected = Vec::new();
+            while remaining >= 128 {
+                expected.push(remaining as u8 | 128);
+                remaining >>= 7;
+            }
+            expected.push(remaining as u8);
+            let len = expected.len();
+
+            for capacity in 0..=12 {
+                let mut vec = Vec::with_capacity(capacity);
+                encode_varint(value, &mut vec);
+                assert_eq!(vec, expected);
+                let mut bytes = bytes::BytesMut::with_capacity(capacity);
+                encode_varint(value, &mut bytes);
+                assert_eq!(bytes.as_ref(), expected);
+            }
+            for extra in 0..=10 {
+                let mut guarded = [0xa5; 22];
+                let mut slice = &mut guarded[1..1 + len + extra];
+                encode_varint(value, &mut slice);
+                assert_eq!(slice.len(), extra);
+                assert_eq!(&guarded[1..1 + len], expected);
+                assert_eq!(guarded[0], 0xa5);
+                assert!(guarded[1 + len..].iter().all(|&b| b == 0xa5));
+            }
+            for split in 0..=len {
+                let mut first = [0xa5; 10];
+                let mut second = [0xa5; 10];
+                let mut chain = (&mut first[..split]).chain_mut(&mut second[..len - split]);
+                encode_varint(value, &mut chain);
+                assert_eq!(chain.remaining_mut(), 0);
+                assert_eq!(&first[..split], &expected[..split]);
+                assert_eq!(&second[..len - split], &expected[split..]);
+                assert!(first[split..].iter().chain(&second[len - split..]).all(|&b| b == 0xa5));
+            }
+            let mut limited = Vec::new().limit(len);
+            encode_varint(value, &mut limited);
+            assert_eq!(limited.remaining_mut(), 0);
+            assert_eq!(limited.into_inner(), expected);
+        }
+    }
+
+    #[test]
+    fn encode_varint_short_buffers_panic_without_overwriting_guards() {
+        for value in [0, 127, 128, 16383, 16384, 1 << 63, u64::MAX] {
+            for capacity in 0..encoded_len_varint(value) {
+                let mut guarded = [0xa5; 12];
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    encode_varint(value, &mut &mut guarded[1..1 + capacity]);
+                }));
+                assert!(result.is_err());
+                assert_eq!(guarded[0], 0xa5);
+                assert!(guarded[1 + capacity..].iter().all(|&b| b == 0xa5));
+            }
+        }
+    }
 
     #[test]
     fn varint() {
