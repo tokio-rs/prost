@@ -288,6 +288,36 @@ macro_rules! varint {
                 }
             }
 
+            #[doc(hidden)]
+            pub fn encode_packed_cached(
+                tag: u32,
+                values: &[$ty],
+                buf: &mut impl BufMut,
+                sizes: &mut crate::size_cache::SizeCursor<'_>,
+            ) {
+                if values.is_empty() { return; }
+                let len = sizes.next_size();
+                encode_key(tag, WireType::LengthDelimited, buf);
+                encode_varint(len as u64, buf);
+                for $to_uint64_value in values {
+                    encode_varint($to_uint64, buf);
+                }
+            }
+
+            #[doc(hidden)]
+            pub fn encoded_len_packed_cached(
+                tag: u32,
+                values: &[$ty],
+                sizes: &mut crate::size_cache::SizeBuffer,
+            ) -> usize {
+                if values.is_empty() { return 0; }
+                let len = values.iter().map(|$to_uint64_value| {
+                    encoded_len_varint($to_uint64)
+                }).sum::<usize>();
+                sizes.record(len);
+                key_len(tag) + encoded_len_varint(len as u64) + len
+            }
+
             merge_repeated_numeric!($ty, WireType::Varint, merge, merge_repeated);
 
             #[inline]
@@ -592,7 +622,7 @@ pub mod string {
             }
 
             let drop_guard = DropGuard(value.as_mut_vec());
-            bytes::merge_one_copy(wire_type, drop_guard.0, buf, ctx)?;
+            bytes::merge(wire_type, drop_guard.0, buf, ctx)?;
             match str::from_utf8(drop_guard.0) {
                 Ok(_) => {
                     // Success; do not clear the bytes.
@@ -716,27 +746,10 @@ pub mod bytes {
         //
         // [1]: https://protobuf.dev/programming-guides/encoding/#last-one-wins
         //
-        // This is intended for A and B both being Bytes so it is zero-copy.
-        // Some combinations of A and B types may cause a double-copy,
-        // in which case merge_one_copy() should be used instead.
-        value.replace_with(buf.copy_to_bytes(len));
-        Ok(())
-    }
-
-    pub(super) fn merge_one_copy(
-        wire_type: WireType,
-        value: &mut impl BytesAdapter,
-        buf: &mut impl Buf,
-        _ctx: DecodeContext,
-    ) -> Result<(), DecodeError> {
-        check_wire_type(WireType::LengthDelimited, wire_type)?;
-        let len = decode_varint(buf)?;
-        if len > buf.remaining() as u64 {
-            return Err(DecodeErrorKind::BufferUnderflow.into());
-        }
-        let len = len as usize;
-
-        // If we must copy, make sure to copy only once.
+        // A bounded view lets Vec copy directly from the input, without an
+        // intermediate Bytes allocation/copy. The Bytes adapter still calls
+        // copy_to_bytes, which Take forwards to the original input, preserving
+        // zero-copy decoding when the input supports it.
         value.replace_with(buf.take(len));
         Ok(())
     }
@@ -749,6 +762,174 @@ pub mod bytes {
 
         use super::super::test::{check_collection_type, check_type};
         use super::*;
+
+        struct CopyProbe<B> {
+            inner: B,
+            copies: usize,
+        }
+
+        impl<B: Buf> Buf for CopyProbe<B> {
+            fn remaining(&self) -> usize {
+                self.inner.remaining()
+            }
+            fn chunk(&self) -> &[u8] {
+                self.inner.chunk()
+            }
+            fn advance(&mut self, count: usize) {
+                self.inner.advance(count);
+            }
+            fn copy_to_bytes(&mut self, len: usize) -> Bytes {
+                self.copies += 1;
+                self.inner.copy_to_bytes(len)
+            }
+        }
+
+        #[test]
+        fn vec_merge_copies_directly_and_reuses_capacity() {
+            let mut value = vec![42; 64];
+            let original_ptr = value.as_ptr();
+            for payload in [&b"abc"[..], &b""[..], &b"x"[..]] {
+                let mut wire = vec![payload.len() as u8];
+                wire.extend_from_slice(payload);
+                wire.push(99); // Must not consume the following field's bytes.
+                let mut input = CopyProbe {
+                    inner: wire.as_slice(),
+                    copies: 0,
+                };
+                merge(
+                    WireType::LengthDelimited,
+                    &mut value,
+                    &mut input,
+                    DecodeContext::default(),
+                )
+                .unwrap();
+                assert_eq!(value, payload);
+                assert_eq!(value.as_ptr(), original_ptr);
+                assert_eq!(input.copies, 0, "Vec must not request a temporary Bytes");
+                assert_eq!(input.inner, &[99]);
+                // The output owns its data independently of the input.
+                wire.fill(0);
+                assert_eq!(value, payload);
+            }
+        }
+
+        #[test]
+        fn bytes_merge_preserves_input_sharing() {
+            let owner = Bytes::from(vec![3, b'a', b'b', b'c', 99]);
+            let payload_ptr = owner[1..].as_ptr();
+            let mut input = CopyProbe {
+                inner: owner.clone(),
+                copies: 0,
+            };
+            let mut value = Bytes::new();
+            merge(
+                WireType::LengthDelimited,
+                &mut value,
+                &mut input,
+                DecodeContext::default(),
+            )
+            .unwrap();
+            assert_eq!(value.as_ptr(), payload_ptr);
+            assert_eq!(
+                input.copies, 1,
+                "Bytes must use the input's optimized copy_to_bytes"
+            );
+            assert_eq!(input.inner.as_ref(), &[99]);
+            drop(input);
+            drop(owner);
+            assert_eq!(value.as_ref(), b"abc");
+        }
+
+        #[test]
+        fn bytes_and_vec_merge_across_chunk_boundaries() {
+            for len in [0, 1, 127, 128, 4096] {
+                let payload: Vec<u8> = (0..len).map(|i| i as u8).collect();
+                let mut wire = Vec::new();
+                encode_varint(len as u64, &mut wire);
+                wire.extend_from_slice(&payload);
+                wire.push(99);
+                for split in [0, 1, 2, wire.len() / 2, wire.len() - 1, wire.len()] {
+                    let split = split.min(wire.len());
+                    let source = wire[..split].chain(&wire[split..]);
+                    let mut input = CopyProbe {
+                        inner: source,
+                        copies: 0,
+                    };
+                    let mut value = vec![42; len + 10];
+                    merge(
+                        WireType::LengthDelimited,
+                        &mut value,
+                        &mut input,
+                        DecodeContext::default(),
+                    )
+                    .unwrap();
+                    assert_eq!(value, payload);
+                    assert_eq!(input.copies, 0);
+                    assert_eq!(input.remaining(), 1);
+                    assert_eq!(input.get_u8(), 99);
+
+                    let mut input = wire[..split].chain(&wire[split..]);
+                    let mut value = Bytes::new();
+                    merge(
+                        WireType::LengthDelimited,
+                        &mut value,
+                        &mut input,
+                        DecodeContext::default(),
+                    )
+                    .unwrap();
+                    assert_eq!(value.as_ref(), payload);
+                    assert_eq!(input.remaining(), 1);
+                    assert_eq!(input.get_u8(), 99);
+                }
+            }
+        }
+
+        #[test]
+        fn invalid_bytes_length_does_not_replace_existing_value() {
+            for wire in [&[4, 1, 2][..], &[0x80; 10][..]] {
+                let mut input = wire;
+                let mut value = vec![42, 43];
+                assert!(merge(
+                    WireType::LengthDelimited,
+                    &mut value,
+                    &mut input,
+                    DecodeContext::default()
+                )
+                .is_err());
+                assert_eq!(value, [42, 43]);
+            }
+        }
+
+        #[cfg(feature = "derive")]
+        #[test]
+        fn repeated_occurrences_replace_bytes_and_preserve_other_fields() {
+            #[derive(Clone, PartialEq, crate::Message)]
+            #[prost(prost_path = "crate")]
+            struct Owned {
+                #[prost(bytes = "vec", tag = "1")]
+                value: Vec<u8>,
+                #[prost(uint32, tag = "2")]
+                marker: u32,
+            }
+            #[derive(Clone, PartialEq, crate::Message)]
+            #[prost(prost_path = "crate")]
+            struct Shared {
+                #[prost(bytes = "bytes", tag = "1")]
+                value: Bytes,
+                #[prost(uint32, tag = "2")]
+                marker: u32,
+            }
+            let mut wire = vec![10, 3, b'a', b'b', b'c', 16, 7, 10, 2, b'x', b'y'];
+            for expected in [&b"xy"[..], &b""[..]] {
+                let owned = Owned::decode(wire.as_slice()).unwrap();
+                let shared = Shared::decode(Bytes::from(wire.clone())).unwrap();
+                assert_eq!(owned.value, expected);
+                assert_eq!(shared.value.as_ref(), expected);
+                assert_eq!(owned.marker, 7);
+                assert_eq!(shared.marker, 7);
+                wire.extend_from_slice(&[10, 0]);
+            }
+        }
 
         proptest! {
             #[test]
@@ -954,6 +1135,64 @@ macro_rules! map {
     ($map_ty:ident) => {
         use crate::encoding::*;
         use core::hash::Hash;
+
+        /// Cache each synthetic map entry followed by its message value. The
+        /// same unmodified map is traversed in the same order by the writer.
+        pub fn encoded_len_message_cached<K, V, KL>(
+            key_len: KL,
+            tag: u32,
+            values: &$map_ty<K, V>,
+            sizes: &mut crate::size_cache::SizeBuffer,
+        ) -> usize
+        where
+            K: Default + Eq + Hash + Ord,
+            V: Message + Default + PartialEq,
+            KL: Fn(u32, &K) -> usize,
+        {
+            let default_key = K::default();
+            let default_value = V::default();
+            let mut total = 0;
+            for (key, value) in values.iter() {
+                let slot = sizes.begin();
+                let mut len = if key == &default_key {
+                    0
+                } else {
+                    key_len(1, key)
+                };
+                if value != &default_value {
+                    len += crate::size_cache::message::encoded_len(2, value, sizes);
+                }
+                sizes.finish(slot, len);
+                total += crate::encoding::key_len(tag) + encoded_len_varint(len as u64) + len;
+            }
+            total
+        }
+
+        pub fn encode_message_cached<K, V, B, KE>(
+            key_encode: KE,
+            tag: u32,
+            values: &$map_ty<K, V>,
+            buf: &mut B,
+            sizes: &mut crate::size_cache::SizeCursor<'_>,
+        ) where
+            K: Default + Eq + Hash + Ord,
+            V: Message + Default + PartialEq,
+            B: BufMut,
+            KE: Fn(u32, &K, &mut B),
+        {
+            let default_key = K::default();
+            let default_value = V::default();
+            for (key, value) in values.iter() {
+                encode_key(tag, WireType::LengthDelimited, buf);
+                encode_varint(sizes.next_size() as u64, buf);
+                if key != &default_key {
+                    key_encode(1, key, buf);
+                }
+                if value != &default_value {
+                    crate::size_cache::message::encode(2, value, buf, sizes);
+                }
+            }
+        }
 
         /// Generic protobuf map encode function.
         pub fn encode<K, V, B, KE, KL, VE, VL>(
