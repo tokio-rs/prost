@@ -1,5 +1,4 @@
 use core::cmp::min;
-use core::num::NonZeroU64;
 
 use ::bytes::{Buf, BufMut};
 
@@ -27,8 +26,8 @@ pub fn encode_varint(mut value: u64, buf: &mut impl BufMut) {
 pub const fn encoded_len_varint(value: u64) -> usize {
     // Based on [VarintSize64][1].
     // [1]: https://github.com/protocolbuffers/protobuf/blob/v28.3/src/google/protobuf/io/coded_stream.h#L1744-L1756
-    // Safety: value | 1 is non-zero.
-    let log2value = unsafe { NonZeroU64::new_unchecked(value | 1) }.ilog2();
+    // value | 1 is non-zero, so ilog2 cannot panic.
+    let log2value = (value | 1).ilog2();
     ((log2value * 9 + (64 + 9)) / 64) as usize
 }
 
