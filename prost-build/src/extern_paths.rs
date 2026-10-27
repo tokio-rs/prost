@@ -1,4 +1,4 @@
-use std::collections::{hash_map, HashMap};
+use std::collections::{hash_map, HashMap, HashSet};
 
 use itertools::Itertools;
 
@@ -19,6 +19,7 @@ fn validate_proto_path(path: &str) -> Result<(), String> {
 #[derive(Debug)]
 pub struct ExternPaths {
     extern_paths: HashMap<String, String>,
+    explicit_paths: HashSet<String>,
 }
 
 impl ExternPaths {
@@ -30,10 +31,12 @@ impl ExternPaths {
     ) -> Result<ExternPaths, String> {
         let mut extern_paths = ExternPaths {
             extern_paths: HashMap::new(),
+            explicit_paths: HashSet::new(),
         };
 
         for (proto_path, rust_path) in paths {
             extern_paths.insert(proto_path.clone(), rust_path.clone())?;
+            extern_paths.explicit_paths.insert(proto_path.clone());
         }
 
         if prost_types {
@@ -86,37 +89,49 @@ impl ExternPaths {
         // protoc should always give fully qualified identifiers.
         assert_eq!(".", &pb_ident[..1]);
 
-        if let Some(rust_path) = self.extern_paths.get(pb_ident) {
+        let matching_path = self.matching_path(pb_ident)?;
+        let rust_path = self.extern_paths.get(matching_path)?;
+        if matching_path == pb_ident {
             return Some(rust_path.clone());
         }
 
-        // TODO(danburkert): there must be a more efficient way to do this, maybe a trie?
-        for (idx, _) in pb_ident.rmatch_indices('.') {
-            if let Some(rust_path) = self.extern_paths.get(&pb_ident[..idx]) {
-                let mut segments = pb_ident[idx + 1..].split('.');
-                let ident_type = segments.next_back().map(to_upper_camel);
+        let mut segments = pb_ident[matching_path.len() + 1..].split('.');
+        let ident_type = segments.next_back().map(to_upper_camel);
 
-                return Some(
-                    rust_path
-                        .split("::")
-                        .chain(segments)
-                        .enumerate()
-                        .map(|(idx, segment)| {
-                            if idx == 0 && segment == "crate" {
-                                // If the first segment of the path is 'crate', then do not escape
-                                // it into a raw identifier, since it's being used as the keyword.
-                                segment.to_owned()
-                            } else {
-                                to_snake(segment)
-                            }
-                        })
-                        .chain(ident_type)
-                        .join("::"),
-                );
-            }
+        Some(
+            rust_path
+                .split("::")
+                .chain(segments)
+                .enumerate()
+                .map(|(idx, segment)| {
+                    if idx == 0 && segment == "crate" {
+                        // `crate` is a keyword and must not be escaped as an identifier.
+                        segment.to_owned()
+                    } else {
+                        to_snake(segment)
+                    }
+                })
+                .chain(ident_type)
+                .join("::"),
+        )
+    }
+
+    pub fn is_explicit(&self, pb_ident: &str) -> bool {
+        assert_eq!(".", &pb_ident[..1]);
+
+        self.matching_path(pb_ident)
+            .is_some_and(|path| self.explicit_paths.contains(path))
+    }
+
+    fn matching_path<'a>(&self, pb_ident: &'a str) -> Option<&'a str> {
+        if self.extern_paths.contains_key(pb_ident) {
+            return Some(pb_ident);
         }
 
-        None
+        pb_ident.rmatch_indices('.').find_map(|(index, _)| {
+            let path = &pb_ident[..index];
+            self.extern_paths.contains_key(path).then_some(path)
+        })
     }
 }
 
