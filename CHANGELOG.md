@@ -1,3 +1,19 @@
+# Prost version 0.14.5
+
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+### 🐛 Bug Fixes
+
+- *(prost-derive)* Avoid UTF-8 panic for enumeration names (#1425)
+- Correct packed encoding default for proto3 fields with options (#1399)
+- Prevent panic for service generator in empty module (#1442)
+
+### 💼 Dependencies
+
+- Update `cargo clippy` to 1.95 (#1436)
+- *(deps)* Bump actions/checkout from 6 to 7 (#1438)
+- *(deps)* Update itertools requirement from >=0.10, <=0.14 to >=0.10, <=0.15 (#1439)
+
 # Prost version 0.14.4
 
 _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
