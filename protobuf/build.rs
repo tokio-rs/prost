@@ -63,7 +63,7 @@ include(FetchContent)
 FetchContent_Declare(
   protobuf
   GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-  GIT_TAG {tag}
+  GIT_TAG {PROTOBUF_TAG}
   GIT_SHALLOW TRUE
 )
 
@@ -73,9 +73,14 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 set(ABSL_USE_EXTERNAL_GOOGLETEST ON)
 set(ABSL_BUILD_TESTING OFF)
 set(ABSL_ENABLE_INSTALL ON)
-set(protobuf_BUILD_CONFORMANCE {conformance})
+set(protobuf_BUILD_CONFORMANCE {build_conformance})
 set(protobuf_BUILD_TESTS OFF)
 set(protobuf_ABSL_PROVIDER "module")
+
+# Workaround for older Abseil (LTS 20230802) with newer compiler (GCC 15)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include\;cstdint>)
+endif()
 
 # On macOS with Nix, abseil's multi-arch support conflicts with Nix's --target flags.
 # Only apply workaround if we detect Nix environment (CMAKE_C_FLAGS contains --target).
@@ -95,10 +100,7 @@ FetchContent_MakeAvailable(protobuf)
 if(_SAVED_APPLE)
   set(APPLE "${{_SAVED_APPLE}}" CACHE BOOL "" FORCE)
 endif()
-"#,
-        system_processor = system_processor,
-        tag = PROTOBUF_TAG,
-        conformance = build_conformance
+"#
     );
 
     fs::write(build_dir.join("CMakeLists.txt"), cmake_content)

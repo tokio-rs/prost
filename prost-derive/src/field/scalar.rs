@@ -466,7 +466,6 @@ impl Ty {
     }
 
     pub fn from_str(s: &str) -> Result<Ty, Error> {
-        let enumeration_len = "enumeration".len();
         let error = Err(anyhow!("invalid type: {s}"));
         let ty = match s.trim() {
             "float" => Ty::Float,
@@ -484,8 +483,8 @@ impl Ty {
             "bool" => Ty::Bool,
             "string" => Ty::String,
             "bytes" => Ty::Bytes(BytesTy::Vec),
-            s if s.len() > enumeration_len && &s[..enumeration_len] == "enumeration" => {
-                let s = &s[enumeration_len..].trim();
+            s if s.starts_with("enumeration") => {
+                let s = s.strip_prefix("enumeration").unwrap().trim();
                 match s.chars().next() {
                     Some('<') | Some('(') => (),
                     _ => return error,
@@ -672,7 +671,7 @@ impl DefaultValue {
                 let value = value.trim();
 
                 if let Ty::Enumeration(ref path) = *ty {
-                    let variant = Ident::new(value, Span::call_site());
+                    let variant = parse_str::<Ident>(value)?;
                     return Ok(DefaultValue::Enumeration(quote!(#path::#variant)));
                 }
 
@@ -820,5 +819,23 @@ impl ToTokens for DefaultValue {
             DefaultValue::Enumeration(ref value) => value.to_tokens(tokens),
             DefaultValue::Path(ref value) => value.to_tokens(tokens),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DefaultValue, Ty};
+    use syn::{parse_str, Lit, Path};
+
+    #[test]
+    fn from_lit_rejects_invalid_enumeration_default_without_panic() {
+        let ty = Ty::Enumeration(parse_str::<Path>("ExampleEnum").unwrap());
+        let lit = parse_str::<Lit>("\"not-valid!\"").unwrap();
+        assert!(DefaultValue::from_lit(&ty, lit).is_err());
+    }
+
+    #[test]
+    fn from_str_rejects_non_ascii_prefix_without_panic() {
+        assert!(Ty::from_str("éééééé").is_err());
     }
 }

@@ -40,6 +40,3 @@ sed -i -E "s/^${PROST_CRATE_MATCHER} = \{ version = \"${VERSION_MATCHER}\"/\1 = 
   "$DIR/prost-derive/Cargo.toml" \
   "$DIR/prost-build/Cargo.toml" \
   "$DIR/prost-types/Cargo.toml"
-
-git commit -a -m "release ${VERSION}"
-git tag -a "v${VERSION}" -m "release ${VERSION}"

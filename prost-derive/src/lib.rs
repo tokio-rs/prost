@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/prost-derive/0.14.3")]
+#![doc(html_root_url = "https://docs.rs/prost-derive/0.14.4")]
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "4096"]
 
@@ -323,7 +323,7 @@ fn try_enumeration(input: TokenStream) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             #[doc=#is_valid_doc]
-            pub fn is_valid(value: i32) -> bool {
+            pub const fn is_valid(value: i32) -> bool {
                 match value {
                     #(#is_valid,)*
                     _ => false,
@@ -533,9 +533,7 @@ fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
         if let Meta::List(meta_list) = &attr.meta {
             if meta_list.path.is_ident("prost") {
                 result.extend(
-                    meta_list
-                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?
-                        .into_iter(),
+                    meta_list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?,
                 )
             }
         }

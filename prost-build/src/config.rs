@@ -1136,10 +1136,6 @@ impl Config {
                 .entry(request_module.clone())
                 .or_insert_with(String::new);
             CodeGenerator::generate(&mut context, request_fd, buf);
-            if buf.is_empty() {
-                // Did not generate any code, remove from list to avoid inclusion in include file or output file list
-                modules.remove(&request_module);
-            }
         }
 
         if let Some(service_generator) = context.service_generator_mut() {
@@ -1148,6 +1144,9 @@ impl Config {
                 service_generator.finalize_package(&package, buf);
             }
         }
+
+        // Modules without generated code should be removed from list to avoid inclusion in include file or output file list
+        modules.retain(|_module, buf| !buf.is_empty());
 
         #[cfg(feature = "format")]
         if self.fmt {

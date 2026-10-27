@@ -12,7 +12,7 @@ prost-types = { path = "../prost-types" }
 [build-dependencies]
 anyhow = "1.0.1"
 prost-build = { path = "../prost-build" }
-tempfile = "3"
+tempfile = { version = "3", default-features = false }
 cmake = "0.1.51"
 
 [package.metadata.cargo-machete]

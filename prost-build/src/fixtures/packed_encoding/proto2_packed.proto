@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+package packed_encoding_proto2;
+
+message TestPacked {
+  repeated int32 no_options = 1;
+  repeated int32 other_options_only = 2 [deprecated = true];
+  repeated int32 explicit_unpacked = 3 [packed = false];
+  repeated int32 explicit_unpacked_with_options = 4 [packed = false, deprecated = true];
+  repeated int32 explicit_packed = 5 [packed = true];
+  repeated int32 explicit_packed_with_options = 6 [packed = true, deprecated = true];
+}

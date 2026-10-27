@@ -232,9 +232,7 @@ fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
         if let Meta::List(meta_list) = &attr.meta {
             if meta_list.path.is_ident("prost") {
                 result.extend(
-                    meta_list
-                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?
-                        .into_iter(),
+                    meta_list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?,
                 )
             }
         }

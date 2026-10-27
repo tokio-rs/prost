@@ -16,18 +16,18 @@ cleanup-markdown = ["dep:pulldown-cmark", "dep:pulldown-cmark-to-cmark"]
 
 [dependencies]
 heck = { version = ">=0.4, <=0.5" }
-itertools = { version = ">=0.10, <=0.14", default-features = false, features = ["use_alloc"] }
+itertools = { version = ">=0.10, <=0.15", default-features = false, features = ["use_alloc"] }
 log = "0.4.4"
 multimap = { version = ">=0.8, <=0.10", default-features = false }
 petgraph = { version = "0.8", default-features = false, features = ["std"] }
-prost = { version = "0.14.3", path = "../prost", default-features = false }
-prost-types = { version = "0.14.3", path = "../prost-types", default-features = false }
-tempfile = "3"
+prost = { version = "0.14.4", path = "../prost", default-features = false }
+prost-types = { version = "0.14.4", path = "../prost-types", default-features = false }
+tempfile = { version = "3", default-features = false }
 regex = { version = "1.8.1", default-features = false, features = ["std", "unicode-bool"] }
 
 # feature: format
-prettyplease = { version = "0.2", optional = true }
-syn = { version = "2", features = ["full"], optional = true }
+prettyplease = { version = "0.3", optional = true }
+syn = { version = "3", features = ["full"], optional = true }
 
 # These two must be kept in sync, used for `cleanup-markdown` feature.
 pulldown-cmark = { version = "0.13", optional = true, default-features = false }
@@ -39,3 +39,5 @@ env_logger = { version = "0.11", default-features = false }
 [lints.clippy]
 # This lint has MSRV 1.86
 io_other_error = "allow"
+# This lint has MSRV 1.88
+collapsible_if = "allow"

@@ -24,7 +24,7 @@ pub struct Test {
     #[prost(enumeration = "Test2", repeated, tag = "9")]
     pub repeated_enum_not_outdated: ::prost::alloc::vec::Vec<i32>,
     #[deprecated]
-    #[prost(enumeration = "Test2", repeated, packed = "false", tag = "10")]
+    #[prost(enumeration = "Test2", repeated, tag = "10")]
     pub repeated_enum_outdated: ::prost::alloc::vec::Vec<i32>,
     #[prost(oneof = "test::Test3", tags = "11, 12")]
     pub test3: ::core::option::Option<test::Test3>,

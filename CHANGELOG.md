@@ -1,6 +1,75 @@
+# Prost version 0.14.4
+
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+### 🚀 Features
+
+- *(prost-derive)* Make is_valid a constant function (#1401)
+- Increase MSRV to 1.85 (#1428)
+
+### 🐛 Bug Fixes
+
+- Use Display instead of Debug for generated enumeration attributes (#1419)
+- *(prost-derive)* Return error for invalid enumeration default identifiers (#1426)
+- *(build)* Grab binary path from cargo (#1429)
+- *(build)* Fix C++ build on GCC 15 (#1395)
+
+### 📚 Documentation
+
+- Add example for `decode_length_delimiter` (#1311)
+- Update protobuf-src example to avoid unsafe set_var
+
+### 🧪 Testing
+
+- Test derive Eq behavior (#1422)
+- *(groups)* Actually construct `NestedGroup` (#1363)
+
+### 💼 Dependencies
+
+- *(deps)* Update criterion requirement from 0.7 to 0.8 (#1374)
+- *(deps)* Remove `getrandom@0.4.1` from build-dependencies (#1400)
+- *(deps)* Update rand requirement from 0.9 to 0.10 (#1397)
+- *(deps)* Bump actions/upload-artifact from 6 to 7 (#1409)
+- *(deps)* Update `cargo clippy` to 1.89 (#1433)
+- *(deps)* Update `cargo clippy` to 1.91 (#1435)
+- *(deps)* Update and improve nix devshell (#1393)
+
+### 🎨 Styling
+
+- Prevent needless borrow (#1404)
+- Use `std::hint::black_box()` (#1403)
+- Use variables directly in `format!()` (#1432)
+- Remove explicit `.into_iter()` (#1434)
+- Run clippy on benches (#1405)
+
+# Prost version 0.14.3
+
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+## ⚠️ Heads-up
+
+- Add back `DecodeError::new` (#1382)
+  
+  The `DecodeError::new()` was removed to simplify our code. It was not part of the public API, but 
+  removing it broke code in other crates. It is added back to prevent breakage across the ecosystem.
+
+## 🐛 Bug Fixes
+- Name::full_name() is correct for empty packages (#1386)
+
+## 💼 Dependencies
+
+- *(deps)* Bump actions/upload-artifact from 5 to 6 (#1381)
+- *(deps)* Update pulldown-cmark-to-cmark requirement from 21 to 22 (#1384)
+
+### ⚙️ Miscellaneous Tasks
+
+- Remove protobuf submodule and leverage cmake for it (#1389)
+
 # Prost version 0.14.2
 
 _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+**note**: this version was yanked in favor of 0.14.2
 
 ## ⚠️ Heads-up
 

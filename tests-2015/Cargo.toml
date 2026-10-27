@@ -25,7 +25,7 @@ protobuf = { path = "../protobuf" }
 
 [dev-dependencies]
 prost-build = { path = "../prost-build" }
-tempfile = "3"
+tempfile = { version = "3", default-features = false }
 
 [build-dependencies]
 cfg-if = "1"

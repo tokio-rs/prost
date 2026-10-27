@@ -465,7 +465,8 @@ impl<'b> CodeGenerator<'_, 'b> {
                         .descriptor
                         .options
                         .as_ref()
-                        .map_or(self.syntax == Syntax::Proto3, |options| options.packed())
+                        .and_then(|options| options.packed)
+                        .unwrap_or(self.syntax == Syntax::Proto3)
                 {
                     self.buf.push_str(", packed = \"false\"");
                 }
@@ -1064,7 +1065,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             Type::Group => Cow::Borrowed("group"),
             Type::Message => Cow::Borrowed("message"),
             Type::Enum => Cow::Owned(format!(
-                "enumeration = {:?}",
+                "enumeration = \"{}\"",
                 self.resolve_ident(field.type_name())
             )),
         }

@@ -9,17 +9,8 @@ use protobuf::conformance;
 /// so that Cargo will build the proto-conformance binary.
 #[test]
 fn test_conformance() {
-    // Get the path to the proto-conformance binary. Adapted from
-    // https://github.com/rust-lang/cargo/blob/19fdb308cdbb25faf4f1e25a71351d8d603fa447/tests/cargotest/support/mod.rs#L306.
-    let proto_conformance = env::current_exe()
-        .map(|mut path| {
-            path.pop();
-            if path.ends_with("deps") {
-                path.pop();
-            }
-            path.join("conformance")
-        })
-        .unwrap();
+    let proto_conformance =
+        env::var("CARGO_BIN_EXE_conformance").expect("Cargo must provide path to build binaries");
 
     let status = Command::new(conformance::test_runner())
         .arg("--enforce_recommended")
