@@ -80,6 +80,25 @@
 //! That's it! Run `cargo doc` to see documentation for the generated code. The full
 //! example project can be found on [GitHub](https://github.com/danburkert/snazzy).
 //!
+//! ## Unknown Fields
+//!
+//! `prost-build` supports unknown fields, however they need to be manually enabled in your
+//! `build.rs` build-script. This can be done by modifying the previous build-script like so:
+//! ```rust,no_run
+//! use std::io::Result;
+//! fn main() -> Result<()> {
+//!     let mut config = prost_build::Config::new();
+//!     // To enable unknown fields for a single message:
+//!     config.include_unknown_fields(".snazzy.items.shirt", "unknown_fields_");
+//!     // To enable unknown fields for a whole package:
+//!     config.include_unknown_fields(".snazzy.items", "unknown_fields_");
+//!     // To enable unknown fields for all packages and messages
+//!     config.include_unknown_fields(".", "unknown_fields_");
+//!     config.compile_protos(&["src/items.proto"], &["src/"])?;
+//!     Ok(())
+//! }
+//! ```
+//!
 //! ## Feature Flags
 //! - `format`: Format the generated output. This feature is enabled by default.
 //! - `cleanup-markdown`: Clean up Markdown in protobuf docs. Enable this to clean up protobuf files from third parties.
