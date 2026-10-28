@@ -479,7 +479,14 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             {
                 match tag {
                     #(#merge,)*
-                    _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
+                    _ => {
+                        #[allow(deprecated)]
+                        let error = #prost_path::DecodeError::new(#prost_path::alloc::format!(
+                            concat!("invalid ", stringify!(#ident), " tag: {}"),
+                            tag
+                        ));
+                        ::core::result::Result::Err(error)
+                    }
                 }
             }
 
