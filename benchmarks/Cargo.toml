@@ -4,13 +4,17 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
+[features]
+default = ["size-cache"]
+size-cache = ["prost/size-cache"]
+
 [dependencies]
 
 [build-dependencies]
 prost-build = { path = "../prost-build" }
 
 [dev-dependencies]
-prost = { path = "../prost" }
+prost = { path = "../prost", default-features = false, features = ["derive", "std"] }
 criterion = { version = "0.8", default-features = false }
 
 [lib]
@@ -19,4 +23,8 @@ bench = false
 
 [[bench]]
 name = "dataset"
+harness = false
+
+[[bench]]
+name = "nested"
 harness = false
