@@ -1267,10 +1267,34 @@ pub fn error_message_protoc_not_found() -> String {
 }
 
 /// Returns the path to the `protoc` binary.
+///
+/// When Cargo runs a build script it sets the `HOST` environment variable to the host target
+/// triple. If a host specific `<HOST>_PROTOC` variable is set (for example
+/// `X86_64_UNKNOWN_LINUX_GNU_PROTOC`), it takes precedence over the plain `PROTOC` variable.
+/// This makes it possible to point at a different `protoc` per build host from a single `[env]`
+/// table in `.cargo/config.toml`. If neither variable is set, `protoc` is looked up on the `PATH`.
 pub fn protoc_from_env() -> PathBuf {
-    env::var_os("PROTOC")
-        .map(PathBuf::from)
-        .unwrap_or(PathBuf::from("protoc"))
+    host_protoc_from_env()
+        .or_else(|| env::var_os("PROTOC").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from("protoc"))
+}
+
+/// Returns the host specific `protoc` path, e.g. from `X86_64_UNKNOWN_LINUX_GNU_PROTOC`.
+///
+/// Returns `None` when the `HOST` triple is not available (so outside of a build script), or when
+/// the host specific variable is not set.
+fn host_protoc_from_env() -> Option<PathBuf> {
+    let host = env::var("HOST").ok()?;
+    env::var_os(host_protoc_var(&host)).map(PathBuf::from)
+}
+
+/// Builds the host specific `protoc` environment variable name from a target triple.
+///
+/// The triple is uppercased and any `-` or `.` is replaced with `_`, so the name is a valid
+/// environment variable. This follows the same convention used by other build time crates such as
+/// `openssl-sys`.
+fn host_protoc_var(host: &str) -> String {
+    format!("{}_PROTOC", host.replace(['-', '.'], "_").to_uppercase())
 }
 
 /// Returns the path to the Protobuf include directory.
@@ -1310,6 +1334,23 @@ mod tests {
                 }
             }
         };
+    }
+
+    #[test]
+    fn test_host_protoc_var() {
+        assert_eq!(
+            host_protoc_var("x86_64-unknown-linux-gnu"),
+            "X86_64_UNKNOWN_LINUX_GNU_PROTOC"
+        );
+        assert_eq!(
+            host_protoc_var("aarch64-pc-windows-msvc"),
+            "AARCH64_PC_WINDOWS_MSVC_PROTOC"
+        );
+        // Triples containing a `.` are normalized to a valid environment variable name.
+        assert_eq!(
+            host_protoc_var("thumbv8m.main-none-eabi"),
+            "THUMBV8M_MAIN_NONE_EABI_PROTOC"
+        );
     }
 
     #[test]
