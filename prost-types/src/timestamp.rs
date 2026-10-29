@@ -1,5 +1,5 @@
 use super::*;
-use core::ops::{Add, Div, Sub};
+use core::ops::{Add, Sub};
 
 impl Timestamp {
     /// Normalizes the timestamp to a canonical format.
@@ -114,173 +114,156 @@ impl Timestamp {
         Timestamp::try_from(date_time)
     }
 
+    /// The latest timestamp in the documented range: `9999-12-31T23:59:59.999999999Z`.
     pub const MAX: Timestamp = Timestamp {
-        seconds: i64::MAX,
+        seconds: 253_402_300_799,
         nanos: NANOS_PER_SECOND - 1,
     };
 
+    /// The earliest timestamp in the documented range: `0001-01-01T00:00:00Z`.
     pub const MIN: Timestamp = Timestamp {
-        seconds: i64::MIN,
+        seconds: -62_135_596_800,
         nanos: 0,
     };
+
+    /// Returns `Some(t)` where `t` is the normalized timestamp `self + duration`, or `None` if
+    /// the result can't be represented.
+    ///
+    /// Neither `self` nor `duration` needs to be normalized.
+    pub fn checked_add(&self, duration: Duration) -> core::option::Option<Timestamp> {
+        Self::checked_from_parts(
+            i128::from(self.seconds) + i128::from(duration.seconds),
+            i64::from(self.nanos) + i64::from(duration.nanos),
+        )
+    }
+
+    /// Returns `Some(t)` where `t` is the normalized timestamp `self - duration`, or `None` if
+    /// the result can't be represented.
+    ///
+    /// Neither `self` nor `duration` needs to be normalized.
+    pub fn checked_sub(&self, duration: Duration) -> core::option::Option<Timestamp> {
+        Self::checked_from_parts(
+            i128::from(self.seconds) - i128::from(duration.seconds),
+            i64::from(self.nanos) - i64::from(duration.nanos),
+        )
+    }
+
+    /// Builds a normalized timestamp from a sum of seconds and a sum of nanos.
+    ///
+    /// The wider types make the sums exact: they can't overflow, so the only failure is a
+    /// result whose seconds don't fit in `i64`.
+    fn checked_from_parts(seconds: i128, nanos: i64) -> core::option::Option<Timestamp> {
+        let nanos_per_second = i64::from(NANOS_PER_SECOND);
+        let seconds = seconds + i128::from(nanos.div_euclid(nanos_per_second));
+        Some(Timestamp {
+            seconds: i64::try_from(seconds).ok()?,
+            nanos: nanos.rem_euclid(nanos_per_second) as i32,
+        })
+    }
 }
 
 impl Add<Duration> for Timestamp {
     type Output = Timestamp;
 
-    //Add Timestamp with Duration normalized
-    fn add(self, rhs: Duration) -> Self::Output {
-        let (mut nanos, overflowed) = match self.nanos.checked_add(rhs.nanos) {
-            Some(nanos) => (nanos, 0),
-            None => (
-                // it's overflowed operation, then force 2 complements and goes out the direction
-                // The complements of 2 carry rest of sum
-                (!(self.nanos.wrapping_add(rhs.nanos))).wrapping_add(1),
-                self.nanos.saturating_add(rhs.nanos),
-            ),
-        };
-
-        // divided by NANOS_PER_SECOND it's impossible to overflow
-        // Multiplay by 2 because 2^(n+1) == 2^n*2 for use 'i33' type
-        let mut seconds_from_nanos = (overflowed / NANOS_PER_SECOND) * 2;
-        seconds_from_nanos += nanos / NANOS_PER_SECOND;
-        nanos %= NANOS_PER_SECOND;
-        nanos += (overflowed % NANOS_PER_SECOND) * 2;
-        seconds_from_nanos += nanos / NANOS_PER_SECOND;
-        nanos %= NANOS_PER_SECOND;
-
-        if nanos.is_negative() {
-            nanos += NANOS_PER_SECOND;
-            seconds_from_nanos -= 1;
-        }
-
-        //Kani runs in test mode, then debug_assertions is true, causing different error
-        //conditions than in production execution
-        if cfg!(debug_assertions) && !cfg!(kani) {
-            // If in debug_assertions mode cause default overflow panic
-            let seconds = self.seconds + rhs.seconds + (seconds_from_nanos as i64);
-            Self { seconds, nanos }
-        } else {
-            // In production execution if overflowed then use saturating values
-            let (seconds, overflowed) = match self.seconds.overflowing_add(rhs.seconds) {
-                (seconds, true) => (seconds, true),
-                (seconds, false) => seconds.overflowing_add(seconds_from_nanos as i64),
-            };
-            Self {
-                seconds,
-                nanos: if overflowed {
-                    nanos
-                } else {
-                    match seconds {
-                        i64::MAX => Self::MAX.nanos,
-                        i64::MIN => Self::MIN.nanos,
-                        _ => nanos,
-                    }
-                },
-            }
-        }
+    /// # Panics
+    ///
+    /// This function may panic if the resulting point in time cannot be represented by the
+    /// underlying data structure. See [`Timestamp::checked_add`] for a version without panic.
+    fn add(self, duration: Duration) -> Timestamp {
+        self.checked_add(duration)
+            .expect("overflow when adding duration to timestamp")
     }
 }
 
 impl Sub<Duration> for Timestamp {
     type Output = Timestamp;
 
-    fn sub(self, rhs: Duration) -> Self::Output {
-        //Kani runs in test mode, then debug_assertions is true, causing different error
-        //conditions than in production execution
-        let negated_duration = if cfg!(debug_assertions) && !cfg!(kani) {
-            // If in debug_assertions mode cause default overflow panic
-            Duration {
-                seconds: -rhs.seconds,
-                nanos: -rhs.nanos,
-            }
-        } else {
-            // In production execution if overflowed then use saturating values
-            let (seconds, overflowed) = rhs.seconds.overflowing_neg();
-            let nanos = if overflowed {
-                match seconds {
-                    i64::MAX => Self::MAX.nanos,
-                    i64::MIN => Self::MIN.nanos,
-                    _ => rhs.nanos.saturating_neg(),
-                }
-            } else {
-                rhs.nanos.saturating_neg()
-            };
-
-            Duration { seconds, nanos }
-        };
-
-        self.add(negated_duration)
+    /// # Panics
+    ///
+    /// This function may panic if the resulting point in time cannot be represented by the
+    /// underlying data structure. See [`Timestamp::checked_sub`] for a version without panic.
+    fn sub(self, duration: Duration) -> Timestamp {
+        self.checked_sub(duration)
+            .expect("overflow when subtracting duration from timestamp")
     }
 }
 
-macro_rules! impl_div_for_integer {
-    ($($t:ty),*) => {
-        $(
-            impl Div<$t> for Timestamp {
-                type Output = Duration;
-
-                fn div(self, denominator: $t) -> Self::Output {
-                    let mut total_nanos = self.seconds as i128 * NANOS_PER_SECOND as i128 + self.nanos as i128;
-
-                    total_nanos /= denominator as i128;
-
-                    let mut seconds = (total_nanos / NANOS_PER_SECOND as i128) as i64;
-                    let mut nanos = (total_nanos % NANOS_PER_SECOND as i128) as i32;
-
-                    if nanos < 0 {
-                        seconds -= 1;
-                        nanos += NANOS_PER_SECOND;
-                    }
-
-                    Duration { seconds, nanos }
-                }
-            }
-        )*
-    };
+/// Asserts that `result` is the normalized sum of `seconds` and `nanos`, or `None` when that sum
+/// can't be represented by a [`Timestamp`].
+///
+/// Unlike the implementation, this uses no division: `nanos` is a sum or difference of two
+/// `i32`, so it lies in `[-2^32, 2^32]` and the carry into seconds is one of `-5..=4`. Exactly
+/// one carry leaves the nanos in `0..NANOS_PER_SECOND`. Avoiding `i128` multiplication and
+/// division keeps the Kani proofs fast enough to finish.
+#[cfg(any(test, kani))]
+fn assert_carry_search(result: core::option::Option<Timestamp>, seconds: i128, nanos: i64) {
+    let nanos_per_second = i64::from(NANOS_PER_SECOND);
+    for carry in -5..=4 {
+        let normalized_nanos = nanos - carry * nanos_per_second;
+        if (0..nanos_per_second).contains(&normalized_nanos) {
+            let expected = i64::try_from(seconds + i128::from(carry))
+                .ok()
+                .map(|seconds| Timestamp {
+                    seconds,
+                    nanos: normalized_nanos as i32,
+                });
+            assert_eq!(result, expected);
+        }
+    }
 }
 
-impl_div_for_integer!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
-
-macro_rules! impl_div_for_float {
-    ($($t:ty),*) => {
-        $(
-            impl Div<$t> for Timestamp {
-                type Output = Duration;
-
-                fn div(self, denominator: $t) -> Self::Output {
-                    let mut total_seconds_float = (self.seconds as f64 + self.nanos as f64 / NANOS_PER_SECOND as f64);
-                    total_seconds_float /= denominator as f64;
-
-                    //Not necessary to create special treatment for overflow, if denominator is
-                    //extreame low the value can be f64::INFINITY and then converted for i64 is i64::MAX
-                    // assert_eq!((f64::MAX/f64::MIN_POSITIVE) as i64, i64::MAX)
-                    // assert_eq!((f64::MIN/f64::MIN_POSITIVE) as i64, i64::MIN)
-                    let mut seconds = total_seconds_float as i64;
-                    if total_seconds_float < 0. && total_seconds_float != seconds as f64 {
-                        seconds -= 1;
-                    }
-
-                    let nanos_float = (total_seconds_float - seconds as f64) * NANOS_PER_SECOND as f64;
-
-                    let nanos = (nanos_float + 0.5) as i32;
-
-                    if nanos == NANOS_PER_SECOND {
-                        Duration { seconds: seconds + 1, nanos: 0 }
-                    } else {
-                        Duration { seconds, nanos }
-                    }
-                }
-            }
-        )*
-    };
+/// Asserts that `result` is the normalized form of `exact` total nanoseconds, or `None` when
+/// `exact` can't be represented by a [`Timestamp`].
+#[cfg(test)]
+fn assert_exact_result(result: core::option::Option<Timestamp>, exact: i128) {
+    let nanos_per_second = i128::from(NANOS_PER_SECOND);
+    let representable = exact >= i128::from(i64::MIN) * nanos_per_second
+        && exact < (i128::from(i64::MAX) + 1) * nanos_per_second;
+    match result {
+        Some(timestamp) => {
+            assert!(representable);
+            assert!((0..NANOS_PER_SECOND).contains(&timestamp.nanos));
+            assert_eq!(
+                i128::from(timestamp.seconds) * nanos_per_second + i128::from(timestamp.nanos),
+                exact
+            );
+        }
+        None => assert!(!representable),
+    }
 }
-
-impl_div_for_float!(f32, f64);
 
 #[cfg(test)]
 mod tests_ops {
     use super::*;
+    use prost::alloc::string::ToString;
+
+    const NANOS: i128 = NANOS_PER_SECOND as i128;
+
+    const EDGE_SECONDS: [i64; 7] = [i64::MIN, i64::MIN + 1, -1, 0, 1, i64::MAX - 1, i64::MAX];
+
+    const EDGE_NANOS: [i32; 9] = [
+        i32::MIN,
+        -NANOS_PER_SECOND,
+        -NANOS_PER_SECOND + 1,
+        -1,
+        0,
+        1,
+        NANOS_PER_SECOND - 1,
+        NANOS_PER_SECOND,
+        i32::MAX,
+    ];
+
+    fn edge_values() -> impl Iterator<Item = (i64, i32)> {
+        EDGE_SECONDS
+            .into_iter()
+            .flat_map(|seconds| EDGE_NANOS.into_iter().map(move |nanos| (seconds, nanos)))
+    }
+
+    #[test]
+    fn test_min_max_match_documented_range() {
+        assert_eq!(Timestamp::MIN.to_string(), "0001-01-01T00:00:00Z");
+        assert_eq!(Timestamp::MAX.to_string(), "9999-12-31T23:59:59.999999999Z");
+    }
 
     #[test]
     fn test_add_simple() {
@@ -353,7 +336,26 @@ mod tests_ops {
             ts + dur,
             Timestamp {
                 seconds: 4,
-                nanos: 294967296
+                nanos: 294_967_294
+            }
+        );
+    }
+
+    #[test]
+    fn test_add_nanos_overflow_i32_min_minus_one() {
+        let ts = Timestamp {
+            seconds: 0,
+            nanos: i32::MIN,
+        };
+        let dur = Duration {
+            seconds: 0,
+            nanos: -1,
+        };
+        assert_eq!(
+            ts + dur,
+            Timestamp {
+                seconds: -3,
+                nanos: 852_516_351
             }
         );
     }
@@ -369,7 +371,7 @@ mod tests_ops {
             nanos: -200_000_000,
         };
         assert_eq!(
-            ts.add(dur),
+            ts + dur,
             Timestamp {
                 seconds: 7,
                 nanos: 900_000_000
@@ -378,9 +380,28 @@ mod tests_ops {
     }
 
     #[test]
-    #[cfg(debug_assertions)]
-    #[should_panic]
-    fn test_add_saturating_seconds() {
+    fn test_add_seconds_overflow_cancelled_by_nanos() {
+        // `i64::MAX + 1` seconds only exists in the intermediate sum; the nanos borrow it back.
+        let ts = Timestamp {
+            seconds: i64::MAX,
+            nanos: -1,
+        };
+        let dur = Duration {
+            seconds: 1,
+            nanos: 0,
+        };
+        assert_eq!(
+            ts + dur,
+            Timestamp {
+                seconds: i64::MAX,
+                nanos: 999_999_999
+            }
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "overflow when adding duration to timestamp")]
+    fn test_add_overflow_panics() {
         let ts = Timestamp {
             seconds: i64::MAX - 1,
             nanos: 500_000_000,
@@ -389,25 +410,20 @@ mod tests_ops {
             seconds: 10,
             nanos: 0,
         };
-
         let _ = ts + dur;
     }
 
-    //This test needs to run --release argument
-    //In production enviroments don't cause panic, only returns Timestamp::(MAX or MIN)
     #[test]
-    #[cfg(not(debug_assertions))]
-    fn test_add_saturating_seconds() {
+    fn test_checked_add_overflow() {
         let ts = Timestamp {
-            seconds: i64::MAX - 1,
-            nanos: 500_000_000,
+            seconds: i64::MAX,
+            nanos: 999_999_999,
         };
         let dur = Duration {
-            seconds: 10,
-            nanos: 0,
+            seconds: 0,
+            nanos: 1,
         };
-
-        assert_eq!((ts + dur), Timestamp::MAX);
+        assert_eq!(ts.checked_add(dur), None);
     }
 
     #[test]
@@ -449,158 +465,67 @@ mod tests_ops {
     }
 
     #[test]
-    fn test_div_by_positive_integer() {
+    fn test_sub_i64_min_duration() {
+        // `-i64::MIN` doesn't fit in `i64`, so subtraction can't be implemented by negating
+        // the duration.
         let ts = Timestamp {
-            seconds: 10,
-            nanos: 500_000_000,
-        };
-        let duration = ts / 2;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: 5,
-                nanos: 250_000_000
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_by_positive_integer_resulting_in_fractional_seconds() {
-        let ts = Timestamp {
-            seconds: 1,
+            seconds: -1,
             nanos: 0,
         };
-        let duration = ts / 2;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: 0,
-                nanos: 500_000_000
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_by_positive_integer_imperfect_division() {
-        let ts = Timestamp {
-            seconds: 10,
+        let dur = Duration {
+            seconds: i64::MIN,
             nanos: 0,
         };
-        let duration = ts / 3;
         assert_eq!(
-            duration,
-            Duration {
-                seconds: 3,
-                nanos: 333_333_333
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_by_positive_float() {
-        let ts = Timestamp {
-            seconds: 5,
-            nanos: 0,
-        };
-        let duration = ts / 2.5;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: 2,
+            ts - dur,
+            Timestamp {
+                seconds: i64::MAX,
                 nanos: 0
             }
         );
     }
 
     #[test]
-    fn test_div_by_negative_integer() {
+    #[should_panic(expected = "overflow when subtracting duration from timestamp")]
+    fn test_sub_overflow_panics() {
         let ts = Timestamp {
-            seconds: 10,
-            nanos: 500_000_000,
-        };
-        let duration = ts / -2;
-
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: -6,
-                nanos: 750_000_000
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_by_negative_float() {
-        let ts = Timestamp {
-            seconds: 5,
+            seconds: i64::MIN,
             nanos: 0,
         };
-        let duration = ts / -2.0;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: -3,
-                nanos: 500_000_000
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_negative_timestamp_by_positive_integer() {
-        let ts = Timestamp {
-            seconds: -10,
-            nanos: 0,
-        };
-        let duration = ts / 4;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: -3,
-                nanos: 500_000_000
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_negative_timestamp_by_negative_integer() {
-        let ts = Timestamp {
-            seconds: -10,
-            nanos: 0,
-        };
-        let duration = ts / -2;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: 5,
-                nanos: 0
-            }
-        );
-    }
-
-    #[test]
-    fn test_div_zero_timestamp() {
-        let ts = Timestamp {
+        let dur = Duration {
             seconds: 0,
-            nanos: 0,
+            nanos: 1,
         };
-        let duration = ts / 100;
-        assert_eq!(
-            duration,
-            Duration {
-                seconds: 0,
-                nanos: 0
-            }
-        );
+        let _ = ts - dur;
     }
 
     #[test]
-    #[should_panic]
-    fn test_div_by_zero() {
-        let ts = Timestamp {
-            seconds: 0,
-            nanos: 0,
-        };
-        let _duration = ts / 0;
+    fn test_checked_add_sub_edge_values() {
+        for (ts_seconds, ts_nanos) in edge_values() {
+            for (dur_seconds, dur_nanos) in edge_values() {
+                let ts = Timestamp {
+                    seconds: ts_seconds,
+                    nanos: ts_nanos,
+                };
+                let dur = Duration {
+                    seconds: dur_seconds,
+                    nanos: dur_nanos,
+                };
+                let ts_total = i128::from(ts_seconds) * NANOS + i128::from(ts_nanos);
+                let dur_total = i128::from(dur_seconds) * NANOS + i128::from(dur_nanos);
+
+                assert_exact_result(ts.checked_add(dur), ts_total + dur_total);
+                assert_exact_result(ts.checked_sub(dur), ts_total - dur_total);
+
+                // Cross-check the division-free spec used by the Kani proofs.
+                let seconds_sum = i128::from(ts_seconds) + i128::from(dur_seconds);
+                let seconds_diff = i128::from(ts_seconds) - i128::from(dur_seconds);
+                let nanos_sum = i64::from(ts_nanos) + i64::from(dur_nanos);
+                let nanos_diff = i64::from(ts_nanos) - i64::from(dur_nanos);
+                assert_carry_search(ts.checked_add(dur), seconds_sum, nanos_sum);
+                assert_carry_search(ts.checked_sub(dur), seconds_diff, nanos_diff);
+            }
+        }
     }
 }
 
@@ -609,7 +534,8 @@ mod proofs_ops {
     use super::*;
 
     #[kani::proof]
-    fn verify_add() {
+    #[kani::unwind(11)]
+    fn check_checked_add() {
         let ts = Timestamp {
             seconds: kani::any(),
             nanos: kani::any(),
@@ -619,19 +545,16 @@ mod proofs_ops {
             nanos: kani::any(),
         };
 
-        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
-        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
-        kani::assume(dur.nanos <= Timestamp::MAX.nanos);
-        kani::assume(dur.nanos >= Timestamp::MIN.nanos);
-
-        let result = ts + dur;
-
-        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
-        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
+        assert_carry_search(
+            ts.checked_add(dur),
+            i128::from(ts.seconds) + i128::from(dur.seconds),
+            i64::from(ts.nanos) + i64::from(dur.nanos),
+        );
     }
 
     #[kani::proof]
-    fn verify_sub() {
+    #[kani::unwind(11)]
+    fn check_checked_sub() {
         let ts = Timestamp {
             seconds: kani::any(),
             nanos: kani::any(),
@@ -641,61 +564,11 @@ mod proofs_ops {
             nanos: kani::any(),
         };
 
-        kani::assume(ts.seconds <= Timestamp::MAX.seconds);
-        kani::assume(ts.seconds >= Timestamp::MIN.seconds);
-        kani::assume(dur.seconds <= Timestamp::MAX.seconds);
-        kani::assume(dur.seconds >= Timestamp::MIN.seconds);
-
-        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
-        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
-        kani::assume(dur.nanos <= Timestamp::MAX.nanos);
-        kani::assume(dur.nanos >= Timestamp::MIN.nanos);
-
-        let result = ts - dur;
-
-        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
-        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
-    }
-
-    #[kani::proof]
-    fn verify_div_by_int() {
-        let ts = Timestamp {
-            seconds: kani::any(),
-            nanos: kani::any(),
-        };
-        let divisor: i32 = kani::any();
-
-        kani::assume(divisor != 0);
-
-        kani::assume(ts.seconds <= Timestamp::MAX.seconds);
-        kani::assume(ts.seconds >= Timestamp::MIN.seconds);
-        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
-        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
-
-        let result = ts / divisor;
-
-        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
-        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
-    }
-
-    #[kani::proof]
-    fn verify_div_by_float() {
-        let ts = Timestamp {
-            seconds: kani::any(),
-            nanos: kani::any(),
-        };
-        let divisor: f32 = kani::any();
-        kani::assume(divisor.is_finite() && divisor.abs() > 1e-9);
-
-        kani::assume(ts.seconds <= Timestamp::MAX.seconds);
-        kani::assume(ts.seconds >= Timestamp::MIN.seconds);
-        kani::assume(ts.nanos <= Timestamp::MAX.nanos);
-        kani::assume(ts.nanos >= Timestamp::MIN.nanos);
-
-        let result = ts / divisor;
-
-        assert!((Timestamp::MIN.nanos..=Timestamp::MAX.nanos).contains(&result.nanos));
-        assert!((Timestamp::MIN.seconds..=Timestamp::MAX.seconds).contains(&result.seconds));
+        assert_carry_search(
+            ts.checked_sub(dur),
+            i128::from(ts.seconds) - i128::from(dur.seconds),
+            i64::from(ts.nanos) - i64::from(dur.nanos),
+        );
     }
 }
 
