@@ -33,6 +33,54 @@ fn check_repeated_floats() {
 }
 
 #[test]
+fn tuple_struct_defaults_follow_declaration_order() {
+    #[derive(Clone, PartialEq, Message)]
+    struct DistinctDefaults(
+        #[prost(int32, tag = "2", default = "11")] i32,
+        #[prost(int32, tag = "1", default = "22")] i32,
+    );
+
+    assert_eq!(DistinctDefaults::default(), DistinctDefaults(11, 22));
+    assert_eq!(
+        DistinctDefaults::decode(&[][..]).unwrap(),
+        DistinctDefaults(11, 22)
+    );
+    assert_eq!(
+        DistinctDefaults::decode(&[0x08, 7][..]).unwrap(),
+        DistinctDefaults(11, 7)
+    );
+    assert_eq!(
+        DistinctDefaults::decode(&[0x10, 7][..]).unwrap(),
+        DistinctDefaults(7, 22)
+    );
+
+    let mut message = DistinctDefaults(3, 4);
+    message.clear();
+    assert_eq!(message, DistinctDefaults(11, 22));
+}
+
+#[test]
+fn tuple_struct_encodes_in_tag_order() {
+    #[derive(Clone, PartialEq, Message)]
+    struct Mixed(
+        #[prost(uint32, tag = "2")] u32,
+        #[prost(string, tag = "1")] String,
+    );
+
+    assert_eq!(Mixed::default(), Mixed(0, String::new()));
+    let message = Mixed(7, "x".into());
+    let encoded = [0x0a, 0x01, b'x', 0x10, 0x07];
+    assert_eq!(message.encode_to_vec(), encoded);
+    assert_eq!(message.encoded_len(), 5);
+    assert_eq!(Mixed::decode(&encoded[..]).unwrap(), message);
+    assert_eq!(
+        Mixed::decode(&[0x10, 0x07, 0x0a, 0x01, b'x'][..]).unwrap(),
+        message
+    );
+    assert_eq!(prost::alloc::format!("{message:?}"), "Mixed(7, \"x\")");
+}
+
+#[test]
 fn check_scalar_types() {
     check_message(&ScalarTypes::default());
 }
