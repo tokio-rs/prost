@@ -26,6 +26,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
     let Attributes {
         skip_debug,
+        skip_field_names,
         prost_path,
     } = Attributes::new(input.attrs)?;
 
@@ -113,18 +114,27 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
         let tags = Itertools::intersperse(tags, quote!(|));
 
-        quote! {
-            #(#tags)* => {
-                let mut value = &mut self.#field_ident;
-                #merge.map_err(|mut error| {
-                    error.push(STRUCT_NAME, stringify!(#field_ident));
-                    error
-                })
-            },
+        if skip_field_names {
+            quote! {
+                #(#tags)* => {
+                    let mut value = &mut self.#field_ident;
+                    #merge
+                },
+            }
+        } else {
+            quote! {
+                #(#tags)* => {
+                    let mut value = &mut self.#field_ident;
+                    #merge.map_err(|mut error| {
+                        error.push(STRUCT_NAME, stringify!(#field_ident));
+                        error
+                    })
+                },
+            }
         }
     });
 
-    let struct_name = if fields.is_empty() {
+    let struct_name = if fields.is_empty() || skip_field_names {
         quote!()
     } else {
         quote!(
@@ -379,6 +389,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
 
     let Attributes {
         skip_debug,
+        skip_field_names,
         prost_path,
     } = Attributes::new(input.attrs)?;
 
@@ -459,6 +470,12 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(#deprecated #ident::#variant_ident(ref value) => #encoded_len)
     });
 
+    let unreachable_arm = if skip_field_names {
+        quote!(_ => unreachable!())
+    } else {
+        quote!(_ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag))
+    };
+
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
@@ -479,7 +496,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
             {
                 match tag {
                     #(#merge,)*
-                    _ => unreachable!(concat!("invalid ", stringify!(#ident), " tag: {}"), tag),
+                    #unreachable_arm
                 }
             }
 
@@ -573,19 +590,31 @@ fn get_prost_path(attrs: &[Meta]) -> Result<Path, Error> {
 
 struct Attributes {
     skip_debug: bool,
+    skip_field_names: bool,
     prost_path: Path,
 }
 
 impl Attributes {
     fn new(attrs: Vec<Attribute>) -> Result<Self, Error> {
         syn::custom_keyword!(skip_debug);
-        let skip_debug = attrs.iter().any(|a| a.parse_args::<skip_debug>().is_ok());
+        syn::custom_keyword!(skip_field_names);
+        let mut found_skip_debug = false;
+        let mut found_skip_field_names = false;
+        for a in &attrs {
+            if a.parse_args::<skip_debug>().is_ok() {
+                found_skip_debug = true;
+            }
+            if a.parse_args::<skip_field_names>().is_ok() {
+                found_skip_field_names = true;
+            }
+        }
 
         let attrs = prost_attrs(attrs)?;
         let prost_path = get_prost_path(&attrs)?;
 
         Ok(Self {
-            skip_debug,
+            skip_debug: found_skip_debug,
+            skip_field_names: found_skip_field_names,
             prost_path,
         })
     }
