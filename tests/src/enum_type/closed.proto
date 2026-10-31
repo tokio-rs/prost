@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package enum_type.closed;
+
+enum Closed {
+    CLOSED_UNSET = 0;
+    CLOSED_A = 1;
+    CLOSED_B = 2;
+}

@@ -1,5 +1,5 @@
 #[derive(PartialEq)]
-pub(super) enum Syntax {
+pub(crate) enum Syntax {
     Proto2,
     Proto3,
 }
