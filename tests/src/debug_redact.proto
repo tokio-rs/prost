@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package debug_redact;
+
+message Login {
+  string user = 1;
+  string password = 2;
+  oneof credential {
+    string token = 3;
+    int64 pin = 4;
+  }
+}
