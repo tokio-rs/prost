@@ -404,7 +404,6 @@ macro_rules! fixed_width {
 
             encode_repeated!($ty);
 
-            #[inline]
             pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
                 if values.is_empty() {
                     return;
@@ -414,22 +413,13 @@ macro_rules! fixed_width {
                 let len = values.len() as u64 * $width;
                 encode_varint(len as u64, buf);
 
-                #[cfg(target_endian = "little")]
-                {
-                    // SAFETY: These fixed-width numeric types have no padding, and
-                    // every byte of each value is initialized. The byte slice has
-                    // the same lifetime and extent as `values`. On little-endian
-                    // targets its representation is the packed wire format.
-                    let bytes = unsafe {
-                        core::slice::from_raw_parts(
-                            values.as_ptr().cast::<u8>(),
-                            values.len() * $width,
-                        )
-                    };
-                    buf.put_slice(bytes);
+                let mut chunks = values.chunks_exact(128);
+                for chunk in &mut chunks {
+                    let values: &[$ty; 128] = chunk.try_into().unwrap();
+                    let bytes = values.map(<$ty>::to_le_bytes);
+                    buf.put_slice(bytes.as_flattened());
                 }
-                #[cfg(target_endian = "big")]
-                for value in values {
+                for value in chunks.remainder() {
                     buf.$put(*value);
                 }
             }
@@ -530,7 +520,7 @@ macro_rules! fixed_width {
                                               encoded_len_repeated)?;
                     }
                     #[test]
-                    fn check_packed_buffers(values: Vec<$ty>) {
+                    fn check_packed_buffers(values in proptest::collection::vec(any::<$ty>(), 0..=256)) {
                         let mut payload = Vec::new();
                         for value in &values {
                             payload.$put(*value);
