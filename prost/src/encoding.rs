@@ -404,6 +404,7 @@ macro_rules! fixed_width {
 
             encode_repeated!($ty);
 
+            #[inline]
             pub fn encode_packed(tag: u32, values: &[$ty], buf: &mut impl BufMut) {
                 if values.is_empty() {
                     return;
@@ -413,12 +414,94 @@ macro_rules! fixed_width {
                 let len = values.len() as u64 * $width;
                 encode_varint(len as u64, buf);
 
+                // Avoid bulk-copy setup for a single value.
+                if values.len() == 1 {
+                    buf.$put(values[0]);
+                    return;
+                }
+
+                #[cfg(target_endian = "little")]
+                {
+                    // SAFETY: These fixed-width numeric types have no padding, and
+                    // every byte of each value is initialized. The byte slice has
+                    // the same lifetime and extent as `values`. On little-endian
+                    // targets its representation is the packed wire format.
+                    let bytes = unsafe {
+                        core::slice::from_raw_parts(
+                            values.as_ptr().cast::<u8>(),
+                            values.len() * $width,
+                        )
+                    };
+                    buf.put_slice(bytes);
+                }
+                #[cfg(target_endian = "big")]
                 for value in values {
                     buf.$put(*value);
                 }
             }
 
-            merge_repeated_numeric!($ty, $wire_type, merge, merge_repeated);
+            #[inline]
+            pub fn merge_repeated(
+                wire_type: WireType,
+                values: &mut Vec<$ty>,
+                buf: &mut impl Buf,
+                ctx: DecodeContext,
+            ) -> Result<(), DecodeError> {
+                if wire_type != WireType::LengthDelimited {
+                    let mut value = Default::default();
+                    merge(wire_type, &mut value, buf, ctx)?;
+                    values.push(value);
+                    return Ok(());
+                }
+
+                let len = decode_varint(buf)?;
+                if len > buf.remaining() as u64 {
+                    return Err(DecodeErrorKind::BufferUnderflow.into());
+                }
+                let len = len as usize;
+                if len % $width != 0 {
+                    return Err(DecodeErrorKind::DelimitedLengthExceeded.into());
+                }
+                let count = len / $width;
+                if count == 0 {
+                    return Ok(());
+                }
+                if count == 1 {
+                    values.push(buf.$get());
+                    return Ok(());
+                }
+                values.reserve(count);
+
+                #[cfg(target_endian = "little")]
+                let chunk = buf.chunk();
+                #[cfg(target_endian = "little")]
+                if chunk.len() >= len {
+                    let old_len = values.len();
+                    // SAFETY: `reserve` makes room for `count` additional values.
+                    // Copying bytes requires no source alignment. The source is
+                    // disjoint from the exclusively borrowed destination vector.
+                    // All bit patterns are valid for these numeric types, and on
+                    // little-endian targets the wire bytes are their native
+                    // representation. Set the length only after initialization.
+                    unsafe {
+                        core::ptr::copy_nonoverlapping(
+                            chunk.as_ptr(),
+                            values.as_mut_ptr().add(old_len).cast::<u8>(),
+                            len,
+                        );
+                        values.set_len(old_len + count);
+                    }
+                    buf.advance(len);
+                    return Ok(());
+                }
+
+                // Fragmented buffers and big-endian targets retain the scalar
+                // conversion path. The length check above bounds every read.
+                for _ in 0..count {
+                    values.push(buf.$get());
+                }
+                Ok(())
+            }
 
             #[inline]
             pub fn encoded_len(tag: u32, _: &$ty) -> usize {
@@ -447,6 +530,20 @@ macro_rules! fixed_width {
                 use super::super::test::{check_collection_type, check_type};
                 use super::*;
 
+                #[test]
+                fn reject_malformed_packed() {
+                    for bytes in [&[1, 0, 0xaa][..], &[8, 0][..], &[0x80][..]] {
+                        let mut values = Vec::new();
+                        assert!(merge_repeated(
+                            WireType::LengthDelimited,
+                            &mut values,
+                            &mut &bytes[..],
+                            DecodeContext::default()
+                        )
+                        .is_err());
+                    }
+                }
+
                 proptest! {
                     #[test]
                     fn check(value: $ty, tag in MIN_TAG..=MAX_TAG) {
@@ -458,6 +555,54 @@ macro_rules! fixed_width {
                         check_collection_type(value, tag, $wire_type,
                                               encode_repeated, merge_repeated,
                                               encoded_len_repeated)?;
+                    }
+                    #[test]
+                    fn check_packed_buffers(values: Vec<$ty>) {
+                        // An independent scalar reference also preserves float bits.
+                        let mut payload = Vec::new();
+                        for value in &values {
+                            payload.$put(*value);
+                        }
+                        let mut expected = Vec::new();
+                        if !values.is_empty() {
+                            encode_key(1, WireType::LengthDelimited, &mut expected);
+                            encode_varint(payload.len() as u64, &mut expected);
+                            expected.extend_from_slice(&payload);
+                        }
+                        let mut actual = Vec::new();
+                        encode_packed(1, &values, &mut actual);
+                        prop_assert_eq!(&actual, &expected);
+
+                        // A segmented destination can split an individual value.
+                        if !expected.is_empty() {
+                            let mut output = alloc::vec![0; expected.len()];
+                            let (left, right) = output.split_at_mut(expected.len() / 2);
+                            encode_packed(1, &values, &mut left.chain_mut(right));
+                            prop_assert_eq!(output, expected);
+                        }
+
+                        // Unaligned/fragmented input, existing values, and a
+                        // following byte that must remain unconsumed.
+                        let mut input = alloc::vec![0xff];
+                        encode_varint(payload.len() as u64, &mut input);
+                        input.extend_from_slice(&payload);
+                        input.push(0xaa);
+                        let input = &input[1..];
+                        for split in [0, 1, 3, 4, 7, input.len() / 2, input.len()] {
+                            let split = split.min(input.len());
+                            let mut buf = input[..split].chain(&input[split..]);
+                            let mut decoded = values.clone();
+                            merge_repeated(WireType::LengthDelimited, &mut decoded,
+                                           &mut buf, DecodeContext::default()).unwrap();
+                            prop_assert_eq!(buf.remaining(), 1);
+                            prop_assert_eq!(buf.get_u8(), 0xaa);
+                            let mut decoded_bytes = Vec::new();
+                            for value in decoded {
+                                decoded_bytes.$put(value);
+                            }
+                            prop_assert_eq!(&decoded_bytes[..payload.len()], payload.as_slice());
+                            prop_assert_eq!(&decoded_bytes[payload.len()..], payload.as_slice());
+                        }
                     }
                     #[test]
                     fn check_packed(value: Vec<$ty>, tag in MIN_TAG..=MAX_TAG) {
