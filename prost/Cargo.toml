@@ -33,7 +33,3 @@ rand = "0.10"
 [[bench]]
 name = "varint"
 harness = false
-
-[[bench]]
-name = "packed_fixed"
-harness = false

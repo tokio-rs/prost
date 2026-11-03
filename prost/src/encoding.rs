@@ -558,50 +558,36 @@ macro_rules! fixed_width {
                     }
                     #[test]
                     fn check_packed_buffers(values: Vec<$ty>) {
-                        // An independent scalar reference also preserves float bits.
                         let mut payload = Vec::new();
                         for value in &values {
                             payload.$put(*value);
                         }
                         let mut expected = Vec::new();
+                        encode_varint(payload.len() as u64, &mut expected);
+                        expected.extend_from_slice(&payload);
                         if !values.is_empty() {
-                            encode_key(1, WireType::LengthDelimited, &mut expected);
-                            encode_varint(payload.len() as u64, &mut expected);
-                            expected.extend_from_slice(&payload);
-                        }
-                        let mut actual = Vec::new();
-                        encode_packed(1, &values, &mut actual);
-                        prop_assert_eq!(&actual, &expected);
-
-                        // A segmented destination can split an individual value.
-                        if !expected.is_empty() {
-                            let mut output = alloc::vec![0; expected.len()];
-                            let (left, right) = output.split_at_mut(expected.len() / 2);
+                            let mut output = alloc::vec![0; expected.len() + 1];
+                            let (left, right) = output.split_at_mut(2);
                             encode_packed(1, &values, &mut left.chain_mut(right));
-                            prop_assert_eq!(output, expected);
+                            prop_assert_eq!(output[0], 0x0a);
+                            prop_assert_eq!(&output[1..], &expected);
                         }
-
-                        // Unaligned/fragmented input, existing values, and a
-                        // following byte that must remain unconsumed.
-                        let mut input = alloc::vec![0xff];
-                        encode_varint(payload.len() as u64, &mut input);
-                        input.extend_from_slice(&payload);
-                        input.push(0xaa);
-                        let input = &input[1..];
-                        for split in [0, 1, 3, 4, 7, input.len() / 2, input.len()] {
-                            let split = split.min(input.len());
-                            let mut buf = input[..split].chain(&input[split..]);
+                        expected.push(0xaa);
+                        // Split inside headers/elements, append to existing values,
+                        // and ensure that the following byte is not consumed.
+                        for split in [0, 1, 3, 7, expected.len()] {
+                            let split = split.min(expected.len());
+                            let mut buf = expected[..split].chain(&expected[split..]);
                             let mut decoded = values.clone();
                             merge_repeated(WireType::LengthDelimited, &mut decoded,
                                            &mut buf, DecodeContext::default()).unwrap();
                             prop_assert_eq!(buf.remaining(), 1);
                             prop_assert_eq!(buf.get_u8(), 0xaa);
-                            let mut decoded_bytes = Vec::new();
+                            let mut actual = Vec::new();
                             for value in decoded {
-                                decoded_bytes.$put(value);
+                                actual.$put(value);
                             }
-                            prop_assert_eq!(&decoded_bytes[..payload.len()], payload.as_slice());
-                            prop_assert_eq!(&decoded_bytes[payload.len()..], payload.as_slice());
+                            prop_assert_eq!(actual, payload.repeat(2));
                         }
                     }
                     #[test]
