@@ -7,7 +7,7 @@ use prost::encoding::{decode_key, fixed32, fixed64, DecodeContext};
 macro_rules! bench_fixed {
     ($c:expr, $module:ident, $ty:ty) => {{
         let mut group = $c.benchmark_group(stringify!($module));
-        for len in [0, 1, 16, 1024, 1_000_000] {
+        for len in [0, 1, 2, 4, 8, 16, 1024, 1_000_000] {
             let values: Vec<$ty> = (0..len).map(|i| i as $ty).collect();
             let mut encoded = Vec::new();
             $module::encode_packed(1, &values, &mut encoded);
@@ -30,6 +30,12 @@ macro_rules! bench_fixed {
                 });
             });
             group.bench_with_input(BenchmarkId::new("decode", len), &len, |b, _| {
+                // An empty packed field still has a tag and a zero length.
+                let encoded = if encoded.is_empty() {
+                    vec![0x0a, 0]
+                } else {
+                    encoded.clone()
+                };
                 let mut output = Vec::with_capacity(len);
                 b.iter(|| {
                     output.clear();

@@ -414,12 +414,6 @@ macro_rules! fixed_width {
                 let len = values.len() as u64 * $width;
                 encode_varint(len as u64, buf);
 
-                // Avoid bulk-copy setup for a single value.
-                if values.len() == 1 {
-                    buf.$put(values[0]);
-                    return;
-                }
-
                 #[cfg(target_endian = "little")]
                 {
                     // SAFETY: These fixed-width numeric types have no padding, and
@@ -463,40 +457,19 @@ macro_rules! fixed_width {
                     return Err(DecodeErrorKind::DelimitedLengthExceeded.into());
                 }
                 let count = len / $width;
-                if count == 0 {
-                    return Ok(());
-                }
-                if count == 1 {
-                    values.push(buf.$get());
-                    return Ok(());
-                }
-                values.reserve(count);
-
-                #[cfg(target_endian = "little")]
                 let chunk = buf.chunk();
-                #[cfg(target_endian = "little")]
                 if chunk.len() >= len {
-                    let old_len = values.len();
-                    // SAFETY: `reserve` makes room for `count` additional values.
-                    // Copying bytes requires no source alignment. The source is
-                    // disjoint from the exclusively borrowed destination vector.
-                    // All bit patterns are valid for these numeric types, and on
-                    // little-endian targets the wire bytes are their native
-                    // representation. Set the length only after initialization.
-                    unsafe {
-                        core::ptr::copy_nonoverlapping(
-                            chunk.as_ptr(),
-                            values.as_mut_ptr().add(old_len).cast::<u8>(),
-                            len,
-                        );
-                        values.set_len(old_len + count);
-                    }
+                    values.extend(
+                        chunk[..len]
+                            .chunks_exact($width)
+                            .map(|bytes| <$ty>::from_le_bytes(bytes.try_into().unwrap())),
+                    );
                     buf.advance(len);
                     return Ok(());
                 }
 
-                // Fragmented buffers and big-endian targets retain the scalar
-                // conversion path. The length check above bounds every read.
+                // Fragmented buffers retain the scalar conversion path.
+                values.reserve(count);
                 for _ in 0..count {
                     values.push(buf.$get());
                 }
