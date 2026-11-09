@@ -130,7 +130,7 @@ jobs:
           - stable
         os:
           - ubuntu-latest
-          - macos-14
+          - macos-latest
           - windows-latest
     steps:
       - uses: actions/checkout@v7
