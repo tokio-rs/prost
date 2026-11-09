@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: install protoc
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - name: install ninja
@@ -83,7 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: install protoc
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - name: install ninja
@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
       - name: install protoc
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - name: install ninja
@@ -139,7 +139,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
       - name: install protoc
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - name: install ninja
@@ -155,7 +155,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: install protoc
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - uses: taiki-e/install-action@cargo-hack
@@ -190,7 +190,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
       - name: install protoc
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.5
         with:
           tool: protoc@${{ env.PROTOC_VERSION }}
       - uses: Swatinem/rust-cache@v2
