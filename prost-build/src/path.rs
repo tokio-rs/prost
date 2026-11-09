@@ -2,6 +2,16 @@
 
 use std::iter;
 
+use prost_types::FileDescriptorProto;
+
+/// Returns the fully-qualified package path for a given Protobuf file descriptor.
+/// If the file has no package, returns an empty string.
+pub fn fq_package_path(file: &FileDescriptorProto) -> String {
+    file.package
+        .as_ref()
+        .map_or_else(String::new, |pkg| format!(".{}", pkg))
+}
+
 /// Maps a fully-qualified Protobuf path to a value using path matchers.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct PathMap<T> {

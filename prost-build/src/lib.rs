@@ -148,6 +148,7 @@ pub(crate) use collections::{BytesType, MapType};
 
 mod code_generator;
 mod context;
+mod enums;
 mod extern_paths;
 mod ident;
 mod message_graph;
