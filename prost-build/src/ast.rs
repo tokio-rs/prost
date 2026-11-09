@@ -185,30 +185,30 @@ where
         code_block_token_count: 3,
         ..Default::default()
     };
+    let parser_options = Options::all() - Options::ENABLE_SMART_PUNCTUATION;
     match pulldown_cmark_to_cmark::cmark_with_options(
-        Parser::new_ext(comments, Options::all() - Options::ENABLE_SMART_PUNCTUATION).map(
-            |event| {
-                fn map_codeblock(kind: CodeBlockKind) -> CodeBlockKind {
-                    match kind {
-                        CodeBlockKind::Fenced(s) => {
-                            if s.as_ref() == "rust" {
-                                CodeBlockKind::Fenced("compile_fail".into())
-                            } else {
-                                CodeBlockKind::Fenced(format!("text,{s}").into())
-                            }
+        Parser::new_ext(comments, parser_options).map(|event| {
+            fn map_codeblock(kind: CodeBlockKind) -> CodeBlockKind {
+                match kind {
+                    CodeBlockKind::Fenced(s) => {
+                        if s.as_ref() == "rust" {
+                            CodeBlockKind::Fenced("compile_fail".into())
+                        } else {
+                            CodeBlockKind::Fenced(format!("text,{s}").into())
                         }
-                        CodeBlockKind::Indented => CodeBlockKind::Fenced("text".into()),
                     }
+                    CodeBlockKind::Indented => CodeBlockKind::Fenced("text".into()),
                 }
-                match event {
-                    Event::Start(Tag::CodeBlock(kind)) => {
-                        Event::Start(Tag::CodeBlock(map_codeblock(kind)))
-                    }
-                    e => e,
+            }
+            match event {
+                Event::Start(Tag::CodeBlock(kind)) => {
+                    Event::Start(Tag::CodeBlock(map_codeblock(kind)))
                 }
-            },
-        ),
+                e => e,
+            }
+        }),
         &mut buffer,
+        parser_options,
         opts,
     ) {
         Ok(_) => buffer.lines().map(str::to_owned).collect(),
