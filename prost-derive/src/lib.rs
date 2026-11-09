@@ -108,6 +108,16 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         .iter()
         .map(|(field_ident, field)| field.encode(&prost_path, quote!(self.#field_ident)));
 
+    let encode_cached = fields
+        .iter()
+        .map(|(field_ident, field)| field.encode_cached(&prost_path, quote!(self.#field_ident)));
+    let encoded_len_cached = fields.iter().map(|(field_ident, field)| {
+        field.encoded_len_cached(&prost_path, quote!(self.#field_ident))
+    });
+    let use_size_cache = fields
+        .iter()
+        .map(|(field_ident, field)| field.use_size_cache(quote!(self.#field_ident)));
+
     let merge = fields.iter().map(|(field_ident, field)| {
         let merge = field.merge(&prost_path, quote!(value));
         let tags = field.tags().into_iter().map(|tag| quote!(#tag));
@@ -195,6 +205,25 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             #[inline]
             fn encoded_len(&self) -> usize {
                 0 #(+ #encoded_len)*
+            }
+
+            #[inline]
+            fn use_size_cache(&self) -> bool {
+                false #(|| #use_size_cache)*
+            }
+
+            #[allow(unused_variables)]
+            fn encoded_len_cached(&self, sizes: &mut #prost_path::size_cache::SizeBuffer) -> usize {
+                let slot = sizes.begin();
+                let len = 0 #(+ #encoded_len_cached)*;
+                sizes.finish(slot, len)
+            }
+
+            #[allow(unused_variables)]
+            fn encode_raw_cached(&self, buf: &mut impl #prost_path::bytes::BufMut,
+                                 sizes: &mut #prost_path::size_cache::SizeCursor<'_>) {
+                let _ = sizes.next_size();
+                #(#encode_cached)*
             }
 
             fn clear(&mut self) {
@@ -459,6 +488,19 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
         quote!(#deprecated #ident::#variant_ident(ref value) => #encoded_len)
     });
 
+    let encode_cached = fields.iter().map(|(variant_ident, field, deprecated)| {
+        let encode = field.encode_cached(&prost_path, quote!(*value));
+        quote!(#deprecated #ident::#variant_ident(ref value) => { #encode })
+    });
+    let encoded_len_cached = fields.iter().map(|(variant_ident, field, deprecated)| {
+        let len = field.encoded_len_cached(&prost_path, quote!(*value));
+        quote!(#deprecated #ident::#variant_ident(ref value) => #len)
+    });
+    let use_size_cache = fields.iter().map(|(variant_ident, field, deprecated)| {
+        let check = field.use_size_cache(quote!(*value));
+        quote!(#deprecated #ident::#variant_ident(ref value) => #check)
+    });
+
     let expanded = quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             /// Encodes the message to a buffer.
@@ -466,6 +508,26 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
                 match *self {
                     #(#encode,)*
                 }
+            }
+
+            #[doc(hidden)]
+            #[allow(unused_variables)]
+            pub fn encode_cached(&self, buf: &mut impl #prost_path::bytes::BufMut,
+                                 sizes: &mut #prost_path::size_cache::SizeCursor<'_>) {
+                match *self { #(#encode_cached,)* }
+            }
+
+            #[doc(hidden)]
+            #[inline]
+            #[allow(unused_variables)]
+            pub fn use_size_cache(&self) -> bool {
+                match *self { #(#use_size_cache,)* }
+            }
+
+            #[doc(hidden)]
+            #[allow(unused_variables)]
+            pub fn encoded_len_cached(&self, sizes: &mut #prost_path::size_cache::SizeBuffer) -> usize {
+                match *self { #(#encoded_len_cached,)* }
             }
 
             /// Decodes an instance of the message from a buffer, and merges it into self.

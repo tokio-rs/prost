@@ -84,6 +84,14 @@ impl Field {
         }
     }
 
+    pub fn encode_cached(&self, ident: TokenStream) -> TokenStream {
+        quote! { if let Some(ref oneof) = #ident { oneof.encode_cached(buf, sizes); } }
+    }
+
+    pub fn encoded_len_cached(&self, ident: TokenStream) -> TokenStream {
+        quote! { #ident.as_ref().map_or(0, |oneof| oneof.encoded_len_cached(sizes)) }
+    }
+
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         quote!(#ident = ::core::option::Option::None)
     }

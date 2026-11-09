@@ -21,6 +21,11 @@ use crate::{
 
 /// `google.protobuf.BoolValue`
 impl Message for bool {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self {
             bool::encode(1, self, buf)
@@ -63,6 +68,11 @@ impl Name for bool {
 
 /// `google.protobuf.UInt32Value`
 impl Message for u32 {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self != 0 {
             uint32::encode(1, self, buf)
@@ -105,6 +115,11 @@ impl Name for u32 {
 
 /// `google.protobuf.UInt64Value`
 impl Message for u64 {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self != 0 {
             uint64::encode(1, self, buf)
@@ -147,6 +162,11 @@ impl Name for u64 {
 
 /// `google.protobuf.Int32Value`
 impl Message for i32 {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self != 0 {
             int32::encode(1, self, buf)
@@ -189,6 +209,11 @@ impl Name for i32 {
 
 /// `google.protobuf.Int64Value`
 impl Message for i64 {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self != 0 {
             int64::encode(1, self, buf)
@@ -231,6 +256,11 @@ impl Name for i64 {
 
 /// `google.protobuf.FloatValue`
 impl Message for f32 {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self != 0.0 {
             float::encode(1, self, buf)
@@ -273,6 +303,11 @@ impl Name for f32 {
 
 /// `google.protobuf.DoubleValue`
 impl Message for f64 {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if *self != 0.0 {
             double::encode(1, self, buf)
@@ -315,6 +350,11 @@ impl Name for f64 {
 
 /// `google.protobuf.StringValue`
 impl Message for String {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if !self.is_empty() {
             string::encode(1, self, buf)
@@ -357,6 +397,11 @@ impl Name for String {
 
 /// `google.protobuf.BytesValue`
 impl Message for Vec<u8> {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if !self.is_empty() {
             bytes::encode(1, self, buf)
@@ -399,6 +444,11 @@ impl Name for Vec<u8> {
 
 /// `google.protobuf.BytesValue`
 impl Message for Bytes {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, buf: &mut impl BufMut) {
         if !self.is_empty() {
             bytes::encode(1, self, buf)
@@ -441,6 +491,11 @@ impl Name for Bytes {
 
 /// `google.protobuf.Empty`
 impl Message for () {
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        false
+    }
+
     fn encode_raw(&self, _buf: &mut impl BufMut) {}
     fn merge_field(
         &mut self,

@@ -475,11 +475,79 @@ nix develop .#rust_minimum_version
 
 This ensures compatibility testing and development with the oldest supported toolchain version.
 
+## Benchmarks
+
+The `benchmarks` crate uses Criterion. The `dataset` benchmark measures encoding,
+merging, and length calculation for the bundled Google datasets. To run it:
+
+```bash
+cargo bench -p benchmarks --bench dataset
+```
+
+The `nested` benchmark adds four controlled message shapes to measure the cost
+of repeated length traversal. Depth counts the root:
+
+- A single flat node as a control for cache bypass.
+- Trees with exactly 1,023 nodes and depths 2 and 64. A chain ends in a parent
+  holding the remaining nodes as leaves, keeping scalar fields and payload
+  sizes fixed while changing depth. Length prefixes can still differ.
+- A balanced binary tree of depth 10, also containing 1,023 nodes.
+
+Each node contains an ID, a 16-byte string, a 32-byte payload, and eight packed
+integers of mixed widths. Each shape measures `encode_new` (`encode_to_vec`,
+including allocation and drop) and `encode_reuse` (`encode` into a cleared,
+preallocated buffer), for eight measurements total. Both encoders include
+length calculation on every iteration. Construction and wire/roundtrip
+validation happen outside timing. Scratch capacity is warmed before
+measurement; these benchmarks measure steady-state encoding with the standard
+allocator and the workspace's bench profile.
+
+To compare the same code with length caching disabled and enabled:
+
+```bash
+cargo bench -p benchmarks --bench nested --no-default-features -- --save-baseline no-size-cache
+cargo bench -p benchmarks --bench nested -- --baseline no-size-cache
+```
+
+The benchmark crate forwards its default `size-cache` feature to `prost`; using
+`--no-default-features` disables caching while retaining `derive` and `std`.
+These commands isolate length caching, including packed payload lengths; the
+varint writer optimization is present in both builds. To validate all shapes
+without collecting performance measurements, add `-- --test` to either Cargo
+invocation in place of the baseline arguments.
+
 ## Feature Flags
+
 - `std`: Enable integration with standard library. Disable this feature for `no_std` support. This feature is enabled by default.
 - `derive`: Enable integration with `prost-derive`. Disable this feature to reduce compile times. This feature is enabled by default.
 - `prost-derive`: Deprecated. Alias for `derive` feature.
 - `no-recursion-limit`: Disable the recursion limit. The recursion limit is 100 and cannot be customized. 
+- `size-cache`: Cache nested message lengths during each encoding operation. Requires `std`. This feature is enabled by default.
+
+### Nested Message Length Caching
+
+The `size-cache` feature avoids repeatedly computing nested message lengths
+when calling `encode`, `encode_to_vec`, `encode_length_delimited`, or
+`encode_length_delimited_to_vec`. Generated messages without active nested
+fields skip the cache. Message fields, wire encoding, and the behavior of
+`encoded_len` are unchanged.
+
+Each encoding operation recomputes its lengths. A thread-local buffer reuses
+scratch capacity across calls and retains its largest allocated capacity until
+the thread exits. Deeply nested messages benefit from fewer size traversals;
+the scratch bookkeeping can add overhead for shallow nested messages.
+
+To disable caching while keeping derive macros and standard library support,
+set `default-features = false` and `features = ["derive", "std"]` on the `prost`
+dependency. For `no_std`, use `default-features = false` and
+`features = ["derive"]`, as shown above. Cargo features are additive: another
+dependency enabling `size-cache` on the same `prost` package also enables it
+for your code.
+
+This feature is currently available on this development branch and is not part
+of the published 0.14.4 release. The runtime and derive macros must come from
+the same checkout or Git revision. Existing handwritten `Message`
+implementations remain supported through their original encoding methods.
 
 ## Contributing
 

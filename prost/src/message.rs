@@ -40,6 +40,33 @@ pub trait Message: Send + Sync {
     /// Returns the encoded length of the message without a length delimiter.
     fn encoded_len(&self) -> usize;
 
+    /// Whether this value can benefit from nested-message length caching.
+    /// Generated implementations only inspect direct field presence. Unknown
+    /// handwritten implementations conservatively retain the cached entry path.
+    #[doc(hidden)]
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        true
+    }
+
+    /// An opaque fallback preserves existing hand-written implementations.
+    #[doc(hidden)]
+    fn encoded_len_cached(&self, sizes: &mut crate::size_cache::SizeBuffer) -> usize {
+        sizes.record(self.encoded_len())
+    }
+
+    #[doc(hidden)]
+    fn encode_raw_cached(
+        &self,
+        buf: &mut impl BufMut,
+        sizes: &mut crate::size_cache::SizeCursor<'_>,
+    ) where
+        Self: Sized,
+    {
+        sizes.next_size();
+        self.encode_raw(buf);
+    }
+
     /// Encodes the message to a buffer.
     ///
     /// An error will be returned if the buffer does not have sufficient capacity.
@@ -47,12 +74,15 @@ pub trait Message: Send + Sync {
     where
         Self: Sized,
     {
+        #[cfg(feature = "size-cache")]
+        if self.use_size_cache() {
+            return crate::size_cache::encode(self, buf, false);
+        }
         let required = self.encoded_len();
         let remaining = buf.remaining_mut();
         if required > remaining {
             return Err(EncodeError::new(required, remaining));
         }
-
         self.encode_raw(buf);
         Ok(())
     }
@@ -62,8 +92,11 @@ pub trait Message: Send + Sync {
     where
         Self: Sized,
     {
+        #[cfg(feature = "size-cache")]
+        if self.use_size_cache() {
+            return crate::size_cache::encode_to_vec(self, false);
+        }
         let mut buf = Vec::with_capacity(self.encoded_len());
-
         self.encode_raw(&mut buf);
         buf
     }
@@ -75,6 +108,10 @@ pub trait Message: Send + Sync {
     where
         Self: Sized,
     {
+        #[cfg(feature = "size-cache")]
+        if self.use_size_cache() {
+            return crate::size_cache::encode(self, buf, true);
+        }
         let len = self.encoded_len();
         let required = len + encoded_len_varint(len as u64);
         let remaining = buf.remaining_mut();
@@ -91,9 +128,12 @@ pub trait Message: Send + Sync {
     where
         Self: Sized,
     {
+        #[cfg(feature = "size-cache")]
+        if self.use_size_cache() {
+            return crate::size_cache::encode_to_vec(self, true);
+        }
         let len = self.encoded_len();
         let mut buf = Vec::with_capacity(len + encoded_len_varint(len as u64));
-
         encode_varint(len as u64, &mut buf);
         self.encode_raw(&mut buf);
         buf
@@ -171,6 +211,20 @@ where
     }
     fn encoded_len(&self) -> usize {
         (**self).encoded_len()
+    }
+    #[inline]
+    fn use_size_cache(&self) -> bool {
+        (**self).use_size_cache()
+    }
+    fn encoded_len_cached(&self, sizes: &mut crate::size_cache::SizeBuffer) -> usize {
+        (**self).encoded_len_cached(sizes)
+    }
+    fn encode_raw_cached(
+        &self,
+        buf: &mut impl BufMut,
+        sizes: &mut crate::size_cache::SizeCursor<'_>,
+    ) {
+        (**self).encode_raw_cached(buf, sizes)
     }
     fn clear(&mut self) {
         (**self).clear()
