@@ -987,6 +987,7 @@ macro_rules! map {
 
         /// Generic protobuf map merge function.
         pub fn merge<K, V, B, KM, VM>(
+            wire_type: WireType,
             key_merge: KM,
             val_merge: VM,
             values: &mut $map_ty<K, V>,
@@ -1000,7 +1001,15 @@ macro_rules! map {
             KM: Fn(WireType, &mut K, &mut B, DecodeContext) -> Result<(), DecodeError>,
             VM: Fn(WireType, &mut V, &mut B, DecodeContext) -> Result<(), DecodeError>,
         {
-            merge_with_default(key_merge, val_merge, V::default(), values, buf, ctx)
+            merge_with_default(
+                wire_type,
+                key_merge,
+                val_merge,
+                V::default(),
+                values,
+                buf,
+                ctx,
+            )
         }
 
         /// Generic protobuf map encode function.
@@ -1064,6 +1073,7 @@ macro_rules! map {
         /// This is necessary because enumeration values can have a default value other
         /// than 0 in proto2.
         pub fn merge_with_default<K, V, B, KM, VM>(
+            wire_type: WireType,
             key_merge: KM,
             val_merge: VM,
             val_default: V,
@@ -1077,6 +1087,7 @@ macro_rules! map {
             KM: Fn(WireType, &mut K, &mut B, DecodeContext) -> Result<(), DecodeError>,
             VM: Fn(WireType, &mut V, &mut B, DecodeContext) -> Result<(), DecodeError>,
         {
+            check_wire_type(WireType::LengthDelimited, wire_type)?;
             let mut key = Default::default();
             let mut val = val_default;
             ctx.limit_reached()?;
@@ -1325,6 +1336,41 @@ mod test {
         assert!(s.is_empty());
     }
 
+    #[cfg(feature = "std")]
+    #[test]
+    fn map_merge_invalid_wire_type() {
+        let buf: &[u8] = &[0x05, 0x0a, 0x01, 0x61, 0x10, 0x07];
+
+        let mut hash_values = std::collections::HashMap::<String, i32>::new();
+        let err = crate::encoding::hash_map::merge(
+            WireType::Varint,
+            string::merge,
+            int32::merge,
+            &mut hash_values,
+            &mut &buf[..],
+            DecodeContext::default(),
+        )
+        .expect_err("must be an error");
+        assert_eq!(
+            err.to_string(),
+            "failed to decode Protobuf message: invalid wire type: Varint (expected LengthDelimited)"
+        );
+        assert!(hash_values.is_empty());
+
+        let mut btree_values = BTreeMap::<String, i32>::new();
+        crate::encoding::btree_map::merge_with_default(
+            WireType::Varint,
+            string::merge,
+            int32::merge,
+            0,
+            &mut btree_values,
+            &mut &buf[..],
+            DecodeContext::default(),
+        )
+        .expect_err("must be an error");
+        assert!(btree_values.is_empty());
+    }
+
     /// This big bowl o' macro soup generates an encoding property test for each combination of map
     /// type, scalar map key, and value type.
     /// TODO: these tests take a long time to compile, can this be improved?
@@ -1377,8 +1423,8 @@ mod test {
                                                                     buf)
                                               },
                                               |wire_type, values, buf, ctx| {
-                                                  check_wire_type(WireType::LengthDelimited, wire_type)?;
-                                                  $mod_name::merge($key_proto::merge,
+                                                  $mod_name::merge(wire_type,
+                                                                   $key_proto::merge,
                                                                    $val_proto::merge,
                                                                    values,
                                                                    buf,

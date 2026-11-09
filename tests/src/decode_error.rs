@@ -1,6 +1,10 @@
 #![cfg(test)]
 
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+    vec::Vec,
+};
 use prost::Message;
 use protobuf::test_messages::proto3::TestAllTypesProto3;
 
@@ -103,6 +107,38 @@ fn test_decode_error_unexpected_wire_type() {
         msg.merge_field(1, prost::encoding::WireType::LengthDelimited, &mut buf, ctx).unwrap_err().to_string(),
         "failed to decode Protobuf message: TestAllTypesProto3.optional_int32: invalid wire type: LengthDelimited (expected Varint)"
     );
+}
+
+#[test]
+fn test_decode_error_map_invalid_wire_type() {
+    use alloc::collections::BTreeMap;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration)]
+    enum Color {
+        Red = 0,
+    }
+
+    #[derive(Clone, PartialEq, Message)]
+    struct Maps {
+        #[prost(btree_map = "string, int32", tag = "1")]
+        scalar: BTreeMap<String, i32>,
+        #[prost(btree_map = "string, message", tag = "2")]
+        message: BTreeMap<String, Maps>,
+        #[prost(btree_map = "string, enumeration(Color)", tag = "3")]
+        enumeration: BTreeMap<String, i32>,
+    }
+
+    // Each field uses wire type Varint, followed by bytes that would otherwise
+    // be read as a length-delimited `{"a": 7}` map entry.
+    for (key, field) in [(0x08, "scalar"), (0x10, "message"), (0x18, "enumeration")] {
+        let msg = [key, 0x05, 0x0a, 0x01, 0x61, 0x10, 0x07];
+        assert_eq!(
+            Maps::decode(msg.as_slice()).unwrap_err().to_string(),
+            alloc::format!(
+                "failed to decode Protobuf message: Maps.{field}: invalid wire type: Varint (expected LengthDelimited)"
+            )
+        );
+    }
 }
 
 #[test]

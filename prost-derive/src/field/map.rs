@@ -187,6 +187,7 @@ impl Field {
                 let default = quote!(#ty::default() as i32);
                 quote! {
                     #prost_path::encoding::#module::merge_with_default(
+                        wire_type,
                         #km,
                         #prost_path::encoding::int32::merge,
                         #default,
@@ -199,10 +200,11 @@ impl Field {
             ValueTy::Scalar(value_ty) => {
                 let val_mod = value_ty.module();
                 let vm = quote!(#prost_path::encoding::#val_mod::merge);
-                quote!(#prost_path::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
+                quote!(#prost_path::encoding::#module::merge(wire_type, #km, #vm, &mut #ident, buf, ctx))
             }
             ValueTy::Message => quote! {
                 #prost_path::encoding::#module::merge(
+                    wire_type,
                     #km,
                     #prost_path::encoding::message::merge,
                     &mut #ident,
