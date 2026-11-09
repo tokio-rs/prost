@@ -640,6 +640,10 @@ mod sealed {
         /// Replace contents of this buffer with the contents of another buffer.
         fn replace_with(&mut self, buf: impl Buf);
 
+        /// Replace contents of this buffer with the next `len` bytes of `buf`,
+        /// copying the data at most once.
+        fn replace_with_next(&mut self, buf: &mut impl Buf, len: usize);
+
         /// Appends this buffer to the (contents of) other buffer.
         fn append_to(&self, buf: &mut impl BufMut);
 
@@ -660,6 +664,11 @@ impl sealed::BytesAdapter for Bytes {
         *self = buf.copy_to_bytes(buf.remaining());
     }
 
+    fn replace_with_next(&mut self, buf: &mut impl Buf, len: usize) {
+        // Zero-copy when `buf` is itself `Bytes`.
+        *self = buf.copy_to_bytes(len);
+    }
+
     fn append_to(&self, buf: &mut impl BufMut) {
         buf.put(self.clone())
     }
@@ -676,6 +685,12 @@ impl sealed::BytesAdapter for Vec<u8> {
         self.clear();
         self.reserve(buf.remaining());
         self.put(buf);
+    }
+
+    fn replace_with_next(&mut self, buf: &mut impl Buf, len: usize) {
+        // Copy straight out of `buf`. Going through `copy_to_bytes` first would
+        // allocate and copy the data twice whenever `buf` is not `Bytes`.
+        self.replace_with(buf.take(len));
     }
 
     fn append_to(&self, buf: &mut impl BufMut) {
@@ -715,11 +730,7 @@ pub mod bytes {
         // > last value it sees.
         //
         // [1]: https://protobuf.dev/programming-guides/encoding/#last-one-wins
-        //
-        // This is intended for A and B both being Bytes so it is zero-copy.
-        // Some combinations of A and B types may cause a double-copy,
-        // in which case merge_one_copy() should be used instead.
-        value.replace_with(buf.copy_to_bytes(len));
+        value.replace_with_next(buf, len);
         Ok(())
     }
 
@@ -778,6 +789,77 @@ pub mod bytes {
                                                    encode_repeated, merge_repeated,
                                                    encoded_len_repeated)?;
             }
+        }
+
+        /// A `Buf` that refuses to materialize an intermediate `Bytes`.
+        struct NoCopyToBytes<'a>(&'a [u8]);
+
+        impl Buf for NoCopyToBytes<'_> {
+            fn remaining(&self) -> usize {
+                self.0.remaining()
+            }
+
+            fn chunk(&self) -> &[u8] {
+                self.0.chunk()
+            }
+
+            fn advance(&mut self, cnt: usize) {
+                self.0.advance(cnt)
+            }
+
+            fn copy_to_bytes(&mut self, _len: usize) -> Bytes {
+                panic!("decoding into Vec<u8> should copy straight from the buffer");
+            }
+        }
+
+        fn length_delimited(payload: &[u8], trailer: &[u8]) -> Vec<u8> {
+            let mut encoded = Vec::new();
+            encode_varint(payload.len() as u64, &mut encoded);
+            encoded.extend_from_slice(payload);
+            encoded.extend_from_slice(trailer);
+            encoded
+        }
+
+        #[test]
+        fn merge_vec_copies_once() {
+            let payload = [7u8; 64];
+            let encoded = length_delimited(&payload, &[0xAA]);
+            let mut buf = NoCopyToBytes(&encoded);
+            let mut value = Vec::from([1u8, 2, 3]);
+
+            merge(
+                WireType::LengthDelimited,
+                &mut value,
+                &mut buf,
+                DecodeContext::default(),
+            )
+            .unwrap();
+
+            assert_eq!(value, payload);
+            assert_eq!(buf.chunk(), &[0xAA], "only the field should be consumed");
+        }
+
+        #[test]
+        fn merge_bytes_from_bytes_is_zero_copy() {
+            let payload = [7u8; 64];
+            let source = Bytes::from(length_delimited(&payload, &[]));
+            let mut buf = source.clone();
+            let mut value = Bytes::new();
+
+            merge(
+                WireType::LengthDelimited,
+                &mut value,
+                &mut buf,
+                DecodeContext::default(),
+            )
+            .unwrap();
+
+            assert_eq!(value, payload[..]);
+            assert_eq!(
+                value.as_ptr(),
+                source[1..].as_ptr(),
+                "value should share the input buffer"
+            );
         }
     }
 }
