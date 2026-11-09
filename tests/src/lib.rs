@@ -253,6 +253,7 @@ where
 mod tests {
 
     use alloc::collections::BTreeSet;
+    use alloc::string::ToString;
     use alloc::vec;
 
     use super::*;
@@ -266,7 +267,6 @@ mod tests {
             &[0x28, 0x28, 0x28, 0xFF, 0xFF, 0xFF, 0xFF, 0x68],
             &[0x92, 0x01, 0x00, 0x92, 0xF4, 0x01, 0x02, 0x00, 0x00],
             &[0x5d, 0xff, 0xff, 0xff, 0xff, 0x28, 0xff, 0xff, 0x21],
-            &[0x98, 0x04, 0x02, 0x08, 0x0B, 0x98, 0x04, 0x02, 0x08, 0x02],
             // optional_int32: -1
             &[0x08, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x08],
             // repeated_bool: [true, true]
@@ -286,6 +286,17 @@ mod tests {
         for msg in msgs {
             roundtrip::<TestAllTypesProto3>(msg).unwrap();
         }
+
+        // map_int32_double with wire type Varint instead of LengthDelimited.
+        let err = roundtrip::<TestAllTypesProto3>(&[
+            0x98, 0x04, 0x02, 0x08, 0x0B, 0x98, 0x04, 0x02, 0x08, 0x02,
+        ])
+        .unwrap_error()
+        .expect_err("must be an error");
+        assert_eq!(
+            err.to_string(),
+            "failed to decode Protobuf message: TestAllTypesProto3.map_int32_double: invalid wire type: Varint (expected LengthDelimited)"
+        );
     }
 
     #[test]
