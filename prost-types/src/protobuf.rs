@@ -2,6 +2,7 @@
 /// The protocol compiler can output a FileDescriptorSet containing the .proto
 /// files it parses.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileDescriptorSet {
     #[prost(message, repeated, tag = "1")]
@@ -9,6 +10,7 @@ pub struct FileDescriptorSet {
 }
 /// Describes a complete .proto file.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileDescriptorProto {
     /// file name, relative to root of source tree
@@ -51,6 +53,7 @@ pub struct FileDescriptorProto {
 }
 /// Describes a message type.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -79,6 +82,7 @@ pub struct DescriptorProto {
 /// Nested message and enum types in `DescriptorProto`.
 pub mod descriptor_proto {
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ExtensionRange {
         /// Inclusive.
@@ -94,6 +98,7 @@ pub mod descriptor_proto {
     /// fields or extension ranges in the same message. Reserved ranges may
     /// not overlap.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ReservedRange {
         /// Inclusive.
@@ -105,6 +110,7 @@ pub mod descriptor_proto {
     }
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExtensionRangeOptions {
     /// The parser stores options it doesn't recognize here. See above.
@@ -113,6 +119,7 @@ pub struct ExtensionRangeOptions {
 }
 /// Describes a field within a message.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldDescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -182,6 +189,7 @@ pub struct FieldDescriptorProto {
 /// Nested message and enum types in `FieldDescriptorProto`.
 pub mod field_descriptor_proto {
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -281,6 +289,7 @@ pub mod field_descriptor_proto {
         }
     }
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -324,6 +333,7 @@ pub mod field_descriptor_proto {
 }
 /// Describes a oneof.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OneofDescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -333,6 +343,7 @@ pub struct OneofDescriptorProto {
 }
 /// Describes an enum type.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumDescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -362,6 +373,7 @@ pub mod enum_descriptor_proto {
     /// is inclusive such that it can appropriately represent the entire int32
     /// domain.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct EnumReservedRange {
         /// Inclusive.
@@ -374,6 +386,7 @@ pub mod enum_descriptor_proto {
 }
 /// Describes a value within an enum.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValueDescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -385,6 +398,7 @@ pub struct EnumValueDescriptorProto {
 }
 /// Describes a service.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceDescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -396,6 +410,7 @@ pub struct ServiceDescriptorProto {
 }
 /// Describes a method of a service.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MethodDescriptorProto {
     #[prost(string, optional, tag = "1")]
@@ -445,6 +460,7 @@ pub struct MethodDescriptorProto {
 ///   If this turns out to be popular, a web service will be set up
 ///   to automatically assign option numbers.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FileOptions {
     /// Sets the Java package where classes generated from this .proto will be
@@ -564,6 +580,7 @@ pub struct FileOptions {
 pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -610,6 +627,7 @@ pub mod file_options {
     }
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessageOptions {
     /// Set true to use the old proto1 MessageSet wire format for extensions.
@@ -671,6 +689,7 @@ pub struct MessageOptions {
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldOptions {
     /// The ctype option instructs the C++ code generator to use a different
@@ -754,6 +773,7 @@ pub struct FieldOptions {
 /// Nested message and enum types in `FieldOptions`.
 pub mod field_options {
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -795,6 +815,7 @@ pub mod field_options {
         }
     }
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -839,6 +860,7 @@ pub mod field_options {
     }
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OneofOptions {
     /// The parser stores options it doesn't recognize here. See above.
@@ -846,6 +868,7 @@ pub struct OneofOptions {
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumOptions {
     /// Set this option to true to allow mapping different tag names to the same
@@ -863,6 +886,7 @@ pub struct EnumOptions {
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValueOptions {
     /// Is this enum value deprecated?
@@ -876,6 +900,7 @@ pub struct EnumValueOptions {
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceOptions {
     /// Is this service deprecated?
@@ -889,6 +914,7 @@ pub struct ServiceOptions {
     pub uninterpreted_option: ::prost::alloc::vec::Vec<UninterpretedOption>,
 }
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MethodOptions {
     /// Is this method deprecated?
@@ -914,6 +940,7 @@ pub mod method_options {
     /// or neither? HTTP based RPC implementation may choose GET verb for safe
     /// methods, and PUT verb for idempotent methods instead of the default POST.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -963,6 +990,7 @@ pub mod method_options {
 /// or produced by Descriptor::CopyTo()) will never have UninterpretedOptions
 /// in them.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UninterpretedOption {
     #[prost(message, repeated, tag = "2")]
@@ -990,6 +1018,7 @@ pub mod uninterpreted_option {
     /// E.g.,{ \["foo", false\], \["bar.baz", true\], \["qux", false\] } represents
     /// "foo.(bar.baz).qux".
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct NamePart {
         #[prost(string, required, tag = "1")]
@@ -1001,6 +1030,7 @@ pub mod uninterpreted_option {
 /// Encapsulates information about the original source file from which a
 /// FileDescriptorProto was generated.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SourceCodeInfo {
     /// A Location identifies a piece of source code in a .proto file which
@@ -1053,6 +1083,7 @@ pub struct SourceCodeInfo {
 /// Nested message and enum types in `SourceCodeInfo`.
 pub mod source_code_info {
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct Location {
         /// Identifies which part of the FileDescriptorProto was defined at this
@@ -1148,6 +1179,7 @@ pub mod source_code_info {
 /// file. A GeneratedCodeInfo message is associated with only one generated
 /// source file, but may contain references to different source .proto files.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GeneratedCodeInfo {
     /// An Annotation connects some span of text in generated code to an element
@@ -1158,6 +1190,7 @@ pub struct GeneratedCodeInfo {
 /// Nested message and enum types in `GeneratedCodeInfo`.
 pub mod generated_code_info {
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct Annotation {
         /// Identifies the element in the original source .proto file. This field
@@ -1272,6 +1305,7 @@ pub mod generated_code_info {
 /// }
 /// ```
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Any {
     /// A URL/resource name that uniquely identifies the type of the serialized
@@ -1310,6 +1344,7 @@ pub struct Any {
 /// `SourceContext` represents information about the source of a
 /// protobuf element, like the file in which it is defined.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SourceContext {
     /// The path-qualified name of the .proto file that contained the associated
@@ -1319,6 +1354,7 @@ pub struct SourceContext {
 }
 /// A protocol buffer message type.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Type {
     /// The fully qualified message name.
@@ -1342,6 +1378,7 @@ pub struct Type {
 }
 /// A single field of a message type.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Field {
     /// The field type.
@@ -1381,6 +1418,7 @@ pub struct Field {
 pub mod field {
     /// Basic field types.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -1489,6 +1527,7 @@ pub mod field {
     }
     /// Whether a field is optional, required, or repeated.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(
         Clone,
         Copy,
@@ -1538,6 +1577,7 @@ pub mod field {
 }
 /// Enum type definition.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Enum {
     /// Enum type name.
@@ -1558,6 +1598,7 @@ pub struct Enum {
 }
 /// Enum value definition.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnumValue {
     /// Enum value name.
@@ -1573,6 +1614,7 @@ pub struct EnumValue {
 /// A protocol buffer option, which can be attached to a message, field,
 /// enumeration, etc.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Option {
     /// The option's name. For protobuf built-in options (options defined in
@@ -1590,6 +1632,7 @@ pub struct Option {
 }
 /// The syntax in which a protocol buffer element is defined.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Syntax {
@@ -1628,6 +1671,7 @@ impl Syntax {
 /// this message itself. See <https://cloud.google.com/apis/design/glossary> for
 /// detailed terminology.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Api {
     /// The fully qualified name of this interface, including package name
@@ -1674,6 +1718,7 @@ pub struct Api {
 }
 /// Method represents a method of an API interface.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Method {
     /// The simple name of this method.
@@ -1787,6 +1832,7 @@ pub struct Method {
 /// }
 /// ```
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Mixin {
     /// The fully qualified name of the interface which is included.
@@ -1862,6 +1908,7 @@ pub struct Mixin {
 /// be expressed in JSON format as "3.000000001s", and 3 seconds and 1
 /// microsecond should be expressed in JSON format as "3.000001s".
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
@@ -2101,6 +2148,7 @@ pub struct Duration {
 /// request should verify the included field paths, and return an
 /// `INVALID_ARGUMENT` error if any path is unmappable.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FieldMask {
     /// The set of field mask paths.
@@ -2116,6 +2164,7 @@ pub struct FieldMask {
 ///
 /// The JSON representation for `Struct` is JSON object.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Struct {
     /// Unordered map of dynamically typed values.
@@ -2132,6 +2181,7 @@ pub struct Struct {
 ///
 /// The JSON representation for `Value` is JSON value.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Value {
     /// The kind of value.
@@ -2142,6 +2192,7 @@ pub struct Value {
 pub mod value {
     /// The kind of value.
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Kind {
         /// Represents a null value.
@@ -2168,6 +2219,7 @@ pub mod value {
 ///
 /// The JSON representation for `ListValue` is JSON array.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListValue {
     /// Repeated field of dynamically typed values.
@@ -2179,6 +2231,7 @@ pub struct ListValue {
 ///
 /// The JSON representation for `NullValue` is JSON `null`.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum NullValue {
@@ -2303,6 +2356,7 @@ impl NullValue {
 /// the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
 /// the Joda Time's [`ISODateTimeFormat.dateTime()`](<http://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D>) to obtain a formatter capable of generating timestamps in this format.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch
