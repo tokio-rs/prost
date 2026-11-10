@@ -182,7 +182,7 @@ impl Field {
         let key_mod = self.key_ty.module();
         let km = quote!(#prost_path::encoding::#key_mod::merge);
         let module = self.map_ty.module();
-        match &self.value_ty {
+        let merge = match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
@@ -210,6 +210,15 @@ impl Field {
                     ctx,
                 )
             },
+        };
+        // Checked here rather than in `prost::encoding` so that the generated code only relies on
+        // `prost::encoding` APIs available in every compatible `prost` version.
+        quote! {
+            #prost_path::encoding::check_wire_type(
+                #prost_path::encoding::WireType::LengthDelimited,
+                wire_type,
+            )
+            .and_then(|()| #merge)
         }
     }
 
