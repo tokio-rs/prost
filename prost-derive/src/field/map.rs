@@ -182,12 +182,11 @@ impl Field {
         let key_mod = self.key_ty.module();
         let km = quote!(#prost_path::encoding::#key_mod::merge);
         let module = self.map_ty.module();
-        match &self.value_ty {
+        let merge = match &self.value_ty {
             ValueTy::Scalar(scalar::Ty::Enumeration(ty)) => {
                 let default = quote!(#ty::default() as i32);
                 quote! {
                     #prost_path::encoding::#module::merge_with_default(
-                        wire_type,
                         #km,
                         #prost_path::encoding::int32::merge,
                         #default,
@@ -200,11 +199,10 @@ impl Field {
             ValueTy::Scalar(value_ty) => {
                 let val_mod = value_ty.module();
                 let vm = quote!(#prost_path::encoding::#val_mod::merge);
-                quote!(#prost_path::encoding::#module::merge(wire_type, #km, #vm, &mut #ident, buf, ctx))
+                quote!(#prost_path::encoding::#module::merge(#km, #vm, &mut #ident, buf, ctx))
             }
             ValueTy::Message => quote! {
                 #prost_path::encoding::#module::merge(
-                    wire_type,
                     #km,
                     #prost_path::encoding::message::merge,
                     &mut #ident,
@@ -212,6 +210,15 @@ impl Field {
                     ctx,
                 )
             },
+        };
+        // Checked here rather than in `prost::encoding` so that the generated code only relies on
+        // `prost::encoding` APIs available in every compatible `prost` version.
+        quote! {
+            #prost_path::encoding::check_wire_type(
+                #prost_path::encoding::WireType::LengthDelimited,
+                wire_type,
+            )
+            .and_then(|()| #merge)
         }
     }
 
