@@ -7,6 +7,7 @@ _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [
 - *(prost-derive)* Avoid UTF-8 panic for enumeration names (#1425)
 - Correct packed encoding default for proto3 fields with options (#1399)
 - Prevent panic for service generator in empty module (#1442)
+- Reject map fields with a non length-delimited wire type (#1473)
 
 ### 💼 Dependencies
 
