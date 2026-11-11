@@ -114,6 +114,15 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .field_attribute("debug_redact.Login.password", "#[prost(debug_redact)]")
+        .field_attribute(
+            "debug_redact.Login.credential.token",
+            "#[prost(debug_redact)]",
+        )
+        .compile_protos(&[src.join("debug_redact.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .compile_protos(&[src.join("result_enum.proto")], includes)
         .unwrap();
 
