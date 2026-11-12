@@ -26,6 +26,14 @@ impl<T> PathMap<T> {
         Iter::new(self, format!("{fq_path}.{field}"))
     }
 
+    /// Matches a field without inheriting a matcher for its immediate parent.
+    pub(crate) fn get_field_excluding_parent(&self, fq_path: &str, field: &str) -> Iter<'_, T> {
+        Iter {
+            exclude_parent: true,
+            ..self.get_field(fq_path, field)
+        }
+    }
+
     /// Returns the first value found matching the given path
     /// If nothing matches the path, suffix paths will be tried, then prefix paths, then the global path
     pub(crate) fn get_first<'a>(&'a self, fq_path: &'_ str) -> Option<&'a T> {
@@ -59,6 +67,7 @@ impl<T> PathMap<T> {
 pub(crate) struct Iter<'a, T> {
     iter: std::slice::Iter<'a, (String, T)>,
     path: String,
+    exclude_parent: bool,
 }
 
 impl<'a, T> Iter<'a, T> {
@@ -66,10 +75,19 @@ impl<'a, T> Iter<'a, T> {
         Self {
             iter: map.matchers.iter(),
             path,
+            exclude_parent: false,
         }
     }
 
     fn is_match(&self, path: &str) -> bool {
+        if self.exclude_parent
+            && self
+                .path
+                .rsplit_once('.')
+                .is_some_and(|(parent, _)| parent == path)
+        {
+            return false;
+        }
         sub_path_iter(self.path.as_str()).any(|p| p == path)
     }
 }

@@ -553,6 +553,61 @@ mod tests {
     }
 
     #[test]
+    fn oneof_field_attributes_do_not_apply_to_variants() {
+        let tempdir = tempfile::tempdir().unwrap();
+
+        for path in [
+            ".field_attributes.Container.data",
+            "field_attributes.Container.data",
+            "Container.data",
+            "data",
+        ] {
+            Config::new()
+                .out_dir(tempdir.path())
+                .field_attribute(path, "#[serde(flatten)]")
+                .field_attribute(".", "/// Global field attribute")
+                .field_attribute(".field_attributes", "/// Package field attribute")
+                .field_attribute(".field_attributes.Container", "/// Message field attribute")
+                .field_attribute(
+                    ".field_attributes.Container.data.foo",
+                    "/// Variant field attribute",
+                )
+                .compile_protos(
+                    &["src/fixtures/field_attributes/field_attributes.proto"],
+                    &["src/fixtures/field_attributes"],
+                )
+                .unwrap();
+
+            let output =
+                std::fs::read_to_string(tempdir.path().join("field_attributes.rs")).unwrap();
+            let (message, variants) = output.split_once("pub enum Data").unwrap();
+            assert!(message.contains("#[serde(flatten)]"), "{path}");
+            assert!(!variants.contains("#[serde(flatten)]"), "{path}");
+            assert_eq!(
+                output.matches("Global field attribute").count(),
+                5,
+                "{path}"
+            );
+            assert_eq!(
+                output.matches("Package field attribute").count(),
+                5,
+                "{path}"
+            );
+            assert_eq!(
+                output.matches("Message field attribute").count(),
+                3,
+                "{path}"
+            );
+            assert!(variants.contains("/// Variant field attribute\n        Foo("));
+            assert_eq!(
+                output.matches("Variant field attribute").count(),
+                1,
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
     fn deterministic_include_file() {
         let _ = env_logger::try_init();
 

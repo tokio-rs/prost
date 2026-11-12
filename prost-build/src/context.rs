@@ -101,6 +101,18 @@ impl<'a> Context<'a> {
             .map(|s| s.as_str())
     }
 
+    /// Returns attributes for a oneof variant, excluding attributes targeting the oneof field itself.
+    pub fn oneof_variant_attributes(
+        &self,
+        fq_oneof_name: &str,
+        field_name: &str,
+    ) -> impl Iterator<Item = &str> {
+        self.config
+            .field_attributes
+            .get_field_excluding_parent(fq_oneof_name, field_name)
+            .map(|s| s.as_str())
+    }
+
     /// Returns the bytes type configured for the named message field.
     pub(crate) fn bytes_type(&self, fq_message_name: &str, field_name: &str) -> BytesType {
         self.config

@@ -678,7 +678,14 @@ impl<'b> CodeGenerator<'_, 'b> {
                 ty_tag,
                 field.descriptor.number()
             ));
-            self.append_field_attributes(&oneof_name, field.descriptor.name());
+            for attribute in self
+                .context
+                .oneof_variant_attributes(&oneof_name, field.descriptor.name())
+            {
+                push_indent(self.buf, self.depth);
+                self.buf.push_str(attribute);
+                self.buf.push('\n');
+            }
 
             self.push_indent();
             let ty = self.resolve_type(&field.descriptor, fq_message_name);

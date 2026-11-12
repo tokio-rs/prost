@@ -199,6 +199,10 @@ impl Config {
     /// Note that the calls to this method are cumulative ‒ if multiple paths from multiple calls
     /// match the same field, the field gets all the corresponding attributes.
     ///
+    /// A path naming a `oneof` field applies attributes to the field in the message struct,
+    /// not to its enum variants. To annotate a variant, include its field name in the path,
+    /// such as `my_package.MyMessage.my_oneof.my_variant`.
+    ///
     /// # Examples
     ///
     /// ```rust
