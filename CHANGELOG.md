@@ -1,3 +1,11 @@
+# Prost version 0.14.6
+
+_PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
+
+### 🐛 Bug Fixes
+
+- Reject map fields with a non length-delimited wire type (#1473)
+
 # Prost version 0.14.5
 
 _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [Rust Language](https://www.rust-lang.org/). `prost` generates simple, idiomatic Rust code from `proto2` and `proto3` files.
@@ -7,7 +15,6 @@ _PROST!_ is a [Protocol Buffers](https://protobuf.dev/) implementation for the [
 - *(prost-derive)* Avoid UTF-8 panic for enumeration names (#1425)
 - Correct packed encoding default for proto3 fields with options (#1399)
 - Prevent panic for service generator in empty module (#1442)
-- Reject map fields with a non length-delimited wire type (#1473)
 
 ### 💼 Dependencies
 
