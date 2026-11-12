@@ -27,7 +27,13 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     let Attributes {
         skip_debug,
         prost_path,
+        recursion_limit,
     } = Attributes::new(input.attrs)?;
+
+    let recursion_limit_expr = match recursion_limit {
+        Some(limit) => quote! { ::core::option::Option::Some(#limit) },
+        None => quote! { ::core::option::Option::None },
+    };
 
     let variant_data = match input.data {
         Data::Struct(variant_data) => variant_data,
@@ -199,6 +205,10 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
 
             fn clear(&mut self) {
                 #(#clear;)*
+            }
+
+            fn recursion_limit() -> ::core::option::Option<u32> {
+                #recursion_limit_expr
             }
         }
 
@@ -380,6 +390,7 @@ fn try_oneof(input: TokenStream) -> Result<TokenStream, Error> {
     let Attributes {
         skip_debug,
         prost_path,
+        ..
     } = Attributes::new(input.attrs)?;
 
     let variants = match input.data {
@@ -571,9 +582,27 @@ fn get_prost_path(attrs: &[Meta]) -> Result<Path, Error> {
     Ok(prost_path)
 }
 
+fn get_recursion_limit(attrs: &[Meta]) -> Result<Option<u32>, Error> {
+    let mut recursion_limit = None;
+    for attr in attrs {
+        match attr {
+            Meta::NameValue(meta) if meta.path.is_ident("recursion_limit") => {
+                let Expr::Lit(ref lit) = meta.value else {
+                    continue;
+                };
+                let Lit::Int(ref int) = lit.lit else { continue };
+                recursion_limit = Some(int.base10_parse()?);
+            }
+            _ => (),
+        }
+    }
+    Ok(recursion_limit)
+}
+
 struct Attributes {
     skip_debug: bool,
     prost_path: Path,
+    recursion_limit: Option<u32>,
 }
 
 impl Attributes {
@@ -583,10 +612,12 @@ impl Attributes {
 
         let attrs = prost_attrs(attrs)?;
         let prost_path = get_prost_path(&attrs)?;
+        let recursion_limit = get_recursion_limit(&attrs)?;
 
         Ok(Self {
             skip_debug,
             prost_path,
+            recursion_limit,
         })
     }
 }
