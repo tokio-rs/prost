@@ -98,8 +98,8 @@ impl TryFrom<Duration> for time::Duration {
             ))
         } else {
             Err(DurationError::NegativeDuration(time::Duration::new(
-                (-duration.seconds) as u64,
-                (-duration.nanos) as u32,
+                duration.seconds.unsigned_abs(),
+                duration.nanos.unsigned_abs(),
             )))
         }
     }
@@ -108,13 +108,13 @@ impl TryFrom<Duration> for time::Duration {
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let d = self.normalized();
-        if self.seconds < 0 || self.nanos < 0 {
+        if d.seconds < 0 || d.nanos < 0 {
             write!(f, "-")?;
         }
-        write!(f, "{}", d.seconds.abs())?;
+        write!(f, "{}", d.seconds.unsigned_abs())?;
 
         // Format subseconds to either nothing, millis, micros, or nanos.
-        let nanos = d.nanos.abs();
+        let nanos = d.nanos.unsigned_abs();
         if nanos == 0 {
             write!(f, "s")
         } else if nanos % 1_000_000 == 0 {
@@ -384,6 +384,60 @@ mod tests {
             }
             .to_string()
         );
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_format_duration_unnormalized_and_extremes() {
+        // seconds and nanos disagree in sign; the *normalized* value (0.999999999s) is
+        // positive, so the sign should be derived from the normalized form, not from
+        // the raw (unnormalized) fields.
+        assert_eq!(
+            "0.999999999s",
+            Duration {
+                seconds: 1,
+                nanos: -1,
+            }
+            .to_string()
+        );
+        assert_eq!(
+            "-0.999999999s",
+            Duration {
+                seconds: -1,
+                nanos: 1,
+            }
+            .to_string()
+        );
+
+        // i64::MIN has no positive counterpart, so `.abs()` on the normalized seconds/nanos
+        // overflows; this used to panic (or silently wrap in release builds) instead of
+        // just printing the magnitude.
+        assert_eq!(
+            "-9223372036854775808.999999999s",
+            Duration {
+                seconds: i64::MIN,
+                nanos: -999_999_999,
+            }
+            .to_string()
+        );
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn check_duration_try_from_negative_seconds_min() {
+        // Normalizing this leaves seconds at i64::MIN, so the old `-duration.seconds`
+        // negation in the error path overflowed instead of returning the error.
+        let neg_prost_duration = Duration {
+            seconds: i64::MIN,
+            nanos: -1_000_000_000,
+        };
+
+        let expected = std::time::Duration::new(i64::MIN.unsigned_abs(), 999_999_999);
+
+        assert!(matches!(
+            time::Duration::try_from(neg_prost_duration),
+            Err(DurationError::NegativeDuration(d)) if d == expected,
+        ))
     }
 
     #[cfg(feature = "std")]
