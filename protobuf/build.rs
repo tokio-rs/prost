@@ -209,6 +209,7 @@ fn compile_proto_files(out_dir: &Path, protobuf_dir: &Path) -> Result<()> {
     prost_build::Config::new()
         .protoc_executable(&protoc_executable)
         .btree_map(["."])
+        .include_unknown_fields(".", "unknown_fields_")
         .compile_protos(
             &[
                 proto_dir.join("google/protobuf/test_messages_proto2.proto"),
