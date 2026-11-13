@@ -81,7 +81,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    // We want Debug to be in declaration order
+    // Debug output and tuple struct defaults must be in declaration order.
     let unsorted_fields = fields.clone();
 
     // Sort the fields by tag number so that fields will be encoded in tag order.
@@ -145,7 +145,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             #(#default)*
         }}
     } else {
-        let default = fields.iter().map(|(_, field)| {
+        let default = unsorted_fields.iter().map(|(_, field)| {
             let value = field.default(&prost_path);
             quote!(#value,)
         });
