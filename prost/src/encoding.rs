@@ -413,12 +413,58 @@ macro_rules! fixed_width {
                 let len = values.len() as u64 * $width;
                 encode_varint(len as u64, buf);
 
-                for value in values {
+                let mut chunks = values.chunks_exact(128);
+                for chunk in &mut chunks {
+                    let values: &[$ty; 128] = chunk.try_into().unwrap();
+                    let bytes = values.map(<$ty>::to_le_bytes);
+                    buf.put_slice(bytes.as_flattened());
+                }
+                for value in chunks.remainder() {
                     buf.$put(*value);
                 }
             }
 
-            merge_repeated_numeric!($ty, $wire_type, merge, merge_repeated);
+            #[inline]
+            pub fn merge_repeated(
+                wire_type: WireType,
+                values: &mut Vec<$ty>,
+                buf: &mut impl Buf,
+                ctx: DecodeContext,
+            ) -> Result<(), DecodeError> {
+                if wire_type != WireType::LengthDelimited {
+                    let mut value = Default::default();
+                    merge(wire_type, &mut value, buf, ctx)?;
+                    values.push(value);
+                    return Ok(());
+                }
+
+                let len = decode_varint(buf)?;
+                if len > buf.remaining() as u64 {
+                    return Err(DecodeErrorKind::BufferUnderflow.into());
+                }
+                let len = len as usize;
+                if len % $width != 0 {
+                    return Err(DecodeErrorKind::DelimitedLengthExceeded.into());
+                }
+                let count = len / $width;
+                let chunk = buf.chunk();
+                if chunk.len() >= len {
+                    values.extend(
+                        chunk[..len]
+                            .chunks_exact($width)
+                            .map(|bytes| <$ty>::from_le_bytes(bytes.try_into().unwrap())),
+                    );
+                    buf.advance(len);
+                    return Ok(());
+                }
+
+                // Fragmented buffers retain the scalar conversion path.
+                values.reserve(count);
+                for _ in 0..count {
+                    values.push(buf.$get());
+                }
+                Ok(())
+            }
 
             #[inline]
             pub fn encoded_len(tag: u32, _: &$ty) -> usize {
@@ -447,6 +493,20 @@ macro_rules! fixed_width {
                 use super::super::test::{check_collection_type, check_type};
                 use super::*;
 
+                #[test]
+                fn reject_malformed_packed() {
+                    for bytes in [&[1, 0, 0xaa][..], &[8, 0][..], &[0x80][..]] {
+                        let mut values = Vec::new();
+                        assert!(merge_repeated(
+                            WireType::LengthDelimited,
+                            &mut values,
+                            &mut &bytes[..],
+                            DecodeContext::default()
+                        )
+                        .is_err());
+                    }
+                }
+
                 proptest! {
                     #[test]
                     fn check(value: $ty, tag in MIN_TAG..=MAX_TAG) {
@@ -458,6 +518,40 @@ macro_rules! fixed_width {
                         check_collection_type(value, tag, $wire_type,
                                               encode_repeated, merge_repeated,
                                               encoded_len_repeated)?;
+                    }
+                    #[test]
+                    fn check_packed_buffers(values in proptest::collection::vec(any::<$ty>(), 0..=256)) {
+                        let mut payload = Vec::new();
+                        for value in &values {
+                            payload.$put(*value);
+                        }
+                        let mut expected = Vec::new();
+                        encode_varint(payload.len() as u64, &mut expected);
+                        expected.extend_from_slice(&payload);
+                        if !values.is_empty() {
+                            let mut output = alloc::vec![0; expected.len() + 1];
+                            let (left, right) = output.split_at_mut(2);
+                            encode_packed(1, &values, &mut left.chain_mut(right));
+                            prop_assert_eq!(output[0], 0x0a);
+                            prop_assert_eq!(&output[1..], &expected);
+                        }
+                        expected.push(0xaa);
+                        // Split inside headers/elements, append to existing values,
+                        // and ensure that the following byte is not consumed.
+                        for split in [0, 1, 3, 7, expected.len()] {
+                            let split = split.min(expected.len());
+                            let mut buf = expected[..split].chain(&expected[split..]);
+                            let mut decoded = values.clone();
+                            merge_repeated(WireType::LengthDelimited, &mut decoded,
+                                           &mut buf, DecodeContext::default()).unwrap();
+                            prop_assert_eq!(buf.remaining(), 1);
+                            prop_assert_eq!(buf.get_u8(), 0xaa);
+                            let mut actual = Vec::new();
+                            for value in decoded {
+                                actual.$put(value);
+                            }
+                            prop_assert_eq!(actual, payload.repeat(2));
+                        }
                     }
                     #[test]
                     fn check_packed(value: Vec<$ty>, tag in MIN_TAG..=MAX_TAG) {
