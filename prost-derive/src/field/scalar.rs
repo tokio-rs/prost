@@ -189,6 +189,45 @@ impl Field {
         }
     }
 
+    // Fixed-width packed fields and bool have constant-time payload lengths.
+    // Only cache variable-width packed fields, and only inside a cached tree;
+    // the root's use_size_cache predicate deliberately remains unchanged.
+    fn cache_packed_len(&self) -> bool {
+        matches!(self.kind, Kind::Packed)
+            && matches!(
+                self.ty,
+                Ty::Int32
+                    | Ty::Int64
+                    | Ty::Uint32
+                    | Ty::Uint64
+                    | Ty::Sint32
+                    | Ty::Sint64
+                    | Ty::Enumeration(_)
+            )
+    }
+
+    pub fn encode_cached(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        if !self.cache_packed_len() {
+            return self.encode(prost_path, ident);
+        }
+        let module = self.ty.module();
+        let tag = self.tag;
+        quote! {
+            #prost_path::encoding::#module::encode_packed_cached(#tag, &#ident, buf, sizes);
+        }
+    }
+
+    pub fn encoded_len_cached(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        if !self.cache_packed_len() {
+            return self.encoded_len(prost_path, ident);
+        }
+        let module = self.ty.module();
+        let tag = self.tag;
+        quote! {
+            #prost_path::encoding::#module::encoded_len_packed_cached(#tag, &#ident, sizes)
+        }
+    }
+
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match self.kind {
             Kind::Plain(ref default) | Kind::Required(ref default) => {

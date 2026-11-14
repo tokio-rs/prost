@@ -176,6 +176,28 @@ impl Field {
         }
     }
 
+    pub fn encode_cached(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        if !matches!(self.value_ty, ValueTy::Message) {
+            return self.encode(prost_path, ident);
+        }
+        let tag = self.tag;
+        let module = self.map_ty.module();
+        let key_mod = self.key_ty.module();
+        quote! { #prost_path::encoding::#module::encode_message_cached(
+        #prost_path::encoding::#key_mod::encode, #tag, &#ident, buf, sizes); }
+    }
+
+    pub fn encoded_len_cached(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        if !matches!(self.value_ty, ValueTy::Message) {
+            return self.encoded_len(prost_path, ident);
+        }
+        let tag = self.tag;
+        let module = self.map_ty.module();
+        let key_mod = self.key_ty.module();
+        quote! { #prost_path::encoding::#module::encoded_len_message_cached(
+        #prost_path::encoding::#key_mod::encoded_len, #tag, &#ident, sizes) }
+    }
+
     /// Returns an expression which evaluates to the result of merging a decoded key value pair
     /// into the map.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {

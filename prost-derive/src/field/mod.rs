@@ -123,6 +123,53 @@ impl Field {
         }
     }
 
+    /// Checks direct field presence without traversing any child messages.
+    pub fn use_size_cache(&self, ident: TokenStream) -> TokenStream {
+        match self {
+            Field::Message(f) => f.label.is_present(ident),
+            Field::Group(f) => f.label.is_present(ident),
+            Field::Map(f) if matches!(f.value_ty, map::ValueTy::Message) => {
+                quote!(!#ident.is_empty())
+            }
+            Field::Oneof(_) => {
+                quote!(#ident.as_ref().is_some_and(|oneof| oneof.use_size_cache()))
+            }
+            Field::Scalar(_) | Field::Map(_) => quote!(false),
+        }
+    }
+
+    pub fn encode_cached(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        match self {
+            Field::Scalar(f) => f.encode_cached(prost_path, ident),
+            Field::Message(f) => {
+                f.label
+                    .encode_cached(quote!(#prost_path::size_cache::message), f.tag, ident)
+            }
+            Field::Map(f) => f.encode_cached(prost_path, ident),
+            Field::Oneof(f) => f.encode_cached(ident),
+            Field::Group(f) => {
+                f.label
+                    .encode_cached(quote!(#prost_path::size_cache::group), f.tag, ident)
+            }
+        }
+    }
+
+    pub fn encoded_len_cached(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
+        match self {
+            Field::Scalar(f) => f.encoded_len_cached(prost_path, ident),
+            Field::Message(f) => {
+                f.label
+                    .encoded_len_cached(quote!(#prost_path::size_cache::message), f.tag, ident)
+            }
+            Field::Map(f) => f.encoded_len_cached(prost_path, ident),
+            Field::Oneof(f) => f.encoded_len_cached(ident),
+            Field::Group(f) => {
+                f.label
+                    .encoded_len_cached(quote!(#prost_path::size_cache::group), f.tag, ident)
+            }
+        }
+    }
+
     /// Returns a statement which clears the field.
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
         match *self {
@@ -186,6 +233,48 @@ pub enum Label {
 }
 
 impl Label {
+    // Message and group fields share presence and iteration rules. Only their
+    // runtime encoding module differs.
+    fn encode_cached(self, module: TokenStream, tag: u32, ident: TokenStream) -> TokenStream {
+        match self {
+            Label::Optional => quote! {
+                if let Some(ref msg) = #ident {
+                    #module::encode(#tag, msg, buf, sizes);
+                }
+            },
+            Label::Required => quote! {
+                #module::encode(#tag, &#ident, buf, sizes);
+            },
+            Label::Repeated => quote! {
+                for msg in &#ident {
+                    #module::encode(#tag, msg, buf, sizes);
+                }
+            },
+        }
+    }
+
+    fn encoded_len_cached(self, module: TokenStream, tag: u32, ident: TokenStream) -> TokenStream {
+        match self {
+            Label::Optional => quote! {
+                #ident.as_ref().map_or(0, |msg| #module::encoded_len(#tag, msg, sizes))
+            },
+            Label::Required => quote! {
+                #module::encoded_len(#tag, &#ident, sizes)
+            },
+            Label::Repeated => quote! {
+                #module::encoded_len_repeated(#tag, &#ident, sizes)
+            },
+        }
+    }
+
+    fn is_present(self, ident: TokenStream) -> TokenStream {
+        match self {
+            Label::Optional => quote!(#ident.is_some()),
+            Label::Required => quote!(true),
+            Label::Repeated => quote!(!#ident.is_empty()),
+        }
+    }
+
     fn as_str(self) -> &'static str {
         match self {
             Label::Optional => "optional",
