@@ -1,6 +1,6 @@
 use std::ascii;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::iter;
 
 use itertools::{Either, Itertools};
@@ -779,7 +779,7 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         self.depth += 1;
         self.path.push(2);
-        for variant in variant_mappings.iter() {
+        for variant in variant_mappings.iter().filter(|v| v.alias_of.is_none()) {
             self.path.push(variant.path_idx as i32);
 
             self.append_doc(&fq_proto_enum_name, Some(variant.proto_name));
@@ -810,6 +810,30 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.depth += 1;
         self.path.push(2);
 
+        for alias in variant_mappings.iter().filter(|v| v.generate_alias) {
+            let canonical = &variant_mappings[alias.alias_of.unwrap()];
+            self.path.push(alias.path_idx as i32);
+            self.append_doc(&fq_proto_enum_name, Some(alias.proto_name));
+            self.append_field_attributes(&fq_proto_enum_name, alias.proto_name);
+            self.path.pop();
+
+            if alias.deprecated {
+                self.push_indent();
+                self.buf.push_str("#[deprecated]\n");
+            }
+            if canonical.deprecated {
+                self.push_indent();
+                self.buf.push_str("#[allow(deprecated)]\n");
+            }
+            self.push_indent();
+            self.buf.push_str("#[allow(non_upper_case_globals)]\n");
+            self.push_indent();
+            self.buf.push_str(&format!(
+                "pub const {}: Self = Self::{};\n",
+                alias.generated_variant_name, canonical.generated_variant_name,
+            ));
+        }
+
         self.push_indent();
         self.buf.push_str(
             "/// String value of the enum field names used in the ProtoBuf definition.\n",
@@ -833,7 +857,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         self.buf.push_str("match self {\n");
         self.depth += 1;
 
-        for variant in variant_mappings.iter() {
+        for variant in variant_mappings.iter().filter(|v| v.alias_of.is_none()) {
             if variant.deprecated {
                 self.push_indent();
                 self.buf.push_str("#[allow(deprecated)]\n");
@@ -872,7 +896,7 @@ impl<'b> CodeGenerator<'_, 'b> {
             self.buf.push('\"');
             self.buf.push_str(variant.proto_name);
             self.buf.push_str("\" => Some(");
-            if variant.deprecated {
+            if variant.deprecated || variant.alias_of.is_some() {
                 self.buf.push_str("#[allow(deprecated)] ");
             }
             self.buf.push_str("Self::");
@@ -1141,6 +1165,8 @@ struct EnumVariantMapping<'a> {
     proto_number: i32,
     generated_variant_name: String,
     deprecated: bool,
+    alias_of: Option<usize>,
+    generate_alias: bool,
 }
 
 fn build_enum_value_mappings<'a>(
@@ -1148,16 +1174,15 @@ fn build_enum_value_mappings<'a>(
     do_strip_enum_prefix: bool,
     enum_values: &'a [EnumValueDescriptorProto],
 ) -> Vec<EnumVariantMapping<'a>> {
-    let mut numbers = HashSet::new();
+    let mut numbers = HashMap::new();
     let mut generated_names = HashMap::new();
     let mut mappings = Vec::new();
 
     for (idx, value) in enum_values.iter().enumerate() {
-        // Skip duplicate enum values. Protobuf allows this when the
-        // 'allow_alias' option is set.
-        if !numbers.insert(value.number()) {
-            continue;
-        }
+        // protoc validates allow_alias. Keep every name, but use the first
+        // occurrence of each number as the canonical enum variant.
+        let alias_of = numbers.get(&value.number()).copied();
+        numbers.entry(value.number()).or_insert(mappings.len());
 
         let mut generated_variant_name = to_upper_camel(value.name());
         if do_strip_enum_prefix {
@@ -1165,11 +1190,24 @@ fn build_enum_value_mappings<'a>(
                 strip_enum_prefix(generated_enum_name, &generated_variant_name);
         }
 
-        if let Some(old_v) = generated_names.insert(generated_variant_name.to_owned(), value.name())
+        let generate_alias = if let Some(&(old_name, old_number)) =
+            generated_names.get(&generated_variant_name)
         {
-            panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
-                generated_variant_name, old_v, value.name());
-        }
+            if old_number != value.number() {
+                panic!("Generated enum variant names overlap: `{}` variant name to be used both by `{}` and `{}` ProtoBuf enum values",
+                    generated_variant_name, old_name, value.name());
+            }
+            // Some valid schemas (including Google's conformance fixtures) use
+            // aliases such as MOO and moo. Share their Rust item, but keep both
+            // mappings so from_str_name accepts both protobuf names.
+            false
+        } else {
+            generated_names.insert(
+                generated_variant_name.clone(),
+                (value.name(), value.number()),
+            );
+            alias_of.is_some()
+        };
 
         mappings.push(EnumVariantMapping {
             path_idx: idx,
@@ -1177,6 +1215,8 @@ fn build_enum_value_mappings<'a>(
             proto_number: value.number(),
             generated_variant_name,
             deprecated: enum_field_deprecated(value),
+            alias_of,
+            generate_alias,
         })
     }
     mappings
@@ -1187,4 +1227,49 @@ fn enum_field_deprecated(value: &EnumValueDescriptorProto) -> bool {
         .options
         .as_ref()
         .is_some_and(EnumValueOptions::deprecated)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enum_aliases_handle_normalized_name_collisions() {
+        // Both capitalization and optional prefix stripping can produce collisions.
+        for (names, strip_prefix) in [
+            (["STATE_READY", "READY"], true),
+            (["READY", "Ready"], false),
+        ] {
+            for second_number in [0, 1] {
+                let values = [
+                    EnumValueDescriptorProto {
+                        name: Some(names[0].into()),
+                        number: Some(0),
+                        ..Default::default()
+                    },
+                    EnumValueDescriptorProto {
+                        name: Some(names[1].into()),
+                        number: Some(second_number),
+                        ..Default::default()
+                    },
+                ];
+                if second_number == 0 {
+                    let mappings = build_enum_value_mappings("State", strip_prefix, &values);
+                    assert_eq!(mappings.len(), 2);
+                    assert_eq!(mappings[1].alias_of, Some(0));
+                    assert!(!mappings[1].generate_alias);
+                    continue;
+                }
+                let error = std::panic::catch_unwind(|| {
+                    build_enum_value_mappings("State", strip_prefix, &values)
+                })
+                .err()
+                .expect("colliding names must not be silently skipped");
+                let error = error.downcast_ref::<String>().unwrap();
+                assert!(error.contains("Generated enum variant names overlap"));
+                assert!(error.contains(names[0]));
+                assert!(error.contains(names[1]));
+            }
+        }
+    }
 }
