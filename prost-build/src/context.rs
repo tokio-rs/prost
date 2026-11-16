@@ -182,6 +182,9 @@ impl<'a> Context<'a> {
     /// Returns `true` if this message can automatically derive Copy trait.
     pub fn can_message_derive_copy(&self, fq_message_name: &str) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
+        if self.extern_paths.is_explicit(fq_message_name) {
+            return false;
+        }
         self.message_graph
             .get_message(fq_message_name)
             .unwrap()

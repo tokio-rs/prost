@@ -49,3 +49,33 @@ message ComposedMsg {
 message WellKnownMsg {
   google.protobuf.Timestamp timestamp = 1;
 }
+
+message External {}
+
+message ExternalParent {
+  External field = 1;
+
+  oneof payload {
+    External selected = 2;
+  }
+}
+
+message ExternalGrandparent {
+  ExternalParent parent = 1;
+}
+
+message external_prefix {
+  message Empty {}
+}
+
+message PrefixParent {
+  external_prefix.Empty field = 1;
+}
+
+message external_prefix_neighbor {
+  message Empty {}
+}
+
+message PrefixNeighborParent {
+  external_prefix_neighbor.Empty field = 1;
+}
