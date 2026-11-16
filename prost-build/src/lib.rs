@@ -656,4 +656,73 @@ mod tests {
             tempdir.path().join("packed_encoding_proto2.rs")
         );
     }
+    #[test]
+    fn enum_alias_comments_attributes_and_prefixes() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let proto = tempdir.path().join("aliases.proto");
+        std::fs::write(
+            &proto,
+            r#"
+syntax = "proto3";
+package aliases;
+enum State {
+  option allow_alias = true;
+  STATE_UNKNOWN = 0;
+  STATE_READY = 1;
+  // A documented alias.
+  STATE_STARTED = 1 [deprecated = true];
+  STATE_RUNNING = 1;
+}
+"#,
+        )
+        .unwrap();
+        for retain_prefix in [false, true] {
+            for disable_comments in [false, true] {
+                let mut config = Config::new();
+                config.out_dir(tempdir.path());
+                config.field_attribute(".aliases.State.STATE_STARTED", "#[allow(dead_code)]");
+                if retain_prefix {
+                    config.retain_enum_prefix();
+                }
+                if disable_comments {
+                    config.disable_comments([".aliases.State"]);
+                }
+                config.compile_protos(&[&proto], &[tempdir.path()]).unwrap();
+                let output = std::fs::read_to_string(tempdir.path().join("aliases.rs")).unwrap();
+                let prefix = if retain_prefix { "State" } else { "" };
+                assert!(output.contains(&format!(
+                    "pub const {prefix}Started: Self = Self::{prefix}Ready;"
+                )));
+                assert!(output.contains(&format!(
+                    "pub const {prefix}Running: Self = Self::{prefix}Ready;"
+                )));
+                let alias = output.split("pub const").next().unwrap();
+                assert!(alias.contains("#[deprecated]"));
+                assert!(alias.contains("#[allow(dead_code)]"));
+                assert_eq!(
+                    output.contains("/// A documented alias."),
+                    !disable_comments
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn enum_aliases_require_protoc_allow_alias() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let proto = tempdir.path().join("invalid.proto");
+        std::fs::write(
+            &proto,
+            r#"
+syntax = "proto3";
+enum State { UNKNOWN = 0; READY = 1; STARTED = 1; }
+"#,
+        )
+        .unwrap();
+        let error = Config::new()
+            .out_dir(tempdir.path())
+            .compile_protos(&[&proto], &[tempdir.path()])
+            .unwrap_err();
+        assert!(error.to_string().contains("allow_alias"));
+    }
 }

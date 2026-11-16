@@ -89,3 +89,51 @@ fn test_enum_try_from_i32() {
         ERemoteClientBroadcastMsg::try_from(0)
     );
 }
+
+#[test]
+fn test_enum_alias_values_and_strings() {
+    use core::convert::TryFrom;
+    use prost::Message;
+
+    assert_eq!(AliasedState::Started, AliasedState::Ready);
+    assert_eq!(AliasedState::Running as i32, 1);
+    assert_eq!(AliasedState::try_from(1), Ok(AliasedState::Ready));
+    assert_eq!(AliasedState::Started.as_str_name(), "ALIASED_STATE_READY");
+    for name in [
+        "ALIASED_STATE_READY",
+        "ALIASED_STATE_STARTED",
+        "ALIASED_STATE_RUNNING",
+        "ALIASED_STATE_LEGACY",
+        "STARTED",
+        "MOO",
+        "moo",
+    ] {
+        assert_eq!(AliasedState::from_str_name(name), Some(AliasedState::Ready));
+    }
+    assert_eq!(AliasedState::from_str_name("NOT_A_STATE"), None);
+    assert_eq!(AliasedState::Renamed as i32, 2);
+    assert_eq!(
+        AliasedState::from_str_name("OLD"),
+        Some(AliasedState::Renamed)
+    );
+    assert_eq!(AliasedState::Renamed.as_str_name(), "ALIASED_STATE_OLD");
+
+    // Associated constants also work as patterns, including exhaustiveness.
+    let classify = |state| match state {
+        AliasedState::Unknown => 0,
+        AliasedState::Started => 1,
+        AliasedState::Renamed => 2,
+    };
+    assert_eq!(classify(AliasedState::Running), 1);
+
+    let mut msg = AliasedDefaults::default();
+    assert_eq!(msg.state(), AliasedState::Started);
+    assert_eq!(
+        AliasedDefaults::decode(&[][..]).unwrap().state(),
+        AliasedState::Ready
+    );
+    msg.set_state(AliasedState::Running);
+    msg.states.push(AliasedState::Started as i32);
+    let bytes = msg.encode_to_vec();
+    assert_eq!(AliasedDefaults::decode(bytes.as_slice()).unwrap(), msg);
+}

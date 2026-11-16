@@ -219,6 +219,22 @@ enumeration values must be possible.
 
 [^2]: Annotations have been elided for clarity. See below for a full example.
 
+#### Enum aliases
+
+For Protobuf enums with `option allow_alias = true`, the first name declared for
+each numeric value becomes a Rust enum variant. Additional names become associated
+constants that refer to that variant. These constants support assignment, comparison,
+and pattern matching, but are not distinct variants. Reference them as
+`EnumType::Alias`; they cannot be imported with `use EnumType::Alias` or
+`use EnumType::*`.
+
+`from_str_name` accepts every declared Protobuf name, including aliases.
+`as_str_name` returns the first declared Protobuf name for a numeric value; the
+original alias cannot be recovered from the numeric value. Aliases that convert
+to the same Rust name share one item, while all original names remain accepted
+by `from_str_name`. A Rust name collision between different numeric values is
+rejected.
+
 #### Field Modifiers
 
 Protobuf scalar value and enumeration message fields can have a modifier

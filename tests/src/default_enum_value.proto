@@ -24,3 +24,23 @@ enum ERemoteClientBroadcastMsg {
 message CMsgRemoteClientBroadcastHeader {
     optional ERemoteClientBroadcastMsg msg_type = 2 [default = k_ERemoteClientBroadcastMsgDiscovery];
 }
+
+// Regression for #792: aliases used as explicit defaults must compile.
+enum AliasedState {
+  option allow_alias = true;
+  ALIASED_STATE_UNKNOWN = 0;
+  ALIASED_STATE_READY = 1;
+  ALIASED_STATE_STARTED = 1;
+  ALIASED_STATE_RUNNING = 1;
+  STARTED = 1;
+  MOO = 1;
+  moo = 1;
+  ALIASED_STATE_OLD = 2 [deprecated = true];
+  ALIASED_STATE_RENAMED = 2;
+  OLD = 2;
+  ALIASED_STATE_LEGACY = 1 [deprecated = true];
+}
+message AliasedDefaults {
+  optional AliasedState state = 1 [default = ALIASED_STATE_STARTED];
+  repeated AliasedState states = 2;
+}
