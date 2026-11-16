@@ -557,6 +557,10 @@ impl<'b> CodeGenerator<'_, 'b> {
         );
 
         self.append_doc(fq_message_name, Some(field.descriptor.name()));
+        if self.deprecated(&field.descriptor) {
+            self.push_indent();
+            self.buf.push_str("#[deprecated]\n");
+        }
         self.push_indent();
 
         let map_type = self
