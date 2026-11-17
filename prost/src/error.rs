@@ -258,6 +258,28 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_display_empty_stack() {
+        let decode_error = DecodeError::from(DecodeErrorKind::InvalidVarint);
+        assert_eq!(
+            decode_error.to_string(),
+            "failed to decode Protobuf message: invalid varint"
+        );
+    }
+
+    #[test]
+    fn test_display_deeply_nested_stack() {
+        let mut decode_error = DecodeError::from(DecodeErrorKind::BufferUnderflow);
+        decode_error.push("TopLevel", "outer");
+        decode_error.push("Middle", "middle");
+        decode_error.push("Bottom", "inner");
+
+        assert_eq!(
+            decode_error.to_string(),
+            "failed to decode Protobuf message: TopLevel.outer: Middle.middle: Bottom.inner: buffer underflow"
+        );
+    }
+
     #[cfg(feature = "std")]
     #[test]
     fn test_into_std_io_error() {
@@ -269,5 +291,16 @@ mod test {
             std_io_error.to_string(),
             "failed to decode Protobuf message: invalid varint"
         );
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_std_io_error_roundtrip() {
+        let mut decode_error = DecodeError::from(DecodeErrorKind::InvalidString);
+        decode_error.push("Msg", "field");
+        let std_io_error = std::io::Error::from(decode_error.clone());
+
+        let inner = std_io_error.get_ref().unwrap();
+        assert_eq!(inner.to_string(), decode_error.to_string());
     }
 }
