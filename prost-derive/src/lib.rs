@@ -84,12 +84,20 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
     // We want Debug to be in declaration order
     let unsorted_fields = fields.clone();
 
+    // Filter out ignored fields
+    fields.retain(|(_, field)| !matches!(field, Field::Skip(..)));
+
     // Sort the fields by tag number so that fields will be encoded in tag order.
     // TODO: This encodes oneof fields in the position of their lowest tag,
     // regardless of the currently occupied variant, is that consequential?
+    let all_fields = unsorted_fields.clone();
+    let mut active_fields = all_fields.clone();
+    // Filter out skipped fields for encoding/decoding/length
+    active_fields.retain(|(_, field)| !matches!(field, Field::Skip(_)));
+    // Sort the active fields by tag number so that fields will be encoded in tag order.
     // See: https://protobuf.dev/programming-guides/encoding/#order
-    fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
-    let fields = fields;
+    active_fields.sort_by_key(|(_, field)| field.tags().into_iter().min().unwrap());
+    let fields = active_fields;
 
     if let Some(duplicate_tag) = fields
         .iter()
@@ -124,7 +132,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         }
     });
 
-    let struct_name = if fields.is_empty() {
+    let struct_name = if all_fields.is_empty() {
         quote!()
     } else {
         quote!(
@@ -132,12 +140,13 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
         )
     };
 
-    let clear = fields
+    let clear = all_fields
         .iter()
         .map(|(field_ident, field)| field.clear(quote!(self.#field_ident)));
 
+    // For Default implementation, use all_fields (including skipped)
     let default = if is_struct {
-        let default = fields.iter().map(|(field_ident, field)| {
+        let default = all_fields.iter().map(|(field_ident, field)| {
             let value = field.default(&prost_path);
             quote!(#field_ident: #value,)
         });
@@ -145,7 +154,7 @@ fn try_message(input: TokenStream) -> Result<TokenStream, Error> {
             #(#default)*
         }}
     } else {
-        let default = fields.iter().map(|(_, field)| {
+        let default = all_fields.iter().map(|(_, field)| {
             let value = field.default(&prost_path);
             quote!(#value,)
         });
