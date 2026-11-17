@@ -615,6 +615,54 @@ mod test {
     }
 
     #[test]
+    fn test_rejects_duplicate_debug_redact() {
+        let output = try_message(quote!(
+            struct Invalid {
+                #[prost(string, tag = "1", debug_redact)]
+                #[prost(debug_redact = false)]
+                a: String,
+            }
+        ));
+        assert_eq!(
+            format!(
+                "{:#}",
+                output.expect_err("did not reject duplicate debug_redact")
+            ),
+            "invalid message field Invalid.a: duplicate debug_redact attributes: true and false"
+        );
+
+        let output = try_oneof(quote!(
+            enum Invalid {
+                #[prost(string, tag = "1", debug_redact, debug_redact)]
+                A(String),
+            }
+        ));
+        assert_eq!(
+            output
+                .expect_err("did not reject duplicate debug_redact")
+                .to_string(),
+            "duplicate debug_redact attributes: true and true"
+        );
+    }
+
+    #[test]
+    fn test_rejects_invalid_debug_redact() {
+        let output = try_message(quote!(
+            struct Invalid {
+                #[prost(string, tag = "1", debug_redact = "maybe")]
+                a: String,
+            }
+        ));
+        assert_eq!(
+            format!(
+                "{:#}",
+                output.expect_err("did not reject invalid debug_redact")
+            ),
+            "invalid message field Invalid.a: provided string was not `true` or `false`"
+        );
+    }
+
+    #[test]
     fn test_rejects_colliding_oneof_variants() {
         let output = try_oneof(quote!(
             pub enum Invalid {

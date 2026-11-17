@@ -14,8 +14,16 @@ use syn::punctuated::Punctuated;
 use syn::Path;
 use syn::{Attribute, Expr, ExprLit, Lit, LitBool, LitInt, Meta, MetaNameValue, Token};
 
+/// A field of a message, or a variant of a oneof.
 #[derive(Clone)]
-pub enum Field {
+pub struct Field {
+    kind: Kind,
+    /// Whether the field's value is hidden from the generated `Debug` output.
+    debug_redact: bool,
+}
+
+#[derive(Clone)]
+enum Kind {
     /// A scalar field.
     Scalar(scalar::Field),
     /// A message field.
@@ -35,24 +43,25 @@ impl Field {
     /// If the field should be ignored, `None` is returned.
     pub fn new(attrs: Vec<Attribute>, inferred_tag: Option<u32>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
+        let (attrs, debug_redact) = take_debug_redact(attrs)?;
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
-            Field::Scalar(field)
+        let kind = if let Some(field) = scalar::Field::new(&attrs, inferred_tag)? {
+            Kind::Scalar(field)
         } else if let Some(field) = message::Field::new(&attrs, inferred_tag)? {
-            Field::Message(field)
+            Kind::Message(field)
         } else if let Some(field) = map::Field::new(&attrs, inferred_tag)? {
-            Field::Map(field)
+            Kind::Map(field)
         } else if let Some(field) = oneof::Field::new(&attrs)? {
-            Field::Oneof(field)
+            Kind::Oneof(field)
         } else if let Some(field) = group::Field::new(&attrs, inferred_tag)? {
-            Field::Group(field)
+            Kind::Group(field)
         } else {
             bail!("no type attribute");
         };
 
-        Ok(Some(field))
+        Ok(Some(Field { kind, debug_redact }))
     }
 
     /// Creates a new oneof `Field` from an iterator of field attributes.
@@ -61,90 +70,107 @@ impl Field {
     /// If the field should be ignored, `None` is returned.
     pub fn new_oneof(attrs: Vec<Attribute>) -> Result<Option<Field>, Error> {
         let attrs = prost_attrs(attrs)?;
+        let (attrs, debug_redact) = take_debug_redact(attrs)?;
 
         // TODO: check for ignore attribute.
 
-        let field = if let Some(field) = scalar::Field::new_oneof(&attrs)? {
-            Field::Scalar(field)
+        let kind = if let Some(field) = scalar::Field::new_oneof(&attrs)? {
+            Kind::Scalar(field)
         } else if let Some(field) = message::Field::new_oneof(&attrs)? {
-            Field::Message(field)
+            Kind::Message(field)
         } else if let Some(field) = map::Field::new_oneof(&attrs)? {
-            Field::Map(field)
+            Kind::Map(field)
         } else if let Some(field) = group::Field::new_oneof(&attrs)? {
-            Field::Group(field)
+            Kind::Group(field)
         } else {
             bail!("no type attribute for oneof field");
         };
 
-        Ok(Some(field))
+        Ok(Some(Field { kind, debug_redact }))
     }
 
     pub fn tags(&self) -> Vec<u32> {
-        match *self {
-            Field::Scalar(ref scalar) => vec![scalar.tag],
-            Field::Message(ref message) => vec![message.tag],
-            Field::Map(ref map) => vec![map.tag],
-            Field::Oneof(ref oneof) => oneof.tags.clone(),
-            Field::Group(ref group) => vec![group.tag],
+        match self.kind {
+            Kind::Scalar(ref scalar) => vec![scalar.tag],
+            Kind::Message(ref message) => vec![message.tag],
+            Kind::Map(ref map) => vec![map.tag],
+            Kind::Oneof(ref oneof) => oneof.tags.clone(),
+            Kind::Group(ref group) => vec![group.tag],
         }
     }
 
     /// Returns a statement which encodes the field.
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.encode(prost_path, ident),
-            Field::Message(ref message) => message.encode(prost_path, ident),
-            Field::Map(ref map) => map.encode(prost_path, ident),
-            Field::Oneof(ref oneof) => oneof.encode(ident),
-            Field::Group(ref group) => group.encode(prost_path, ident),
+        match self.kind {
+            Kind::Scalar(ref scalar) => scalar.encode(prost_path, ident),
+            Kind::Message(ref message) => message.encode(prost_path, ident),
+            Kind::Map(ref map) => map.encode(prost_path, ident),
+            Kind::Oneof(ref oneof) => oneof.encode(ident),
+            Kind::Group(ref group) => group.encode(prost_path, ident),
         }
     }
 
     /// Returns an expression which evaluates to the result of merging a decoded
     /// value into the field.
     pub fn merge(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.merge(prost_path, ident),
-            Field::Message(ref message) => message.merge(prost_path, ident),
-            Field::Map(ref map) => map.merge(prost_path, ident),
-            Field::Oneof(ref oneof) => oneof.merge(ident),
-            Field::Group(ref group) => group.merge(prost_path, ident),
+        match self.kind {
+            Kind::Scalar(ref scalar) => scalar.merge(prost_path, ident),
+            Kind::Message(ref message) => message.merge(prost_path, ident),
+            Kind::Map(ref map) => map.merge(prost_path, ident),
+            Kind::Oneof(ref oneof) => oneof.merge(ident),
+            Kind::Group(ref group) => group.merge(prost_path, ident),
         }
     }
 
     /// Returns an expression which evaluates to the encoded length of the field.
     pub fn encoded_len(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.encoded_len(prost_path, ident),
-            Field::Map(ref map) => map.encoded_len(prost_path, ident),
-            Field::Message(ref msg) => msg.encoded_len(prost_path, ident),
-            Field::Oneof(ref oneof) => oneof.encoded_len(ident),
-            Field::Group(ref group) => group.encoded_len(prost_path, ident),
+        match self.kind {
+            Kind::Scalar(ref scalar) => scalar.encoded_len(prost_path, ident),
+            Kind::Map(ref map) => map.encoded_len(prost_path, ident),
+            Kind::Message(ref msg) => msg.encoded_len(prost_path, ident),
+            Kind::Oneof(ref oneof) => oneof.encoded_len(ident),
+            Kind::Group(ref group) => group.encoded_len(prost_path, ident),
         }
     }
 
     /// Returns a statement which clears the field.
     pub fn clear(&self, ident: TokenStream) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.clear(ident),
-            Field::Message(ref message) => message.clear(ident),
-            Field::Map(ref map) => map.clear(ident),
-            Field::Oneof(ref oneof) => oneof.clear(ident),
-            Field::Group(ref group) => group.clear(ident),
+        match self.kind {
+            Kind::Scalar(ref scalar) => scalar.clear(ident),
+            Kind::Message(ref message) => message.clear(ident),
+            Kind::Map(ref map) => map.clear(ident),
+            Kind::Oneof(ref oneof) => oneof.clear(ident),
+            Kind::Group(ref group) => group.clear(ident),
         }
     }
 
     pub fn default(&self, prost_path: &Path) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.default(prost_path),
+        match self.kind {
+            Kind::Scalar(ref scalar) => scalar.default(prost_path),
             _ => quote!(::core::default::Default::default()),
         }
     }
 
     /// Produces the fragment implementing debug for the given field.
     pub fn debug(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
-        match *self {
-            Field::Scalar(ref scalar) => {
+        if self.debug_redact {
+            // Hide the whole value, including whether it is present, and how many elements it has.
+            return quote! {
+                {
+                    // Avoids an unused variable warning when `ident` is a binding, as it is for a oneof.
+                    let _ = &#ident;
+                    struct RedactedWrapper;
+                    impl ::core::fmt::Debug for RedactedWrapper {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            f.write_str("[REDACTED]")
+                        }
+                    }
+                    RedactedWrapper
+                }
+            };
+        }
+        match self.kind {
+            Kind::Scalar(ref scalar) => {
                 let wrapper = scalar.debug(prost_path, quote!(ScalarWrapper));
                 quote! {
                     {
@@ -153,7 +179,7 @@ impl Field {
                     }
                 }
             }
-            Field::Map(ref map) => {
+            Kind::Map(ref map) => {
                 let wrapper = map.debug(prost_path, quote!(MapWrapper));
                 quote! {
                     {
@@ -167,9 +193,9 @@ impl Field {
     }
 
     pub fn methods(&self, prost_path: &Path, ident: &TokenStream) -> Option<TokenStream> {
-        match *self {
-            Field::Scalar(ref scalar) => scalar.methods(ident),
-            Field::Map(ref map) => map.methods(prost_path, ident),
+        match self.kind {
+            Kind::Scalar(ref scalar) => scalar.methods(ident),
+            Kind::Map(ref map) => map.methods(prost_path, ident),
             _ => None,
         }
     }
@@ -238,6 +264,28 @@ fn prost_attrs(attrs: Vec<Attribute>) -> Result<Vec<Meta>, Error> {
         }
     }
     Ok(result)
+}
+
+/// Removes any `debug_redact` items from the field's attributes, and returns the remaining items
+/// along with whether the field should be redacted.
+///
+/// Every kind of field accepts `debug_redact`, so it is handled here rather than by each kind's
+/// parser, which would reject it as an unknown attribute.
+fn take_debug_redact(attrs: Vec<Meta>) -> Result<(Vec<Meta>, bool), Error> {
+    let mut debug_redact = None;
+    let mut remaining = Vec::with_capacity(attrs.len());
+    for attr in attrs {
+        if let Some(value) = bool_attr("debug_redact", &attr)? {
+            set_option(
+                &mut debug_redact,
+                value,
+                "duplicate debug_redact attributes",
+            )?;
+        } else {
+            remaining.push(attr);
+        }
+    }
+    Ok((remaining, debug_redact.unwrap_or(false)))
 }
 
 pub fn set_option<T>(option: &mut Option<T>, value: T, message: &str) -> Result<(), Error>
