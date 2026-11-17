@@ -114,6 +114,17 @@
 //! PROTOC=/usr/local/bin/protoc
 //! ```
 //!
+//! When building on more than one host, a host specific `<HOST>_PROTOC` variable takes precedence
+//! over `PROTOC`. The prefix is the host target triple, uppercased with `-` and `.` replaced by
+//! `_`, so on an `x86_64-unknown-linux-gnu` host the variable is `X86_64_UNKNOWN_LINUX_GNU_PROTOC`.
+//! This lets a single `[env]` table in `.cargo/config.toml` point at a different `protoc` per host:
+//!
+//! ```toml
+//! [env]
+//! X86_64_UNKNOWN_LINUX_GNU_PROTOC = { value = "tools/x86_64-linux/protoc", relative = true }
+//! AARCH64_APPLE_DARWIN_PROTOC = { value = "tools/aarch64-macos/protoc", relative = true }
+//! ```
+//!
 //! Alternatively, the path to `protoc` executable can be explicitly set
 //! via [`Config::protoc_executable()`].
 //!
