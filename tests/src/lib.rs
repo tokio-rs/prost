@@ -165,7 +165,7 @@ where
 
     let encoded_len = all_types.encoded_len();
 
-    // TODO: Reenable this once sign-extension in negative int32s is figured out.
+    // TODO: Re-enable this once sign-extension in negative int32s is figured out.
     // assert!(encoded_len <= data.len(), "encoded_len: {}, len: {}, all_types: {:?}",
     //         encoded_len, data.len(), all_types);
 
