@@ -70,6 +70,14 @@ fn tuple_struct() {
     assert_eq!(format!("{:?}", NewType(42)), "NewType(42)");
 }
 
+#[test]
+fn unit_struct() {
+    #[derive(Clone, PartialEq, prost::Message)]
+    struct UnitStruct;
+
+    assert_eq!(format!("{:?}", UnitStruct), "UnitStruct");
+}
+
 #[derive(Clone, PartialEq, prost::Oneof)]
 pub enum OneofWithEnum {
     #[prost(int32, tag = "8")]
