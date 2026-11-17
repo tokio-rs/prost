@@ -152,11 +152,11 @@ impl<'a> Context<'a> {
         oneof: Option<&str>,
         field: &FieldDescriptorProto,
     ) -> bool {
-        if field.label() == Label::Repeated {
+        if field.label_or_default() == Label::Repeated {
             // Repeated field are stored in Vec, therefore it is already heap allocated
             return false;
         }
-        let fd_type = field.r#type();
+        let fd_type = field.type_or_default();
         if (fd_type == Type::Message || fd_type == Type::Group)
             && self
                 .message_graph
@@ -199,9 +199,9 @@ impl<'a> Context<'a> {
         assert_eq!(".", &fq_message_name[..1]);
 
         // repeated field cannot derive Copy
-        if field.label() == Label::Repeated {
+        if field.label_or_default() == Label::Repeated {
             false
-        } else if field.r#type() == Type::Message {
+        } else if field.type_or_default() == Type::Message {
             // nested and boxed messages cannot derive Copy
             if self
                 .message_graph
@@ -221,7 +221,7 @@ impl<'a> Context<'a> {
             }
         } else {
             matches!(
-                field.r#type(),
+                field.type_or_default(),
                 Type::Float
                     | Type::Double
                     | Type::Int32
@@ -254,8 +254,8 @@ impl<'a> Context<'a> {
     pub fn can_field_derive_eq(&self, fq_message_name: &str, field: &FieldDescriptorProto) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
 
-        if field.r#type() == Type::Message {
-            if field.label() == Label::Repeated
+        if field.type_or_default() == Type::Message {
+            if field.label_or_default() == Label::Repeated
                 || self
                     .message_graph
                     .is_nested(field.type_name(), fq_message_name)
@@ -266,7 +266,7 @@ impl<'a> Context<'a> {
             }
         } else {
             matches!(
-                field.r#type(),
+                field.type_or_default(),
                 Type::Int32
                     | Type::Int64
                     | Type::Uint32
