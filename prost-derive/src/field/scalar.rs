@@ -105,6 +105,19 @@ impl Field {
         }
     }
 
+    /// Returns an expression which evaluates to `true` if the field differs from its default
+    /// value, and therefore has to be encoded.
+    ///
+    /// Floating point types are compared by bit pattern, so that `-0.0` is not considered equal
+    /// to `0.0`. All other types are compared with `PartialEq`.
+    fn is_not_default(&self, ident: &TokenStream, default: &DefaultValue) -> TokenStream {
+        let default = default.typed();
+        match self.ty {
+            Ty::Float | Ty::Double => quote!(#ident.to_bits() != (#default).to_bits()),
+            _ => quote!(#ident != #default),
+        }
+    }
+
     pub fn encode(&self, prost_path: &Path, ident: TokenStream) -> TokenStream {
         let module = self.ty.module();
         let encode_fn = match self.kind {
@@ -117,9 +130,9 @@ impl Field {
 
         match self.kind {
             Kind::Plain(ref default) => {
-                let default = default.typed();
+                let is_not_default = self.is_not_default(&ident, default);
                 quote! {
-                    if #ident != #default {
+                    if #is_not_default {
                         #encode_fn(#tag, &#ident, buf);
                     }
                 }
@@ -171,9 +184,9 @@ impl Field {
 
         match self.kind {
             Kind::Plain(ref default) => {
-                let default = default.typed();
+                let is_not_default = self.is_not_default(&ident, default);
                 quote! {
-                    if #ident != #default {
+                    if #is_not_default {
                         #encoded_len_fn(#tag, &#ident)
                     } else {
                         0
