@@ -260,6 +260,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         ));
         self.append_prost_path_attribute();
         self.append_skip_debug(&fq_message_name);
+        self.append_skip_field_names(&fq_message_name);
         self.push_indent();
         self.buf.push_str("pub struct ");
         self.buf.push_str(&to_upper_camel(&message_name));
@@ -392,6 +393,14 @@ impl<'b> CodeGenerator<'_, 'b> {
         if self.context.should_skip_debug(fq_message_name) {
             push_indent(self.buf, self.depth);
             self.buf.push_str("#[prost(skip_debug)]");
+            self.buf.push('\n');
+        }
+    }
+
+    fn append_skip_field_names(&mut self, fq_message_name: &str) {
+        if self.context.should_skip_field_names(fq_message_name) {
+            push_indent(self.buf, self.depth);
+            self.buf.push_str("#[prost(skip_field_names)]");
             self.buf.push('\n');
         }
     }
@@ -654,6 +663,7 @@ impl<'b> CodeGenerator<'_, 'b> {
         ));
         self.append_prost_path_attribute();
         self.append_skip_debug(fq_message_name);
+        self.append_skip_field_names(fq_message_name);
         self.push_indent();
         self.buf.push_str("pub enum ");
         self.buf.push_str(&oneof.type_name());
